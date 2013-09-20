@@ -1,4 +1,7 @@
 * text=auto !eol
+fp_mysql/delete_fprime_user.sh -text
+fp_mysql/fprime.create.tables.sql -text
+fp_mysql/new_fprime_user.sh -text
 fpa/fp_app_api/__init__.py -text
 fpa/fp_app_api/fpApi.py -text
 fpa/fp_app_api/fpAppConfig.py -text
