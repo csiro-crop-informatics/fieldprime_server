@@ -1,0 +1,15 @@
+* text=auto !eol
+fpa/fp_app_api/__init__.py -text
+fpa/fp_app_api/fpApi.py -text
+fpa/fp_app_api/fpAppConfig.py -text
+fpa/fp_common/__init__.py -text
+fpa/fp_common/dbUtil.py -text
+fpa/fp_common/fpTrait.py -text
+fpa/fp_common/fpUtil.py -text
+fpa/fp_common/models.py -text
+fpa/fp_common/session.py -text
+fpa/fp_web_admin/__init__.py -text
+fpa/fp_web_admin/fpAppConfig.py -text
+fpa/fp_web_admin/fpWebAdmin.py -text
+fpa/wsgi_adm_entry.py -text
+fpa/wsgi_app_entry.py -text
