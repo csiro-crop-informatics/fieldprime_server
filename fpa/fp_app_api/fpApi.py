@@ -262,6 +262,10 @@ def process_ti_json(ti, trial, traitID, token, dbc):
 # "traitInstances":[{"trait_id":1,"dayCreated":2,"seqNum":1,"sampleNum":1,"data":[]}]}
 #
 # NB - currently not used, replaced by individual ti upload above
+# Actually, we're using it again now, for notes.
+# MFK - Ideally we would add the token to the URL, as has been done for upload_trait_data.
+# Have to be carefully however about breaking the protocol for devices out there with
+# the URL without a token..
 #
 @app.route('/user/<username>/trial/<trialid>/', methods=['POST'])
 @dec_get_trial(False)
@@ -276,23 +280,38 @@ def upload_trial(username, trial, dbc):
         return Response('Bad or missing JSON')
     try:
         token = jtrial['serverToken']
-        tis = jtrial['traitInstances']
+        # tis = jtrial['traitInstances']    # Not compulsory anymore, there might just be "notes" for example
     except Exception, e:
         return Response('Missing field: ' + e.args[0])
 
-    for ti in tis:  # loop over tis, note returns error if any fail.
-        try:
-            traitID = ti["trait_id"];  # This could be part of trait upload instance URL
-            dayCreated = ti["dayCreated"]
-            seqNum = ti["seqNum"]
-            sampleNum = ti["sampleNum"]
-            aData = ti["data"]
-        except Exception, e:
-            return Response('Missing traitInstance field: ' + e.args[0] + trial.name)
+    # Process trait instances:  MFK current client will not upload tis this way, but need to leave this
+    # here a while perhaps while there still may be older clients.
+    if 'traitInstance' in jtrial:
+        tis = jtrial['traitInstances']
+        for ti in tis:  # loop over tis, note returns error if any fail.
+            try:
+                traitID = ti["trait_id"];  # This could be part of trait upload instance URL
+                dayCreated = ti["dayCreated"]
+                seqNum = ti["seqNum"]
+                sampleNum = ti["sampleNum"]
+                aData = ti["data"]
+            except Exception, e:
+                return Response('Missing traitInstance field: ' + e.args[0] + trial.name)
 
-        errMsg = process_ti_json(ti, trial, traitID, token, dbc)
-        if (errMsg is not None):
-            return Response(errMsg)
+            errMsg = process_ti_json(ti, trial, traitID, token, dbc)
+            if (errMsg is not None):
+                return Response(errMsg)
+
+    if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
+        dal.AddTrialUnitNotes(dbc, jtrial['notes'])
+        # notes = jtrial['notes']
+        # for note in notes:
+        #     tuId = note['trialUnit_id']
+        #     timestamp = note['timestamp']
+        #     userid = note['userid']    # the name of the note taker
+        #     noteText = note['note']
+        #     dal.AddTrialUnitNote(dbc, tuId, timestamp, userid, noteText)
+
 
     # All done, return success indicator:
     return Response('success')

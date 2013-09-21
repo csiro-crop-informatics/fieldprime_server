@@ -156,7 +156,6 @@ class TrialUnit(DeclarativeBase):
 
 class TrialUnitAttribute(DeclarativeBase):
     __tablename__ = 'trialUnitAttribute'
-
     __table_args__ = {}
 
     #column definitions
@@ -173,6 +172,18 @@ class System(DeclarativeBase):
     __table_args__ = {}
     name = Column(u'name', VARCHAR(length=63), primary_key=True, nullable=False)
     value = Column(u'value', VARCHAR(length=255), nullable=True)
+
+class TrialUnitNote(DeclarativeBase):
+    __tablename__ = 'trialUnitNote'
+    __table_args__ = {}
+    #column definitions:
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    trialUnit_id = Column(u'trialUnit_id', INTEGER(), ForeignKey('trialUnit.id'), nullable=False)
+    timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False),
+    userid = Column(u'userid', TEXT()),
+    note = Column(u'note', TEXT()),
+    #relation definitions:
+    trialUnit = relation('TrialUnit', primaryjoin='TrialUnitNote.trial_id==TrialUnit.id')
 
 
 ###  Functions:  ##################################################################################################
@@ -288,6 +299,34 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     # NB we are assuming there is at least one datum (we checked for this above):
     qry = qry[:-1] # Fix up last char:
 
+    # call sql to do multi insert:  Need to import LogDebug func for this
+    # if gdbg:
+    #     LogDebug("sql qry", qry)
+    dbc.bind.execute(qry)
+
+    return None;
+
+
+def AddTrialUnitNotes(dbc, notes):
+#-------------------------------------------------------------------------------------------------
+# Return None for success, else an error message.
+# 
+    qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}) values '.format(
+        'trialUnitNote', 'trialUnit_id', 'timestamp', 'userid', 'note')
+    if len(n) <= 0:
+        return None
+    for n in notes:
+        # have to see what format value is in in json, ideally string would be quoted,
+        # and number not. note mysql should cope with quotes around numbers.
+        valueField = ('"' + str(dat['value']) + '"') if 'value' in dat else 'null'
+        noteField = ('"' + n['note'] + '"') if 'notes' in dat else 'null'
+        try:
+            qry += '({0}, {1}, "{2}", "{3}"),'.format(
+                n['trialUnit_id'], n['timestamp'], n['userid'], n['note'])
+        except Exception, e:
+            return 'Error parsing traitInstance:data ' + e.args[0]
+
+    qry = qry[:-1] # Remove last comma
     # call sql to do multi insert:  Need to import LogDebug func for this
     # if gdbg:
     #     LogDebug("sql qry", qry)
