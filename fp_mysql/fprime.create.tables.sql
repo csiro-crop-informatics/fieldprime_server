@@ -72,6 +72,7 @@ create table trialUnitNote(
   trialUnit_id  INTEGER,
   timestamp     BIGINT NOT NULL,
   userid        text,
+  token         VARCHAR(31) NOT NULL,
   note          text,
   UNIQUE (trialUnit_id, timestamp, note(100)),
   FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE
