@@ -44,7 +44,7 @@ create table trialUnit(
   col         INT NOT NULL,
   description text,
   barcode     text,
-  FOREIGN KEY(trial_id) REFERENCES trial(id)
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 -- 
