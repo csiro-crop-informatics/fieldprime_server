@@ -303,7 +303,7 @@ def upload_trial(username, trial, dbc):
                 return Response(errMsg)
 
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        dal.AddTrialUnitNotes(dbc, jtrial['notes'])
+        dal.AddTrialUnitNotes(dbc, token, jtrial['notes'])
         # notes = jtrial['notes']
         # for note in notes:
         #     tuId = note['trialUnit_id']

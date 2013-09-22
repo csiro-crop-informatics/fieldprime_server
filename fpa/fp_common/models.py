@@ -176,14 +176,17 @@ class System(DeclarativeBase):
 class TrialUnitNote(DeclarativeBase):
     __tablename__ = 'trialUnitNote'
     __table_args__ = {}
+
     #column definitions:
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     trialUnit_id = Column(u'trialUnit_id', INTEGER(), ForeignKey('trialUnit.id'), nullable=False)
-    timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False),
-    userid = Column(u'userid', TEXT()),
-    note = Column(u'note', TEXT()),
+    timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False)
+    userid = Column(u'userid', TEXT())
+    note = Column(u'note', TEXT())
+    token = Column(u'token', VARCHAR(length=31), nullable=False)
+
     #relation definitions:
-    trialUnit = relation('TrialUnit', primaryjoin='TrialUnitNote.trial_id==TrialUnit.id')
+    trialUnit = relation('TrialUnit', primaryjoin='TrialUnitNote.trialUnit_id==TrialUnit.id')
 
 
 ###  Functions:  ##################################################################################################
@@ -307,22 +310,18 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     return None;
 
 
-def AddTrialUnitNotes(dbc, notes):
+def AddTrialUnitNotes(dbc, token, notes):
 #-------------------------------------------------------------------------------------------------
 # Return None for success, else an error message.
 # 
-    qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}) values '.format(
-        'trialUnitNote', 'trialUnit_id', 'timestamp', 'userid', 'note')
-    if len(n) <= 0:
+    qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}) values '.format(
+        'trialUnitNote', 'trialUnit_id', 'timestamp', 'userid', 'token', 'note')
+    if len(notes) <= 0:
         return None
     for n in notes:
-        # have to see what format value is in in json, ideally string would be quoted,
-        # and number not. note mysql should cope with quotes around numbers.
-        valueField = ('"' + str(dat['value']) + '"') if 'value' in dat else 'null'
-        noteField = ('"' + n['note'] + '"') if 'notes' in dat else 'null'
         try:
-            qry += '({0}, {1}, "{2}", "{3}"),'.format(
-                n['trialUnit_id'], n['timestamp'], n['userid'], n['note'])
+            qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
+                n['trialUnit_id'], n['timestamp'], n['userid'], token, n['note'])
         except Exception, e:
             return 'Error parsing traitInstance:data ' + e.args[0]
 
