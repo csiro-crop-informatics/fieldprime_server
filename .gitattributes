@@ -16,3 +16,4 @@ fpa/fp_web_admin/fpAppConfig.py -text
 fpa/fp_web_admin/fpWebAdmin.py -text
 fpa/wsgi_adm_entry.py -text
 fpa/wsgi_app_entry.py -text
+misc/fp.conf -text
