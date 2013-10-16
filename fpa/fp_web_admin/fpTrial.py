@@ -8,7 +8,7 @@
 import sys, os
 import sqlalchemy
 from flask import render_template
-import fp_common.fpUtil as fpUtil
+import fpUtil
 from fp_common.models import Trial, TrialUnit, TrialUnitAttribute, AttributeValue, Trait
 
 ROW = 'row'

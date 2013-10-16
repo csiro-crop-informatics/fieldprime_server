@@ -17,12 +17,12 @@ if __name__ == '__main__':
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir) 
 
-import fp_common.dbUtil as dbUtil
-import fp_common.fpTrait as fpTrait
+import dbUtil
+import fpTrait
 import fp_common.models as models
 import fpTrial
-from fp_common.dbUtil import GetTrial, GetTrials, GetSysTraits
-from fp_common.fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink
+from dbUtil import GetTrial, GetTrials, GetSysTraits
+from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink
 
 import websess
 
@@ -323,13 +323,13 @@ def CreateNewTrait(sess,  trialId, caption, description, type, min, max):
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
         ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
-        ntrt.sysType = fpTrait.SYSTYPE_TRIAL
+        ntrt.sysType = models.SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
         sysTraits = dbUtil.GetSysTraits(sess)
         for x in sysTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
-        ntrt.sysType = fpTrait.SYSTYPE_SYSTEM
+        ntrt.sysType = models.SYSTYPE_SYSTEM
 
     ntrt.type = type
     if min:

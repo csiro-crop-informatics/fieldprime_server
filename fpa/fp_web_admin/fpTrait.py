@@ -5,7 +5,8 @@
 
 from fpUtil import *
 from fpUtil import ShowHtml
-from models import *
+from fp_common.models import *
+from fp_common.models import SYSTYPE_TRIAL, SYSTYPE_SYSTEM, SYSTYPE_ADHOC, TRAIT_TYPE_NAMES, TRAIT_TYPE_TYPE_IDS
 from dbUtil import GetTrialFromDBsess
 import dbUtil
 

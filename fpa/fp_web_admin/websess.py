@@ -1,6 +1,5 @@
 import sha, shelve, time, os
-#import fp_common.dbUtil
-from fp_common.dbUtil import GetEngine
+from dbUtil import GetEngine
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
