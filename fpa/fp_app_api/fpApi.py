@@ -18,11 +18,6 @@ if __name__ == '__main__':
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir) 
 
-
-import fp_common.dbUtil
-from fp_common.fpTrait import TRAIT_TYPE_TYPE_IDS, SYSTYPE_ADHOC
-
-
 app = Flask(__name__)
 try:
     app.config.from_object('fp_app_api.fpAppConfig')
@@ -33,10 +28,6 @@ except ImportError:
 app.config.from_envvar('FPAPI_SETTINGS', silent=True)
 
 # Load the Data Access Layer Module (must be named in the config)
-# dal = __import__(app.config['DATA_ACCESS_MODULE'])
-# print app.config['DATA_ACCESS_MODULE']
-# print dal.models.DbConnectAndAuthenticate
-
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
@@ -163,7 +154,7 @@ def get_trial(username, trl, dbc):
                                       token=servToken, _external=True)
 
         # Fields for categorical traits:
-        if trt.type == TRAIT_TYPE_TYPE_IDS['Categorical']:
+        if trt.type == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
             cats = []
             for cat in trt.categories:
                 oneCat = {}
@@ -171,7 +162,7 @@ def get_trial(username, trl, dbc):
                     oneCat[fieldName] = getattr(cat, fieldName)
                 cats.append(oneCat)
             jtrait['categories'] = cats
-        elif trt.type == TRAIT_TYPE_TYPE_IDS['Photo']:
+        elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Photo']:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
 
@@ -333,7 +324,7 @@ def create_adhoc(username, trl, dbc):
     vtype = request.args.get('type', '')
     vmin = request.args.get('min', '')
     vmax = request.args.get('max', '')
-    ntrt, errMsg = dal.CreateTrait2(dbc, caption, description, vtype, SYSTYPE_ADHOC, vmin, vmax)
+    ntrt, errMsg = dal.CreateTrait2(dbc, caption, description, vtype, dal.SYSTYPE_ADHOC, vmin, vmax)
     if not ntrt:
         return JsonErrorResponse(errMsg)
 
