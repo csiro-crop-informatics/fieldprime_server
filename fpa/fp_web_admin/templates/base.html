@@ -1,0 +1,18 @@
+<HTML><HEAD>
+<script src="{{ url_for('static', filename='fp.js') }}"></script>
+<TITLE>{{ title }}</TITLE></HEAD>
+<BODY>
+<h1>Field Prime Server Management</h1>
+<a href='{{ g.homepage }}'>Home</a>
+<button style="color: red" onClick="window.location='{{g.homepage}}?op=login'">Login as Different User</button>
+<hr>
+
+
+<!-- Body: -->
+{% block content %}{% endblock %}
+
+<!-- Footer: -->
+<hr>
+<a href=\"mailto:***REMOVED***?subject=Field Prime Management Server\">Contact Webmaster</a>
+</BODY></HTML>
+

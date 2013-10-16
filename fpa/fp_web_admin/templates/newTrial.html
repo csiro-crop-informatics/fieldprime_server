@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<html><body>
+<font color="red">{{msg}}</font>
+<h2>Create New Trial</h2>
+<form enctype="multipart/form-data" action="{{g.homepage}}?op=createTrial" method="post">
+Name: <input type="text" name="name"><br>
+Site: <input type="text" name="site"><br>
+Year: <input type="text" name="year"><br>
+Acronym: <input type="text" name="acronym"><br>
+<p>File: <input type="file" name="file"></p>
+<p><input type="submit" value="Upload"></p>
+</form>
+</body></html>
+{% endblock %}

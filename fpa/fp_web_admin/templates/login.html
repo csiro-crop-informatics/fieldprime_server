@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<CENTER>
+<FORM method="POST" action="{{ g.homepage }}">
+<paragraph> Enter your login name: <input type="text" name="username">
+<paragraph> Enter your password: <input type=password name="password">
+<paragraph> <input type="submit" value="Connect">
+</FORM>
+</CENTER>
+</form>
+{{ msg }}
+{% endblock %}
