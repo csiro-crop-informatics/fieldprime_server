@@ -71,11 +71,7 @@ def LogDebug(hdr, text):
 #############################################################################################
 #############################################################################################
 
-HOMEPAGE = "/test"
-
-@app.route('/')
-def hello_world():
-    return 'Hello Sailor!'
+HOMEPAGE = "/fprime"
 
 
 LOGIN_TIMEOUT = 300
@@ -358,13 +354,11 @@ def TrialDataHtml(sess, trialId):
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
-    r = "Content-type: text/plain\n"
-
     # Get Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
 
     # Headers:
-    r += "Row,Column"
+    r = "Row,Column"
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
         r += ",{0},{0}_timestamp,{0}_user,{0}_latitude,{0}_longitude,{0}.notes".format(tiName)
@@ -408,7 +402,7 @@ def TrialDataHtml(sess, trialId):
     return r
 
 
-@app.route(HOMEPAGE, methods=["GET", "POST"])
+@app.route('/', methods=["GET", "POST"])
 def main():
 #-----------------------------------------------------------------------
     COOKIE_NAME = 'sid'
@@ -504,7 +498,7 @@ def main():
                                title='Trait Instance Data')
 
     elif op == 'trialData':
-        return TrialDataHtml(sess, request.args.get("tid"))
+        return Response(TrialDataHtml(sess, request.args.get("tid")), content_type='text/plain')
 
     else:
         return render_template('genericPage.html', content="No such operation ({0})".format(op), title='Error')
