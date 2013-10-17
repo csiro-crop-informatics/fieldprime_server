@@ -67,16 +67,12 @@ def FrontPage(sess):
 #-----------------------------------------------------------------------
 # Return HTML Response for main user page after login
 #
-    x = sess.timeSinceUse()
     sess.resetLastUseTime()
-    suser = sess.GetUser()
-
-    r = "hallo <a href={0}?op=user>{1}</a> last seen {2} <br>".format(g.rootUrl, suser, time.asctime(time.gmtime(sess.getLastUseTime())))
-    r += "Time since last seen: {0} <br>".format(x)
-    r += "Time till login expires: {{LOGIN_TIMEOUT }} <br><p>".format(LOGIN_TIMEOUT - x)
+    #suser = sess.GetUser()
+    #r = "hallo <a href={0}?op=user>{1}</a>, last seen {2} <br>".format(g.rootUrl, suser, time.asctime(time.localtime(sess.getLastUseTime())))
 
     # Administer passwords button:
-    r += "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
+    r = "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
 
     # Traits:
     trials = GetTrials(sess)
@@ -480,6 +476,9 @@ def main():
 
     elif op == 'trialData':
         return Response(TrialDataHtml(sess, request.args.get("tid")), content_type='text/plain')
+
+    elif op == 'home': # MFK - might be good to have separate URL for homepage .../user/<username> 
+        return FrontPage(sess)
 
     else:
         return render_template('genericPage.html', content="No such operation ({0})".format(op), title='Error')
