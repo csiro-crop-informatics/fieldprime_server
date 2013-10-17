@@ -1,4 +1,10 @@
 {% extends "base.html" %}
+{% block homeAndLogin %}
+{#
+  Blank because we do not want to show home and login button in login screen.
+  These are otherwise shown by default at the top of the page.
+#}
+{% endblock %}
 {% block content %}
 <CENTER>
 <FORM method="POST" action="{{ g.rootUrl }}">
