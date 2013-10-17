@@ -7,7 +7,6 @@ import os, sys, time
 import MySQLdb as mdb
 from flask import Flask, request, Response, url_for, render_template, g, make_response
 from flask import json, jsonify
-from functools import wraps
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 
@@ -40,41 +39,13 @@ app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
-
-gdbg = True  # Switch for logging to file
-
-
-##################################################################################################
-
-
-
-
-
-
-
-def LogDebug(hdr, text):
-#-------------------------------------------------------------------------------------------------
-# Writes stuff to file system (for debug)
-    f = open('/tmp/fieldPrimeDebug','a')
-    print >>f, "--- " + hdr + ": ---"
-    print >>f, text
-    print >>f, "------------------"
-    f.close
-
-
-#-------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------
-# Old stuff:
-
+LOGIN_TIMEOUT = 300            # Idle time before requiring web user to login again
 
 
 #############################################################################################
-#############################################################################################
-
-HOMEPAGE = "/fprime"
+###  FUNCTIONS: #############################################################################
 
 
-LOGIN_TIMEOUT = 300
 
 def CheckPassword(user, password):
 #-----------------------------------------------------------------------
@@ -100,27 +71,27 @@ def FrontPage(sess):
     sess.resetLastUseTime()
     suser = sess.GetUser()
 
-    r = "hallo <a href={0}?op=user>{1}</a> last seen {2} <br>".format(HOMEPAGE, suser, time.asctime(time.gmtime(sess.getLastUseTime())))
+    r = "hallo <a href={0}?op=user>{1}</a> last seen {2} <br>".format(g.rootUrl, suser, time.asctime(time.gmtime(sess.getLastUseTime())))
     r += "Time since last seen: {0} <br>".format(x)
     r += "Time till login expires: {{LOGIN_TIMEOUT }} <br><p>".format(LOGIN_TIMEOUT - x)
 
     # Administer passwords button:
-    r += "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(HOMEPAGE))
+    r += "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
 
     # Traits:
     trials = GetTrials(sess)
     trialListHtml = "No trials yet" if len(trials) < 1 else ""
     for t in trials:
-        trialListHtml += "<li><a href={0}?op=showTrial&tid={1}>{2}</a></li>".format(HOMEPAGE, t.id, t.name)
+        trialListHtml += "<li><a href={0}?op=showTrial&tid={1}>{2}</a></li>".format(g.rootUrl, t.id, t.name)
 
-    r += HtmlFieldset(HtmlForm(trialListHtml) +  HtmlButtonLink("Create New Trial", HOMEPAGE + "?op=newTrial"), "Current Trials")
+    r += HtmlFieldset(HtmlForm(trialListHtml) +  HtmlButtonLink("Create New Trial", g.rootUrl + "?op=newTrial"), "Current Trials")
 
     # System Traits:
     sysTraits = GetSysTraits(sess)
     #from fp_common.fpTrait import TraitListHtmlTable
     sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.TraitListHtmlTable(sysTraits)
     r += HtmlFieldset(HtmlForm(sysTraitListHtml) \
-                          + HtmlButtonLink("Create New System Trait", HOMEPAGE + "?op=newTrait&tid=sys"),
+                          + HtmlButtonLink("Create New System Trait", g.rootUrl + "?op=newTrait&tid=sys"),
                       "System Traits")
 
     return make_response(render_template('genericPage.html', content=r, title="User: " + sess.GetUser()))
@@ -146,7 +117,7 @@ def TrialHtml(sess, trialId):
             return "No attributes found"
         out = "<ul>"
         for att in attList:
-            out += "<li><a href={0}?op=attribute&aid={1}>{2}</a></li>".format(HOMEPAGE, att.id, att.name)
+            out += "<li><a href={0}?op=attribute&aid={1}>{2}</a></li>".format(g.rootUrl, att.id, att.name)
         return out + "</ul>"
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
@@ -163,9 +134,9 @@ def TrialHtml(sess, trialId):
         return out
 
     createTraitButton =  """<p><button style="color: red" onClick="window.location = """
-    createTraitButton += """'{0}?op=newTrait&tid={1}'">Create New Trait</button>""".format(HOMEPAGE, trialId)
+    createTraitButton += """'{0}?op=newTrait&tid={1}'">Create New Trait</button>""".format(g.rootUrl, trialId)
 
-    addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(HOMEPAGE, trialId)
+    addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(g.rootUrl, trialId)
     addSysTraitForm += '<input type="submit" value="Submit">'
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
@@ -186,13 +157,14 @@ def TrialHtml(sess, trialId):
             return "No trait instances found"
         out = "<ul>"
         for ti in tiList:
-            out += "<li><a href={0}?op=traitInstance&tiid={1}>{3}:{2}:{4}</a></li>".format(HOMEPAGE, ti.id, ti.trait.caption, ti.trial.name,ti.trial_id)
+            out += "<li><a href={0}?op=traitInstance&tiid={1}>{3}:{2}:{4}</a></li>".format(g.rootUrl, ti.id, ti.trait.caption, ti.trial.name,ti.trial_id)
         return out + "</ul>"
     r += HtmlForm(HtmlFieldset(tis, "Trait Instances:"))
 
     # Download data link:
-    r += "<a href={0}?op=trialData&tid={1}>Download Score Data as CSV (right click and Save Link As)</a>".format(HOMEPAGE, trialId)
+    r += "<a href={0}?op=trialData&tid={1}>Download Score Data as CSV (right click and Save Link As)</a>".format(g.rootUrl, trialId)
     return r
+
 
 def AddSysTraitTrial(sess, trialId, traitId):
 #-----------------------------------------------------------------------
@@ -211,6 +183,7 @@ def AddSysTraitTrial(sess, trialId, traitId):
     except mdb.Error, e:
         return  usrdb + " " + qry
     return None
+
 
 def AdminForm(sess, op = '', msg = ''):
 #-----------------------------------------------------------------------
@@ -232,7 +205,7 @@ manage the trials. I.e. the one you must have used at some stage to get to this 
 </FORM>
 </form>
 {1}
-""".format(HOMEPAGE, adminMsg)
+""".format(g.rootUrl, adminMsg)
     changeAppPassForm = """
 <FORM method="POST" action="{0}?op=setAppPassword">
 <p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
@@ -251,7 +224,7 @@ admin password.
 </FORM>
 </form>
 {1}
-""".format(HOMEPAGE, appMsg)
+""".format(g.rootUrl, appMsg)
     r =  HtmlFieldset(changeAdminPassForm, "Reset Admin password") + \
                     HtmlFieldset(changeAppPassForm, "Reset Scoring Devices Password")
     return render_template('genericPage.html', content=r, title='Field Prime Login')
@@ -405,10 +378,18 @@ def TrialDataHtml(sess, trialId):
 @app.route('/', methods=["GET", "POST"])
 def main():
 #-----------------------------------------------------------------------
+# Entry point for FieldPrime web admin.
+# Without arguments it presents a login screen. 
+# As a POST (without an operation), it process the login data.
+# With an operation ("op" argument), it processes the operation.
+#
+# Note we could have different urls for operations, but at the moment this
+# is a quick port from a non-flask version, and this is the way it initially implemented.
+#
     COOKIE_NAME = 'sid'
     sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)
     sess = websess.Session(False, sid, LOGIN_TIMEOUT)     # Create session object (may be existing session)
-    g.homepage = HOMEPAGE                                 # Set global variable accessible by templates
+    g.rootUrl = url_for(sys._getframe().f_code.co_name)   # Set global variable accessible by templates (to the url for this func)
     op = request.args.get('op', '')
     if not op:
         error = ""
@@ -502,6 +483,19 @@ def main():
 
     else:
         return render_template('genericPage.html', content="No such operation ({0})".format(op), title='Error')
+
+
+##############################################################################################################
+
+
+def LogDebug(hdr, text):
+#-------------------------------------------------------------------------------------------------
+# Writes stuff to file system (for debug) - not routinely used..
+    f = open('/tmp/fieldPrimeDebug','a')
+    print >>f, "--- " + hdr + ": ---"
+    print >>f, text
+    print >>f, "------------------"
+    f.close
 
 
 # For local testing:

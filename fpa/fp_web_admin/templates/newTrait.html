@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Create New Trait</h2><form enctype="multipart/form-data" action="{{g.homepage}}?op=createTrait&tid={{trialId}}" method="post">
+<h2>Create New Trait</h2><form enctype="multipart/form-data" action="{{g.rootUrl}}?op=createTrait&tid={{trialId}}" method="post">
 Caption: <input type="text" name="caption">
 <p>Description: <input type="text" name="description">
 <p><div id="traitDiv">Trait Type: <select name='type' onchange="SetTraitFormElements('traitDiv',this.options[selectedIndex].value)">
