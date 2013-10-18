@@ -384,8 +384,7 @@ def main():
 #
     COOKIE_NAME = 'sid'
     sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)
-    sess = websess.WebSess(False, sid, LOGIN_TIMEOUT,     # Create session object (may be existing session)
-                           app.config['SESS_FILE_DIR']) 
+    sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR'])     # Create session object (may be existing session)
     g.rootUrl = url_for(sys._getframe().f_code.co_name)   # Set global variable accessible by templates (to the url for this func)
     op = request.args.get('op', '')
     if not op:

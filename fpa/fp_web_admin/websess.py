@@ -7,16 +7,13 @@ class WebSess(object):
     def __init__(self, forceNew=False, sid=None, timeout=300, sessFileDir='/tmp'):
     #------------------------------------------------------------------
         self.mTimeout = timeout
-        
         # set sid or create new one:
         if not forceNew and sid:
             self.mSid = sid
         else:
             self.mSid = sha.new(repr(time.time())).hexdigest()
 
-        # get and create if necessary session storage dir:
-        #sessFileDir = os.environ['DOCUMENT_ROOT'] + SESSION_FILE_DIR
-        #sessFileDir = os.getenv('SESSION_FILE_DIR', SESSION_FILE_DIR)
+        # create if necessary session storage dir:
         if not os.path.exists(sessFileDir):
             try:
                 os.mkdir(sessFileDir, 02770)
