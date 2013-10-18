@@ -3,8 +3,8 @@ from dbUtil import GetEngine
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
-class Session(object):
-    def __init__(self, forceNew=False, sid=None, timeout=300, expires=1000000):
+class WebSess(object):
+    def __init__(self, forceNew=False, sid=None, timeout=300, sessFileDir='/tmp'):
     #------------------------------------------------------------------
         self.mTimeout = timeout
         
@@ -15,17 +15,17 @@ class Session(object):
             self.mSid = sha.new(repr(time.time())).hexdigest()
 
         # get and create if necessary session storage dir:
-        #session_dir = os.environ['DOCUMENT_ROOT'] + SESSION_FILE_DIR
-        session_dir = os.getenv('SESSION_FILE_DIR', SESSION_FILE_DIR)
-        if not os.path.exists(session_dir):
+        #sessFileDir = os.environ['DOCUMENT_ROOT'] + SESSION_FILE_DIR
+        #sessFileDir = os.getenv('SESSION_FILE_DIR', SESSION_FILE_DIR)
+        if not os.path.exists(sessFileDir):
             try:
-                os.mkdir(session_dir, 02770)
+                os.mkdir(sessFileDir, 02770)
             # If the apache user can't create it manually
             except OSError, e:
-                errmsg =  """%s when trying to create the session directory. Create it as '%s'""" % (e.strerror, os.path.abspath(session_dir))
+                errmsg =  """%s when trying to create the session directory. Create it as '%s'""" % (e.strerror, os.path.abspath(sessFileDir))
                 raise OSError, errmsg
         # create  or open session file:
-        sessFile = session_dir + '/sess_' + self.mSid
+        sessFile = sessFileDir + '/sess_' + self.mSid
         self.data = shelve.open(sessFile, writeback=True)
         os.chmod(sessFile, 0660)
         
