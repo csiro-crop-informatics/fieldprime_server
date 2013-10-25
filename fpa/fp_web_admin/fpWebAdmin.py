@@ -331,7 +331,7 @@ def TrialDataHtml(sess, trialId):
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
         r += ",{0},{0}_timestamp,{0}_user,{0}_latitude,{0}_longitude,{0}.notes".format(tiName)
-    r += "\n"
+    r += ",Notes\n"  # Putting notes at end in case some commas slip thru and mess up csv structure
 
     # Data:
     tuList = dbUtil.GetTrialUnits(sess, trialId)
@@ -367,8 +367,17 @@ def TrialDataHtml(sess, trialId):
                 if type == 5: value = d.txtValue
                 r += ",{0},{1},{2},{3},{4},".format(value, d.timestamp, d.userid, d.gps_lat, d.gps_long)
                 if d.notes != None and len(d.notes) > 0: r += d.notes
+
+        # Add notes, as list seperated by pipe symbols:
+        r += ","
+        tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
+        for note in tuNotes:
+            r += '"{0}"|'.format(note.note)
+
         r += "\n"
     return r
+
+#@app.route('/trial', methods=["GET", "POST"])
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -381,6 +390,12 @@ def main():
 #
 # Note we could have different urls for operations, but at the moment this
 # is a quick port from a non-flask version, and this is the way it initially implemented.
+#
+# Note the use of sessions. On login, a server side session is established (state is stored
+# in the file system), and the id of this session is sent back to the browser in a cookie,
+# which should be sent back with each subsequent request.
+#
+#
 #
     COOKIE_NAME = 'sid'
     sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)

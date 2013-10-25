@@ -3,6 +3,21 @@ from dbUtil import GetEngine
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
+# 
+# WebSess
+# Server side session object. Once created, a session will have an id, and state
+# is stored in the file system. This may be retrieved by specifying an existing
+# id on creation of WebSess object (eg the id originally created may be sent in
+# a cookie stored by the browser). Sessions can report how long since last use,
+# where "use" is actually a function call to set the last use time.
+# The stored state includes:
+# . Last use time
+# . User name
+# . User password
+#
+# It also provides a database connection, which is generated on request, using the
+# stored username and password.
+#
 class WebSess(object):
     def __init__(self, forceNew=False, sid=None, timeout=300, sessFileDir='/tmp'):
     #------------------------------------------------------------------

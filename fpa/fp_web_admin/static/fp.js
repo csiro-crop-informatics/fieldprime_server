@@ -36,7 +36,13 @@ function SetTraitFormElements(divName, tType){
         break;
     case "2": // string
         break;
-    case "3": // categorical
+    case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
+        html = "<p>Categories:";
+        html += "<p>Caption:<input type='text' name='caption'>";
+        html += "Value: <input type='text' name='catval'>";
+        html += "<input type='button' value='Add another category' onclick='AddCategory()'"
+        newdiv.innerHTML = html;
+        parentDiv.appendChild(newdiv);
         break;
     case "4": // date
         break;

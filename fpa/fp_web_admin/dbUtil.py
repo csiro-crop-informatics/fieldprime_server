@@ -7,7 +7,8 @@
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, AttributeValue, TraitInstance, Datum, SYSTYPE_SYSTEM
+from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
+    AttributeValue, TraitInstance, Datum, TrialUnitNote, SYSTYPE_SYSTEM
 
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
@@ -62,3 +63,6 @@ def GetDatum(sess, trialUnit_id, traitInstance_id):
 
 def GetSysTraits(sess):
     return sess.DB().query(Trait).filter(Trait.sysType == SYSTYPE_SYSTEM).all()
+
+def GetTrialUnitNotes(sess, trialUnit_id):
+    return sess.DB().query(TrialUnitNote).filter(TrialUnitNote.trialUnit_id == trialUnit_id).all()
