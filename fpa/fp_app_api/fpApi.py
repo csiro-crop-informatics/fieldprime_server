@@ -109,6 +109,7 @@ def get_trial(username, trl, dbc):
     # This should ensure different tokens for the same trial being downloaded multiple times on
     # a single device (with delete in between), as long as they are not created within the same
     # second (and this is not an expected use case):
+    # MFK And why do we need such tokens? They are currently used in the traitInstance and trialUnitNote table.
     epoch = int(time.time())
     servToken = androidId + "." + str(int(time.time()))
     jtrl['serverToken'] = servToken
