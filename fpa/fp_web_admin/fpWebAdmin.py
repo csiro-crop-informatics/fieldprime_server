@@ -323,25 +323,26 @@ def TrialDataHtml(sess, trialId):
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
+    SEP = '\t'
     # Get Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
 
     # Headers:
-    r = "Row,Column"
+    r = "Row" + SEP + "Column"
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        r += ",{0},{0}_timestamp,{0}_user,{0}_latitude,{0}_longitude,{0}.notes".format(tiName)
-    r += ",Notes\n"  # Putting notes at end in case some commas slip thru and mess up csv structure
+        r += "{1}{0}{1}{0}_timestamp{1}{0}_user{1}{0}_latitude{1}{0}_longitude{1}{0}.notes".format(tiName, SEP)
+    r += SEP + "Notes\n"  # Putting notes at end in case some commas slip thru and mess up csv structure
 
     # Data:
     tuList = dbUtil.GetTrialUnits(sess, trialId)
     for tu in tuList:
-        r += "{0},{1}".format(tu.row, tu.col)
+        r += "{0}{2}{1}".format(tu.row, tu.col, SEP)
         for ti in tiList:
             type = ti.trait.type
             datums = dbUtil.GetDatum(sess, tu.id, ti.id)
             if len(datums) == 0:
-                r += ",,,,,,"
+                r += SEP + SEP + SEP + SEP + SEP + SEP
             #elif len(datums) == 1:
             #    d = datums[0]
             #    if type == 0: value = d.numValue
@@ -365,14 +366,14 @@ def TrialDataHtml(sess, trialId):
                 if type == 3: value = d.numValue
                 if type == 4: value = d.numValue
                 if type == 5: value = d.txtValue
-                r += ",{0},{1},{2},{3},{4},".format(value, d.timestamp, d.userid, d.gps_lat, d.gps_long)
+                r += "{5}{0}{5}{1}{5}{2}{5}{3}{5}{4}{5}".format(value, d.timestamp, d.userid, d.gps_lat, d.gps_long, SEP)
                 if d.notes != None and len(d.notes) > 0: r += d.notes
 
         # Add notes, as list seperated by pipe symbols:
-        r += ","
+        r += SEP
         tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
         for note in tuNotes:
-            r += '"{0}"|'.format(note.note)
+            r += '{0}|'.format(note.note)
 
         r += "\n"
     return r

@@ -16,6 +16,9 @@ function testjs(msg){
     alert(msg)
 }
 
+function AddCategory(divId) {
+    alert(divId);
+}
 
 function SetTraitFormElements(divName, tType){
     var newDivId = 'traitTypeSpecificFields';
@@ -40,6 +43,8 @@ function SetTraitFormElements(divName, tType){
         html = "<p>Categories:";
         html += "<p>Caption:<input type='text' name='caption'>";
         html += "Value: <input type='text' name='catval'>";
+        html += "<button name='addcat' value='HTML' onclick='AddCategory(\"" + newDivId + "\")'>Add Category</button>";
+        //html += "<button name='addcat' type='submit' value='HTML' onclick='testjs(\"hallo\")'>HTML</button>";
         html += "<input type='button' value='Add another category' onclick='AddCategory()'"
         newdiv.innerHTML = html;
         parentDiv.appendChild(newdiv);
