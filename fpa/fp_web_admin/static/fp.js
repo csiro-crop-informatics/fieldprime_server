@@ -83,6 +83,9 @@ function SetTraitFormElements(divName, tType){
         //html += "<input type='button' value='Add another category' onclick='AddCategory()'"
         html += "</div>"
         */
+
+html += 'Category entry not yet supported, please contact Webmaster to create categories'
+/*
         html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0"> \
                  <input type="hiddden" name="myHiddenField" id="myHiddenField" value="1" /> \
                   <tr><td>Caption</td><td>Value</td> \
@@ -95,7 +98,7 @@ function SetTraitFormElements(divName, tType){
                        onclick="this.parentNode.parentNode.removeChild(this.parentNode.parentNode)"></td> \
                  </tr> \
                  </table>'
-
+*/
  //                  <td width="286"><input name="button" type="button" value="-" onclick="removeCat(this.parentNode.parentNode)"></td> \
 
 

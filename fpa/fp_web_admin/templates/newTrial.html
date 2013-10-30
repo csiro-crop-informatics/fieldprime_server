@@ -1,14 +1,35 @@
 {% extends "base.html" %}
+
+{% block javascript %}
+function validateTrialForm()
+{
+  var cap = document.getElementById("name_id").value;
+  if (cap == null || cap == "") {
+    alert("Please provide a trial name");
+    return false;
+  }
+  var fname = document.getElementById("uploadFile_id").value;
+  if (fname == null || fname == "") {
+    alert("Please provide a trial plan file");
+    return false;
+  }
+}
+{% endblock %}
+
+
 {% block content %}
 <html><body>
 <font color="red">{{msg}}</font>
 <h2>Create New Trial</h2>
-<form enctype="multipart/form-data" action="{{g.rootUrl}}?op=createTrial" method="post">
-Name: <input type="text" name="name"><br>
+<form enctype="multipart/form-data"
+  action="{{g.rootUrl}}?op=createTrial" 
+  onsubmit="return validateTrialForm()"
+  method="post">
+Name: <input type="text" id='name_id' name="name"><br>
 Site: <input type="text" name="site"><br>
 Year: <input type="text" name="year"><br>
 Acronym: <input type="text" name="acronym"><br>
-<p>File: <input type="file" name="file"></p>
+<p>Trial Plan CSV File: <input type="file" id='uploadFile_id' name="file"></p>
 <p><input type="submit" value="Upload"></p>
 </form>
 </body></html>
