@@ -214,8 +214,9 @@ def upload_photo(username, trial, dbc, traitid, token):
     if file and allowed_file(file.filename):
         sentFilename = secure_filename(file.filename)
         #LogDebug("upload_photo:", 'filename:' + sentFilename)
-        filename = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
-        file.save(app.config[PHOTO_UPLOAD_FOLDER] + filename)
+        saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
+        #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+        file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
     return Response('success')
 
 
