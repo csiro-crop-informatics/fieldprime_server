@@ -1,6 +1,9 @@
-<HTML><HEAD>
+<HTML>
+<HEAD>
 <script src="{{ url_for('static', filename='fp.js') }}"></script>
-<TITLE>{{ title }}</TITLE></HEAD>
+<script>{% block javascript %}{% endblock %}</script>
+<TITLE>{{ title }}</TITLE>
+</HEAD>
 <BODY>
 <h1>Field Prime Server Management</h1>
 {% block homeAndLogin %}
@@ -16,5 +19,6 @@
 <!-- Footer: -->
 <hr>
 <a href=\"mailto:***REMOVED***?subject=Field Prime Management Server\">Contact Webmaster</a>
-</BODY></HTML>
+</BODY>
+</HTML>
 
