@@ -125,6 +125,12 @@ def get_trial(username, trl, dbc):
     tuNames = ["id", "row", "col", "description", "barcode"]
     for ctu in trl.trialUnits:
         jtu = {}
+        # MFK - there is a problem here, the fixed names and the user provided
+        # attribute names are in the same name space. This is a problem if, for example
+        # there is a user provided 'id' attribute.
+        # Solution is probably to put user attributes inside an 'attVals':object kv pair
+        # but this change must be supported on the client.
+
         # Trial unit attributes:
         for n in tuNames:
             jtu[n] = getattr(ctu, n)        
