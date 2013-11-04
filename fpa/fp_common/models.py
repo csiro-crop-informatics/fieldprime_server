@@ -146,6 +146,8 @@ class TrialUnit(DeclarativeBase):
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     row = Column(u'row', INTEGER(), nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+    longitude = Column(u'longitude', Float(asdecimal=True))
+    latitude = Column(u'latitude', Float(asdecimal=True))
 
     #relation definitions
     trial = relation('Trial', primaryjoin='TrialUnit.trial_id==Trial.id')

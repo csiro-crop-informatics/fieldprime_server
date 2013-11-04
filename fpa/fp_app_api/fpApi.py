@@ -133,10 +133,20 @@ def get_trial(username, trl, dbc):
 
         # Trial unit attributes:
         for n in tuNames:
-            jtu[n] = getattr(ctu, n)        
+            jtu[n] = getattr(ctu, n)  
+      
         # Attribute values:
         for att in ctu.attVals:
-            jtu[att.trialUnitAttribute.name] = att.value        
+            jtu[att.trialUnitAttribute.name] = att.value   
+
+        # GPS location:
+        if ctu.latitude is not None:
+            jloc = [ctu.latitude, ctu.longitude]
+            #jloc.append[ctu.latitude]
+            #jloc.append[ctu.longitude]
+
+        jtu["location"] = jloc
+     
         tuList.append(jtu)
     jtrl['trialUnits'] = tuList
 
