@@ -278,15 +278,6 @@ def allowed_file(filename):  # MFK cloned code warning
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-    file = request.files.get('uploadedfile')
-    #LogDebug("upload_photo:", seqNum + ':' + sampNum)
-    if file and allowed_file(file.filename):
-        sentFilename = secure_filename(file.filename)
-        #LogDebug("upload_photo:", 'filename:' + sentFilename)
-        saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
-        #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-        file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-
 def NewTraitCategorical(sess, request, newTrait):
     capKeys = [key for key in request.form.keys() if key.startswith("caption_")]
     for key in capKeys:
@@ -300,8 +291,8 @@ def NewTraitCategorical(sess, request, newTrait):
                 subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(newTrait.id))
                 if not os.path.exists(subpath):
                     os.makedirs(subpath)
-                imageURL = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], subpath +  "/" + sentFilename)
-                imageURLFile.save(imageURL)
+                imageURLFile.save(subpath +  "/" + sentFilename)
+                imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + sess.GetUser() + "/" + str(newTrait.id) + "/" + sentFilename
             else:
                 pass  # should issue a warning perhaps?
 
