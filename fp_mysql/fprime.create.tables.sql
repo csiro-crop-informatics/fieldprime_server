@@ -44,8 +44,12 @@ create table trialUnit(
   col         INT NOT NULL,
   description text,
   barcode     text,
+  latitute    DOUBLE,
+  longitute   DOUBLE,
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
+
+ALTER TABLE trialUnit ADD (latitude DOUBLE, longitude DOUBLE)
 
 -- 
 -- trialUnitAttribute
