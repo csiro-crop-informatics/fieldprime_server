@@ -267,11 +267,68 @@ def LoginForm(msg):
     return render_template('login.html', msg = msg, title='Field Prime Login')
 
 
-def CreateNewTrait(sess,  trialId, caption, description, type, min, max):
+# Could put all trait type specific stuff in trait extension classes.
+# Aiming for this file to not contain any type specific code.
+# class pTrait(models.Trait):
+#     def ProcessForm(form):
+#         pass
+
+def allowed_file(filename):  # MFK cloned code warning
+    ALLOWED_EXTENSIONS = set(['jpg', 'jpeg', 'gif'])
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
+    file = request.files.get('uploadedfile')
+    #LogDebug("upload_photo:", seqNum + ':' + sampNum)
+    if file and allowed_file(file.filename):
+        sentFilename = secure_filename(file.filename)
+        #LogDebug("upload_photo:", 'filename:' + sentFilename)
+        saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
+        #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+        file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+
+def NewTraitCategorical(sess, request, newTrait):
+    capKeys = [key for key in request.form.keys() if key.startswith("caption_")]
+    for key in capKeys:
+        caption = request.form.get(key)
+        value = request.form.get(key.replace("caption_", "value_"))
+        imageURL = None
+        imageURLFile = request.files[key.replace("caption_", "imgfile_")]
+        if imageURLFile:
+            sentFilename = secure_filename(imageURLFile.filename)
+            if allowed_file(sentFilename):
+                subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(newTrait.id))
+                if not os.path.exists(subpath):
+                    os.makedirs(subpath)
+                imageURL = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], subpath +  "/" + sentFilename)
+                imageURLFile.save(imageURL)
+            else:
+                pass  # should issue a warning perhaps?
+
+        # Add new trait category:
+        ncat = models.TraitCategory()
+        ncat.value = value
+        ncat.caption = caption
+        ncat.trait_id = newTrait.id
+        ncat.imageURL = imageURL
+        sess.DB().add(ncat)
+
+
+def CreateNewTrait(sess,  trialId, request):
 #-----------------------------------------------------------------------
-# Create trait in db, trial Id is id of trial if a local trait, else it is 'sys'.
+# Create trait in db, from data from html form.
+# trialId is id of trial if a local trait, else it is 'sys'.
 # Returns error message if there's a problem, else None.
 #
+    
+    caption = request.form.get("caption")
+    description = request.form.get("description")
+    type = request.form.get("type")
+
+    # This should be trait type specific (but min, max fields are in trait table):
+    min = request.form.get("min")
+    max = request.form.get("max")
+
     sysTrait = True if trialId == "sys" else False
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
@@ -301,6 +358,14 @@ def CreateNewTrait(sess,  trialId, caption, description, type, min, max):
         ntrt.min = min
     if max:
         ntrt.max = max
+
+    dbsess.add(ntrt)
+    dbsess.commit()
+
+    # Trait type specific processing:
+    if int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
+        NewTraitCategorical(sess, request, ntrt)
+
     dbsess.add(ntrt)
     dbsess.commit()
     return None
@@ -472,12 +537,7 @@ def main():
                                traitTypes = models.TRAIT_TYPE_TYPE_IDS, title='New Trait')
     elif op == 'createTrait':
         trialId = request.args.get("tid")
-        caption = request.form.get("caption")
-        description = request.form.get("description")
-        type = request.form.get("type")
-        min = request.form.get("min")
-        max = request.form.get("max")
-        errMsg = CreateNewTrait(sess, trialId, caption, description, type, min, max)
+        errMsg = CreateNewTrait(sess, trialId, request)
         if errMsg:
             return render_template('genericPage.html', content=errMsg, title='Error')
 
