@@ -144,8 +144,7 @@ def get_trial(username, trl, dbc):
             jloc = [ctu.latitude, ctu.longitude]
             #jloc.append[ctu.latitude]
             #jloc.append[ctu.longitude]
-
-        jtu["location"] = jloc
+            jtu["location"] = jloc
      
         tuList.append(jtu)
     jtrl['trialUnits'] = tuList
