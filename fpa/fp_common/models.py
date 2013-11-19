@@ -336,14 +336,12 @@ def AddTrialUnitNotes(dbc, token, notes):
             qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
                 n['trialUnit_id'], n['timestamp'], n['userid'], token, n['note'])
         except Exception, e:
-            return 'Error parsing traitInstance:data ' + e.args[0]
+            return 'Error parsing note ' + e.args[0]
 
     qry = qry[:-1] # Remove last comma
-    # call sql to do multi insert:  Need to import LogDebug func for this
-    # if gdbg:
-    #     LogDebug("sql qry", qry)
+    # call sql to do multi insert:
+    # if gdbg: LogDebug("sql qry", qry)
     dbc.bind.execute(qry)
-
     return None;
 
 

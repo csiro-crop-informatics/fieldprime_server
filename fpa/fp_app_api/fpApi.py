@@ -3,15 +3,17 @@
 # 
 #
 
-
 from flask import Flask, request, Response, url_for
 from flask import json, jsonify
 
 import os, sys, time
+from datetime import datetime
 from functools import wraps
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 
+
+### SetUp: ######################################################################################
 if __name__ == '__main__':
     import os,sys,inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -31,7 +33,7 @@ app.config.from_envvar('FPAPI_SETTINGS', silent=True)
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
-gdbg = True  # Switch for logging to file
+gdbg = False  # Switch for logging to file
 
 
 ##################################################################################################
@@ -49,6 +51,8 @@ def dec_get_trial(jsonReturn):
         @wraps(func)
         def inner(username, trialid, *args, **kwargs):
             password = request.args.get('pw', '')
+            ver = request.args.get('ver', default='0')  # Maybe leave it to decoratee to retrieve these if necessary
+            LogDebug("upload_trial:Version", ver)
             dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
             if dbc is None:
                 if jsonReturn:
@@ -95,8 +99,10 @@ def trial_list(username):
 
 @app.route('/user/<username>/trial/<trialid>/', methods=['GET'])
 @dec_get_trial(True)
-#-------------------------------------------------------------------------------------------------
 def get_trial(username, trl, dbc):
+#-------------------------------------------------------------------------------------------------
+# Return trial design in JSON format.
+# 
     androidId = request.args.get('andid', '')
 
     # Trial attributes:
@@ -279,8 +285,6 @@ def process_ti_json(ti, trial, traitID, token, dbc):
 @dec_get_trial(False)
 #-------------------------------------------------------------------------------------------------
 def upload_trial(username, trial, dbc):
-    password = request.args.get('pw', '')
-    #androidId = request.args.get('andid', '')
     jtrial = request.json
     if gdbg:
         LogDebug("upload_trial:", json.dumps(jtrial))
@@ -288,7 +292,6 @@ def upload_trial(username, trial, dbc):
         return Response('Bad or missing JSON')
     try:
         token = jtrial['serverToken']
-        # tis = jtrial['traitInstances']    # Not compulsory anymore, there might just be "notes" for example
     except Exception, e:
         return Response('Missing field: ' + e.args[0])
 
@@ -311,15 +314,9 @@ def upload_trial(username, trial, dbc):
                 return Response(errMsg)
 
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        dal.AddTrialUnitNotes(dbc, token, jtrial['notes'])
-        # notes = jtrial['notes']
-        # for note in notes:
-        #     tuId = note['trialUnit_id']
-        #     timestamp = note['timestamp']
-        #     userid = note['userid']    # the name of the note taker
-        #     noteText = note['note']
-        #     dal.AddTrialUnitNote(dbc, tuId, timestamp, userid, noteText)
-
+        err = dal.AddTrialUnitNotes(dbc, token, jtrial['notes'])
+        if err is not None:
+            return Response(err)
 
     # All done, return success indicator:
     return Response('success')
@@ -363,9 +360,8 @@ def LogDebug(hdr, text):
 #-------------------------------------------------------------------------------------------------
 # Writes stuff to file system (for debug)
     f = open('/tmp/fieldPrimeDebug','a')
-    print >>f, "--- " + hdr + ": ---"
+    print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
     print >>f, text
-    print >>f, "------------------"
     f.close
 
 
@@ -373,26 +369,10 @@ def LogDebug(hdr, text):
 #-------------------------------------------------------------------------------------------------
 # Old stuff:
 
-
-
 def error_404():
     response = Response('Resource not found')
     response.status_code = 404
     return response
-
-def PostRequest(request, environ, start_response):
-    f = open('/tmp/xyzPost','a')
-    print >>f, request
-    print >>f, request.files
-    file = request.files.get('uploadedfile')
-    response = Response()
-    if file:
-        file.save('/tmp/' + file.filename)
-    else:
-        f.write("Not File")
-        response.status_code = 400
-    return response(environ, start_response)
-
 
 
 #############################################################################################
