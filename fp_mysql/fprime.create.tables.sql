@@ -60,6 +60,8 @@ create table trialUnitAttribute(
   id         INT PRIMARY KEY AUTO_INCREMENT,
   trial_id   INT NOT NULL,
   name       VARCHAR(31) NOT NULL,
+  datatype   INT NOT NULL DEFAULT 2,
+  func       INT NOT NULL DEFAULT 0,
   UNIQUE (trial_id, name),
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
