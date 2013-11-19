@@ -41,8 +41,8 @@ gdbg = False  # Switch for logging to file
 
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
-# Decorator, for function that takes a username and trialid.
-# It is assumed there is a request in context. and this contains a password and android ID.
+# Decorator, for functions with username and trialid parameters.
+# It is assumed there is a request var in context. and this contains a password URL parameter "pw".
 # The password is checked, and the trial object retrieved and passed to the decoratee instead
 # of the trialid. The open db connection is also added as a third parameter.
 # On error, if jsonReturn then a json error message is returned, else a plain text one.
@@ -51,8 +51,6 @@ def dec_get_trial(jsonReturn):
         @wraps(func)
         def inner(username, trialid, *args, **kwargs):
             password = request.args.get('pw', '')
-            ver = request.args.get('ver', default='0')  # Maybe leave it to decoratee to retrieve these if necessary
-            LogDebug("upload_trial:Version", ver)
             dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
             if dbc is None:
                 if jsonReturn:
@@ -142,8 +140,11 @@ def get_trial(username, trl, dbc):
             jtu[n] = getattr(ctu, n)  
       
         # Attribute values:
-        for att in ctu.attVals:
-            jtu[att.trialUnitAttribute.name] = att.value   
+        if len(ctu.attVals) > 0:
+            atts = {}
+            for att in ctu.attVals:
+                atts[att.trialUnitAttribute.name] = att.value   
+            jtu['attvals'] = atts
 
         # GPS location:
         if ctu.latitude is not None:

@@ -14,17 +14,17 @@ import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, sessionmaker
-
+from const import *
 
 ### sqlalchemy CONSTANTS: ######################################################################
 
 DeclarativeBase = declarative_base()
 metadata = DeclarativeBase.metadata
 
-attributeValues = Table(u'attributeValues', metadata,
+attributeValue = Table(unicode(TABLE_ATTRIBUTE_VALUES), metadata,
     Column(u'trialUnitAttribute_id', INTEGER(), ForeignKey('trialUnitAttribute.id'), primary_key=True, nullable=False),
     Column(u'trialUnit_id', INTEGER(), ForeignKey('trialUnit.id'), primary_key=True, nullable=False),
-    Column(u'value', TEXT(), nullable=False),
+    Column(unicode(AV_VALUE), TEXT(), nullable=False),
 )
 
 datum = Table(u'datum', metadata,
@@ -58,7 +58,7 @@ trialTrait = Table(u'trialTrait', metadata,
 ### sqlalchemy CLASSES: ######################################################################
 
 class AttributeValue(DeclarativeBase):
-    __table__ = attributeValues
+    __table__ = attributeValue
 
     #relation definitions
     trialUnitAttribute = relation('TrialUnitAttribute', primaryjoin='AttributeValue.trialUnitAttribute_id==TrialUnitAttribute.id')
@@ -152,7 +152,7 @@ class TrialUnit(DeclarativeBase):
     #relation definitions
     trial = relation('Trial', primaryjoin='TrialUnit.trial_id==Trial.id')
     trialUnitAttributes = relation('TrialUnitAttribute', primaryjoin='TrialUnit.id==AttributeValue.trialUnit_id',
-                                   secondary=attributeValues, secondaryjoin='AttributeValue.trialUnitAttribute_id==TrialUnitAttribute.id')
+                                   secondary=attributeValue, secondaryjoin='AttributeValue.trialUnitAttribute_id==TrialUnitAttribute.id')
     traitInstances = relation('TraitInstance', primaryjoin='TrialUnit.id==Datum.trialUnit_id', secondary=datum, secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
@@ -167,7 +167,7 @@ class TrialUnitAttribute(DeclarativeBase):
 
     #relation definitions
     trial = relation('Trial', primaryjoin='TrialUnitAttribute.trial_id==Trial.id')
-    trialUnits = relation('TrialUnit', primaryjoin='TrialUnitAttribute.id==AttributeValue.trialUnitAttribute_id', secondary=attributeValues, secondaryjoin='AttributeValue.trialUnit_id==TrialUnit.id')
+    trialUnits = relation('TrialUnit', primaryjoin='TrialUnitAttribute.id==AttributeValue.trialUnitAttribute_id', secondary=attributeValue, secondaryjoin='AttributeValue.trialUnit_id==TrialUnit.id')
 
 class System(DeclarativeBase):
     __tablename__ = 'system'
