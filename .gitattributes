@@ -7,6 +7,7 @@ fpa/fp_app_api/__init__.py -text
 fpa/fp_app_api/fpApi.py -text
 fpa/fp_app_api/fpAppConfig.py -text
 fpa/fp_common/__init__.py -text
+fpa/fp_common/const.py -text
 fpa/fp_common/models.py -text
 fpa/fp_web_admin/__init__.py -text
 fpa/fp_web_admin/dbUtil.py -text
