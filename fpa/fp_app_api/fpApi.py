@@ -119,10 +119,14 @@ def get_trial(username, trl, dbc):
     jtrl['serverToken'] = servToken
 
     # Attribute Names:
-    attNames = []
-    for att in trl.attributeNames:
-        attNames.append(att.name)
-    jtrl['attributes'] = attNames
+    attDefs = []
+    for att in trl.tuAttributes:
+        tua = {}
+        tua['name'] = att.name
+        tua['datatype'] = att.datatype
+        tua['func'] = att.func
+        attDefs.append(tua)
+    jtrl['attributes'] = attDefs
 
     # Trial Units:
     tuList = []

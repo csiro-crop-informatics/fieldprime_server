@@ -132,7 +132,7 @@ class Trial(DeclarativeBase):
 
     #relation definitions:
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
-    attributeNames = relation('TrialUnitAttribute')
+    tuAttributes = relation('TrialUnitAttribute')
     trialUnits = relation('TrialUnit')
 
 class TrialUnit(DeclarativeBase):
@@ -164,6 +164,8 @@ class TrialUnitAttribute(DeclarativeBase):
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     name = Column(u'name', VARCHAR(length=31), nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+    datatype = Column(unicode(TUA_DATATYPE), INTEGER(), nullable=False)
+    func = Column(unicode(TUA_FUNC), INTEGER(), nullable=False)
 
     #relation definitions
     trial = relation('Trial', primaryjoin='TrialUnitAttribute.trial_id==Trial.id')
