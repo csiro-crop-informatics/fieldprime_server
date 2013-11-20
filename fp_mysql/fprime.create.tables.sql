@@ -86,9 +86,9 @@ create table trialUnitNote(
 
 
 -- 
--- attributeValues
+-- attributeValue
 --
-create table attributeValues(
+create table attributeValue(
   trialUnitAttribute_id   integer NOT NULL,
   trialUnit_id            integer NOT NULL,
   value                   text NOT NULL,
