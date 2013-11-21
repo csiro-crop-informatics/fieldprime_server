@@ -102,6 +102,7 @@ def get_trial(username, trl, dbc):
 # Return trial design in JSON format.
 # 
     androidId = request.args.get('andid', '')
+    clientVersion = request.args.get('ver', '0')
 
     # Trial attributes:
     jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
@@ -118,14 +119,17 @@ def get_trial(username, trl, dbc):
     servToken = androidId + "." + str(int(time.time()))
     jtrl['serverToken'] = servToken
 
-    # Attribute Names:
+    # Attribute descriptors:
     attDefs = []
     for att in trl.tuAttributes:
         tua = {}
         tua['name'] = att.name
         tua['datatype'] = att.datatype
         tua['func'] = att.func
-        attDefs.append(tua)
+        if int(clientVersion) > 0:
+            attDefs.append(tua)
+        else:     # MFK - support for old clients, remove when all clients updated
+            attDefs.append(att.name)
     jtrl['attributes'] = attDefs
 
     # Trial Units:
@@ -145,10 +149,14 @@ def get_trial(username, trl, dbc):
       
         # Attribute values:
         if len(ctu.attVals) > 0:
-            atts = {}
-            for att in ctu.attVals:
-                atts[att.trialUnitAttribute.name] = att.value   
-            jtu['attvals'] = atts
+            if int(clientVersion) > 0:
+                atts = {}
+                for att in ctu.attVals:
+                    atts[att.trialUnitAttribute.name] = att.value   
+                    jtu['attvals'] = atts
+            else:     # MFK - support for old clients, remove when all clients updated
+                for att in ctu.attVals:
+                    jtu[att.trialUnitAttribute.name] = att.value
 
         # GPS location:
         if ctu.latitude is not None:
