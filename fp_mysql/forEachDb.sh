@@ -4,10 +4,16 @@
 # specified command for each one (with variable $DBNAME set to the
 # database name).  The command can be mysql, from the command line
 # or a file, or a bash command from the command line.
+# The variable $DBPW will be also set to the password entered (so you
+# don't have to reenter the password for each database).
+#
 # EG:
-#   ./forEachDb.sh -b 'echo $DBNAME'     # Note single quotes else use \$DBNAME
-#   ./forEachDb.sh -e 'select count(*) as numTrials from trial'
-#   ./forEachDb.sh -f mySqlScript.sql
+# ./forEachDb.sh -b 'echo $DBNAME'     # Note single quotes else use \$DBNAME
+# ./forEachDb.sh -e 'select count(*) as numTrials from trial'
+# ./forEachDb.sh -f mySqlScript.sql
+# ./forEachDb.sh -b 'mysqldump -uSuperadm -p$DBPW $DBNAME > $DBNAME.sql'
+# 
+# 
 #
  
 usage() {
