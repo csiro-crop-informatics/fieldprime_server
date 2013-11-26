@@ -106,12 +106,23 @@ create table trait(
   description text NOT NULL,
   type        INT NOT NULL,
   sysType     INT NOT NULL,
+-- remove tid
   tid         text,
   unit        text,
   min         decimal,
   max         decimal
 );
 
+--
+-- traitInteger
+-- Extension of trait table for datatype integer.
+-- 
+create table traitInteger(
+  trait_id   INT PRIMARY KEY,
+  min        INT,
+  max        INT,
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
+);
 
 --
 -- traitCategory

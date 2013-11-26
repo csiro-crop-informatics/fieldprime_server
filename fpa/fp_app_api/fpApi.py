@@ -188,6 +188,7 @@ def get_trial(username, trl, dbc):
         jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
 
+        # Here we should have trait datatype specific stuff. Using polymorphism? 
         # Fields for categorical traits:
         if trt.type == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
             cats = []
@@ -200,6 +201,8 @@ def get_trial(username, trl, dbc):
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Photo']:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
+        elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
+            pass
 
         traitList.append(jtrait)
     jtrl['traits'] = traitList
