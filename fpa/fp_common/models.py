@@ -118,6 +118,14 @@ class TraitInstance(DeclarativeBase):
     trial = relation('Trial', primaryjoin='TraitInstance.trial_id==Trial.id')
     trialUnits = relation('TrialUnit', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datum, secondaryjoin='Datum.trialUnit_id==TrialUnit.id')
 
+class TrialTraitInteger(DeclarativeBase):
+    __tablename__ = 'trialTraitInteger'
+    max = Column(u'max', INTEGER())
+    min = Column(u'min', INTEGER())
+    cond = Column(u'cond', TEXT())
+    trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
+
 
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
@@ -394,3 +402,12 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     dbc.commit()
     return ntrt, None
  
+
+def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
+    tti = dbc.query(TrialTraitInteger).filter(and_(
+            TrialTraitInteger.trait_id == trait_id,
+            TrialTraitInteger.trial_id == trial_id)).all()
+    if len(tti) == 1:
+        ttid = tti[0]
+        return ttid
+    return None

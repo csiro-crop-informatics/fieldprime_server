@@ -66,7 +66,6 @@ create table trialUnitAttribute(
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
-
 --
 -- trialUnitNote
 -- The uniqueness constraint (may be) required to prevent storing multiple uploads
@@ -83,7 +82,6 @@ create table trialUnitNote(
   UNIQUE (trialUnit_id, timestamp, note(100)),
   FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE
 );
-
 
 -- 
 -- attributeValue
@@ -113,16 +111,6 @@ create table trait(
   max         decimal
 );
 
---
--- traitInteger
--- Extension of trait table for datatype integer.
--- 
-create table traitInteger(
-  trait_id   INT PRIMARY KEY,
-  min        INT,
-  max        INT,
-  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
-);
 
 --
 -- traitCategory
@@ -147,6 +135,24 @@ create table traitCategory(
 create table trialTrait(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
+  PRIMARY KEY(trial_id, trait_id),
+  FOREIGN KEY(trait_id) REFERENCES trait(id),
+  FOREIGN KEY(trial_id) REFERENCES trial(id)
+);
+
+
+--
+-- trialTraitInteger
+-- Extension of trait table for datatype integer.
+-- But - we need trial specific trait attributes!
+-- Should this instead refer to key of trialTrait?
+-- 
+create table trialTraitInteger(
+  trial_id   INT NOT NULL,
+  trait_id   INT NOT NULL,
+  min        INT,
+  max        INT,
+  validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id),
   FOREIGN KEY(trial_id) REFERENCES trial(id)

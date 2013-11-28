@@ -188,8 +188,11 @@ def get_trial(username, trl, dbc):
         jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
 
+        #########################################################################
         # Here we should have trait datatype specific stuff. Using polymorphism? 
-        # Fields for categorical traits:
+        #
+
+        # Categorical traits:
         if trt.type == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
             cats = []
             for cat in trt.categories:
@@ -198,11 +201,26 @@ def get_trial(username, trl, dbc):
                     oneCat[fieldName] = getattr(cat, fieldName)
                 cats.append(oneCat)
             jtrait['categories'] = cats
+
+        # Photo traits:
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Photo']:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
+
+        # Integer traits:
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
-            pass
+            # get the trialTraitInteger object, and send the contents
+            print "trial id:" + str(trl.id) + ", " + "trait id:" + str(trt.id)
+            tti = dal.GetTrialTraitIntegerDetails(dbc, trt.id, trl.id)
+            if tti is not None:
+                val = {}
+                val['min'] = tti.min
+                val['max'] = tti.max
+                val['cond'] = tti.cond
+                jtrait['validation'] = val
+            else:
+                jtrait['validation'] = "None"
+        #########################################################################
 
         traitList.append(jtrait)
     jtrl['traits'] = traitList
