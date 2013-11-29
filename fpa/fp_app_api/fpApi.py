@@ -370,8 +370,11 @@ def create_adhoc(username, trl, dbc):
     caption = request.args.get('caption', '')
     description = request.args.get('description', '')
     vtype = request.args.get('type', '')
-    vmin = request.args.get('min', '')
-    vmax = request.args.get('max', '')
+    #vmin = request.args.get('min', '')
+    #vmax = request.args.get('max', '')
+    vmin = -1000000
+    vmax = 1000000   
+    # MFK Need to get rid of min and max, from general trait, it needs to be trait specific
     ntrt, errMsg = dal.CreateTrait2(dbc, caption, description, vtype, dal.SYSTYPE_ADHOC, vmin, vmax)
     if not ntrt:
         return JsonErrorResponse(errMsg)
