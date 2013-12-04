@@ -122,7 +122,7 @@ class TrialTraitInteger(DeclarativeBase):
     __tablename__ = 'trialTraitInteger'
     max = Column(u'max', INTEGER())
     min = Column(u'min', INTEGER())
-    cond = Column(u'cond', TEXT())
+    cond = Column(u'validation', TEXT())
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
 
@@ -406,8 +406,18 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
 def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
     tti = dbc.query(TrialTraitInteger).filter(and_(
             TrialTraitInteger.trait_id == trait_id,
-            TrialTraitInteger.trial_id == trial_id)).all()
+            TrialTraitInteger.trial_id == trial_id
+            )).all()
     if len(tti) == 1:
         ttid = tti[0]
         return ttid
     return None
+
+# def LogDebug(hdr, text):
+# #-------------------------------------------------------------------------------------------------
+# # Writes stuff to file system (for debug)
+#     from datetime import datetime
+#     f = open('/tmp/fieldPrimeDebug','a')
+#     print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
+#     print >>f, text
+#     f.close

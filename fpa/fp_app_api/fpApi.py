@@ -217,8 +217,7 @@ def get_trial(username, trl, dbc):
                 val['max'] = tti.max
                 val['cond'] = tti.cond
                 jtrait['validation'] = val
-            else:
-                jtrait['validation'] = "None"
+ 
         #########################################################################
 
         traitList.append(jtrait)
