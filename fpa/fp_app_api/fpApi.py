@@ -210,7 +210,6 @@ def get_trial(username, trl, dbc):
         # Integer traits:
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
             # get the trialTraitInteger object, and send the contents
-            print "trial id:" + str(trl.id) + ", " + "trait id:" + str(trt.id)
             tti = dal.GetTrialTraitIntegerDetails(dbc, trt.id, trl.id)
             if tti is not None:
                 val = {}
