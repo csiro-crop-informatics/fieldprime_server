@@ -122,11 +122,22 @@ def TrialHtml(sess, trialId):
         if len(trial.traits) < 1:
             return "No traits configured"
         out = "<table border='1'>"
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>".format("Caption", "Description", "Type", "Min", "Max")
+        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>".format("Caption", "Description", "Type", "Min", "Max", "Validation")
         for trt in trial.traits:
-            out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>".format(
+            out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td>".format(
                 trt.caption, trt.description, models.TRAIT_TYPE_NAMES[trt.type], trt.min, trt.max)
+            if trt.type == 0:
+                valOp = '<select name="validationOp">'
+                valOp += '<option value="0">Greater Than</option>'
+                valOp += '<option value="0">Less Than</option>'
+                valOp += '</select>'
+
+                validateButton =  """<p><button style="color: red" onClick="window.location = """
+                validateButton += """'{0}?op=newTrait&tid={1}'">Validate</button>""".format(g.rootUrl, trialId)
+                validateButton =  """<button style="color: red" onClick='alert("ha")'>Validation</button>"""
+                out += "<td>" + validateButton + valOp + "</td>"
         out += "</table>"
+        out += "</tr>"
         return out
 
     createTraitButton =  """<p><button style="color: red" onClick="window.location = """
@@ -436,6 +447,25 @@ def TrialDataHtml(sess, trialId):
 
 #@app.route('/trial', methods=["GET", "POST"])
 
+def dec_check_session(jsonReturn):
+#-------------------------------------------------------------------------------------------------
+# Decorator to check if in valid session. If not, send the login page.
+#
+    def param_dec(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            COOKIE_NAME = 'sid'
+            sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
+            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
+            g.rootUrl = url_for(sys._getframe().f_code.co_name) # Set global var g, accessible by templates, to the url for this func
+            if not sess.Valid():
+                return render_template('login.html', title='Field Prime Login')
+
+            return func(*args, **kwargs)
+        return inner
+    return param_dec
+
+
 
 @app.route('/', methods=["GET", "POST"])
 def main():
@@ -535,6 +565,13 @@ def main():
         if trialId == 'sys':
             return FrontPage(sess)
         return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
+
+    elif op == 'traitValidation':
+        trialId = request.args.get("tid")
+        errMsg = TraitValidation(sess, trialId, request)
+        if errMsg:
+            return render_template('genericPage.html', content=errMsg, title='Error')
+        return render_template('genericPage.html', content=TrialHtml(sess, tid), title='Trial Data')
 
     elif op == 'traitInstance':
         return render_template('genericPage.html',

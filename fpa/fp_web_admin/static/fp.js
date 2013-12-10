@@ -126,7 +126,16 @@ function SetTraitFormElements(divName, tType){
     switch(tType) {
     case "0": // integer
     case "1": // decimal
-        newdiv.innerHTML = "<p>Minimum: <input type='text' name='min'><p>Maximum: <input type='text' name='max'><br>";
+        // Min and Max:
+        html = "<p>Minimum: <input type='text' name='min'><p>Maximum: <input type='text' name='max'><br>";
+
+        // Validation:
+        html += '<p>Validation, score should be:';
+        html += '<select name="validationOp">';
+        html += '<option value="0">Greater Than</option>';
+        html += '<option value="0">Less Than</option>';
+        html += '</select>'
+        newdiv.innerHTML = html;
         parentDiv.appendChild(newdiv);
         break;
     case "2": // string
