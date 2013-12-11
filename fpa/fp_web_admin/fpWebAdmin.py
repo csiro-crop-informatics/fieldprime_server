@@ -168,8 +168,37 @@ def TrialHtml(sess, trialId):
         return out + "</ul>"
     r += HtmlForm(HtmlFieldset(tis, "Trait Instances:"))
 
+    #
     # Download data link:
-    r += "<a href={0}?op=trialData&tid={1}>Download Score Data as CSV (right click and Save Link As)</a>".format(g.rootUrl, trialId)
+    #
+    dl = ""
+    jscript = """
+<script>
+function tdSelect() {{
+    var tdms = document.getElementById('tdms');
+    var out = '{0}?op=trialData&tid={1}';
+    var i = 0;
+    for (i=0; i<tdms.length; i++)
+        if (tdms[i].selected)
+          out += '&' + tdms[i].value + '=1';
+    return out;
+}}
+</script>
+""".format(g.rootUrl, trialId, trial.name)
+    dl += jscript
+    # Multi select output columns:
+    dl += "Select columns to view/download:<br>"
+    dl += "<select multiple id='tdms'>";
+    dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
+    dl += "<option value='user' selected='selected'>User Idents</option>";
+    dl += "<option value='gps' selected='selected'>GPS info</option>";
+    dl += "<option value='notes' selected='selected'>Notes</option>";
+    dl += "</select>";
+    dl += "<br><a href='dummy' onclick='this.href=tdSelect()'>View tab separated score data (or right click and Save Link As to download)</a>".format(trial.name)
+    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=tdSelect()'>Download tab separated score data (browser permitting)</a>".format(trial.name)
+    dl += "<br>Note data is TAB separated"
+    r += HtmlFieldset(dl, "Score Data:")
+
     return r
 
 
@@ -384,12 +413,17 @@ def TraitInstanceHtml(sess, tiId):
     return r
 
 
-def TrialDataHtml(sess, trialId):
+def TrialDataHtml(sess, request):
 #-----------------------------------------------------------------------
 # Returns trial data as plain text csv form - i.e. for download.
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
+    trialId = request.args.get("tid")
+    showGps = request.args.get("gps")
+    showUser = request.args.get("user")
+    showTime = request.args.get("timestamp")
+    showNotes = request.args.get("notes")
     SEP = '\t'
     # Get Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
@@ -398,8 +432,18 @@ def TrialDataHtml(sess, trialId):
     r = "Row" + SEP + "Column"
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        r += "{1}{0}{1}{0}_timestamp{1}{0}_user{1}{0}_latitude{1}{0}_longitude{1}{0}.notes".format(tiName, SEP)
-    r += SEP + "Notes\n"  # Putting notes at end in case some commas slip thru and mess up csv structure
+        r += "{1}{0}".format(tiName, SEP)
+        if showTime:
+            r += "{1}{0}_timestamp".format(tiName, SEP)
+        if showUser:
+            r += "{1}{0}_user".format(tiName, SEP)
+        if showGps:
+            r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, SEP)
+        if showNotes:
+            r += SEP + "{0}.notes".format(tiName)
+    if showNotes:
+        r += SEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
+    r += '\n'
 
     # Data:
     tuList = dbUtil.GetTrialUnits(sess, trialId)
@@ -410,16 +454,6 @@ def TrialDataHtml(sess, trialId):
             datums = dbUtil.GetDatum(sess, tu.id, ti.id)
             if len(datums) == 0:
                 r += SEP + SEP + SEP + SEP + SEP + SEP
-            #elif len(datums) == 1:
-            #    d = datums[0]
-            #    if type == 0: value = d.numValue
-            #    if type == 1: value = d.numValue
-            #    if type == 2: value = d.txtValue
-            #    if type == 3: value = d.numValue
-            #    if type == 4: value = d.numValue
-            #    r += ",{0},{1},{2},{3},{4}".format(value, d.timestamp, d.userid, d.gps_lat, d.gps_long)
-            #else:
-            #    r += "Error - too many datums"
             else:  # While there might be multiple, we get last:
                 # Use the latest:
                 lastDatum = datums[0]
@@ -433,15 +467,25 @@ def TrialDataHtml(sess, trialId):
                 if type == 3: value = d.numValue
                 if type == 4: value = d.numValue
                 if type == 5: value = d.txtValue
-                r += "{5}{0}{5}{1}{5}{2}{5}{3}{5}{4}{5}".format(value, d.timestamp, d.userid, d.gps_lat, d.gps_long, SEP)
-                if d.notes != None and len(d.notes) > 0: r += d.notes
+                r += "{0}{1}".format(SEP, value)
+                if showTime:
+                    r += "{0}{1}".format(SEP, d.timestamp)
+                if showUser:
+                    r += "{0}{1}".format(SEP, d.userid)
+                if showGps:
+                    r += "{0}{1}{0}{2}".format(SEP, d.gps_lat, d.gps_long)
+                if showNotes:
+                    r += SEP
+                    if d.notes != None and len(d.notes) > 0: r += d.notes  ######### MFK move old notes, discontinue support!
 
-        # Add notes, as list seperated by pipe symbols:
-        r += SEP
-        tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
-        for note in tuNotes:
-            r += '{0}|'.format(note.note)
+        # Add notes, as list separated by pipe symbols:
+        if showNotes:
+            r += SEP + '"'
+            tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
+            for note in tuNotes:
+                r += '{0}|'.format(note.note)
 
+            r += '"'
         r += "\n"
     return r
 
@@ -465,6 +509,10 @@ def dec_check_session(jsonReturn):
         return inner
     return param_dec
 
+@app.route('/trial/<trialid>/', methods=['GET'])
+@dec_check_session
+def validationThing():
+    return trialid;
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -579,7 +627,7 @@ def main():
                                title='Trait Instance Data')
 
     elif op == 'trialData':
-        return Response(TrialDataHtml(sess, request.args.get("tid")), content_type='text/plain')
+        return Response(TrialDataHtml(sess, request), content_type='text/plain')
 
     elif op == 'home': # MFK - might be good to have separate URL for homepage .../user/<username> 
         return FrontPage(sess)
