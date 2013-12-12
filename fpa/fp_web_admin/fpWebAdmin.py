@@ -9,6 +9,7 @@ from flask import Flask, request, Response, url_for, render_template, g, make_re
 from flask import json, jsonify
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
+from functools import wraps
 
 if __name__ == '__main__':
     import os,sys,inspect
@@ -93,6 +94,33 @@ def FrontPage(sess):
     return make_response(render_template('genericPage.html', content=r, title="User: " + sess.GetUser()))
 
 
+def TrialTraitTableHtml(trial):
+#----------------------------------------------------------------------------------------------------
+    if len(trial.traits) < 1:
+        return "No traits configured"
+    out = "<table border='1'>"
+    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>".format("Caption", "Description", "Type", "Min", "Max", "Validation")
+    for trt in trial.traits:
+        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td>".format(
+            trt.caption, trt.description, models.TRAIT_TYPE_NAMES[trt.type], trt.min, trt.max)
+        if trt.type == 0:
+            valOp = '<select name="validationOp">'
+            valOp += '<option value="0">Greater Than</option>'
+            valOp += '<option value="0">Less Than</option>'
+            valOp += '</select>'
+
+            validateButton = HtmlButtonLink('Validate', url_for('traitValidation', trialid=trial.id, _external=True))
+            #validateButton =  """<p><button style="color:red" onClick="window.location.href='{0}'">""".format(url)
+            #validateButton += """Validate</button>"""
+            #validateButton =  """<button style="color: red" onClick='alert("ha")'>Validation</button>"""
+            #out += "<td>" + validateButton + valOp + "</td>"
+
+            validateButton = "<a href='{0}'>Schmalidate</a>".format(url_for('traitValidation', trialid=trial.id, _external=True))
+            out += "<td>" + validateButton + valOp + "</td>"
+    out += "</table>"
+    out += "</tr>"
+    return out
+
 
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
@@ -118,30 +146,9 @@ def TrialHtml(sess, trialId):
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
     # Traits:
-    def content():
-        if len(trial.traits) < 1:
-            return "No traits configured"
-        out = "<table border='1'>"
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>".format("Caption", "Description", "Type", "Min", "Max", "Validation")
-        for trt in trial.traits:
-            out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td>".format(
-                trt.caption, trt.description, models.TRAIT_TYPE_NAMES[trt.type], trt.min, trt.max)
-            if trt.type == 0:
-                valOp = '<select name="validationOp">'
-                valOp += '<option value="0">Greater Than</option>'
-                valOp += '<option value="0">Less Than</option>'
-                valOp += '</select>'
-
-                validateButton =  """<p><button style="color: red" onClick="window.location = """
-                validateButton += """'{0}?op=newTrait&tid={1}'">Validate</button>""".format(g.rootUrl, trialId)
-                validateButton =  """<button style="color: red" onClick='alert("ha")'>Validation</button>"""
-                out += "<td>" + validateButton + valOp + "</td>"
-        out += "</table>"
-        out += "</tr>"
-        return out
-
     createTraitButton =  """<p><button style="color: red" onClick="window.location = """
     createTraitButton += """'{0}?op=newTrait&tid={1}'">Create New Trait</button>""".format(g.rootUrl, trialId)
+    validateTraitButton = HtmlButtonLink('Validat', url_for('traitValidation', trialid=trial.id, _external=True))
 
     addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(g.rootUrl, trialId)
     addSysTraitForm += '<input type="submit" value="Submit">'
@@ -154,8 +161,7 @@ def TrialHtml(sess, trialId):
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
     addSysTraitForm += '</select></form>'
-
-    r += HtmlFieldset(HtmlForm(content) + createTraitButton + addSysTraitForm, "Traits:")
+    r += HtmlFieldset(HtmlForm(TrialTraitTableHtml(trial)) + createTraitButton + addSysTraitForm, "Traits:")
 
     # Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
@@ -491,7 +497,7 @@ def TrialDataHtml(sess, request):
 
 #@app.route('/trial', methods=["GET", "POST"])
 
-def dec_check_session(jsonReturn):
+def dec_check_session():
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 #
@@ -501,7 +507,7 @@ def dec_check_session(jsonReturn):
             COOKIE_NAME = 'sid'
             sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            g.rootUrl = url_for(sys._getframe().f_code.co_name) # Set global var g, accessible by templates, to the url for this func
+            #g.rootUrl = url_for(sys._getframe().f_code.co_name) # Set global var g, accessible by templates, to the url for this func
             if not sess.Valid():
                 return render_template('login.html', title='Field Prime Login')
 
@@ -510,8 +516,8 @@ def dec_check_session(jsonReturn):
     return param_dec
 
 @app.route('/trial/<trialid>/', methods=['GET'])
-@dec_check_session
-def validationThing():
+@dec_check_session()
+def traitValidation(trialid):
     return trialid;
 
 
