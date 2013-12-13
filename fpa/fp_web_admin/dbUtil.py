@@ -46,6 +46,9 @@ def GetTrials(sess):
 def GetTrial(sess, trialID):
     return sess.DB().query(Trial).filter(Trial.id == trialID).one()
 
+def GetTrait(sess, traitId):
+    return sess.DB().query(Trait).filter(Trait.id == traitId).one()
+
 def GetTrialFromDBsess(sess, trialID):
     return sess.DB().query(Trial).filter(Trial.id == trialID).one()
 

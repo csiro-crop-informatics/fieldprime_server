@@ -22,7 +22,8 @@ import fpTrait
 import fp_common.models as models
 import fpTrial
 from dbUtil import GetTrial, GetTrials, GetSysTraits
-from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink
+from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
+import fpUtil
 
 import websess
 
@@ -69,8 +70,6 @@ def FrontPage(sess):
 # Return HTML Response for main user page after login
 #
     sess.resetLastUseTime()
-    #suser = sess.GetUser()
-    #r = "hallo <a href={0}?op=user>{1}</a>, last seen {2} <br>".format(g.rootUrl, suser, time.asctime(time.localtime(sess.getLastUseTime())))
 
     # Administer passwords button:
     r = "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
@@ -109,14 +108,9 @@ def TrialTraitTableHtml(trial):
             valOp += '<option value="0">Less Than</option>'
             valOp += '</select>'
 
-            validateButton = HtmlButtonLink('Validate', url_for('traitValidation', trialid=trial.id, _external=True))
-            #validateButton =  """<p><button style="color:red" onClick="window.location.href='{0}'">""".format(url)
-            #validateButton += """Validate</button>"""
-            #validateButton =  """<button style="color: red" onClick='alert("ha")'>Validation</button>"""
-            #out += "<td>" + validateButton + valOp + "</td>"
-
-            validateButton = "<a href='{0}'>Schmalidate</a>".format(url_for('traitValidation', trialid=trial.id, _external=True))
-            out += "<td>" + validateButton + valOp + "</td>"
+            url = url_for('traitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
+            validateButton = HtmlButtonLink2("Validation", url) 
+            out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     out += "</tr>"
     return out
@@ -148,7 +142,7 @@ def TrialHtml(sess, trialId):
     # Traits:
     createTraitButton =  """<p><button style="color: red" onClick="window.location = """
     createTraitButton += """'{0}?op=newTrait&tid={1}'">Create New Trait</button>""".format(g.rootUrl, trialId)
-    validateTraitButton = HtmlButtonLink('Validat', url_for('traitValidation', trialid=trial.id, _external=True))
+    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", "{0}?op=newTrait&tid={1}".format(g.rootUrl, trialId))
 
     addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(g.rootUrl, trialId)
     addSysTraitForm += '<input type="submit" value="Submit">'
@@ -350,14 +344,12 @@ def NewTraitCategorical(sess, request, newTrait):
         ncat.imageURL = imageURL
         sess.DB().add(ncat)
 
-
 def CreateNewTrait(sess,  trialId, request):
 #-----------------------------------------------------------------------
 # Create trait in db, from data from html form.
 # trialId is id of trial if a local trait, else it is 'sys'.
 # Returns error message if there's a problem, else None.
 #
-    
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
@@ -377,7 +369,7 @@ def CreateNewTrait(sess,  trialId, request):
 
     # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
     if not sysTrait: # If local, check there's no other trait local to the trial with the same caption:
-        trial = GetTrialFromDBsess(sess, trialId)
+        trial = dbUtil.GetTrialFromDBsess(sess, trialId)
         for x in trial.traits:
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
@@ -402,6 +394,8 @@ def CreateNewTrait(sess,  trialId, request):
     # Trait type specific processing:
     if int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
         NewTraitCategorical(sess, request, ntrt)
+    elif int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
+        pass
 
     dbsess.add(ntrt)
     dbsess.commit()
@@ -507,18 +501,101 @@ def dec_check_session():
             COOKIE_NAME = 'sid'
             sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            #g.rootUrl = url_for(sys._getframe().f_code.co_name) # Set global var g, accessible by templates, to the url for this func
+            g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
             if not sess.Valid():
                 return render_template('login.html', title='Field Prime Login')
 
-            return func(*args, **kwargs)
+            return func(sess, *args, **kwargs)
         return inner
     return param_dec
 
-@app.route('/trial/<trialid>/', methods=['GET'])
+@app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
-def traitValidation(trialid):
-    return trialid;
+def traitValidation(sess, trialId, traitId):
+    trial = dbUtil.GetTrial(sess, trialId)
+    trt = dbUtil.GetTrait(sess, traitId)
+    title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
+    comparatorCodes = ["gt", "ge", "lt", "le"]
+    if request.method == 'GET':
+        if trt.type == 0:
+            tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
+            minText = ""
+            if tti and tti.min is not None:
+                minText = "value='{0}'".format(tti.min)
+            maxText = ""
+            if tti and tti.max is not None:
+                maxText = "value='{0}'".format(tti.max)
+            bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
+            bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
+
+            # MFK need to pre select operator and attribute:
+            atId = -1
+            if tti and tti.cond is not None:
+                tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
+                if len(tokens) == 3:
+                    op = tokens[1]
+                    atClump = tokens[2]
+                    atId = int(atClump[4:])
+
+            # Show available comparison operators:
+            valOp = '<select name="validationOp">'
+            valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
+            valOp += '<option value="1">Greater Than</option>'
+            valOp += '<option value="2">Greater Than or Equal to</option>'
+            valOp += '<option value="3">Less Than</option>'
+            valOp += '<option value="4">Less Than or Equal to</option>'
+            valOp += '</select>'
+
+            # Attribute list:
+            attListHtml = '<select name="attributeList">'
+            attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
+            atts = dbUtil.GetTrialAttributes(sess, trialId)
+            for att in atts:
+                #if att.datatype = 0:  # MFK should restrict to int attributes
+                attListHtml += '<option value="{0}" {2}>{1}</option>'.format(att.id, att.name, "selected='selected'" if att.id == atId else "")
+            attListHtml += '</select>'
+
+            conts = 'Trial: ' + trial.name
+            conts += '<br>Trait: ' + trt.caption
+            conts += '<br>Type: ' + models.TRAIT_TYPE_NAMES[trt.type]
+            conts += bounds
+            conts += '<p>Integer traits can be validated by comparison with an attribute:'
+            conts += '<br>Trait value should be ' + valOp + attListHtml
+            conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
+
+            return render_template('genericPage.html', content=HtmlForm(conts, post=True), title='Trait Validation')
+        return render_template('genericPage.html', content='No validation for this trait type', title=title)
+    if request.method == 'POST':
+        op = request.form.get('validationOp')
+        # if op == "0":
+        #     return "please choose a comparator"
+        at = request.form.get('attributeList')
+        # if int(at) == 0:
+        #     return "please choose an attribute"
+        vmin = request.form.get('min')
+        if len(vmin) == 0:
+            vmin = None
+        vmax = request.form.get('max')
+        if len(vmax) == 0:
+            vmax = None
+        # Get existing trialTraitInteger, if any.
+        tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
+        newTTI = tti is None
+        if newTTI:
+            tti = models.TrialTraitInteger()
+        tti.trial_id = trialId
+        tti.trait_id = traitId
+        tti.min = vmin
+        tti.max = vmax
+        if int(op) > 0 and int(at) > 0:
+            tti.cond = ". " + comparatorCodes[int(op)-1] + ' att:' + at
+        if newTTI:
+            sess.DB().add(tti)
+        sess.DB().commit()
+        return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
+        #return "posted : " + op + "  " + at
+
+
 
 
 @app.route('/', methods=["GET", "POST"])

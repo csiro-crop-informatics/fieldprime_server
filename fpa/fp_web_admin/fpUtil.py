@@ -19,13 +19,13 @@ def GetString(x):
     return x()
 
 
-def HtmlForm(content):
+def HtmlForm(content, post=False):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.
 # NB content can be either a string, or a function returning one.
 #
     c = content if isinstance(content, str) else content()
-    return "<form>" + c + "</form>"
+    return "<form method='{0}'>".format('POST' if post else 'GET') + c + "</form>"
 
 
 def HtmlFieldset(content, legend):
@@ -45,8 +45,14 @@ def Exit(sess=None):
         sess.close()
     sys.exit()
 
+
 def HtmlButtonLink(label, click):
 #-----------------------------------------------------------------------
     return "<button style=\"color: red\" onClick=\"window.location='{0}'\">{1}</button>".format(click, label)
 
 
+def HtmlButtonLink2(label, click):
+#-----------------------------------------------------------------------
+# This version has the button inside a form, sometimes (eg when within
+# a table cell), this seems to be necessary.
+    return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
