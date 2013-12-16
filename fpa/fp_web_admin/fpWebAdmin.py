@@ -515,7 +515,12 @@ def traitValidation(sess, trialId, traitId):
     trial = dbUtil.GetTrial(sess, trialId)
     trt = dbUtil.GetTrait(sess, traitId)
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
-    comparatorCodes = ["gt", "ge", "lt", "le"]
+    comparatorCodes = [
+        ["gt", "Greater Than", 1],
+        ["ge", "Greater Than or Equal to", 2],
+        ["lt", "Less Than", 3],
+        ["le", "Less Than or Equal to", 4]
+    ]
     if request.method == 'GET':
         if trt.type == 0:
             tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
@@ -528,7 +533,12 @@ def traitValidation(sess, trialId, traitId):
             bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
             bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
 
-            # MFK need to pre select operator and attribute:
+            # Parse condition string, if present, to retrieve comparator and attribute.
+            # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
+            # The only supported comparison at present is comparing the score to a
+            # single attribute.
+            # NB, this format needs to be in sync with the version on the app. I.e. what
+            # we save here, must be understood on the app.
             atId = -1
             if tti and tti.cond is not None:
                 tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
@@ -540,10 +550,13 @@ def traitValidation(sess, trialId, traitId):
             # Show available comparison operators:
             valOp = '<select name="validationOp">'
             valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
-            valOp += '<option value="1">Greater Than</option>'
-            valOp += '<option value="2">Greater Than or Equal to</option>'
-            valOp += '<option value="3">Less Than</option>'
-            valOp += '<option value="4">Less Than or Equal to</option>'
+            for c in comparatorCodes:
+                valOp += '<option value="{0}" {2}>{1}</option>'.format(
+                    c[2], c[1], 'selected="selected"' if op == c[0] else "")
+            # valOp += '<option value="1">Greater Than</option>'
+            # valOp += '<option value="2">Greater Than or Equal to</option>'
+            # valOp += '<option value="3">Less Than</option>'
+            # valOp += '<option value="4">Less Than or Equal to</option>'
             valOp += '</select>'
 
             # Attribute list:
@@ -552,7 +565,8 @@ def traitValidation(sess, trialId, traitId):
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
                 #if att.datatype = 0:  # MFK should restrict to int attributes
-                attListHtml += '<option value="{0}" {2}>{1}</option>'.format(att.id, att.name, "selected='selected'" if att.id == atId else "")
+                attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
+                    att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
 
             conts = 'Trial: ' + trial.name
@@ -588,7 +602,7 @@ def traitValidation(sess, trialId, traitId):
         tti.min = vmin
         tti.max = vmax
         if int(op) > 0 and int(at) > 0:
-            tti.cond = ". " + comparatorCodes[int(op)-1] + ' att:' + at
+            tti.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
         if newTTI:
             sess.DB().add(tti)
         sess.DB().commit()

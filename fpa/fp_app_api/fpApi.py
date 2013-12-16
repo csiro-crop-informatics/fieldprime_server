@@ -123,6 +123,7 @@ def get_trial(username, trl, dbc):
     attDefs = []
     for att in trl.tuAttributes:
         tua = {}
+        tua['id'] = att.id
         tua['name'] = att.name
         tua['datatype'] = att.datatype
         tua['func'] = att.func
@@ -135,6 +136,7 @@ def get_trial(username, trl, dbc):
     # Trial Units:
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
+    jtrl['numTrialUnit'] = len(trl.trialUnits)   # MFK check if no trial units this is zero, not null
     for ctu in trl.trialUnits:
         jtu = {}
         # MFK - there is a problem here, the fixed names and the user provided
