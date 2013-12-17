@@ -568,6 +568,7 @@ def traitValidation(sess, trialId, traitId):
         ["lt", "Less Than", 3],
         ["le", "Less Than or Equal to", 4]
     ]
+
     if request.method == 'GET':
         if trt.type == 0:
             tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
@@ -587,12 +588,14 @@ def traitValidation(sess, trialId, traitId):
             # NB, this format needs to be in sync with the version on the app. I.e. what
             # we save here, must be understood on the app.
             atId = -1
+            op = ""
             if tti and tti.cond is not None:
                 tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
-                if len(tokens) == 3:
-                    op = tokens[1]
-                    atClump = tokens[2]
-                    atId = int(atClump[4:])
+                if len(tokens) != 3:
+                    return "bad condition: " + tti.cond
+                op = tokens[1]
+                atClump = tokens[2]
+                atId = int(atClump[4:])
 
             # Show available comparison operators:
             valOp = '<select name="validationOp">'
@@ -600,10 +603,6 @@ def traitValidation(sess, trialId, traitId):
             for c in comparatorCodes:
                 valOp += '<option value="{0}" {2}>{1}</option>'.format(
                     c[2], c[1], 'selected="selected"' if op == c[0] else "")
-            # valOp += '<option value="1">Greater Than</option>'
-            # valOp += '<option value="2">Greater Than or Equal to</option>'
-            # valOp += '<option value="3">Less Than</option>'
-            # valOp += '<option value="4">Less Than or Equal to</option>'
             valOp += '</select>'
 
             # Attribute list:
