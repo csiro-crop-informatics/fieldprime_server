@@ -444,7 +444,6 @@ def TrialDataHtml(sess, trialId):
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
-    #trialId = request.args.get("tid")
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
@@ -495,8 +494,10 @@ def TrialDataHtml(sess, trialId):
         # Attribute Columns:
         if showAttributes:
             for tua in trl.tuAttributes:
-                r += SEP + dbUtil.GetAttributeValue(sess, tu.id, tua.id).value
-            pass
+                r += SEP
+                av = dbUtil.GetAttributeValue(sess, tu.id, tua.id)
+                if av is not None:
+                    r += av.value
 
         # Scores:
         for ti in tiList:
@@ -538,7 +539,7 @@ def TrialDataHtml(sess, trialId):
 
         # End the line:
         r += "\n"
-    #return r
+
     return Response(r, content_type='text/plain')
 
 

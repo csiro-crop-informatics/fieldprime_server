@@ -5,6 +5,7 @@
 #
 
 
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
@@ -59,11 +60,17 @@ def GetTrialAttributes(sess, trialID):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
 
 def GetAttributeValue(sess, trialUnitId, trialUnitAttributeId):
-    return sess.DB().query(AttributeValue).filter(
-        and_(
-            AttributeValue.trialUnit_id == trialUnitId,
-            AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
-        ).one()
+    try:
+        av = sess.DB().query(AttributeValue).filter(
+            and_(
+                AttributeValue.trialUnit_id == trialUnitId,
+                AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
+            ).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        return None
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        return None
+    return av
 
 def GetTrialUnits(sess, trialID):
     return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id == trialID).all()
