@@ -58,6 +58,13 @@ def GetTraitInstancesForTrial(sess, trialID):
 def GetTrialAttributes(sess, trialID):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
 
+def GetAttributeValue(sess, trialUnitId, trialUnitAttributeId):
+    return sess.DB().query(AttributeValue).filter(
+        and_(
+            AttributeValue.trialUnit_id == trialUnitId,
+            AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
+        ).one()
+
 def GetTrialUnits(sess, trialID):
     return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id == trialID).all()
 

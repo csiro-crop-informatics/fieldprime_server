@@ -47,6 +47,24 @@ LOGIN_TIMEOUT = 300            # Idle time before requiring web user to login ag
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
 
+def dec_check_session():
+#-------------------------------------------------------------------------------------------------
+# Decorator to check if in valid session. If not, send the login page.
+# Generates function that has session as first parameter.
+#
+    def param_dec(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            COOKIE_NAME = 'sid'
+            sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
+            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
+            g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
+            if not sess.Valid():
+                return render_template('login.html', title='Field Prime Login')
+
+            return func(sess, *args, **kwargs)
+        return inner
+    return param_dec
 
 
 def CheckPassword(user, password):
@@ -78,7 +96,7 @@ def FrontPage(sess):
     trials = GetTrials(sess)
     trialListHtml = "No trials yet" if len(trials) < 1 else ""
     for t in trials:
-        trialListHtml += "<li><a href={0}?op=showTrial&tid={1}>{2}</a></li>".format(g.rootUrl, t.id, t.name)
+        trialListHtml += "<li><a href={0}>{1}</a></li>".format(url_for("showTrial", trialId=t.id), t.name)
 
     r += HtmlFieldset(HtmlForm(trialListHtml) +  HtmlButtonLink("Create New Trial", g.rootUrl + "?op=newTrial"), "Current Trials")
 
@@ -118,6 +136,8 @@ def TrialTraitTableHtml(trial):
 
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
+# Top level page to display/manage a given trial.
+#
     trial = dbUtil.GetTrial(sess, trialId)
 
     # Trial name and attributes:
@@ -168,23 +188,25 @@ def TrialHtml(sess, trialId):
         return out + "</ul>"
     r += HtmlForm(HtmlFieldset(tis, "Trait Instances:"))
 
+    #============================================================================
+    # Download data section:
     #
-    # Download data link:
-    #
-    dl = ""
+
+    # Javascript function to generate the href for the download links.
+    # The generated link includes trialId and the user selected output options.
     jscript = """
 <script>
 function tdSelect() {{
     var tdms = document.getElementById('tdms');
-    var out = '{0}?op=trialData&tid={1}';
-    var i = 0;
-    for (i=0; i<tdms.length; i++)
+    var out = '{0}?';
+    for (var i=0; i<tdms.length; i++)
         if (tdms[i].selected)
           out += '&' + tdms[i].value + '=1';
     return out;
 }}
 </script>
-""".format(g.rootUrl, trialId, trial.name)
+""".format(url_for("TrialDataHtml", trialId=trialId))
+    dl = ""
     dl += jscript
     # Multi select output columns:
     dl += "Select columns to view/download:<br>"
@@ -193,6 +215,7 @@ function tdSelect() {{
     dl += "<option value='user' selected='selected'>User Idents</option>";
     dl += "<option value='gps' selected='selected'>GPS info</option>";
     dl += "<option value='notes' selected='selected'>Notes</option>";
+    dl += "<option value='attributes' selected='selected'>Attributes</option>";
     dl += "</select>";
     dl += "<br><a href='dummy' onclick='this.href=tdSelect()'>View tab separated score data (or right click and Save Link As to download)</a>".format(trial.name)
     dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=tdSelect()'>Download tab separated score data (browser permitting)</a>".format(trial.name)
@@ -413,23 +436,41 @@ def TraitInstanceHtml(sess, tiId):
     return r
 
 
-def TrialDataHtml(sess, request):
+@app.route('/trial/<trialId>/data/', methods=['GET'])
+@dec_check_session()
+def TrialDataHtml(sess, trialId):
 #-----------------------------------------------------------------------
 # Returns trial data as plain text csv form - i.e. for download.
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
-    trialId = request.args.get("tid")
+    #trialId = request.args.get("tid")
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
+    showAttributes = request.args.get("attributes")
     SEP = '\t'
     # Get Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
 
+    # Work out number of columns for each trait instance:
+    numColsPerValue = 1
+    if showTime:
+        numColsPerValue += 1
+    if showUser:
+        numColsPerValue += 1
+    if showGps:
+        numColsPerValue += 2  
+    if showNotes:
+        numColsPerValue += 1         # MFK NOTE this will need to be removed when we deprecate datum notes    
+
     # Headers:
     r = "Row" + SEP + "Column"
+    if showAttributes:
+        trl = dbUtil.GetTrial(sess, trialId)
+        for tua in trl.tuAttributes:
+            r += SEP + tua.name
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
         r += "{1}{0}".format(tiName, SEP)
@@ -448,12 +489,21 @@ def TrialDataHtml(sess, request):
     # Data:
     tuList = dbUtil.GetTrialUnits(sess, trialId)
     for tu in tuList:
+        # Row and Col:
         r += "{0}{2}{1}".format(tu.row, tu.col, SEP)
+
+        # Attribute Columns:
+        if showAttributes:
+            for tua in trl.tuAttributes:
+                r += SEP + dbUtil.GetAttributeValue(sess, tu.id, tua.id).value
+            pass
+
+        # Scores:
         for ti in tiList:
             type = ti.trait.type
             datums = dbUtil.GetDatum(sess, tu.id, ti.id)
             if len(datums) == 0:
-                r += SEP + SEP + SEP + SEP + SEP + SEP
+                r += SEP * numColsPerValue
             else:  # While there might be multiple, we get last:
                 # Use the latest:
                 lastDatum = datums[0]
@@ -478,40 +528,36 @@ def TrialDataHtml(sess, request):
                     r += SEP
                     if d.notes != None and len(d.notes) > 0: r += d.notes  ######### MFK move old notes, discontinue support!
 
-        # Add notes, as list separated by pipe symbols:
+        # Notes, as list separated by pipe symbols:
         if showNotes:
             r += SEP + '"'
             tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
             for note in tuNotes:
                 r += '{0}|'.format(note.note)
-
             r += '"'
+
+        # End the line:
         r += "\n"
-    return r
+    #return r
+    return Response(r, content_type='text/plain')
 
-#@app.route('/trial', methods=["GET", "POST"])
 
-def dec_check_session():
-#-------------------------------------------------------------------------------------------------
-# Decorator to check if in valid session. If not, send the login page.
+@app.route('/trial/<trialId>', methods=["GET"])
+@dec_check_session()
+def showTrial(sess, trialId):
+#===========================================================================
+# Page to display/modify a single trial.
 #
-    def param_dec(func):
-        @wraps(func)
-        def inner(*args, **kwargs):
-            COOKIE_NAME = 'sid'
-            sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
-            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
-            if not sess.Valid():
-                return render_template('login.html', title='Field Prime Login')
+    return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
 
-            return func(sess, *args, **kwargs)
-        return inner
-    return param_dec
 
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
 def traitValidation(sess, trialId, traitId):
+#===========================================================================
+# Page to display/modify validation parameters for a trait.
+# Currently only relevant for integer traits.
+#
     trial = dbUtil.GetTrial(sess, trialId)
     trt = dbUtil.GetTrait(sess, traitId)
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
@@ -607,9 +653,6 @@ def traitValidation(sess, trialId, traitId):
             sess.DB().add(tti)
         sess.DB().commit()
         return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
-        #return "posted : " + op + "  " + at
-
-
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -669,11 +712,7 @@ def main():
         # parameters into the session shelf.
         return render_template('login.html', title='Field Prime Login')
 
-    if op == 'showTrial':
-        tid = request.args.get('tid')
-        return render_template('genericPage.html', content=TrialHtml(sess, tid), title='Trial Data')
-
-    elif op == 'addSysTrait2Trial':
+    if op == 'addSysTrait2Trial':
         tid = request.args.get('tid')
         errMsg = AddSysTraitTrial(sess, tid, request.form['traitID'])
         if errMsg:
@@ -722,9 +761,6 @@ def main():
         return render_template('genericPage.html',
                                content=TraitInstanceHtml(sess, request.args.get("tid")),
                                title='Trait Instance Data')
-
-    elif op == 'trialData':
-        return Response(TrialDataHtml(sess, request), content_type='text/plain')
 
     elif op == 'home': # MFK - might be good to have separate URL for homepage .../user/<username> 
         return FrontPage(sess)
