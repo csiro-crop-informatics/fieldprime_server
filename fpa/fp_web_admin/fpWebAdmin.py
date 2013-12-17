@@ -98,7 +98,8 @@ def FrontPage(sess):
     for t in trials:
         trialListHtml += "<li><a href={0}>{1}</a></li>".format(url_for("showTrial", trialId=t.id), t.name)
 
-    r += HtmlFieldset(HtmlForm(trialListHtml) +  HtmlButtonLink("Create New Trial", g.rootUrl + "?op=newTrial"), "Current Trials")
+    r += HtmlFieldset(HtmlForm(trialListHtml)
+                      + HtmlButtonLink("Create New Trial", url_for("newTrial")), "Current Trials")
 
     # System Traits:
     sysTraits = GetSysTraits(sess)
@@ -542,6 +543,23 @@ def TrialDataHtml(sess, trialId):
 
     return Response(r, content_type='text/plain')
 
+@app.route('/newTrial/', methods=["GET", "POST"])
+@dec_check_session()
+def newTrial(sess):
+#===========================================================================
+# Page for trial creation.
+#
+    if request.method == 'GET':
+        return render_template('newTrial.html', title='Create Trial')
+    if request.method == 'POST':
+        uploadFile = request.files['file']
+        res = fpTrial.UploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'), 
+                                      request.form.get('year'), request.form.get('acronym'))
+        if res is not None and 'error' in res:
+            return render_template('newTrial.html', title='Create Trial', msg = res['error'])
+        else:
+            return FrontPage(sess)
+
 
 @app.route('/trial/<trialId>', methods=["GET"])
 @dec_check_session()
@@ -725,16 +743,6 @@ def main():
     elif op == 'newpw' or op == 'setAppPassword':
         return ProcessAdminForm(sess, op, request.form)
 
-    elif op == 'newTrial':
-        return fpTrial.NewTrial(sess)
-
-    elif op == 'createTrial':
-        uploadFile = request.files['file']
-        res = fpTrial.CreateTrial(sess, uploadFile, request.form)
-        if res:
-            return res
-        return FrontPage(sess)
-
     elif op == 'newTrait':
         # NB, could be a new sys trait, or trait for a trial. Indicated by tid which will be
         # either 'sys' or the trial id respectively.
@@ -745,17 +753,9 @@ def main():
         errMsg = CreateNewTrait(sess, trialId, request)
         if errMsg:
             return render_template('genericPage.html', content=errMsg, title='Error')
-
         if trialId == 'sys':
             return FrontPage(sess)
         return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
-
-    elif op == 'traitValidation':
-        trialId = request.args.get("tid")
-        errMsg = TraitValidation(sess, trialId, request)
-        if errMsg:
-            return render_template('genericPage.html', content=errMsg, title='Error')
-        return render_template('genericPage.html', content=TrialHtml(sess, tid), title='Trial Data')
 
     elif op == 'traitInstance':
         return render_template('genericPage.html',

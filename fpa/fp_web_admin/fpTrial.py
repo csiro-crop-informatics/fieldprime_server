@@ -19,6 +19,10 @@ BAR = 'barcode'
 
 def ParseTrialUnitCSV(f):
 #-----------------------------------------------------------------------
+# Parses the file to check valid trial input. Also determines the
+# number of fields, and the column index of each fixed and attribute columns.
+# Returns dictionary, with either an 'error' key, or the above fields.
+#
     # Get headers,
     hdrs = f.readline().strip().split(',')
     numFields = 0
@@ -67,7 +71,8 @@ def ParseTrialUnitCSV(f):
 
 def UploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 #-----------------------------------------------------------------------
-# Handle submitted create trial form:
+# Handle submitted create trial form.
+# Return None on success, else dictionary with 'error' key.
 #
     # Check trial units csv file:
     tuFileInfo = ParseTrialUnitCSV(f)
@@ -128,22 +133,57 @@ def UploadTrialFile(sess, f, tname, tsite, tyear, tacro):
     return None
 
 
-def NewTrial(sess):
+def UpdateTrialFile(sess, f, ntrial):
 #-----------------------------------------------------------------------
-# Show form to create new trial:
+# Handle uploaded trial file for updating. I.e. the trial should
+# exist, but we are to add or update any attributes in the file.
+# Return None on success, else dictionary with 'error' key.
 #
-    return render_template('newTrial.html', title='Create Trial')
+    # Check trial units csv file:
+    tuFileInfo = ParseTrialUnitCSV(f)  # Ideally need version that checks trial units, should we allow new ones?
+    if 'error' in tuFileInfo:
+        return tuFileInfo
 
+    db = sess.DB()
+    try:
+        # when finished should give error msg or go back to a trial list, or display of new trial
+        # Trial units
+        f.seek(0,0)
+        f.readline() # skip headers
+        numFields = tuFileInfo['numFields']
+        fixIndex = tuFileInfo['fixIndex']
+        attIndex = tuFileInfo['attIndex']
 
-def CreateTrial(sess, uploadFile, form):
-#-----------------------------------------------------------------------
-# Handle submitted create trial form:
-# If error, returns Result, otherwise returns None
-#
-    res = UploadTrialFile(sess, uploadFile, form.get('name'), form.get('site'), 
-                          form.get('year'), form.get('acronym'))
-    if res is not None and 'error' in res:
-        return render_template('newTrial.html', title='Create Trial', msg = res['error'])
-    else:
-        return None
+        # Add attributes  MFK Clear existing attributes?
+        tuaObs = {}
+        for at in attIndex.keys():
+            tua = TrialUnitAttribute()
+            tua.trial_id = ntrial.id
+            tua.name = at
+            db.add(tua)
+            tuaObs[at] = tua
 
+        # Add trial units
+        line = f.readline()
+        while line:
+            flds = line.strip().split(',')
+            tu = TrialUnit()
+            tu.trial_id = ntrial.id
+            tu.row = flds[fixIndex[ROW]]
+            tu.col = flds[fixIndex[COL]]
+            if BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[BAR]]
+            if DES in fixIndex.keys(): tu.description = flds[fixIndex[DES]]
+            db.add(tu)
+            # add attributes:
+            for at in attIndex.keys():
+                av = AttributeValue()
+                av.trialUnitAttribute = tuaObs[at]
+                av.trialUnit = tu
+                av.value = flds[attIndex[at]]
+                db.add(av)
+            line = f.readline()
+
+        db.commit()
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        return {'error':"Database error ({0})".format(e.orig.args)}
+    return None

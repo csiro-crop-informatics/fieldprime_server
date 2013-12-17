@@ -172,8 +172,8 @@ class TrialUnitAttribute(DeclarativeBase):
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     name = Column(u'name', VARCHAR(length=31), nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
-    datatype = Column(unicode(TUA_DATATYPE), INTEGER(), nullable=False)
-    func = Column(unicode(TUA_FUNC), INTEGER(), nullable=False)
+    datatype = Column(unicode(TUA_DATATYPE), INTEGER(), default=2, nullable=False)
+    func = Column(unicode(TUA_FUNC), INTEGER(), default=0, nullable=False)
 
     #relation definitions
     trial = relation('Trial', primaryjoin='TrialUnitAttribute.trial_id==Trial.id')
