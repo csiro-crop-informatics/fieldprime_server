@@ -21,9 +21,10 @@ import dbUtil
 import fpTrait
 import fp_common.models as models
 import fpTrial
+import fpUtil
+from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
-import fpUtil
 
 import websess
 
@@ -121,7 +122,7 @@ def TrialTraitTableHtml(trial):
         "Caption", "Description", "Type", "Validation")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
-            trt.caption, trt.description, models.TRAIT_TYPE_NAMES[trt.type])
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         if trt.type == 0:
             valOp = '<select name="validationOp">'
             valOp += '<option value="0">Greater Than</option>'
@@ -399,13 +400,13 @@ def CreateNewTrait(sess,  trialId, request):
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
         ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
-        ntrt.sysType = models.SYSTYPE_TRIAL
+        ntrt.sysType = SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
         sysTraits = dbUtil.GetSysTraits(sess)
         for x in sysTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
-        ntrt.sysType = models.SYSTYPE_SYSTEM
+        ntrt.sysType = SYSTYPE_SYSTEM
 
     ntrt.type = type
     if min:
@@ -629,14 +630,14 @@ def traitValidation(sess, trialId, traitId):
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
-                #if att.datatype = 0:  # MFK should restrict to int attributes
-                attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
-                    att.id, att.name, "selected='selected'" if att.id == atId else "")
+                if att.datatype == T_INTEGER:  # restrict to integer attributes
+                    attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
+                        att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
 
             conts = 'Trial: ' + trial.name
             conts += '<br>Trait: ' + trt.caption
-            conts += '<br>Type: ' + models.TRAIT_TYPE_NAMES[trt.type]
+            conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
             conts += bounds
             conts += '<p>Integer traits can be validated by comparison with an attribute:'
             conts += '<br>Trait value should be ' + valOp + attListHtml
@@ -748,7 +749,7 @@ def main():
         # NB, could be a new sys trait, or trait for a trial. Indicated by tid which will be
         # either 'sys' or the trial id respectively.
         return render_template('newTrait.html', trialId = request.args.get("tid"),
-                               traitTypes = models.TRAIT_TYPE_TYPE_IDS, title='New Trait')
+                               traitTypes = TRAIT_TYPE_TYPE_IDS, title='New Trait')
     elif op == 'createTrait':
         trialId = request.args.get("tid")
         errMsg = CreateNewTrait(sess, trialId, request)

@@ -201,17 +201,6 @@ class TrialUnitNote(DeclarativeBase):
     trialUnit = relation('TrialUnit', primaryjoin='TrialUnitNote.trialUnit_id==TrialUnit.id')
 
 
-###  Constants:  ##################################################################################################
-
-# Values for trait sysType field:
-SYSTYPE_TRIAL = 0
-SYSTYPE_SYSTEM = 1;
-SYSTYPE_ADHOC = 2;
-
-# Names and values for trait type field:
-TRAIT_TYPE_NAMES = ["Integer", "Decimal", "Text", "Categorical", "Date", "Photo"]
-TRAIT_TYPE_TYPE_IDS = {"Integer":0, "Decimal":1, "Text":2, "Categorical":3, "Date":4, "Photo":5}
-
 ###  Functions:  ##################################################################################################
 
 gdbg = True
