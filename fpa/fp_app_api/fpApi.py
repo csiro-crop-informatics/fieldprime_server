@@ -206,8 +206,8 @@ def get_trial(username, trl, dbc):
 
         # Photo traits:
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Photo']:
-            jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id, traitid=trt.id,
-                                      token=servToken, _external=True)
+            jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
+                                               traitid=trt.id, token=servToken, _external=True)
 
         # Integer traits:
         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
