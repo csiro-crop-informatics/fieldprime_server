@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<font color="red">{{msg}}</font>
+<h2>Reload Attributes</h2>
+Select a file containing attribute data.
+The file should have the same format as the original trial upload file.
+In particular, it must have columns for the trial unit row and column numbers, and these
+must match trial units that were created in the initial upload.
+<form enctype="multipart/form-data"
+  onsubmit="return ValidateTraitForm()"
+  method="post">
+
+<p>Trial Plan CSV File: <input type="file" id='uploadFile_id' name="file"></p>
+<p><input type="submit" value="Upload"></p>
+
+</form>
+{% endblock %}

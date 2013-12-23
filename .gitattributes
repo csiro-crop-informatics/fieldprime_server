@@ -22,6 +22,7 @@ fpa/fp_web_admin/templates/genericPage.html -text
 fpa/fp_web_admin/templates/login.html -text
 fpa/fp_web_admin/templates/newTrait.html -text
 fpa/fp_web_admin/templates/newTrial.html -text
+fpa/fp_web_admin/templates/uploadAttributes.html -text
 fpa/fp_web_admin/websess.py -text
 fpa/wsgi_adm_entry.py -text
 fpa/wsgi_app_entry.py -text

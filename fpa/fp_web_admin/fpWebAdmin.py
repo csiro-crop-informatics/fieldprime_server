@@ -159,14 +159,14 @@ def TrialHtml(sess, trialId):
         out = "<ul>"
         for att in attList:
             out += "<li><a href={0}?op=attribute&aid={1}>{2}</a></li>".format(g.rootUrl, att.id, att.name)
-        return out + "</ul>"
+        out += "</ul>"
+        out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("attributeUpload", trialId=trialId))
+        return out
+
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
     # Traits:
-    createTraitButton =  """<p><button style="color: red" onClick="window.location = """
-    createTraitButton += """'{0}?op=newTrait&tid={1}'">Create New Trait</button>""".format(g.rootUrl, trialId)
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", "{0}?op=newTrait&tid={1}".format(g.rootUrl, trialId))
-
     addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(g.rootUrl, trialId)
     addSysTraitForm += '<input type="submit" value="Submit">'
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
@@ -674,6 +674,18 @@ def traitValidation(sess, trialId, traitId):
         sess.DB().commit()
         return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
 
+@app.route('/trial/<trialId>/attributes/', methods=['GET', 'POST'])
+@dec_check_session()
+def attributeUpload(sess, trialId):
+    if request.method == 'GET':
+        return render_template('uploadAttributes.html', content=TrialHtml(sess, trialId), title='Load Attributes')
+    if request.method == 'POST':
+        uploadFile = request.files['file']
+        res = fpTrial.UpdateTrialFile(sess, uploadFile, trialId)
+        if res is not None and 'error' in res:
+            return render_template('uploadAttributes.html', title='Load Attributes', msg = res['error'])
+        else:
+            return FrontPage(sess)
 
 @app.route('/', methods=["GET", "POST"])
 def main():
