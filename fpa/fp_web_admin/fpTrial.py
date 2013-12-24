@@ -163,6 +163,8 @@ def UpdateTrialFile(sess, f, trialId):
     tuFileInfo = ParseTrialUnitCSV(f)  # Ideally need version that checks trial units, should we allow new ones?
     if 'error' in tuFileInfo:
         return tuFileInfo
+    fixIndex = tuFileInfo['fixIndex']
+    attIndex = tuFileInfo['attIndex']
 
     db = sess.DB()
     try:
@@ -192,8 +194,6 @@ def UpdateTrialFile(sess, f, trialId):
         # Iterate thru trial units:
         f.seek(0,0)
         f.readline() # skip headers
-        fixIndex = tuFileInfo['fixIndex']
-        attIndex = tuFileInfo['attIndex']
         line = f.readline()
         while line:
             flds = line.strip().split(',')
@@ -207,19 +207,18 @@ def UpdateTrialFile(sess, f, trialId):
             if DES in fixIndex.keys(): tu.description = flds[fixIndex[DES]]
             # add attributes:
             for ind, attName in enumerate(attIndex.keys()):
-                out = attName + " ind: " + str(ind) + " exists: " + str(attExists[ind])
-                #return {'error':out}
+                errMsg = attName + " ind: " + str(ind) + " exists: " + str(attExists[ind])
                 tua = tuaObs[ind]
                 # Get existing, or create new, attributeValue:
                 if attExists[ind]:
                     try:
                         av = dbUtil.GetAttributeValue(sess, tu.id, tua.id)
                         if av is None:
-                            out += " tua " + str(tua.id) + " tuid " + str(tu.id)
-                            return {'error':out}
+                            errMsg += " tua " + str(tua.id) + " tuid " + str(tu.id)
+                            return {'error':errMsg}
                     except Exception as e:
-                            out += "Ex tua " + str(tua.id) + " tuid " + str(tu.id)
-                            return {'error':out}
+                            errMsg += " tua:" + str(tua.id) + " tuid:" + str(tu.id)
+                            return {'error':("Missing attribute: " + errMsg)}
                 else:
                     av = AttributeValue()
                     av.trialUnitAttribute = tua
