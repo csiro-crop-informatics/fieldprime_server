@@ -133,7 +133,6 @@ def TrialTraitTableHtml(trial):
             validateButton = HtmlButtonLink2("Validation", url) 
             out += "<td>" + validateButton  + "</td>"
     out += "</table>"
-    out += "</tr>"
     return out
 
 
@@ -158,11 +157,11 @@ def TrialHtml(sess, trialId):
             return "No attributes found"
         out = "<ul>"
         for att in attList:
-            out += "<li><a href={0}?op=attribute&aid={1}>{2}</a></li>".format(g.rootUrl, att.id, att.name)
+            out += "<li><a href={0}>{1}</a></li>".format(url_for("attributeDisplay", trialId=trialId, attId=att.id), att.name)
+            #out += "<li><a href={0}>{1}</a></li>".format("fred", att.name)
         out += "</ul>"
         out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("attributeUpload", trialId=trialId))
         return out
-
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
     # Traits:
@@ -686,6 +685,23 @@ def attributeUpload(sess, trialId):
             return render_template('uploadAttributes.html', title='Load Attributes', msg = res['error'])
         else:
             return FrontPage(sess)
+
+@app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET', 'POST'])
+@dec_check_session()
+def attributeDisplay(sess, trialId, attId):
+    tua = dbUtil.GetAttribute(sess, attId)
+    if request.method == 'GET':
+        r = "Attribute {0}".format(tua.name)
+        r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+        r += "<p><table border='1'>"
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
+        aVals = dbUtil.GetAttributeValues(sess, attId)
+        for av in aVals:
+            r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.trialUnit.row, av.trialUnit.col, av.value)
+        r += "</table>"
+        return render_template('genericPage.html', content=r, title='Attribute')
+    if request.method == 'POST':
+        return render_template('genericPage.html', content="POST unexpected", title='Error')
 
 @app.route('/', methods=["GET", "POST"])
 def main():

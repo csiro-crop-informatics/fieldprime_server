@@ -136,36 +136,40 @@ def UploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 
 def UpdateTrialFile(sess, f, trialId):
 #-----------------------------------------------------------------------
-# Handle uploaded trial file for updating. I.e. the trial should
-# exist, but we are to add or update any attributes in the file.
-# Return None on success, else dictionary with 'error' key.
+# Handle uploaded trial file for updating.
+# The trial should already exist, and all the trial units
+# referenced in the file (via row and column) should also exist.
+# Any attribute columns in the file will be added to the trial 
+# and any attributes that match existing attributes
+# will overwrite them.
+# Returns None on success, else dictionary with 'error' key.
+# 
+# Notes:
+# Ideally, perhaps, for existing attributes, only new values
+# would be overwritten, however, all values are - basically because
+# with the current trial creation method (uploading from csv) an
+# attributeValue gets created for every trial unit listed in the the
+# upload file, even if the string value is empty.
+# 
+# NB, some replication with UploadTrialFile function above.
+# This function could probably be modified to replace the other.
 #
-    #return {'error':"to err is human"}
-    
+# NB It turns out that mysql varchar is by default case insensitive,
+# in that if you search for a given string value, incorrect case
+# values will match. This precludes having columns with names only
+# differing in case.
+#
     # Check trial units csv file:
     tuFileInfo = ParseTrialUnitCSV(f)  # Ideally need version that checks trial units, should we allow new ones?
     if 'error' in tuFileInfo:
         return tuFileInfo
 
     db = sess.DB()
-    ln = 0
     try:
         trl = dbUtil.GetTrial(sess, trialId)
 
-        # when finished should give error msg or go back to a trial list, or display of new trial
-        # Trial units
-        f.seek(0,0)
-        f.readline() # skip headers
-        numFields = tuFileInfo['numFields']
-        fixIndex = tuFileInfo['fixIndex']
-        attIndex = tuFileInfo['attIndex']
-
-        # Add attributes  MFK Clear existing attributes?
+        # Add attributes:
         currAtts = dbUtil.GetTrialAttributes(sess, trialId)
-        # currAttNames = []
-        # for a in currAtts:
-        #     currAttNames.append(a.name.upper())
-        #return {'error':', '.join(currAttNames)}
         tuaObs = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
         for at in attIndex.keys():
@@ -186,18 +190,18 @@ def UpdateTrialFile(sess, f, trialId):
         return {'error':"DB error adding trialUnitAttribute ({0})".format(e.orig.args)}
     try:
         # Iterate thru trial units:
-        ln = 1
+        f.seek(0,0)
+        f.readline() # skip headers
+        fixIndex = tuFileInfo['fixIndex']
+        attIndex = tuFileInfo['attIndex']
         line = f.readline()
         while line:
             flds = line.strip().split(',')
-            ln = 4
             try:
                 tu = dbUtil.GetTrialUnit(sess, trialId, flds[fixIndex[ROW]], flds[fixIndex[COL]])
             except Exception as e:
-                out = "Ex row " + str(flds[fixIndex[ROW]]) + " col " + str(flds[fixIndex[COL]])
-                #out = "Ex row " + str(fixIndex[ROW]) + " col " + str(fixIndex[COL])
+                out = "Trial Unit not found: " + str(flds[fixIndex[ROW]]) + " col " + str(flds[fixIndex[COL]])
                 return {'error':out}
-            ln = 3
             # Update barcode and/or description:
             if BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[BAR]]
             if DES in fixIndex.keys(): tu.description = flds[fixIndex[DES]]
@@ -206,7 +210,7 @@ def UpdateTrialFile(sess, f, trialId):
                 out = attName + " ind: " + str(ind) + " exists: " + str(attExists[ind])
                 #return {'error':out}
                 tua = tuaObs[ind]
-                ln = 2
+                # Get existing, or create new, attributeValue:
                 if attExists[ind]:
                     try:
                         av = dbUtil.GetAttributeValue(sess, tu.id, tua.id)
@@ -218,18 +222,16 @@ def UpdateTrialFile(sess, f, trialId):
                             return {'error':out}
                 else:
                     av = AttributeValue()
-                    
-                av.trialUnitAttribute = tua
-                av.trialUnit = tu
+                    av.trialUnitAttribute = tua
+                    av.trialUnit = tu
+
+                # Set the attribute value
                 av.value = flds[attIndex[attName]]
-                if not attExists[ind]:
+                if not attExists[ind]:   # We need to add it, if new
                     db.add(av)
-            ln = 3
             line = f.readline()
-        ln = 4
         db.commit()
     except sqlalchemy.exc.SQLAlchemyError as e:
-        #return {'error':"DB error adding attributeValue ({0})".format(e.orig.args)}
-        return {'error':"DB error adding attributeValue ({0})".format(ln)}
+        return {'error':"DB error adding attributeValue ({0})".format(e.orig.args)}
     return None
 

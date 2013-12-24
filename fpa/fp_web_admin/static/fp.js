@@ -126,6 +126,8 @@ function SetTraitFormElements(divName, tType){
     switch(tType) {
     case "0": // integer
     case "1": // decimal
+        break;
+        // type specific stuff here incomplete, should be the same as the Validation button in the traits table
         // Min and Max:
         html = "<p>Minimum: <input type='text' name='min'><p>Maximum: <input type='text' name='max'><br>";
 

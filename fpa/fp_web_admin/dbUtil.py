@@ -59,18 +59,11 @@ def GetTraitInstancesForTrial(sess, trialID):
 def GetTrialAttributes(sess, trialID):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
 
-def GetAttributeValue(sess, trialUnitId, trialUnitAttributeId):
-    try:
-        av = sess.DB().query(AttributeValue).filter(
-            and_(
-                AttributeValue.trialUnit_id == trialUnitId,
-                AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
-            ).one()
-    except sqlalchemy.orm.exc.NoResultFound:
-        return None
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        return None
-    return av
+def GetAttribute(sess, attId):
+    return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.id == attId).one()
+
+def GetAttributeValues(sess, trialUnitAttributeId):
+    return sess.DB().query(AttributeValue).filter(AttributeValue.trialUnitAttribute_id == trialUnitAttributeId).all()
 
 def GetTrialUnits(sess, trialID):
     return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id == trialID).all()
