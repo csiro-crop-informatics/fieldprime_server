@@ -93,6 +93,9 @@ def FrontPage(sess):
     # Administer passwords button:
     r = "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
 
+    # Download app button:
+    r = "<p>" + HtmlButtonLink("Download app", url_for("downloadApp"))
+
     # Traits:
     trials = GetTrials(sess)
     trialListHtml = "No trials yet" if len(trials) < 1 else ""
@@ -436,6 +439,15 @@ def TraitInstanceHtml(sess, tiId):
     for d in data:
         r += "{0} {1} {2} {3} {4}<br>".format(d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.txtValue)
     return r
+
+
+@app.route('/downloadApp/', methods=['GET'])
+@dec_check_session()
+def downloadApp(sess):
+#-----------------------------------------------------------------------
+# Display page for app download.
+#
+    return render_template('downloadApp.html', title='Download')
 
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
