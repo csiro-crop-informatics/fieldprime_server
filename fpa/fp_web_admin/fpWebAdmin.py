@@ -62,7 +62,7 @@ def dec_check_session():
             g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
             if not sess.Valid():
                 return render_template('login.html', title='Field Prime Login')
-
+            g.userName = sess.GetUser()
             return func(sess, *args, **kwargs)
         return inner
     return param_dec
@@ -91,10 +91,10 @@ def FrontPage(sess):
     sess.resetLastUseTime()
 
     # Administer passwords button:
-    r = "<p>" + HtmlButtonLink("Administer Passwords", "{0}?op=user".format(g.rootUrl))
+    r = "<p>" + HtmlButtonLink("Administer Passwords", url_for('userDetails', userName=g.userName))
 
     # Download app button:
-    r = "<p>" + HtmlButtonLink("Download app", url_for("downloadApp"))
+    r += "<p>" + HtmlButtonLink("Download app", url_for("downloadApp"))
 
     # Traits:
     trials = GetTrials(sess)
@@ -109,9 +109,9 @@ def FrontPage(sess):
     sysTraits = GetSysTraits(sess)
     #from fp_common.fpTrait import TraitListHtmlTable
     sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.TraitListHtmlTable(sysTraits)
-    r += HtmlFieldset(HtmlForm(sysTraitListHtml) \
-                          + HtmlButtonLink("Create New System Trait", g.rootUrl + "?op=newTrait&tid=sys"),
-                      "System Traits")
+    r += HtmlFieldset(
+        HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("newTrait", trialId='sys')),
+        "System Traits")
 
     return make_response(render_template('genericPage.html', content=r, title="User: " + sess.GetUser()))
 
@@ -168,8 +168,8 @@ def TrialHtml(sess, trialId):
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
     # Traits:
-    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", "{0}?op=newTrait&tid={1}".format(g.rootUrl, trialId))
-    addSysTraitForm = '<FORM method="POST" action="{0}?op=addSysTrait2Trial&tid={1}">'.format(g.rootUrl, trialId)
+    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("newTrait", trialId=trialId))
+    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('addSysTrait2Trial', trialId=trialId))
     addSysTraitForm += '<input type="submit" value="Submit">'
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
@@ -187,11 +187,44 @@ def TrialHtml(sess, trialId):
     def tis():
         if len(tiList) < 1:
             return "No trait instances found"
-        out = "<ul>"
+        #out = "<ul>"
+        out = ""
+        #startIndex = 0
+        #index = 0
+        lastSeqNum = -1
+        lastTraitId = -1
+        oneSet = []
+
+        # func for use in loop below:
+        def processGroup(oneSet):
+            out = ""
+            if len(oneSet) == 1:
+                out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
+                    url_for('traitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
+            else:
+                out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
+                out += '<ul>'
+                for oti in oneSet:
+                    out += "<li><a href={0}>&nbsp;Sample{1}</a></li>".format(
+                        url_for('traitInstance', traitInstanceId=oti.id), oti.sampleNum)
+                out += '</ul>'
+            return out
+ 
         for ti in tiList:
-            out += "<li><a href={0}?op=traitInstance&tiid={1}>{3}:{2}:{4}</a></li>".format(g.rootUrl, ti.id, ti.trait.caption, ti.trial.name,ti.trial_id)
+            #++index
+            traitId = ti.trait_id
+            seqNum = ti.seqNum
+            if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId):
+                out += processGroup(oneSet)
+                oneSet = []
+            lastSeqNum = seqNum
+            lastTraitId = traitId
+            oneSet.append(ti)
+        if lastSeqNum > -1:
+            out += processGroup(oneSet)
+
         return out + "</ul>"
-    r += HtmlForm(HtmlFieldset(tis, "Trait Instances:"))
+    r += HtmlForm(HtmlFieldset(tis, "Trait Score Sets:"))
 
     #============================================================================
     # Download data section:
@@ -247,86 +280,6 @@ def AddSysTraitTrial(sess, trialId, traitId):
     except mdb.Error, e:
         return  usrdb + " " + qry
     return None
-
-
-def AdminForm(sess, op = '', msg = ''):
-#-----------------------------------------------------------------------
-# Returns Response which is the user admin form. MK - could use template?
-#
-    adminMsg = msg if op == 'newpw' else ''
-    appMsg =  msg if op == 'setAppPassword' else ''
-    #adminMsg = op
-    #appMsg = msg
-    changeAdminPassForm = """
-<FORM method="POST" action="{0}?op=newpw">
-<p> The <i>Admin Password</i> is the password used to login to this web server to
-manage the trials. I.e. the one you must have used at some stage to get to this page.
-<p> Enter your login name: <input type="text" name="login">
-<p> Enter your current password: <input type=password name="password">
-<p>Enter your new password: <input type=password name="newpassword1">
-<p>Confirm your new password: <input type=password name="newpassword2">
-<p> <input type="submit" value="Change Admin Password">
-</FORM>
-</form>
-{1}
-""".format(g.rootUrl, adminMsg)
-    changeAppPassForm = """
-<FORM method="POST" action="{0}?op=setAppPassword">
-<p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
-to allow them to download trial information, and upload trial scores. If this is not configured,
-or if it is blank, then the scoring devices will be able to download and upload without configuring
-a password on the device.
-<p> Note this is not the same as the admin password, (used to login to this web server to
-manage the trials). The app password is less secure than the admin password (it could be retrieved
-from the scoring device with some effort), so this should not be set to the same value as the
-admin password.
-<p> Enter your <i>Admin</i> login name: <input type="text" name="login">
-<p> Enter your current <i>Admin</i> password: <input type=password name="password">
-<p>Enter new <i>Scoring Device</i> password: <input type=password name="newpassword1">
-<p>Confirm new <i>Scoring Device</i> password: <input type=password name="newpassword2">
-<p> <input type="submit" value="Change App Password">
-</FORM>
-</form>
-{1}
-""".format(g.rootUrl, appMsg)
-    r =  HtmlFieldset(changeAdminPassForm, "Reset Admin password") + \
-                    HtmlFieldset(changeAppPassForm, "Reset Scoring Devices Password")
-    return render_template('genericPage.html', content=r, title='Field Prime Login')
-
-
-def ProcessAdminForm(sess, op, form):
-#-----------------------------------------------------------------------
-# Handle login form submission
-# Returns Response for display.
-#
-    suser = form.get("login")
-    password = form.get("password")
-    newpassword1 = form.get("newpassword1")
-    newpassword2 = form.get("newpassword2")
-    if not (suser and password and newpassword1 and newpassword2):
-        return AdminForm(sess, op, "<p>Please fill out all fields</p>")
-    if newpassword1 != newpassword2:
-        return AdminForm(sess, op, "<p>Versions of new password do not match.</p>")
-    if not CheckPassword(suser, password):
-        return LoginForm("Password is incorrect")
-
-    # OK, all good, change their password:
-    try:
-        usrname = 'fp_' + suser
-        usrdb = usrname
-        con = mdb.connect('localhost', usrname, password, usrdb)
-        cur = con.cursor()
-        if op == 'newpw':
-            cur.execute("set password for {0}@localhost = password(\'{1}\')".format(usrname, newpassword1))
-            sess.SetUserDetails(suser, newpassword1)
-        elif op == 'setAppPassword':
-            cur.execute("REPLACE system set name = 'appPassword', value = '{0}'".format(newpassword1))
-            con.commit()
-        con.close()
-
-        return FrontPage(sess)
-    except mdb.Error, e:
-        return LoginForm("Password incorrect")  
 
 
 def LoginForm(msg):
@@ -430,17 +383,6 @@ def CreateNewTrait(sess,  trialId, request):
     return None
 
 
-def TraitInstanceHtml(sess, tiId):
-#-----------------------------------------------------------------------
-# Returns html for data for specified trait instance.
-#
-    data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == tiId).all()
-    r = "Row Column Timestamp numValue textValue<br>"
-    for d in data:
-        r += "{0} {1} {2} {3} {4}<br>".format(d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.txtValue)
-    return r
-
-
 @app.route('/downloadApp/', methods=['GET'])
 @dec_check_session()
 def downloadApp(sess):
@@ -517,22 +459,34 @@ def TrialDataHtml(sess, trialId):
         for ti in tiList:
             type = ti.trait.type
             datums = dbUtil.GetDatum(sess, tu.id, ti.id)
-            if len(datums) == 0:
+            if len(datums) == 0:  # Handle case where no datum:
                 r += SEP * numColsPerValue
-            else:  # While there might be multiple, we get last:
-                # Use the latest:
+            else:  # Data present
+                # There probably shouldn't be multiple, but if there is, we use the most recent.
+                # Could remove this when/if sure that it's one or zero datums.
                 lastDatum = datums[0]
                 for d in datums:
                     if d.timestamp > lastDatum.timestamp: lastDatum = d
                 d = lastDatum
                 # This next switch is no good, have to support trait type polymorphism somehow..
-                if type == 0: value = d.numValue
-                if type == 1: value = d.numValue
-                if type == 2: value = d.txtValue
-                if type == 3: value = d.numValue
-                if type == 4: value = d.numValue
-                if type == 5: value = d.txtValue
+                if type == T_INTEGER: value = d.numValue
+                if type == T_DECIMAL: value = d.numValue
+                if type == T_STRING: value = d.txtValue
+                if type == T_CATEGORICAL:
+                    value = d.numValue
+                    # Need to look up the text for the value:
+                    if value is not None:
+                        value = dbUtil.GetTraitCategory(sess,ti.trait.id , value).caption
+                        # MFK what if image trait? perhaps need ID? note caption cannot be null so ok?
+                if type == T_DATE: value = d.numValue
+                if type == T_PHOTO: value = d.txtValue
+                # Convert None to "NA"
+                if value is None:
+                    value = "NA"
+                #if type == T_LOCATION: value = d.txtValue
+                # Write the value:
                 r += "{0}{1}".format(SEP, value)
+                # Write any other datum fields specified:
                 if showTime:
                     r += "{0}{1}".format(SEP, d.timestamp)
                 if showUser:
@@ -572,6 +526,25 @@ def newTrial(sess):
             return render_template('newTrial.html', title='Create Trial', msg = res['error'])
         else:
             return FrontPage(sess)
+
+@app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
+@dec_check_session()
+def newTrait(sess, trialId):
+#===========================================================================
+# Page for trial creation.
+#
+    if request.method == 'GET':
+        # NB, could be a new sys trait, or trait for a trial. Indicated by tid which will be
+        # either 'sys' or the trial id respectively.
+        return render_template('newTrait.html', trialId = trialId,
+                               traitTypes = TRAIT_TYPE_TYPE_IDS, title='New Trait')
+    if request.method == 'POST':
+        errMsg = CreateNewTrait(sess, trialId, request)
+        if errMsg:
+            return render_template('genericPage.html', content=errMsg, title='Error')
+        if trialId == 'sys':
+            return FrontPage(sess)
+        return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
 
 
 @app.route('/trial/<trialId>', methods=["GET"])
@@ -685,7 +658,7 @@ def traitValidation(sess, trialId, traitId):
         sess.DB().commit()
         return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
 
-@app.route('/trial/<trialId>/attributes/', methods=['GET', 'POST'])
+@app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
 def attributeUpload(sess, trialId):
     if request.method == 'GET':
@@ -698,120 +671,212 @@ def attributeUpload(sess, trialId):
         else:
             return FrontPage(sess)
 
-@app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET', 'POST'])
+@app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
 def attributeDisplay(sess, trialId, attId):
     tua = dbUtil.GetAttribute(sess, attId)
+    r = "Attribute {0}".format(tua.name)
+    r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+    r += "<p><table border='1'>"
+    r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
+    aVals = dbUtil.GetAttributeValues(sess, attId)
+    for av in aVals:
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.trialUnit.row, av.trialUnit.col, av.value)
+    r += "</table>"
+    return render_template('genericPage.html', content=r, title='Attribute')
+
+
+@app.route('/user/<userName>/details/', methods=['GET', 'POST'])
+@dec_check_session()
+def userDetails(sess, userName):
     if request.method == 'GET':
-        r = "Attribute {0}".format(tua.name)
-        r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
-        r += "<p><table border='1'>"
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
-        aVals = dbUtil.GetAttributeValues(sess, attId)
-        for av in aVals:
-            r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.trialUnit.row, av.trialUnit.col, av.value)
-        r += "</table>"
-        return render_template('genericPage.html', content=r, title='Attribute')
+        return AdminForm(sess)
     if request.method == 'POST':
-        return render_template('genericPage.html', content="POST unexpected", title='Error')
+        op = request.args.get('op')
+        return ProcessAdminForm(sess, op, request.form)
+
+
+def AdminForm(sess, op = '', msg = ''):
+#-----------------------------------------------------------------------
+# Returns Response which is the user admin form. MK - could use template?
+#
+    adminMsg = msg if op == 'newpw' else ''
+    appMsg =  msg if op == 'setAppPassword' else ''
+    #adminMsg = op
+    #appMsg = msg
+    changeAdminPassForm = """
+<FORM method="POST" action="{0}?op=newpw">
+<p> The <i>Admin Password</i> is the password used to login to this web server to
+manage the trials. I.e. the one you must have used at some stage to get to this page.
+<p> Enter your login name: <input type="text" name="login">
+<p> Enter your current password: <input type=password name="password">
+<p>Enter your new password: <input type=password name="newpassword1">
+<p>Confirm your new password: <input type=password name="newpassword2">
+<p> <input type="submit" value="Change Admin Password">
+</FORM>
+</form>
+<font color="red">{1}</font>
+""".format(url_for('userDetails', userName=g.userName), adminMsg)
+    changeAppPassForm = """
+<FORM method="POST" action="{0}?op=setAppPassword">
+<p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
+to allow them to download trial information, and upload trial scores. If this is not configured,
+or if it is blank, then the scoring devices will be able to download and upload without configuring
+a password on the device.
+<p> Note this is not the same as the admin password, (used to login to this web server to
+manage the trials). The app password is less secure than the admin password (it could be retrieved
+from the scoring device with some effort), so this should not be set to the same value as the
+admin password.
+<p> Enter your <i>Admin</i> login name: <input type="text" name="login">
+<p> Enter your current <i>Admin</i> password: <input type=password name="password">
+<p>Enter new <i>Scoring Device</i> password: <input type=password name="newpassword1">
+<p>Confirm new <i>Scoring Device</i> password: <input type=password name="newpassword2">
+<p> <input type="submit" value="Change App Password">
+</FORM>
+</form>
+<font color="red">{1}</font>
+""".format(url_for('userDetails', userName=g.userName), appMsg)
+    r =  HtmlFieldset(changeAdminPassForm, "Reset Admin password") + \
+                    HtmlFieldset(changeAppPassForm, "Reset Scoring Devices Password")
+    return render_template('genericPage.html', content=r, title='Field Prime Login')
+
+
+def ProcessAdminForm(sess, op, form):
+#-----------------------------------------------------------------------
+# Handle login form submission
+# Returns Response for display.
+#
+    suser = form.get("login")
+    password = form.get("password")
+    newpassword1 = form.get("newpassword1")
+    newpassword2 = form.get("newpassword2")
+    if not (suser and password and newpassword1 and newpassword2):
+        return AdminForm(sess, op, "<p>Please fill out all fields</p>")
+    if newpassword1 != newpassword2:
+        return AdminForm(sess, op, "<p>Versions of new password do not match.</p>")
+    if not CheckPassword(suser, password):
+        return LoginForm("Password is incorrect")
+
+    # OK, all good, change their password:
+    try:
+        usrname = 'fp_' + suser
+        usrdb = usrname
+        con = mdb.connect('localhost', usrname, password, usrdb)
+        cur = con.cursor()
+        if op == 'newpw':
+            cur.execute("set password for {0}@localhost = password(\'{1}\')".format(usrname, newpassword1))
+            sess.SetUserDetails(suser, newpassword1)
+        elif op == 'setAppPassword':
+            cur.execute("REPLACE system set name = 'appPassword', value = '{0}'".format(newpassword1))
+            con.commit()
+        con.close()
+        return FrontPage(sess)
+    except mdb.Error, e:
+        return LoginForm("Password incorrect")  
+
+@app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
+@dec_check_session()
+def addSysTrait2Trial(sess, trialId):
+    errMsg = AddSysTraitTrial(sess, trialId, request.form['traitID'])
+    if errMsg:
+        return render_template('genericPage.html', content=errMsg, title='Error')
+    # If all is well, display the trial page:
+    return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
+
+
+@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+@dec_check_session()
+def traitInstance(sess, traitInstanceId):
+#-----------------------------------------------------------------------
+# Display the data for specified trait instance. t_integer
+# MFK this should probably display RepSets, not individual TIs
+#
+    data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == traitInstanceId).all()
+
+    r = "Score Set {0}".format("name?")
+    #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+
+    r += "<p><table border='1'>"
+    r += "<tr><td>Row</td><td>Column</td><td>Timestamp</td><td>numValue</td><td>textValue</td></tr>"
+    for d in data:
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}<br></tr>".format(
+            d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.getValue())
+    r += "</table>"
+    return render_template('genericPage.html', content=r, title='Score Set Data')
+
+ 
+
+# def TraitInstanceHtml(sess, tiId):
+# #-----------------------------------------------------------------------
+# # Returns html for data for specified trait instance.
+# #
+#     data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == tiId).all()
+#     r = "Row Column Timestamp numValue textValue<br>"
+#     for d in data:
+#         r += "{0} {1} {2} {3} {4}<br>".format(d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.txtValue)
+#     return r
+
+
+@app.route('/user/<userName>/', methods=['GET'])
+@dec_check_session()
+def userHome(sess, userName):
+    return FrontPage(sess)
 
 @app.route('/', methods=["GET", "POST"])
 def main():
 #-----------------------------------------------------------------------
 # Entry point for FieldPrime web admin.
-# Without arguments it presents a login screen. 
-# As a POST (without an operation), it process the login data.
-# With an operation ("op" argument), it processes the operation.
-#
-# Note we could have different urls for operations, but at the moment this
-# is a quick port from a non-flask version, and this is the way it initially implemented.
+# As a GET it presents a login screen. 
+# As a POST it process the login data.
 #
 # Note the use of sessions. On login, a server side session is established (state is stored
 # in the file system), and the id of this session is sent back to the browser in a cookie,
 # which should be sent back with each subsequent request.
 #
+# Every access via the various app.routes above, should go through decorator dec_check_session
+# which will check there is a valid session current. If not, eg due to timeout, then it redirects
+# to the login screen.
 #
+# Notes:
+# Ideally, perhaps, after a redirect to the login screen, and successful login, we should go directly
+# to where the user was originally trying to get to..
+#
+# Perhaps all of the app.routes should start with a /trial/<trialId>, even when this is not strictly
+# necessary, eg for traitInstance, which doesn't need it since the TI id is unique within db.
+# Or perhaps it should be /user/userName/[trial/trialId]/
+#
+# Might want to change displayed url for some things eg the op to change password ends up displaying
+# the FrontPage, but shows the URL for the op.
 #
     COOKIE_NAME = 'sid'
     sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)
     sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR'])     # Create session object (may be existing session)
     g.rootUrl = url_for(sys._getframe().f_code.co_name)   # Set global variable accessible by templates (to the url for this func)
-    op = request.args.get('op', '')
-    if not op:
-        error = ""
-        if request.method == 'POST':
-            username = request.form.get('username')
-            password = request.form.get('password')
-            if not username:
-                error = 'No username'
-            elif not password:
-                error = 'No password'
-            elif not CheckPassword(username, password):
-                error = 'Invalid password'
-            else:
-                # Good to go, show the user front page:
-                sess.resetLastUseTime()
-                sess.SetUserDetails(username, password)
-                resp = FrontPage(sess)
-                resp.set_cookie(COOKIE_NAME, sess.sid())
-                return resp
+    g.userName = 'unknown'
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if not username:
+            error = 'No username'
+        elif not password:
+            error = 'No password'
+        elif not CheckPassword(username, password):
+            error = 'Invalid password'
+        else:
+            # Good to go, show the user front page:
+            sess.resetLastUseTime()
+            sess.SetUserDetails(username, password)
+            g.userName = username
+            resp = FrontPage(sess)
+            resp.set_cookie(COOKIE_NAME, sess.sid())
+            return resp
 
-        #return render_template('login.html', msg = error, title='Field Prime Login')
-        return LoginForm(error)
-
-    #----------------------------------------------------------
-    # Case operation is specified:
-    #
-
-    # Check session still valid:
-    if not sess.Valid():
-        # Present login form:
-        # Ideally have a redirect after login to current op, if there is one, but would need all form parameters
-        # to be passed thru to the login form (op and any others needed for op, such as tid), and then passed
-        # back by the login form to the login form submit handler. Alternatively perhaps, could bundle the
-        # parameters into the session shelf.
-        return render_template('login.html', title='Field Prime Login')
-
-    if op == 'addSysTrait2Trial':
-        tid = request.args.get('tid')
-        errMsg = AddSysTraitTrial(sess, tid, request.form['traitID'])
-        if errMsg:
-            return render_template('genericPage.html', content=errMsg, title='Error')
-        # If all is well, display the trial page:
-        return render_template('genericPage.html', content=TrialHtml(sess, tid), title='Trial Data')
-
-    elif op == 'user':
-        return AdminForm(sess)
-    elif op == 'newpw' or op == 'setAppPassword':
-        return ProcessAdminForm(sess, op, request.form)
-
-    elif op == 'newTrait':
-        # NB, could be a new sys trait, or trait for a trial. Indicated by tid which will be
-        # either 'sys' or the trial id respectively.
-        return render_template('newTrait.html', trialId = request.args.get("tid"),
-                               traitTypes = TRAIT_TYPE_TYPE_IDS, title='New Trait')
-    elif op == 'createTrait':
-        trialId = request.args.get("tid")
-        errMsg = CreateNewTrait(sess, trialId, request)
-        if errMsg:
-            return render_template('genericPage.html', content=errMsg, title='Error')
-        if trialId == 'sys':
-            return FrontPage(sess)
-        return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
-
-    elif op == 'traitInstance':
-        return render_template('genericPage.html',
-                               content=TraitInstanceHtml(sess, request.args.get("tid")),
-                               title='Trait Instance Data')
-
-    elif op == 'home': # MFK - might be good to have separate URL for homepage .../user/<username> 
-        return FrontPage(sess)
-
-    else:
-        return render_template('genericPage.html', content="No such operation ({0})".format(op), title='Error')
+    return LoginForm(error)
 
 
 ##############################################################################################################
+
 
 
 def LogDebug(hdr, text):

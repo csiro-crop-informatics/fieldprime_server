@@ -7,7 +7,7 @@
 <BODY>
 <h1>Field Prime Server Management</h1>
 {% block homeAndLogin %}
-<a href='{{g.rootUrl}}?op=home'>Home</a>
+<a href="{{ url_for('userHome', userName=g.userName) }}">Home</a>
 <button style="color: red" onClick="window.location='{{g.rootUrl}}'">Login as Different User</button>
 {% endblock %}
 <hr>

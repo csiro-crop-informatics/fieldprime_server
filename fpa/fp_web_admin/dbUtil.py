@@ -9,7 +9,7 @@ import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
-    AttributeValue, TraitInstance, Datum, TrialUnitNote, SYSTYPE_SYSTEM
+    AttributeValue, TraitInstance, Datum, TrialUnitNote, TraitCategory, SYSTYPE_SYSTEM
 
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
@@ -50,11 +50,17 @@ def GetTrial(sess, trialID):
 def GetTrait(sess, traitId):
     return sess.DB().query(Trait).filter(Trait.id == traitId).one()
 
+def GetTraitCategory(sess, traitId, value):
+    return sess.DB().query(TraitCategory).filter(
+        and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
+
 def GetTrialFromDBsess(sess, trialID):
     return sess.DB().query(Trial).filter(Trial.id == trialID).one()
 
 def GetTraitInstancesForTrial(sess, trialID):
-    return sess.DB().query(TraitInstance).filter(TraitInstance.trial_id == trialID).all()
+    return sess.DB().query(TraitInstance).filter(
+        TraitInstance.trial_id == trialID).order_by(
+        TraitInstance.trait_id, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
 def GetTrialAttributes(sess, trialID):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
