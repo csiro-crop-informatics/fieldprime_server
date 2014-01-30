@@ -161,7 +161,6 @@ def TrialHtml(sess, trialId):
         out = "<ul>"
         for att in attList:
             out += "<li><a href={0}>{1}</a></li>".format(url_for("attributeDisplay", trialId=trialId, attId=att.id), att.name)
-            #out += "<li><a href={0}>{1}</a></li>".format("fred", att.name)
         out += "</ul>"
         out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("attributeUpload", trialId=trialId))
         return out
@@ -232,18 +231,25 @@ def TrialHtml(sess, trialId):
 
     # Javascript function to generate the href for the download links.
     # The generated link includes trialId and the user selected output options.
+    # MFK, note we have problem with download link in that if the session has timed
+    # out, the html for the login page will be downloaded instead of the actual data.
+    # Could do a redirect? but have to pass all the params..
+    #
     jscript = """
 <script>
-function tdSelect() {{
+// func to set the href of the passed link to a URL for the trial data as plaintext tsv
+function downloadURL() {{
     var tdms = document.getElementById('tdms');
     var out = '{0}?';
+    // Add parameters indicating what to include in the download
     for (var i=0; i<tdms.length; i++)
         if (tdms[i].selected)
           out += '&' + tdms[i].value + '=1';
     return out;
 }}
 </script>
-""".format(url_for("TrialDataHtml", trialId=trialId))
+""".format(url_for("TrialDataTSV", trialId=trialId))
+
     dl = ""
     dl += jscript
     # Multi select output columns:
@@ -255,8 +261,10 @@ function tdSelect() {{
     dl += "<option value='notes' selected='selected'>Notes</option>";
     dl += "<option value='attributes' selected='selected'>Attributes</option>";
     dl += "</select>";
-    dl += "<br><a href='dummy' onclick='this.href=tdSelect()'>View tab separated score data (or right click and Save Link As to download)</a>".format(trial.name)
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=tdSelect()'>Download tab separated score data (browser permitting)</a>".format(trial.name)
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL()'>"   
+    dl +=     "View tab separated score data (or right click and Save Link As to download)</a>".format(trial.name)
+    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>"
+    dl +=     "Download tab separated score data (browser permitting, Chrome and Firefox OK, IE not yet)</a>".format(trial.name)
     dl += "<br>Note data is TAB separated"
     r += HtmlFieldset(dl, "Score Data:")
 
@@ -394,9 +402,9 @@ def downloadApp(sess):
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
-def TrialDataHtml(sess, trialId):
+def TrialDataTSV(sess, trialId):
 #-----------------------------------------------------------------------
-# Returns trial data as plain text csv form - i.e. for download.
+# Returns trial data as plain text tsv form - i.e. for download.
 # The data is arranged in trial unit rows, and trait instance value and attribute
 # columns.
 #
@@ -468,24 +476,9 @@ def TrialDataHtml(sess, trialId):
                 for d in datums:
                     if d.timestamp > lastDatum.timestamp: lastDatum = d
                 d = lastDatum
-                # This next switch is no good, have to support trait type polymorphism somehow..
-                if type == T_INTEGER: value = d.numValue
-                if type == T_DECIMAL: value = d.numValue
-                if type == T_STRING: value = d.txtValue
-                if type == T_CATEGORICAL:
-                    value = d.numValue
-                    # Need to look up the text for the value:
-                    if value is not None:
-                        value = dbUtil.GetTraitCategory(sess,ti.trait.id , value).caption
-                        # MFK what if image trait? perhaps need ID? note caption cannot be null so ok?
-                if type == T_DATE: value = d.numValue
-                if type == T_PHOTO: value = d.txtValue
-                # Convert None to "NA"
-                if value is None:
-                    value = "NA"
-                #if type == T_LOCATION: value = d.txtValue
+
                 # Write the value:
-                r += "{0}{1}".format(SEP, value)
+                r += "{0}{1}".format(SEP, d.getValue())
                 # Write any other datum fields specified:
                 if showTime:
                     r += "{0}{1}".format(SEP, d.timestamp)
@@ -797,10 +790,10 @@ def traitInstance(sess, traitInstanceId):
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
     r += "<p><table border='1'>"
-    r += "<tr><td>Row</td><td>Column</td><td>Timestamp</td><td>numValue</td><td>textValue</td></tr>"
+    r += "<tr><td>Row</td><td>Column</td><td>Timestamp</td><td>Value</td></tr>"
     for d in data:
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}<br></tr>".format(
-            d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.getValue())
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><br></tr>".format(
+            d.trialUnit.row, d.trialUnit.col, d.timestamp, d.getValue())
     r += "</table>"
     return render_template('genericPage.html', content=r, title='Score Set Data')
 

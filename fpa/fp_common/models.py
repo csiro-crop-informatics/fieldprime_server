@@ -10,10 +10,10 @@
 __all__ = ['Trial', 'TrialUnit', 'TrialUnitAttribute', 'AttributeValue', 'Datum', 'Trait']
 
 
-import sqlalchemy
+#import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relation, sessionmaker
+from sqlalchemy.orm import relation, sessionmaker, Session
 from const import *
 
 ### sqlalchemy CONSTANTS: ######################################################################
@@ -72,6 +72,32 @@ class Datum(DeclarativeBase):
     trialUnit = relation('TrialUnit', primaryjoin='Datum.trialUnit_id==TrialUnit.id')
     traitInstance = relation('TraitInstance', primaryjoin='Datum.traitInstance_id==TraitInstance.id')
 
+    def getValue(self):
+    #------------------------------------------------------------------
+    # Return a value, how the value is stored/represented is type specific.
+    # NB if the database value is null, then "NA" is returned.
+        type = self.traitInstance.trait.type
+        value = '?'
+        if type == T_INTEGER: value = self.numValue
+        if type == T_DECIMAL: value = self.numValue
+        if type == T_STRING: value = self.txtValue
+        if type == T_CATEGORICAL:
+            value = self.numValue
+            # Need to look up the text for the value:
+            if value is not None:
+                session = Session.object_session(self)
+                traitId = self.traitInstance.trait.id
+                trtCat = session.query(TraitCategory).filter(
+                    and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
+                value = trtCat.caption
+        if type == T_DATE: value = self.numValue
+        if type == T_PHOTO: value = self.txtValue
+        #if type == T_LOCATION: value = d.txtValue
+
+        # Convert None to "NA"
+        if value is None:
+            value = "NA"
+        return value
 
 class Trait(DeclarativeBase):
     #def __init__(self, caption, description):

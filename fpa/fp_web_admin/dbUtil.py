@@ -26,19 +26,8 @@ def GetEngine(sess):
 #
     fpUser = 'fp_' + sess.GetUser()
     engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, sess.GetPassword(), fpUser))
-    Session = sessionmaker(bind=engine)
-    dbsess = Session()
-    return dbsess
-
-def GetEngineForApp(user, pw, targetUser):
-#-----------------------------------------------------------------------
-# This should be called once only and the result stored,
-# currently done in session module.
-#
-    dbname = 'fp_' + targetUser
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(user, pw, dbname))
-    Session = sessionmaker(bind=engine)
-    dbsess = Session()
+    Session = sessionmaker(bind=engine)   # Create sessionmaker instance
+    dbsess = Session()                    # Create a session
     return dbsess
 
 def GetTrials(sess):
