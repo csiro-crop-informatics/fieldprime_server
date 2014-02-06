@@ -87,3 +87,6 @@ def GetSysTraits(sess):
 
 def GetTrialUnitNotes(sess, trialUnit_id):
     return sess.DB().query(TrialUnitNote).filter(TrialUnitNote.trialUnit_id == trialUnit_id).all()
+
+def getTraitInstance(sess, traitInstance_id):
+    return sess.DB().query(TraitInstance).filter(TraitInstance.id == traitInstance_id).one()

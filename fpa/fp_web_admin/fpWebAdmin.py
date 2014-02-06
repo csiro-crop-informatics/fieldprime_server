@@ -784,9 +784,11 @@ def traitInstance(sess, traitInstanceId):
 # Display the data for specified trait instance. t_integer
 # MFK this should probably display RepSets, not individual TIs
 #
+    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    typ = ti.trait.type
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ' sample ' + str(ti.sampleNum)
     data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == traitInstanceId).all()
-
-    r = "Score Set {0}".format("name?")
+    r = "Score Set: {0}".format(name)
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
     r += "<p><table border='1'>"
