@@ -192,6 +192,7 @@ def TrialHtml(sess, trialId):
         #index = 0
         lastSeqNum = -1
         lastTraitId = -1
+        lastToken = 'x'
         oneSet = []
 
         # func for use in loop below:
@@ -213,11 +214,13 @@ def TrialHtml(sess, trialId):
             #++index
             traitId = ti.trait_id
             seqNum = ti.seqNum
-            if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId):
+            token = ti.token
+            if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId or token != lastToken):
                 out += processGroup(oneSet)
                 oneSet = []
             lastSeqNum = seqNum
             lastTraitId = traitId
+            lastToken = token
             oneSet.append(ti)
         if lastSeqNum > -1:
             out += processGroup(oneSet)
@@ -786,7 +789,7 @@ def traitInstance(sess, traitInstanceId):
 #
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
     typ = ti.trait.type
-    name = ti.trait.caption + '_' + str(ti.seqNum) + ' sample ' + str(ti.sampleNum)
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ' sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == traitInstanceId).all()
     r = "Score Set: {0}".format(name)
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
@@ -794,7 +797,7 @@ def traitInstance(sess, traitInstanceId):
     r += "<p><table border='1'>"
     r += "<tr><td>Row</td><td>Column</td><td>Timestamp</td><td>Value</td></tr>"
     for d in data:
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><br></tr>".format(
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
             d.trialUnit.row, d.trialUnit.col, d.timestamp, d.getValue())
     r += "</table>"
     return render_template('genericPage.html', content=r, title='Score Set Data')

@@ -49,7 +49,7 @@ def GetTrialFromDBsess(sess, trialID):
 def GetTraitInstancesForTrial(sess, trialID):
     return sess.DB().query(TraitInstance).filter(
         TraitInstance.trial_id == trialID).order_by(
-        TraitInstance.trait_id, TraitInstance.seqNum, TraitInstance.sampleNum).all()
+        TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
 def GetTrialAttributes(sess, trialID):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
