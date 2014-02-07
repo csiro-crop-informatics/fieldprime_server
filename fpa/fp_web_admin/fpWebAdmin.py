@@ -141,7 +141,7 @@ def TrialTraitTableHtml(trial):
 
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
-# Top level page to display/manage a given trial.
+# Returns the HTML for a top level page to display/manage a given trial.
 #
     trial = dbUtil.GetTrial(sess, trialId)
 
