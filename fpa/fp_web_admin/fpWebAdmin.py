@@ -399,8 +399,16 @@ def CreateNewTrait(sess,  trialId, request):
 def downloadApp(sess):
 #-----------------------------------------------------------------------
 # Display page for app download.
+# Provide a link for each .apk file in the static/apk folder
 #
-    return render_template('downloadApp.html', title='Download')
+    from fnmatch import fnmatch
+    apkDir = app.root_path + '/static/apk'
+    apkListHtml = 'To download the app, right click on a link and select "Save Link As":'
+    l = os.listdir(apkDir)
+    for fname in l:
+        if fnmatch(fname, '*.apk'):
+            apkListHtml += '<p><a href="{0}">{1}</a>'.format(url_for('static', filename = 'apk/'+fname), fname)
+    return render_template('genericPage.html', content=apkListHtml, title='Download App')
 
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
