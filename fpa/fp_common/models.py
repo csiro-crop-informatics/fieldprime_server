@@ -12,6 +12,7 @@ __all__ = ['Trial', 'TrialUnit', 'TrialUnitAttribute', 'AttributeValue', 'Datum'
 
 #import sqlalchemy
 from sqlalchemy import *
+import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, sessionmaker, Session
 from const import *
