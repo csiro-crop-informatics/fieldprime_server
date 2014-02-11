@@ -186,3 +186,14 @@ select traitInstance_id, l.name, token, caption, dayCreated, count(*) from datum
 where d.traitInstance_id = t.id and t.trait_id = r.id and t.trial_id = l.id and (t.trial_id in (12,13))
 group by traitInstance_id order by l.name, caption, dayCreated, token
 ;
+
+
+### Generate Latest Score attribute:
+set @trial = 1;
+set @trait = 2;
+set @n = 0;
+select max(timestamp), @N := @N +1 AS rank from datum d, traitInstance ti
+where d.traitInstance_id = ti.id and ti.trial_id = @trial and ti.trait_id = @trait
+group by d.trialUnit_id
+;
+
