@@ -10,3 +10,57 @@ padding: 0;
 	border-bottom: 1px solid #000000;
 	padding: 25px 0px;
 }
+
+/** Logo **/
+#header .logo {
+	float: left;
+	margin-right: 20px;
+}
+#header .logo a {
+	background: url(fpIcon.png) no-repeat center top;
+	color: #000;
+	display: block;
+	font: 15px/30px 'Play';
+	/*height: 20px;
+	width: 76px;*/
+	padding-top: 68px;
+	text-decoration: none;
+	text-transform: uppercase;
+}
+
+#icon {
+    max-height:100%;
+    max-width:100%;
+}
+
+/** Navigation **/
+#navigation {
+	display: inline-block;
+	list-style: none;
+	line-height: 100px;
+	margin: 0;
+	padding: 0;
+}
+#navigation ul {
+	display: inline-block;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+#navigation li {
+	float: left;
+	width: 160px;
+	text-align: center;
+}
+#navigation li a {
+	color: #818181;
+	font-size: 15px;
+	line-height: 30px;
+	text-decoration: none;
+}
+#navigation li a:hover {
+	color: #000;
+}
+#navigation li.active a {
+	color: #f99600;
+}
