@@ -17,6 +17,7 @@ fpa/fp_web_admin/fpTrial.py -text
 fpa/fp_web_admin/fpUtil.py -text
 fpa/fp_web_admin/fpWebAdmin.py -text
 fpa/fp_web_admin/static/fp.js -text
+fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/templates/base.html -text
 fpa/fp_web_admin/templates/downloadApp.html -text
 fpa/fp_web_admin/templates/genericPage.html -text

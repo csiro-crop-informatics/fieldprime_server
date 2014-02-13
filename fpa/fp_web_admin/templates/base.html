@@ -1,16 +1,22 @@
-<HTML>
-<HEAD>
-<script src="{{ url_for('static', filename='fp.js') }}"></script>
-<script>{% block javascript %}{% endblock %}</script>
-<TITLE>{{ title }}</TITLE>
-</HEAD>
-<BODY>
-<h1>FieldPrime Server Management</h1>
-{% block homeAndLogin %}
-<a href="{{ url_for('userHome', userName=g.userName) }}">Home</a>
-<button style="color: red" onClick="window.location='{{g.rootUrl}}'">Login as Different User</button>
-{% endblock %}
-<hr>
+<!doctype html>
+<html>
+<head>
+  <script src="{{ url_for('static', filename='fp.js') }}"></script>
+  <script>{% block javascript %}{% endblock %}</script>
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='fpStyle.css') }}">
+  <title>{{ title }}</title>
+</head>
+<body>
+<!-- Header: -->
+  <div id="header">
+    <h1>FieldPrime Server Management</h1>
+    {% block homeAndLogin %}
+    <a href="{{ url_for('userHome', userName=g.userName) }}">Home</a>
+    <button style="color: red" onClick="window.location='{{g.rootUrl}}'">Login as Different User</button>
+    {% endblock %}
+  </div>
+  <!-- <hr> -->
+  
 
 
 <!-- Body: -->
@@ -19,6 +25,6 @@
 <!-- Footer: -->
 <hr>
 <a href=\"mailto:***REMOVED***?subject=Field Prime Management Server\">Contact Webmaster</a>
-</BODY>
-</HTML>
+</body>
+</html>
 
