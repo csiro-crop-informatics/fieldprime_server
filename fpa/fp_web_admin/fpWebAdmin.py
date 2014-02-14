@@ -5,7 +5,7 @@
 
 import os, sys, time
 import MySQLdb as mdb
-from flask import Flask, request, Response, url_for, render_template, g, make_response
+from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import json, jsonify
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
@@ -48,7 +48,7 @@ LOGIN_TIMEOUT = 300            # Idle time before requiring web user to login ag
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
 
-def dec_check_session():
+def dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
@@ -61,6 +61,8 @@ def dec_check_session():
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
             if not sess.Valid():
+                if returnNoneSess:
+                    return func(None, *args, **kwargs)
                 return render_template('login.html', title='Field Prime Login')
             g.userName = sess.GetUser()
             return func(sess, *args, **kwargs)
@@ -144,6 +146,7 @@ def TrialHtml(sess, trialId):
 # Returns the HTML for a top level page to display/manage a given trial.
 #
     trial = dbUtil.GetTrial(sess, trialId)
+    if trial is None: return None
 
     # Trial name and attributes:
     r = "<p><h3>Trial : {0}</h3>".format(trial.name)
@@ -557,7 +560,10 @@ def showTrial(sess, trialId):
 #===========================================================================
 # Page to display/modify a single trial.
 #
-    return render_template('genericPage.html', content=TrialHtml(sess, trialId), title='Trial Data')
+    trialh = TrialHtml(sess, trialId)
+    if trialh is None:
+        trialh = "No such trial"
+    return render_template('genericPage.html', content=trialh, title='Trial Data')
 
 
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
@@ -827,6 +833,18 @@ def traitInstance(sess, traitInstanceId):
 @dec_check_session()
 def userHome(sess, userName):
     return FrontPage(sess)
+
+@app.route('/logout', methods=["GET"])
+@dec_check_session()
+def logout(sess):
+    sess.close()
+    return redirect(url_for('main'))
+
+@app.route('/info/<pagename>', methods=["GET"])
+@dec_check_session(True)
+def infoPage(sess, pagename):
+    g.rootUrl = url_for('main')
+    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename))
 
 @app.route('/', methods=["GET", "POST"])
 def main():

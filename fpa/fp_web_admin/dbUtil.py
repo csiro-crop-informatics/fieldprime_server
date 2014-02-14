@@ -34,7 +34,14 @@ def GetTrials(sess):
     return sess.DB().query(Trial).all()
 
 def GetTrial(sess, trialID):
-    return sess.DB().query(Trial).filter(Trial.id == trialID).one()
+#-----------------------------------------------------------------------
+# Returns trial object for given id if found, else None.
+    try:
+        return sess.DB().query(Trial).filter(Trial.id == trialID).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        return None
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        return None
 
 def GetTrait(sess, traitId):
     return sess.DB().query(Trait).filter(Trait.id == traitId).one()

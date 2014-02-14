@@ -37,9 +37,9 @@ class WebSess(object):
                 errmsg =  """%s when trying to create the session directory. Create it as '%s'""" % (e.strerror, os.path.abspath(sessFileDir))
                 raise OSError, errmsg
         # create  or open session file:
-        sessFile = sessFileDir + '/sess_' + self.mSid
-        self.data = shelve.open(sessFile, writeback=True)
-        os.chmod(sessFile, 0660)
+        self.sessFile = sessFileDir + '/sess_' + self.mSid
+        self.data = shelve.open(self.sessFile, writeback=True)
+        os.chmod(self.sessFile, 0660)
         
         # Initialize the dbsession:
         # Note the dbsess doesn't get saved in the shelf, we must reconnect each time.
@@ -48,7 +48,10 @@ class WebSess(object):
  
     def close(self): 
     #------------------------------------------------------------------
+        sessFile = self.sessFile
+        print sessFile
         self.data.close()
+        os.remove(sessFile)
 
     def sid(self):
     #------------------------------------------------------------------

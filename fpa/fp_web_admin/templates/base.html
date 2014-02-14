@@ -7,24 +7,54 @@
   <title>{{ title }}</title>
 </head>
 <body>
-<!-- Header: -->
+  <!-- Header: -->
   <div id="header">
-    <h1>FieldPrime Server Management</h1>
-    {% block homeAndLogin %}
-    <a href="{{ url_for('userHome', userName=g.userName) }}">Home</a>
-    <button style="color: red" onClick="window.location='{{g.rootUrl}}'">Login as Different User</button>
-    {% endblock %}
+    <img src="{{ url_for('static', filename='fpIcon.png') }}">
+    <b>CSIRO FieldPrime Server</b><br>
+    <!-->
+    <div id="loginout">
+      {% if not g.userName or g.userName == 'unknown' %} <!-- If there is NO user logged in: -->
+      <FORM method="POST" action="{{ g.rootUrl }}">
+        <b>Signin:</b>
+        <paragraph> User name: <input type="text" name="username">
+          <paragraph> Password: <input type=password name="password">
+            <paragraph> <input type="submit" value="Login">
+      </FORM>
+      {% else %} <!-- If there IS a user logged in: -->
+      Logged in as {{g.userName}}
+      <button  onClick="window.location=' {{ url_for('logout') }}'">Logout</button>
+      {% endif %}
+    </div>
+<!-- class="active" -->
+	<ul id="headerMenu">
+      {% if not g.userName or g.userName == 'unknown' %} <!-- If there is NO user logged in: -->
+	  <li class="active"><a href="/">Home</a></li>
+	  <li  {% block news %}{% endblock %}><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
+	  <li><a href="about.html">About</a></li>
+	  <li><a href="contact.html">Contact</a></li>
+      {% else %} <!-- If there IS a user logged in: -->
+	  <li class="active"><a href="{{ url_for('userHome', userName=g.userName) }}">Home</a></li>
+	  <li><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
+	  <li><a href="about.html">About</a></li>
+	  <li><a href="contact.html">Contact</a></li>
+      {% endif %}
+    <div>
+      {% block homeAndLogin %}
+      <!--   Not used now, replaced by login stuff in header:
+      <a href="{{ url_for('userHome', userName=g.userName) }}">Home</a>
+      <button style="color: red" onClick="window.location='{{g.rootUrl}}'">Login as Different User</button>
+      -->
+      {% endblock %}
+    </div>
   </div>
   <!-- <hr> -->
-  
-
 
 <!-- Body: -->
 {% block content %}{% endblock %}
 
 <!-- Footer: -->
 <hr>
-<a href=\"mailto:***REMOVED***?subject=Field Prime Management Server\">Contact Webmaster</a>
+<!-- <a href=\"mailto:x.y@csiro.au?subject=Field Prime Management Server\">Contact Webmaster</a> -->
 </body>
 </html>
 
