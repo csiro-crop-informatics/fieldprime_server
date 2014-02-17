@@ -42,7 +42,7 @@ app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
-LOGIN_TIMEOUT = 300            # Idle time before requiring web user to login again
+LOGIN_TIMEOUT = 3          # Idle time before requiring web user to login again
 
 
 #############################################################################################
@@ -63,7 +63,8 @@ def dec_check_session(returnNoneSess=False):
             if not sess.Valid():
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
-                return render_template('login.html', title='Field Prime Login')
+                return render_template('sessError.html', title='Field Prime Login',
+                                       msg='Your session has timed out - please login again.')
             g.userName = sess.GetUser()
             return func(sess, *args, **kwargs)
         return inner
@@ -844,7 +845,7 @@ def logout(sess):
 @dec_check_session(True)
 def infoPage(sess, pagename):
     g.rootUrl = url_for('main')
-    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename))
+    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
 @app.route('/', methods=["GET", "POST"])
 def main():
@@ -895,8 +896,9 @@ def main():
             resp = FrontPage(sess)
             resp.set_cookie(COOKIE_NAME, sess.sid())
             return resp
+        return render_template('sessError.html', msg=error, title='FieldPrime Login')
 
-    return LoginForm(error)
+    return infoPage('fieldprime')
 
 
 ##############################################################################################################
@@ -915,6 +917,7 @@ def LogDebug(hdr, text):
 
 # For local testing:
 if __name__ == '__main__':
-    app.config['SESS_FILE_DIR'] = '/home/***REMOVED***/fpserver/fpa/fp_web_admin/tmp2'
+    from os.path import expanduser
+    app.config['SESS_FILE_DIR'] = expanduser("~") + '/fpserver/fpa/fp_web_admin/tmp2'
     app.run(debug=True, host='0.0.0.0')
 
