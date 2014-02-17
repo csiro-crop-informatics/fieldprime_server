@@ -104,13 +104,16 @@ input[type=submit] {
 	font-size: 12px;
 }
 
+/*** news: ********************************/
 .news {
 	list-style: none;
 }
+/*
 .news ul {
 	list-style: none;
 }
-.news li {
+*/
+.news>li {
 	border-top: 1px solid #d5d5d5;
 	padding: 24px 30px 0 100px;
 	position: relative;
@@ -125,6 +128,8 @@ input[type=submit] {
 	display: block;
 	text-align: right;
 }
+
+/*******************************************/
 
 h1 {
 	color: #3e3e3e;
