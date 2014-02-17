@@ -42,7 +42,7 @@ app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
-LOGIN_TIMEOUT = 3          # Idle time before requiring web user to login again
+LOGIN_TIMEOUT = 300          # Idle time before requiring web user to login again
 
 
 #############################################################################################
