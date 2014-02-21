@@ -1,0 +1,25 @@
+{#
+ # Page for display of a screen of data for a logged in user
+ # There is a navigation area (currently a left sidebar, but
+ # that may change), and a main area.
+ # The navigation area content should be provided in a variable "navContent"
+ # The main area content can be be provided either in a variable "content"
+ # or in a template block "dataContent" (eg if you are using a template,
+ # extending this one, to provide the main area content)
+ #}
+{% extends "base.html" %}
+{% block content %}
+<div id="dataWrapper">
+
+  <div id="dataLeftBar">
+    {{navContent|safe}}
+  </div>
+
+  <div id="dataContent">
+  {% block dataContent %}
+    {{content|safe}}
+  {% endblock %}
+  </div>
+
+</div>
+{% endblock %}

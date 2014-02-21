@@ -1,0 +1,44 @@
+{% extends "dataPage.html" %}
+
+{% block dataContent %}
+
+<fieldset><legend><h3>Reset Admin password</h3></legend>
+  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=newpw">
+    <p> The <i>Admin Password</i> is the password used to login to this web server to
+      manage the trials. I.e. the one you must have used at some stage to get to this page.
+    <p> Enter your login name: <input type="text" name="login">
+    <p> Enter your current password: <input type=password name="password">
+    <p>Enter your new password: <input type=password name="newpassword1">
+    <p>Confirm your new password: <input type=password name="newpassword2">
+    <p> <input type="submit" value="Change Admin Password">
+  </form>
+  {% if op == 'newpw' %}
+  <font color="red">{{errMsg}}</font>
+  {% endif %}
+</fieldset>
+
+<fieldset><legend><h3>Reset Scoring Devices Password</h3></legend>
+  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=setAppPassword">
+    <p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
+      to allow them to download trial information, and upload trial scores. If this is not configured,
+      or if it is blank, then the scoring devices will be able to download and upload without configuring
+      a password on the device.
+    <p> Note this is not the same as the admin password, (used to login to this web server to
+      manage the trials). The app password is less secure than the admin password (it could be retrieved
+      from the scoring device with some effort), so this should not be set to the same value as the
+      admin password.
+    <p> Enter your <i>Admin</i> login name: <input type="text" name="login">
+    <p> Enter your current <i>Admin</i> password: <input type=password name="password">
+    <p>Enter new <i>Scoring Device</i> password: <input type=password name="newpassword1">
+    <p>Confirm new <i>Scoring Device</i> password: <input type=password name="newpassword2">
+    <p> <input type="submit" value="Change App Password">
+  </form>
+  {% if op == 'setAppPassword' %}
+  <font color="red">{{errMsg}}</font>
+  {% endif %}
+</fieldset>
+
+{% endblock %}
+
+
+

@@ -22,13 +22,14 @@ fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/templates/about.html -text
 fpa/fp_web_admin/templates/base.html -text
 fpa/fp_web_admin/templates/contact.html -text
+fpa/fp_web_admin/templates/dataPage.html -text
 fpa/fp_web_admin/templates/downloadApp.html -text
 fpa/fp_web_admin/templates/fieldprime.html -text
 fpa/fp_web_admin/templates/genericPage.html -text
-fpa/fp_web_admin/templates/login.html -text
 fpa/fp_web_admin/templates/newTrait.html -text
 fpa/fp_web_admin/templates/newTrial.html -text
 fpa/fp_web_admin/templates/news.html -text
+fpa/fp_web_admin/templates/profile.html -text
 fpa/fp_web_admin/templates/sessError.html -text
 fpa/fp_web_admin/templates/uploadAttributes.html -text
 fpa/fp_web_admin/websess.py -text

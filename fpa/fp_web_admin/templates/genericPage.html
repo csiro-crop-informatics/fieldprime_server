@@ -1,4 +1,17 @@
+{#  MFK Not used any more attow.
+ # Page for display of a screen of data for a logged in user
+ # There is a navigation area (currently a left sidebar, but
+ # that may change), and a main area. The contents of these
+ # should be provided in variables navContent and content.
+ #}
 {% extends "base.html" %}
 {% block content %}
+<div id="dataWrapper">
+<div id="dataLeftBar">
+  {{navContent|safe}}
+</div>
+<div id="dataContent">
 {{content|safe}}
+</div>
+</div>
 {% endblock %}

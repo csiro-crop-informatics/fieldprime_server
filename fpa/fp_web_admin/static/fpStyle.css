@@ -234,3 +234,37 @@ p a {
 	line-height: 36px;
 	padding: 18px 0;
 }
+
+/*** footer: ********************************/
+#footer {
+    clear:both;
+	background-color: #eee;
+	border-top: 1px solid #000000;
+	padding: 10px 0px;
+    height:30px;
+}
+
+/*** data pages: ******************************************/
+
+#dataWrapper {
+    /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
+    overflow: hidden;
+    /*border: solid 1px*/
+}
+
+#dataLeftBar {
+    width: 150px;
+    float: left;
+    word-wrap: break-word;
+    margin-top: 20px;
+    margin-bottom: 50px;
+    /* background: #E00; 
+    border-right: 2px solid #AAA; */
+}
+
+#dataContent {
+    float: none;
+    padding: 15px;
+    word-wrap: normal;
+    overflow: hidden; 
+}

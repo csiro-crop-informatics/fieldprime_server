@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "dataPage.html" %}
 
 {% block javascript %}
 function validateTrialForm()
@@ -16,8 +16,7 @@ function validateTrialForm()
 }
 {% endblock %}
 
-
-{% block content %}
+{% block dataContent %}
 <html><body>
 <font color="red">{{msg}}</font>
 <h2>Create New Trial</h2>

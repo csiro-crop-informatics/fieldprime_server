@@ -7,7 +7,8 @@
   <title>{{ title }}</title>
 </head>
 <body>
-  <!-- Header: -->
+
+  <!-- Header: ------------------------------------------------------------------------------>
   <div id="header">
     <img src="{{ url_for('static', filename='fpIcon.png') }}">
     <b>CSIRO FieldPrime Server</b><br>
@@ -51,12 +52,14 @@
   </div>
   <!-- <hr> -->
 
-<!-- Body: -->
+<!-- Content: ------------------------------------------------------------------------------->
 {% block content %}{% endblock %}
 
-<!-- Footer: -->
-<hr>
-<!-- <a href=\"mailto:x.y@csiro.au?subject=Field Prime Management Server\">Contact Webmaster</a> -->
+<!-- Footer: -------------------------------------------------------------------------------->
+<div id="footer">
+  &copy; 2014 CSIRO
+</div>
+
 </body>
 </html>
 
