@@ -247,24 +247,27 @@ p a {
 /*** data pages: ******************************************/
 
 #dataWrapper {
-    /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
     overflow: hidden;
+    display: table;  /* Using table so as to get equal column height. */
     /*border: solid 1px*/
+    /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
 }
 
 #dataLeftBar {
     width: 150px;
-    float: left;
+    display: table-cell;   
+    vertical-align: top;    /* without this, vertical position is affected by html in dataContent (when using tables for equal column heights) */
     word-wrap: break-word;
-    margin-top: 20px;
-    margin-bottom: 50px;
-    /* background: #E00; 
-    border-right: 2px solid #AAA; */
+    background: #eee;
+    padding-top: 20px;
+    padding-bottom: 50px;
+    /*float: left; an alternative to tables, but don't get equal column height*/
 }
 
 #dataContent {
-    float: none;
+    display: table-cell;
     padding: 15px;
     word-wrap: normal;
     overflow: hidden; 
+    /* float: none; an alternative to tables, but don't get equal column height*/
 }
