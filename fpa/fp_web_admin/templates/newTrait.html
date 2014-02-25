@@ -3,24 +3,25 @@
 {% block dataContent %}
 <h2>Create New Trait</h2>
 <div id="attributeData" data-attributes="{{attributesList}}">
-<form enctype="multipart/form-data"
-  onsubmit="return ValidateTraitForm()"
-  method="post">
+  <form enctype="multipart/form-data"
+        onsubmit="return ValidateTraitForm()"
+        method="post">
 
-Caption: <input type="text" id='cap_id' name="caption">
-<p>Description: <input type="text" name="description">
-<p><div id="traitDiv">
-Trait Type: <select id='traitType' name='type'
-onchange="SetTraitFormElements('traitDiv',this.options[selectedIndex].value)">
-<option value="-1" name="none">..Select a Trait Type..</option>
-{% for typ, value in traitTypes.iteritems() %}
-  <option value="{{value|e}}" name={{typ|e}}>{{typ|e}}</option>
-{% endfor %}
+    Caption: <input type="text" id='cap_id' name="caption">
+    <p>Description: <input type="text" name="description">
+    <p><div id="traitDiv">
+        Trait Type: <select id='traitType' name='type'
+                            onchange="SetTraitFormElements('traitDiv',this.options[selectedIndex].value)">
+          <option value="-1" name="none">..Select a Trait Type..</option>
+          {% for typ, value in traitTypes.iteritems() %}
+          <option value="{{value|e}}" name={{typ|e}}>{{typ|e}}</option>
+          {% endfor %}
 
-</select></div>
-<p><input type="submit" value="Create Trait">
+      </select></div>
+    <p><input type="submit" value="Create Trait">
 
-</form>
+  </form>
+</div>
 {% endblock %}
 
 

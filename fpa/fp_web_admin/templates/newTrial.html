@@ -17,7 +17,6 @@ function validateTrialForm()
 {% endblock %}
 
 {% block dataContent %}
-<html><body>
 <font color="red">{{msg}}</font>
 <h2>Create New Trial</h2>
 <form enctype="multipart/form-data"
@@ -30,5 +29,4 @@ Acronym: <input type="text" name="acronym"><br>
 <p>Trial Plan CSV File: <input type="file" id='uploadFile_id' name="file"></p>
 <p><input type="submit" value="Upload"></p>
 </form>
-</body></html>
 {% endblock %}
