@@ -2,6 +2,18 @@
 
 {% block dataContent %}
 
+<fieldset><legend><h3>Contact Details</h3></legend>
+  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=contact">
+    <p> Name and email address of a contact for this account:
+    <p> Contact name: <input type="text" name="contactName" style="width: 200px;" value="{{contactName}}">
+    <p> Contact email: <input type=text name="contactEmail" style="width: 200px;" value="{{contactEmail}}">
+    <p> <input type="submit" value="Save Contact Details">
+  </form>
+  {% if op == 'contact' %}
+  <font color="red">{{errMsg}}</font>
+  {% endif %}
+</fieldset>
+
 <fieldset><legend><h3>Reset Admin password</h3></legend>
   <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=newpw">
     <p> The <i>Admin Password</i> is the password used to login to this web server to

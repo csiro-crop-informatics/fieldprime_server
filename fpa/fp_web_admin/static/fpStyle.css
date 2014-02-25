@@ -12,6 +12,14 @@ input[type=submit] {
     color:green;
 }
 
+/*
+ * not_too_wide
+ * Eg to limit length of text lines.
+ */
+.not_too_wide {
+    max-width: 500px;
+}
+
 /*** header: *********************************************************/
 
 #header {

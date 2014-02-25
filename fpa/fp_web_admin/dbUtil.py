@@ -4,20 +4,22 @@
 #
 #
 
-
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
-    AttributeValue, TraitInstance, Datum, TrialUnitNote, TraitCategory, SYSTYPE_SYSTEM
-
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation
 
+from functools import wraps
 
-#-- CONSTANTS: ---------------------------------------------------------------------
+from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
+    AttributeValue, TraitInstance, Datum, TrialUnitNote, TraitCategory, \
+    SYSTYPE_SYSTEM, System
 
+
+#############################################################################################
+###  FUNCTIONS: #############################################################################
 
 def GetEngine(sess):
 #-----------------------------------------------------------------------
@@ -30,18 +32,42 @@ def GetEngine(sess):
     dbsess = Session()                    # Create a session
     return dbsess
 
+def oneException2None(func):
+#--------------------------------------------------------------------
+# Decorator used for sqlalchemy one() queries, which throw exceptions if
+# there isn't exactly one result. This function traps the exceptions, it
+# returns the result if exactly one is found, else None.
+#
+    @wraps(func)
+    def with_traps(*args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        except sqlalchemy.orm.exc.NoResultFound:
+            return None
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            return None
+        return ret
+    return with_traps
+
 def GetTrials(sess):
     return sess.DB().query(Trial).all()
 
+@oneException2None
 def GetTrial(sess, trialID):
 #-----------------------------------------------------------------------
 # Returns trial object for given id if found, else None.
-    try:
-        return sess.DB().query(Trial).filter(Trial.id == trialID).one()
-    except sqlalchemy.orm.exc.NoResultFound:
-        return None
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        return None
+    return sess.DB().query(Trial).filter(Trial.id == trialID).one()
+
+@oneException2None
+def getSystemValue(sess, name):
+    return sess.DB().query(System).filter(System.name == name).one().value
+
+def setSystemValue(sess, name, value):
+#-----------------------------------------------------------------------
+# Insert or update new system value.
+    sysItem = System(name, value)
+    sysItem = sess.DB().merge(sysItem)
+    sess.DB().commit()
 
 def GetTrait(sess, traitId):
     return sess.DB().query(Trait).filter(Trait.id == traitId).one()
@@ -64,18 +90,13 @@ def GetTrialAttributes(sess, trialID):
 def GetAttribute(sess, attId):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.id == attId).one()
 
+@oneException2None
 def GetAttributeValue(sess, trialUnitId, trialUnitAttributeId):
-    try:
-        av = sess.DB().query(AttributeValue).filter(
-            and_(
-                AttributeValue.trialUnit_id == trialUnitId,
-                AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
-            ).one()
-    except sqlalchemy.orm.exc.NoResultFound:
-        return None
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        return None
-    return av
+    return sess.DB().query(AttributeValue).filter(
+        and_(
+            AttributeValue.trialUnit_id == trialUnitId,
+            AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
+        ).one()
 
 def GetAttributeValues(sess, trialUnitAttributeId):
     return sess.DB().query(AttributeValue).filter(AttributeValue.trialUnitAttribute_id == trialUnitAttributeId).all()

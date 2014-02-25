@@ -101,10 +101,6 @@ class Datum(DeclarativeBase):
         return value
 
 class Trait(DeclarativeBase):
-    #def __init__(self, caption, description):
-    #    self.caption = caption
-    #    self.description = description
-
     __tablename__ = 'trait'
     __table_args__ = {}
 
@@ -211,6 +207,9 @@ class System(DeclarativeBase):
     __table_args__ = {}
     name = Column(u'name', VARCHAR(length=63), primary_key=True, nullable=False)
     value = Column(u'value', VARCHAR(length=255), nullable=True)
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 class TrialUnitNote(DeclarativeBase):
     __tablename__ = 'trialUnitNote'

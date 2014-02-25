@@ -3,10 +3,15 @@
 {% block dataContent %}
 <font color="red">{{msg}}</font>
 <h2>Reload Attributes</h2>
-Select a file containing attribute data.
-The file should have the same format as the original trial upload file.
-In particular, it must have columns for the trial unit row and column numbers, and these
-must match trial units that were created in the initial upload.
+<div class=not_too_wide>
+Select a file containing attribute data for the trial.
+The file should have a similar format as the original trial upload file.
+It should be CSV, with a single header row, providing a name for each column,
+and then one line for each node in the trial (for which attributes are to be
+added). There must be columns for "row" and "column", to identify each node.
+And every other column will be assumed to be an attribute to be either added,
+or to overwrite an existing attribute of the same name. 
+</div>
 <form enctype="multipart/form-data"
   onsubmit="return ValidateTraitForm()"
   method="post">

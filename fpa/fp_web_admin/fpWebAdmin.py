@@ -71,14 +71,22 @@ def dec_check_session(returnNoneSess=False):
     return param_dec
 
 
+def dbUserName(username):
+#-----------------------------------------------------------------------
+# Map username to the database username.
+    return 'fp_' + username
+
+def dbName(username):
+#-----------------------------------------------------------------------
+# Map username to the database name.
+    return 'fp_' + username
+
 def CheckPassword(user, password):
 #-----------------------------------------------------------------------
 # Validate user/password, returning boolean indicating success
 #
     try:
-        usrname = 'fp_' + user
-        usrdb = usrname
-        con = mdb.connect('localhost', usrname, password, usrdb);
+        con = mdb.connect('localhost', dbUserName(user), password, dbName(user));
         cur = con.cursor()
         cur.execute("SELECT VERSION()")
         ver = cur.fetchone()
@@ -172,7 +180,7 @@ def TrialHtml(sess, trialId):
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
     def tis():
         if len(tiList) < 1:
-            return "No trait instances found"
+            return "No trait score sets yet"
         #out = "<ul>"
         out = ""
         #startIndex = 0
@@ -252,9 +260,9 @@ function downloadURL() {{
     dl += "<option value='attributes' selected='selected'>Attributes</option>";
     dl += "</select>";
     dl += "<br><a href='dummy' onclick='this.href=downloadURL()'>"   
-    dl +=     "View tab separated score data (or right click and Save Link As to download)</a>".format(trial.name)
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>"
-    dl +=     "Download tab separated score data (browser permitting, Chrome and Firefox OK, IE not yet)</a>".format(trial.name)
+    dl +=     "View tab separated score data (or right click and Save Link As to download)</a>"
+    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>".format(trial.name)
+    dl +=     "Download tab separated score data (browser permitting, Chrome and Firefox OK, IE not yet)</a>"
     dl += "<br>Note data is TAB separated"
     r += HtmlFieldset(dl, "Score Data:")
 
@@ -339,8 +347,8 @@ def AddSysTraitTrial(sess, trialId, traitId):
     if traitId == "0":
         return "Select a system trait to add"
     try:
-        usrname = 'fp_' + sess.GetUser()
-        usrdb = usrname
+        usrname = dbUserName(sess.GetUser())
+        usrdb = dbName(sess.GetUser())
         qry = "insert into trialTrait (trial_id, trait_id) values ({0}, {1})".format(trialId, traitId)
         con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
         cur = con.cursor()
@@ -736,27 +744,41 @@ def attributeDisplay(sess, trialId, attId):
 @app.route('/user/<userName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
 def userDetails(sess, userName):
+    title = "Profile"
     if request.method == 'GET':
-        return dataTemplatePage(sess, 'profile.html', title='Admin')
+        cname = dbUtil.getSystemValue(sess, 'contactName') or ''
+        cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
+        return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title)
     if request.method == 'POST':
         op = request.args.get('op')
         form = request.form
+        if op == 'contact':
+            contactName = form.get('contactName')
+            contactEmail = form.get('contactEmail')
+            if not (contactName and contactEmail):
+                return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
+            else:
+                dbUtil.setSystemValue(sess, 'contactName', contactName)
+                dbUtil.setSystemValue(sess, 'contactEmail', contactEmail)
+                return dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
+                                        errMsg="Contact details saved", title=title)
+
         suser = form.get("login")
         password = form.get("password")
         newpassword1 = form.get("newpassword1")
         newpassword2 = form.get("newpassword2")
         if not (suser and password and newpassword1 and newpassword2):
-            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title='Admin')
+            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
         if newpassword1 != newpassword2:
-            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title='Admin')
+            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
         if not CheckPassword(suser, password):
             sess.close()
             return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
 
         # OK, all good, change their password:
         try:
-            usrname = 'fp_' + suser
-            usrdb = usrname
+            usrname = dbUserName(suser)
+            usrdb = dbName(suser)
             con = mdb.connect('localhost', usrname, password, usrdb)
             cur = con.cursor()
             msg = ''

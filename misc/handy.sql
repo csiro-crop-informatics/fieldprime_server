@@ -197,3 +197,104 @@ where d.traitInstance_id = ti.id and ti.trial_id = @trial and ti.trait_id = @tra
 group by d.trialUnit_id
 ;
 
+
+### Within group histograms of categorical scores: #######################################
+## Aim is to make a table that gives a histogram of the categorical values 
+## collect for each group (family here) where the group is defined by an attribute.
+## Bit of a brute force method here, relying on the fact that we only have a small number
+## of categories - might be easier to export out to csv and do in perl.
+## Note it is easy enough to get the counts in separate rows. Just group by family, value
+## and get count.
+
+drop table fertile;
+drop table sterile;
+drop table half;
+drop table na;
+drop table families;
+drop table fertResult;
+
+set @tuaId = 78;
+set @attName = 'family';
+
+CREATE TEMPORARY TABLE IF NOT EXISTS fertile AS (
+select value family, count(*) fertile
+from  attributeValue a left join datum d
+on d.trialUnit_id = a.trialUnit_id
+where
+  a.trialUnitAttribute_id = @tuaId
+  and numValue = 1
+group by value
+order by value)
+;
+CREATE TEMPORARY TABLE IF NOT EXISTS sterile AS (
+select value family, count(*) sterile
+from  attributeValue a left join datum d
+on d.trialUnit_id = a.trialUnit_id
+where
+  a.trialUnitAttribute_id = @tuaId
+  and numValue = 2
+group by value
+order by value)
+;
+CREATE TEMPORARY TABLE IF NOT EXISTS half AS (
+select value family, count(*) half
+from  attributeValue a left join datum d
+on d.trialUnit_id = a.trialUnit_id
+where
+  a.trialUnitAttribute_id = @tuaId
+  and numValue = 3
+group by value
+order by value)
+;
+CREATE TEMPORARY TABLE na AS (
+select value family, count(*) na
+from  attributeValue a join datum d
+on d.trialUnit_id = a.trialUnit_id
+where
+  a.trialUnitAttribute_id = @tuaId
+  and numValue is null
+group by value
+order by value)
+;
+
+create temporary table families as (
+select distinct value family from attributeValue a
+where a.trialUnitAttribute_id = @tuaId
+order by value);
+
+select count(*) from families;
+select count(*) from fertile;
+select count(*) from sterile;
+select count(*) from half;
+select count(*) from na;
+
+# Combine results into a single table:
+create temporary table fertResult as (
+select families.family, fertile, sterile, half, na from families
+  left join fertile using (family)
+  left join sterile using (family)
+  left join half using (family)
+  left join na using (family)
+order by family);
+
+# Write out to /tmp converting nulls to zero (note out file will not have headers)
+select family, coalesce(fertile,0) fertile,
+  coalesce(sterile,0) sterile, coalesce(half,0) half,
+  coalesce(na, 0) na from fertResult into outfile '/tmp/fertResults.csv'
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n';
+
+
+## seems some family has more than 12
+select value, count(*) from attributeValue a
+where a.trialUnitAttribute_id = 76
+group by value
+having count(*) > 12;
+
+
+### Create new attribute from old:
+insert into trialUnitAttribute (trial_id, name) values (16, 'grandFamily')
+# now get NEWID of newly created attribute:
+insert into attributeValue
+  select 78, trialUnit_id, substring(value,1,6)
+  from attributeValue where trialUnitAttribute_id = 76;
