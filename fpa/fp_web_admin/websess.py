@@ -40,11 +40,6 @@ class WebSess(object):
         self.sessFile = sessFileDir + '/sess_' + self.mSid
         self.data = shelve.open(self.sessFile, writeback=True)
         os.chmod(self.sessFile, 0660)
-        
-        # Initialize the dbsession:
-        # Note the dbsess doesn't get saved in the shelf, we must reconnect each time.
-        #if not forceNew: self.mDBsess = dbUtil.GetEngine(self)
-
  
     def close(self): 
     #------------------------------------------------------------------
@@ -95,6 +90,7 @@ class WebSess(object):
 
     def DB(self):
     #------------------------------------------------------------------
+    # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
             self.mDBsess = GetEngine(self)
         return self.mDBsess

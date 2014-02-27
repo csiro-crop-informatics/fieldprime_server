@@ -87,9 +87,6 @@ def CheckPassword(user, password):
 #
     try:
         con = mdb.connect('localhost', dbUserName(user), password, dbName(user));
-        cur = con.cursor()
-        cur.execute("SELECT VERSION()")
-        ver = cur.fetchone()
         return True
     except mdb.Error, e:
         return False
@@ -340,7 +337,7 @@ def showTrial(sess, trialId):
     return trialPage(sess, trialId)
 
 
-def AddSysTraitTrial(sess, trialId, traitId):
+def AddSysTrialTrait(sess, trialId, traitId):
 #-----------------------------------------------------------------------
 # Return error string, None for success
 #
@@ -349,10 +346,9 @@ def AddSysTraitTrial(sess, trialId, traitId):
     try:
         usrname = dbUserName(sess.GetUser())
         usrdb = dbName(sess.GetUser())
-        qry = "insert into trialTrait (trial_id, trait_id) values ({0}, {1})".format(trialId, traitId)
         con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
         cur = con.cursor()
-        cur.execute(qry)
+        cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
         con.commit()
     except mdb.Error, e:
         return  usrdb + " " + qry
@@ -783,11 +779,11 @@ def userDetails(sess, userName):
             cur = con.cursor()
             msg = ''
             if op == 'newpw':
-                cur.execute("set password for {0}@localhost = password(\'{1}\')".format(usrname, newpassword1))
+                cur.execute("set password for %s@localhost = password(%s)", (usrname, newpassword1))
                 sess.SetUserDetails(suser, newpassword1)
                 msg = 'Admin password reset successfully'
             elif op == 'setAppPassword':
-                cur.execute("REPLACE system set name = 'appPassword', value = '{0}'".format(newpassword1))
+                cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)
                 con.commit()
                 msg = 'Scoring password reset successfully'
             con.close()
@@ -816,7 +812,7 @@ def systemTraits(sess, userName):
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def addSysTrait2Trial(sess, trialId):
-    errMsg = AddSysTraitTrial(sess, trialId, request.form['traitID'])
+    errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
     if errMsg:
         return dataPage(sess, content=errMsg, title='Error')
     # If all is well, display the trial page:
