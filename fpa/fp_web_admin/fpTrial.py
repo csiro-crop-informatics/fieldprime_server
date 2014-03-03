@@ -60,7 +60,7 @@ def ParseTrialUnitCSV(f):
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
             err += "Bad line was: " + line
             return {'error':err}
-        if not (flds[fixIndex[ROW]].isdigit and flds[fixIndex[ROW]].isdigit):
+        if not (flds[fixIndex[ROW]].isdigit and flds[fixIndex[COL]].isdigit):
             return {'error':"Error - row or col field is not integer, line {0}, aborting".format(rowNum)}
         #print line + "<br>"
         rowNum += 1
