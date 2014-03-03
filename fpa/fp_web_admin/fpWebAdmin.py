@@ -596,7 +596,7 @@ def newTrait(sess, trialId):
     if request.method == 'GET':
         # NB, could be a new sys trait, or trait for a trial. Indicated by trialId which will be
         # either 'sys' or the trial id respectively.
-        return dataTemplatePage(sess, 'newTrait.html', trialId = trialId, traitTypes = TRAIT_TYPE_TYPE_IDS, title='New Trait')
+        return dataTemplatePage(sess, 'newTrait.html', trialId=trialId, traitTypes=TRAIT_TYPE_TYPE_IDS, title='New Trait')
 
     if request.method == 'POST':
         errMsg = CreateNewTrait(sess, trialId, request)
