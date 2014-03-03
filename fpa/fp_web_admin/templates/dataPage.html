@@ -15,11 +15,14 @@
     {{navContent|safe}}
   </div>
 
-  <div id="dataContent">
+  <div class="dataContent">
   {% block dataContent %}
     {{content|safe}}
   {% endblock %}
   </div>
+
+  {% block dataHelp %}
+  {% endblock %}
 
 </div>
 {% endblock %}
