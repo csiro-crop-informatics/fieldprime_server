@@ -53,9 +53,10 @@ input[type=submit] {
 	margin: 0;
 	padding: 0;
 }
-#headerMenu li {
+#headerMenu > ul > li {
 	float: left;
 	width: 100px;
+/* http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping */
 	/*text-align: center;*/
 }
 #headerMenu li a {
