@@ -349,6 +349,7 @@ def AddSysTrialTrait(sess, trialId, traitId):
         con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
         cur = con.cursor()
         cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
+        cur.close()
         con.commit()
     except mdb.Error, e:
         return  usrdb + " " + qry
