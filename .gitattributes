@@ -38,3 +38,4 @@ fpa/wsgi_app_entry.py -text
 misc/datareap.php -text
 misc/fp.conf -text
 misc/handy.sql -text
+misc/sampleTrial1.csv -text
