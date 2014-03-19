@@ -941,6 +941,6 @@ def LogDebug(hdr, text):
 # For local testing:
 if __name__ == '__main__':
     from os.path import expanduser
-    app.config['SESS_FILE_DIR'] = expanduser("~") + '/fpserver/fpa/fp_web_admin/tmp2'
+    app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
     app.run(debug=True, host='0.0.0.0')
 

@@ -12,11 +12,18 @@ import fpUtil
 import dbUtil
 from fp_common.models import Trial, TrialUnit, TrialUnitAttribute, AttributeValue, Trait
 
-ROW = 'row'
-COL = 'column'
-DES = 'description'
-BAR = 'barcode'
-
+#
+# Special column headers.
+# If present in the uploaded trial file, these become column headers
+# indicate node members rather than generic attributes:
+#
+ATR_ROW = 'row'
+ATR_COL = 'column'
+ATR_DES = 'description'
+ATR_BAR = 'barcode'
+ATR_LAT = 'latitude'
+ATR_LON = 'longitude'
+FIXED_ATTRIBUTES = [ATR_ROW, ATR_COL, ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
 
 def ParseTrialUnitCSV(f):
 #-----------------------------------------------------------------------
@@ -33,24 +40,29 @@ def ParseTrialUnitCSV(f):
         if not hd:
             return {'error':"Error - Empty column header found, aborting."}
         hdl = hd.lower()
-        if (hdl == ROW):
-            fixIndex[ROW] = numFields
-        elif (hdl == COL):
-            fixIndex[COL] = numFields
-        elif (hdl == DES):
-            fixIndex[DES] = numFields
-        elif (hdl == BAR):
-            fixIndex[BAR] = numFields
+        if hdl in FIXED_ATTRIBUTES:
+            fixIndex[hdl] = numFields
+        elif hd in attIndex.keys():
+            return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
         else:
-            if hd in attIndex.keys():
-                return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
             attIndex[hd] = numFields 
         numFields += 1
 
-    for mand in [ROW, COL]:
+    # Check both row and column are present:
+    for mand in [ATR_ROW, ATR_COL]:
         if not mand in fixIndex.keys():
             return {'error':"Error - Missing required column ({0}), aborting.".format(mand)}
+      
+    # Check that if either latitude or longitude are present then they both are,
+    # else revert the one present to a generic attribute:
+    if ATR_LAT in fixIndex.keys() and not ATR_LON in fixIndex.keys():
+        attIndex[ATR_LAT] = fixIndex[ATR_LAT]
+        del fixIndex[ATR_LAT]
+    if ATR_LON in fixIndex.keys() and not ATR_LAT in fixIndex.keys():
+        attIndex[ATR_LON] = fixIndex[ATR_LON]
+        del fixIndex[ATR_LON]
         
+
     # Check trialUnit lines:
     line = f.readline()
     rowNum = 2
@@ -60,7 +72,7 @@ def ParseTrialUnitCSV(f):
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
             err += "Bad line was: " + line
             return {'error':err}
-        if not (flds[fixIndex[ROW]].isdigit and flds[fixIndex[COL]].isdigit):
+        if not (flds[fixIndex[ATR_ROW]].isdigit and flds[fixIndex[ATR_COL]].isdigit):
             return {'error':"Error - row or col field is not integer, line {0}, aborting".format(rowNum)}
         #print line + "<br>"
         rowNum += 1
@@ -114,10 +126,12 @@ def UploadTrialFile(sess, f, tname, tsite, tyear, tacro):
             flds = line.strip().split(',')
             tu = TrialUnit()
             tu.trial_id = ntrial.id
-            tu.row = flds[fixIndex[ROW]]
-            tu.col = flds[fixIndex[COL]]
-            if BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[BAR]]
-            if DES in fixIndex.keys(): tu.description = flds[fixIndex[DES]]
+            tu.row = flds[fixIndex[ATR_ROW]]
+            tu.col = flds[fixIndex[ATR_COL]]
+            if ATR_BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[ATR_BAR]]
+            if ATR_DES in fixIndex.keys(): tu.description = flds[fixIndex[ATR_DES]]
+            if ATR_LAT in fixIndex.keys(): tu.latitude = flds[fixIndex[ATR_LAT]]
+            if ATR_LON in fixIndex.keys(): tu.longitude = flds[fixIndex[ATR_LON]]
             db.add(tu)
             # add attributes:
             for at in attIndex.keys():
@@ -198,13 +212,16 @@ def UpdateTrialFile(sess, f, trialId):
         while line:
             flds = line.strip().split(',')
             try:
-                tu = dbUtil.GetTrialUnit(sess, trialId, flds[fixIndex[ROW]], flds[fixIndex[COL]])
+                tu = dbUtil.GetTrialUnit(sess, trialId, flds[fixIndex[ATR_ROW]], flds[fixIndex[ATR_COL]])
             except Exception as e:
-                out = "Trial Unit not found: " + str(flds[fixIndex[ROW]]) + " col " + str(flds[fixIndex[COL]])
+                out = "Trial Unit not found: " + str(flds[fixIndex[ATR_ROW]]) + " col " + str(flds[fixIndex[ATR_COL]])
                 return {'error':out}
-            # Update barcode and/or description:
-            if BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[BAR]]
-            if DES in fixIndex.keys(): tu.description = flds[fixIndex[DES]]
+            # Update fixed node attributes in the node struct:
+            if ATR_BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[ATR_BAR]]
+            if ATR_DES in fixIndex.keys(): tu.description = flds[fixIndex[ATR_DES]]
+            if ATR_LAT in fixIndex.keys(): tu.latitude = flds[fixIndex[ATR_LAT]]
+            if ATR_LON in fixIndex.keys(): tu.longitude = flds[fixIndex[ATR_LON]]
+
             # add attributes:
             for ind, attName in enumerate(attIndex.keys()):
                 errMsg = attName + " ind: " + str(ind) + " exists: " + str(attExists[ind])
