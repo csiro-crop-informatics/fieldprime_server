@@ -23,6 +23,7 @@ fpa/fp_web_admin/templates/about.html -text
 fpa/fp_web_admin/templates/base.html -text
 fpa/fp_web_admin/templates/contact.html -text
 fpa/fp_web_admin/templates/dataPage.html -text
+fpa/fp_web_admin/templates/dataPageWithHelp.html -text
 fpa/fp_web_admin/templates/downloadApp.html -text
 fpa/fp_web_admin/templates/fieldprime.html -text
 fpa/fp_web_admin/templates/genericPage.html -text

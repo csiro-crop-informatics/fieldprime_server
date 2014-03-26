@@ -1,3 +1,20 @@
+{# 
+ # FieldPrime base template.
+ # It has separate header, content, and footer sections.
+ # The header section displays logo, a menu and login management.
+ # The content section must be supplied by the extending template
+ # in a "content" block variable.
+ # The footer shows a copyright notice.
+ #
+ # Context variables used:
+ # title
+ # g.userName
+ #
+ # Block variables used:
+ # content
+ # javascript
+ #}
+
 <!doctype html>
 <html>
 <head>
@@ -19,7 +36,7 @@
     {# Login fields, or name of logged in user and logout button: #}
     <div id="loginout">
       {% if not loggedIn %} <!-- If there is NO user logged in: -->
-      <FORM method="POST" action="{{ g.rootUrl }}">
+      <FORM method="POST" action="{{ url_for('main') }}">
         <b>Signin:</b>
         <paragraph> User name: <input type="text" name="username">
           <paragraph> Password: <input type=password name="password">
@@ -36,17 +53,19 @@
     Note also we assume that if variable pagename is defined then 
     it specifies the page, and if not defined we are on the Home menu options
     #}
-    <ul id="headerMenu">
+	<ul id="headerMenu">
 
       {# Add UserData page if use is logged in: #}
       {% if loggedIn %}
-      <li {% if pagename is not defined %} class="active" {% endif %}><a href={{ url_for('userHome', userName=g.userName) }}>User Data</a></li>
+	  <li {% if pagename is not defined %} class="active" {% endif %}>
+        <a href={{ url_for('userHome', userName=g.userName) }}>User Data</a>
+      </li>
       {% endif %}
       
-      <li {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='fieldprime') }}">FieldPrime</a></li>
-      <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
-      <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='about') }}">About</a></li>
-      <li {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='contact') }}">Contact</a></li>
+	  <li {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='fieldprime') }}">FieldPrime</a></li>
+	  <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
+	  <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='about') }}">About</a></li>
+	  <li {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='contact') }}">Contact</a></li>
   </div>
   <!-- <hr> -->
 

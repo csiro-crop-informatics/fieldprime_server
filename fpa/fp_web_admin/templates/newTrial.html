@@ -1,8 +1,20 @@
-{% extends "dataPage.html" %}
+{# dataPageWithHelp.html
+ # Provides three blocks:
+ # dataContentTop
+ # dataContentMain
+ # dataHelpText
+ #}
 
-{% block javascript %}
-function validateTrialForm()
-{
+{% extends "dataPageWithHelp.html" %}
+
+{% block dataContentTop %}
+  <h2>Create New Trial</h2>
+{% endblock %}
+
+{% block dataContentMain %}
+{# Validation function for the form: #}
+<script>
+function validateTrialForm() {
   var cap = document.getElementById("name_id").value;
   if (cap == null || cap == "") {
     alert("Please provide a trial name");
@@ -14,46 +26,8 @@ function validateTrialForm()
     return false;
   }
 }
+</script>
 
-var helpVisible;
-window.onload = function() {
-  helpVisible = true;
-  toggleHelp();
-}
-function toggleHelp()
-{
-  var d, m, e, hb;
-  e = document.getElementById('helpText');
-  hb = document.getElementById('helpButton');
-  if (helpVisible) {
-    e.style.display = 'none';
-    hb.textContent = "Show Help";
-    m = '0px';
-  }
-  else {
-    e.style.display = 'block';
-    hb.innerHTML = "Hide Help";
-    m = '170px';
-  }
-  helpVisible = !helpVisible;
-}
-{% endblock %}
-
-{% block dataContent %}
-<font color="red">{{msg}}</font>
-<div class=dataContentTop>
-  <div class=dataContent>
-    <h2>Create New Trial</h2>
-  </div>
-  <div class=dataContentHelpButton>
-    <button onclick='toggleHelp()' id='helpButton' style='float:right;'>Show Help</button>
-  </div>
-</div>
-<!--
- <h2>Create New Trial</h2>
-<button onclick='toggleHelp()' id='helpButton'
-        style='float:right;'>Show Help</button>
- -->
 <form enctype="multipart/form-data"
   onsubmit="return validateTrialForm()"
   method="post">
@@ -107,25 +81,21 @@ function toggleHelp()
 </form>
 {% endblock %}
 
-{% block dataHelp %}
-<div id=helpText class=dataContentHelp>
-
-<div class="description not_too_wide">
-  To create a trial you must, at a minimum, provide a name, and a list
-  of nodes for the trial. You can also provide a site, year, or
-  acronym for the trial if you wish. The list of nodes must be
-  provided as a comma separated (CSV) file, which must have the
-  following format:
-  <dl style="">
-    <dt>First line</dt><dd>Column Headers. There can be any number of
+{% block dataHelpText %}
+To create a trial you must, at a minimum, provide a name, and a list
+of nodes for the trial. You can also provide a site, year, or
+acronym for the trial if you wish. The list of nodes must be
+provided as a comma separated (CSV) file, which must have the
+following format:
+<dl>
+  <dt>First line</dt><dd>Column Headers. There can be any number of
     columns, but there must be a "row" and a "column" column, since
     each node is identified by a row and column number.</dd>
-    <dt>Subsequent lines</dt><dd>Trial Nodes. Each line after the header line
+  <dt>Subsequent lines</dt><dd>Trial Nodes. Each line after the header line
     identifies and describes one trial node. A node is identified by
     its row and column values. Any values in other columns will be
     stored as attribute values for the node (for the attribute
     identified by the column header).
-</div>
-
-</div>
 {% endblock %}
+
+

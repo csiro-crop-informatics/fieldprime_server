@@ -1,0 +1,65 @@
+{#
+ # Page for display of a screen of data for a logged in user.
+ # See the requirement for dataPage.html.
+ # This page provides some additional help infrastructure.
+ #
+ # Templates extending this need to provide the following blocks:
+ # dataContentTop - something to go along top (on same line as help button).
+ # dataContentMain - main content.
+ # dataHelpText - html for the help sidebar.
+ #}
+
+{% extends "dataPage.html" %}
+
+{% block dataContent %}
+<div class=dataContentTop>
+  <div class=dataContent>
+    {% block dataContentTop %}
+    {% endblock %}
+  </div>
+  <div class=dataContentHelpButton>
+    <button onclick='toggleHelp()' id='helpButton'>Show Help</button>
+  </div>
+</div>
+
+{% block dataContentMain %}
+{% endblock %}
+  
+{% endblock %}
+
+{% block dataHelpPane %}
+<div id='helpText' class=dataContentHelp>
+  <div class="description not_too_wide">
+    <div class=dataContentHelpButton>
+      <button onclick='toggleHelp()' id='helpButton' style='float:left'>Hide Help</button>
+    </div>
+    {% block dataHelpText %}
+    {% endblock %}
+  </div>
+</div>
+
+<script>
+var helpVisible;
+window.onload = function() {
+    helpVisible = true;
+    toggleHelp();
+}
+function toggleHelp() {
+  var helpDiv, helpButton;
+  helpDiv = document.getElementById('helpText');
+  helpButton = document.getElementById('helpButton');
+  if (helpVisible) {
+    helpDiv.style.display = 'none';
+    helpButton.textContent = "Show Help";
+    helpButton.style.display = 'inline';
+  }
+  else {
+    helpDiv.style.display = 'block';
+    helpButton.innerHTML = "Hide Help";
+    helpButton.style.display = 'none';
+  }
+  helpVisible = !helpVisible;
+}
+</script>
+{% endblock %}
+

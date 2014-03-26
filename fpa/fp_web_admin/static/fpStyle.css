@@ -236,8 +236,31 @@ p a {
     height:30px;
 }
 
-/*** data pages: ******************************************/
+/*** data pages: ****************************************
+ * 
+ * The data section may be multiple columns side by side.
+ * To have these equal height, we are using css tables.
+ * dataWrapper is the table, and the columns (table-cells)
+ * are dataLeftBar, dataContent, and dataContentHelp
+ * 
+ */
 
+.fred {
+    height:100px;
+    background-color:yellow;
+}
+#dpwhWrapper {
+    width: 100%;
+    display:table;
+    word-wrap: normal;
+    overflow: hidden; 
+}
+#dpwhWrapperMain {
+    display:table-cell;
+}
+#contentWrapper {
+    display:table
+}
 #dataWrapper {
     overflow: hidden;
     display: table;  /* Using table so as to get equal column height. */
@@ -249,7 +272,9 @@ p a {
     width: 150px;
     min-width: 150px;
     display: table-cell;   
-    vertical-align: top;    /* without this, vertical position is affected by html in dataContent (when using tables for equal column heights) */
+    vertical-align: top;    /* without this, vertical position is affected by html in
+                             * dataContent (when using tables for equal column heights)
+                             */
     word-wrap: break-word;
     background: #eeeeee;
     padding-top: 20px;
@@ -259,6 +284,7 @@ p a {
 
 .dataContent {
     display: table-cell;
+    vertical-align: top;
     width: 100%;
     padding: 15px;
     word-wrap: normal;
@@ -276,18 +302,33 @@ p a {
     padding-bottom: 50px;
     padding-left: 10px;
 }
+
+/* This is a div containing the help button.
+ * The button itself is styled as #helpButton below
+ */
 .dataContentHelpButton{
     vertical-align: top; 
     display: table-cell;
     color:green;
-    /*width: 250px;*/
-    width:100pc;   /* nb, pc is NOT percent, but one sixth inch, so this is just really big */
+    width:100pc;  /* NB, pc is NOT percent, but one sixth inch, so this is
+                   * just a big value to force the button over to the right.
+                   */
     min-width: 250px;
     padding-top: 20px;
     padding-left: 10px;
 }
 
+#helpButton {
+    margin:0px;  /* does nothing */
+    padding: 0px;  /* does nothing */
+    width: 230px;
+    /* width:100%
+    height:100%*/
+    float:right;
+}
+
 .dataContentTop {
+    /*background-color:pink;*/
 }
 /*
 .dataContentTop button {
@@ -295,9 +336,8 @@ p a {
     background:#111111;
 }
 */
+
 /*** user input forms: ******************************************/
-
-
 
 .userInputForm button{
 clear:both;
