@@ -34,30 +34,26 @@ input[type=submit] {
     float: left;
     height:100px;
     width:100px;
-    /* max-height:100%;
-    max-width:100%; */
 }
 
-/*** HeaderMenu: ***/
+/*-- HeaderMenu: ---------------------------------------*/
 #headerMenu {
-    /*float: right
-	display: inline-block;*/
-	list-style: none;
-	/*line-height: 100px;*/
-	margin: 0;
-	padding: 0;
-}
-#headerMenu ul {
-	display: inline-block;
+    white-space: nowrap;
 	list-style: none;
 	margin: 0;
 	padding: 0;
 }
-#headerMenu > ul > li {
-	float: left;
+#headerMenu > li {
+    /* Note we want this menu horizontal, this can be achieved with "float:left",
+     * but then the menu will wrap if browser window is made too narrow. So instead
+     * we are using "display:inline-block", in conjunction with the "white-space:nowrap"
+     * in the parent. This works, except the menu items get an extra separation added between
+     * them, which is - to some extent - fixed by the negative right margin command.
+     * See http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping.
+     */
 	width: 100px;
-/* http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping */
-	/*text-align: center;*/
+    display: inline-block;
+    margin: 0 -3px 0 0;
 }
 #headerMenu li a {
 	color: #818181;
@@ -142,6 +138,16 @@ input[type=submit] {
 	color: #585858;
 }
 
+/*** infoText: ***/
+.infoText p  {
+      color: #585858;
+      font-size: 16px;
+      line-height: 24px;
+      margin: 0 0 30px;
+}
+.infoText p a {
+      color: #585858;
+}
 /*******************************************/
 
 h1 {
@@ -159,6 +165,8 @@ h2 {
 	margin: 0 0 12px;
 }
 
+
+/* Paragraph styles, but this means text not in paragraph is styled differently 
 p {
 	color: #585858;
 	font-size: 16px;
@@ -167,7 +175,8 @@ p {
 }
 p a {
 	color: #585858;
-}
+}*/
+
 #tagline h1 {
 	margin-left: 20px;
 }

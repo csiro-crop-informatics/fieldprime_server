@@ -16,6 +16,7 @@ import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, sessionmaker, Session
 from const import *
+import util
 
 ### sqlalchemy CONSTANTS: ######################################################################
 
@@ -64,6 +65,12 @@ class AttributeValue(DeclarativeBase):
     #relation definitions
     trialUnitAttribute = relation('TrialUnitAttribute', primaryjoin='AttributeValue.trialUnitAttribute_id==TrialUnitAttribute.id')
     trialUnit = relation('TrialUnit', primaryjoin='AttributeValue.trialUnit_id==TrialUnit.id')
+
+    def setValueWithTypeUpdate(self, newVal):
+    # Set the value, and if the val is not an integer, set the type to text.
+        self.value = newVal
+        if not util.isInt(newVal):
+            self.trialUnitAttribute.datatype = T_STRING
 
 
 class Datum(DeclarativeBase):
@@ -166,6 +173,24 @@ class Trial(DeclarativeBase):
     tuAttributes = relation('TrialUnitAttribute')
     trialUnits = relation('TrialUnit')
 
+    def addOrGetNode(self, row, col):
+        try:
+            session = Session.object_session(self)
+            tu = session.query(TrialUnit).filter(and_(TrialUnit.trial_id == self.id, TrialUnit.row == row,
+                                                      TrialUnit.col == col)).one()
+        except sqlalchemy.orm.exc.NoResultFound:
+            tu = TrialUnit()
+            tu.row = row
+            tu.col = col
+            tu.trial_id = self.id
+            session.add(tu)
+            session.commit()
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            return None
+
+        return tu
+
+
 class TrialUnit(DeclarativeBase):
     __tablename__ = 'trialUnit'
     __table_args__ = {}
@@ -195,7 +220,7 @@ class TrialUnitAttribute(DeclarativeBase):
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     name = Column(u'name', VARCHAR(length=31), nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
-    datatype = Column(unicode(TUA_DATATYPE), INTEGER(), default=2, nullable=False)
+    datatype = Column(unicode(TUA_DATATYPE), INTEGER(), default=T_INTEGER, nullable=False)
     func = Column(unicode(TUA_FUNC), INTEGER(), default=0, nullable=False)
 
     #relation definitions
@@ -351,7 +376,7 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
 def AddTrialUnitNotes(dbc, token, notes):
 #-------------------------------------------------------------------------------------------------
 # Return None for success, else an error message.
-# 
+#
     qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}) values '.format(
         'trialUnitNote', 'trialUnit_id', 'timestamp', 'userid', 'token', 'note')
     if len(notes) <= 0:
@@ -416,7 +441,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     dbc.add(ntrt)
     dbc.commit()
     return ntrt, None
- 
+
 
 def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
     tti = dbc.query(TrialTraitInteger).filter(and_(

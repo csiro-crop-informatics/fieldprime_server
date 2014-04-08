@@ -91,7 +91,7 @@ def GetAttribute(sess, attId):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.id == attId).one()
 
 @oneException2None
-def GetAttributeValue(sess, trialUnitId, trialUnitAttributeId):
+def getAttributeValue(sess, trialUnitId, trialUnitAttributeId):
     return sess.DB().query(AttributeValue).filter(
         and_(
             AttributeValue.trialUnit_id == trialUnitId,
@@ -106,6 +106,17 @@ def GetTrialUnits(sess, trialID):
 
 def GetTrialUnit(sess, trialId, row, col):
     return sess.DB().query(TrialUnit).filter(and_(TrialUnit.trial_id == trialId, TrialUnit.row == row, TrialUnit.col == col)).one()
+
+def addOrGetNode(sess, trialId, row, col):
+# Retrieve node for specified trial/row/col, creating a new one
+# if not already present.
+    try:
+        tu = sess.DB().query(TrialUnit).filter(and_(TrialUnit.trial_id == trialId, TrialUnit.row == row,
+                                                  TrialUnit.col == col)).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        return None
+    except sqlalchemy.orm.exc.MultipleResultsFound:
+        return None
 
 def GetDatum(sess, trialUnit_id, traitInstance_id):
     return sess.DB().query(Datum).filter(and_(Datum.trialUnit_id == trialUnit_id, Datum.traitInstance_id == traitInstance_id)).all()

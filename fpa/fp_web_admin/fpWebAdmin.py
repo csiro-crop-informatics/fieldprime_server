@@ -1,6 +1,6 @@
 # fpApi.py
 # Michael Kirk 2013
-# 
+#
 #
 
 import os, sys, time
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     import os,sys,inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
-    sys.path.insert(0,parentdir) 
+    sys.path.insert(0,parentdir)
 
 import dbUtil
 import fpTrait
@@ -119,7 +119,7 @@ def TrialTraitTableHtml(trial):
             valOp += '</select>'
 
             url = url_for('traitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
-            validateButton = HtmlButtonLink2("Validation", url) 
+            validateButton = HtmlButtonLink2("Validation", url)
             out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     return out
@@ -201,7 +201,7 @@ def TrialHtml(sess, trialId):
                         url_for('traitInstance', traitInstanceId=oti.id), oti.sampleNum)
                 out += '</ul>'
             return out
- 
+
         for ti in tiList:
             #++index
             traitId = ti.trait_id
@@ -256,7 +256,7 @@ function downloadURL() {{
     dl += "<option value='notes' selected='selected'>Notes</option>";
     dl += "<option value='attributes' selected='selected'>Attributes</option>";
     dl += "</select>";
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL()'>"   
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL()'>"
     dl +=     "View tab separated score data (or right click and Save Link As to download)</a>"
     dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>".format(trial.name)
     dl +=     "Download tab separated score data (browser permitting, Chrome and Firefox OK, IE not yet)</a>"
@@ -268,7 +268,7 @@ function downloadURL() {{
 
 # def sysTraitsHtml:
 # #---------------------------------------------------------------------------
-# # 
+# #
 # #
 #     # System Traits:
 #     sysTraits = GetSysTraits(sess)
@@ -492,9 +492,9 @@ def TrialDataTSV(sess, trialId):
     if showUser:
         numColsPerValue += 1
     if showGps:
-        numColsPerValue += 2  
+        numColsPerValue += 2
     if showNotes:
-        numColsPerValue += 1         # MFK NOTE this will need to be removed when we deprecate datum notes    
+        numColsPerValue += 1         # MFK NOTE this will need to be removed when we deprecate datum notes
 
     # Headers:
     r = "Row" + SEP + "Column"
@@ -527,7 +527,7 @@ def TrialDataTSV(sess, trialId):
         if showAttributes:
             for tua in trl.tuAttributes:
                 r += SEP
-                av = dbUtil.GetAttributeValue(sess, tu.id, tua.id)
+                av = dbUtil.getAttributeValue(sess, tu.id, tua.id)
                 if av is not None:
                     r += av.value
 
@@ -581,7 +581,7 @@ def newTrial(sess):
         return dataTemplatePage(sess, 'newTrial.html', title='Create Trial')
     if request.method == 'POST':
         uploadFile = request.files['file']
-        res = fpTrial.UploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'), 
+        res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
         if res is not None and 'error' in res:
             return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
@@ -717,11 +717,11 @@ def attributeUpload(sess, trialId):
 
     if request.method == 'POST':
         uploadFile = request.files['file']
-        res = fpTrial.UpdateTrialFile(sess, uploadFile, trialId)
+        res = fpTrial.updateTrialFile(sess, uploadFile, trialId)
         if res is not None and 'error' in res:
             return dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
         else:
-            return FrontPage(sess)
+            return trialPage(sess, trialId) #FrontPage(sess)
 
 @app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
@@ -798,7 +798,7 @@ def userDetails(sess, userName):
 @dec_check_session()
 def systemTraits(sess, userName):
 #---------------------------------------------------------------------------
-# 
+#
 #
     if request.method == 'GET':
         # System Traits:
@@ -874,7 +874,7 @@ def infoPage(sess, pagename):
 def main():
 #-----------------------------------------------------------------------
 # Entry point for FieldPrime web admin.
-# As a GET it presents a login screen. 
+# As a GET it presents a login screen.
 # As a POST it process the login data.
 #
 # Note the use of sessions. On login, a server side session is established (state is stored
@@ -942,5 +942,5 @@ def LogDebug(hdr, text):
 if __name__ == '__main__':
     from os.path import expanduser
     app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5001)
 
