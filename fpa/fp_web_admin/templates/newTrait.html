@@ -1,50 +1,52 @@
 {% extends "dataPage.html" %}
 
 {% block dataContent %}
+<script src="{{ url_for('static', filename='newTrait.js') }}"></script>
 <h2>Create New {% if trialId == 'sys' %}System{% else %}Trial{% endif %} Trait</h2>
 <div id="attributeData" data-attributes="{{attributesList}}">
   <form enctype="multipart/form-data"
         onsubmit="return ValidateTraitForm()"
         method="post">
-
     <fieldset>
-  <div class="userInputForm">
-      <table>
-        <tr>
-          <td >
-            <label>Caption<span class="small">Add a short trait name</span></label></td>
-          <td>
-            <input type="text" id='cap_id' name="caption"></td>
-        </tr>
-
-        <tr>
-          <td align="right">
-            <label>Description</label>
-          </td>
-          <td>
-            <input type="text" name="description">
-          </td>
-        </tr>
-
-        <tr>
-          <td>
-            <div id="traitDiv">
-                <label>Trait Type</label></td>
-          <td><select id='traitType' name='type'
-                                    onchange="SetTraitFormElements('traitDiv',this.options[selectedIndex].value)">
-                  <option value="-1" name="none">..Select a Trait Type..</option>
-                  {% for typ, value in traitTypes.iteritems() %}
-                  <option value="{{value|e}}" name={{typ|e}}>{{typ|e}}</option>
-                  {% endfor %}
-                  </td></tr>
-              </select></div>
-          </td>
-        </tr>
-      </table>
-    <p><input type="submit" value="Create Trait">
-  </div>
+      <div class="userInputForm">
+        <table>
+          <tr>
+            <td >
+              <label>Caption<span class="small">Add a short trait name</span></label>
+            </td>
+            <td>
+              <input type="text" id='cap_id' name="caption">
+            </td>
+          </tr>
+          <tr>
+            <td align="right">
+              <label>Description</label>
+            </td>
+            <td>
+              <input type="text" name="description">
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <label>Trait Type</label>
+            </td>
+            <td>
+              <select id='traitType' name='type'
+                                      onchange="SetTraitFormElements('traitDiv',this.options[selectedIndex].value)">
+                    <option value="-1" name="none">..Select a Trait Type..</option>
+                    {% for typ, value in traitTypes.iteritems() %}
+                    <option value="{{value|e}}" name={{typ|e}}>{{typ|e}}</option>
+                    {% endfor %}
+              </select>
+            </td>
+          </tr>
+        </table>
+        <div id="traitDiv">
+           <!-- type specific field added here -->
+        </div>
+        <p><input type="submit" value="Create Trait">
+      </div>
     </fieldset>
-
   </form>
 </div>
 {% endblock %}
