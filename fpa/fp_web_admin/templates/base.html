@@ -37,9 +37,9 @@
       {% if not loggedIn %} <!-- If there is NO user logged in: -->
       <FORM method="POST" action="{{ url_for('main') }}">
         <b>Signin:</b>
-        <paragraph> User name: <input type="text" name="username">
-          <paragraph> Password: <input type=password name="password">
-            <paragraph> <input type="submit" value="Login">
+        User name: <input type="text" name="username">
+        Password: <input type=password name="password">
+        <input type="submit" value="Login">
       </FORM>
       {% else %} <!-- If there IS a user logged in: -->
       Logged in as {{g.userName}}
@@ -65,6 +65,7 @@
 	  <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
 	  <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='about') }}">About</a></li>
 	  <li {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='contact') }}">Contact</a></li>
+    </ul>
   </div>
   <!-- <hr> -->
 
