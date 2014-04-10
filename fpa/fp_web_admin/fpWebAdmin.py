@@ -104,22 +104,18 @@ def FrontPage(sess, msg=''):
 
 def TrialTraitTableHtml(trial):
 #----------------------------------------------------------------------------------------------------
+# Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
         return "No traits configured"
     out = "<table border='1'>"
     out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
-        "Caption", "Description", "Type", "Validation")
+        "Caption", "Description", "Type", "Details")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         if trt.type == 0:
-            valOp = '<select name="validationOp">'
-            valOp += '<option value="0">Greater Than</option>'
-            valOp += '<option value="0">Less Than</option>'
-            valOp += '</select>'
-
             url = url_for('traitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
-            validateButton = HtmlButtonLink2("Validation", url)
+            validateButton = HtmlButtonLink2("Details", url)
             out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     return out
@@ -264,20 +260,6 @@ function downloadURL() {{
     r += HtmlFieldset(dl, "Score Data:")
 
     return r
-
-
-# def sysTraitsHtml:
-# #---------------------------------------------------------------------------
-# #
-# #
-#     # System Traits:
-#     sysTraits = GetSysTraits(sess)
-#     #from fp_common.fpTrait import TraitListHtmlTable
-#     sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.TraitListHtmlTable(sysTraits)
-#     r = HtmlFieldset(
-#         HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("newTrait", trialId='sys')),
-#         "System Traits")
-#     return r
 
 
 def dataNavigationContent(sess):
@@ -625,7 +607,7 @@ def traitValidation(sess, trialId, traitId):
     ]
 
     if request.method == 'GET':
-        if trt.type == 0:
+        if trt.type == T_INTEGER:
             tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
             minText = ""
             if tti and tti.min is not None:

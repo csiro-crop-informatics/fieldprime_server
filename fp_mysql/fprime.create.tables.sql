@@ -157,6 +157,21 @@ create table trialTraitInteger(
   FOREIGN KEY(trial_id) REFERENCES trial(id)
 );
 
+--
+-- trialTraitNumeric
+-- Extension of trialTrait table for intended for decimal traits,
+-- but maybe we can use this for integer traits too..
+-- 
+create table trialTraitDecimal(
+  trial_id   INT NOT NULL,
+  trait_id   INT NOT NULL,
+  min        DECIMAL(11,3),
+  max        DECIMAL(11,3),
+  validation TEXT,
+  PRIMARY KEY(trial_id, trait_id),
+  FOREIGN KEY(trait_id) REFERENCES trait(id),
+  FOREIGN KEY(trial_id) REFERENCES trial(id)
+);
 
 --
 -- traitInstance
