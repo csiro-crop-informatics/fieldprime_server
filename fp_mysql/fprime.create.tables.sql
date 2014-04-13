@@ -153,7 +153,7 @@ create table trialTraitInteger(
   max        INT,
   validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
-  FOREIGN KEY(trait_id) REFERENCES trait(id),
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id)
 );
 
@@ -169,7 +169,7 @@ create table trialTraitDecimal(
   max        DECIMAL(11,3),
   validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
-  FOREIGN KEY(trait_id) REFERENCES trait(id),
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id)
 );
 

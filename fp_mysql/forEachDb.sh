@@ -60,6 +60,7 @@ while getopts "f:e:b:h" o; do
             ;;
         e)
             CMD=${OPTARG}
+            #printf "cmd: %s\n" "$CMD"
             ((numOpt++))
            ;;
         b)
@@ -95,7 +96,7 @@ then
   else
     export MCMD=$BCMD
   fi
-  eval $MCMD
+  eval "$MCMD"   # quotes needed else shell can interpret things in command
 fi
 done
 
