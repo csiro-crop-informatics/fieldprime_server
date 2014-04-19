@@ -156,6 +156,13 @@ class TrialTraitInteger(DeclarativeBase):
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
 
+class TrialTraitNumeric(DeclarativeBase):
+    __tablename__ = 'trialTraitInteger'
+    max = Column(u'max', DECIMAL(precision=18, scale=9))
+    min = Column(u'min', DECIMAL(precision=18, scale=9))
+    cond = Column(u'validation', TEXT())
+    trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
 
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
@@ -447,6 +454,15 @@ def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
     tti = dbc.query(TrialTraitInteger).filter(and_(
             TrialTraitInteger.trait_id == trait_id,
             TrialTraitInteger.trial_id == trial_id
+            )).all()
+    if len(tti) == 1:
+        ttid = tti[0]
+        return ttid
+    return None
+def GetTrialTraitNumericDetails(dbc, trait_id, trial_id): #replace above with this if poss
+    tti = dbc.query(TrialTraitNumeric).filter(and_(
+            TrialTraitNumeric.trait_id == trait_id,
+            TrialTraitNumeric.trial_id == trial_id
             )).all()
     if len(tti) == 1:
         ttid = tti[0]

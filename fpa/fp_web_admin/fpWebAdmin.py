@@ -113,7 +113,8 @@ def TrialTraitTableHtml(trial):
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
-        if trt.type == 0:
+        # Add "Detail" button for trait types with extra configuration:
+        if trt.type == T_INTEGER or trt.type == T_DECIMAL:
             url = url_for('traitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
             validateButton = HtmlButtonLink2("Details", url)
             out += "<td>" + validateButton  + "</td>"
@@ -606,9 +607,11 @@ def traitValidation(sess, trialId, traitId):
         ["le", "Less Than or Equal to", 4]
     ]
 
-    if request.method == 'GET':
+    if request.method == 'GET':  #xxx
         if trt.type == T_INTEGER:
+            # Form generated on the fly below, template better?
             tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
+            # xxx need to get decimal version if decimal. Maybe make tti type have getMin/getMax func and use for both types
             minText = ""
             if tti and tti.min is not None:
                 minText = "value='{0}'".format(tti.min)
@@ -647,7 +650,63 @@ def traitValidation(sess, trialId, traitId):
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
-                if att.datatype == T_INTEGER:  # restrict to integer attributes
+                if att.datatype == T_INTEGER:  # xxx restrict to integer attributes
+                    attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
+                        att.id, att.name, "selected='selected'" if att.id == atId else "")
+            attListHtml += '</select>'
+
+            conts = 'Trial: ' + trial.name
+            conts += '<br>Trait: ' + trt.caption
+            conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
+            conts += bounds
+            conts += '<p>Integer traits can be validated by comparison with an attribute:'
+            conts += '<br>Trait value should be ' + valOp + attListHtml
+            conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
+
+            return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
+        else if trt.type == T_INTEGER or trt.type == T_DECIMAL:  #mfk clone of above, remove above when numeric works for integer.
+            # Form generated on the fly below, template better?
+            tti = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
+            # xxx need to get decimal version if decimal. Maybe make tti type have getMin/getMax func and use for both types
+            minText = ""
+            if tti and tti.min is not None:
+                minText = "value='{0}'".format(tti.min)
+            maxText = ""
+            if tti and tti.max is not None:
+                maxText = "value='{0}'".format(tti.max)
+            bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
+            bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
+
+            # Parse condition string, if present, to retrieve comparator and attribute.
+            # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
+            # The only supported comparison at present is comparing the score to a
+            # single attribute.
+            # NB, this format needs to be in sync with the version on the app. I.e. what
+            # we save here, must be understood on the app.
+            atId = -1
+            op = ""
+            if tti and tti.cond is not None:
+                tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
+                if len(tokens) != 3:
+                    return "bad condition: " + tti.cond
+                op = tokens[1]
+                atClump = tokens[2]
+                atId = int(atClump[4:])
+
+            # Show available comparison operators:
+            valOp = '<select name="validationOp">'
+            valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
+            for c in comparatorCodes:
+                valOp += '<option value="{0}" {2}>{1}</option>'.format(
+                    c[2], c[1], 'selected="selected"' if op == c[0] else "")
+            valOp += '</select>'
+
+            # Attribute list:
+            attListHtml = '<select name="attributeList">'
+            attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
+            atts = dbUtil.GetTrialAttributes(sess, trialId)
+            for att in atts:
+                if att.datatype == T_DECIMAL:  # xxx restrict to integer attributes
                     attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
                         att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
@@ -663,33 +722,60 @@ def traitValidation(sess, trialId, traitId):
             return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
         return dataPage(sess, content='No validation for this trait type', title=title)
     if request.method == 'POST':
-        op = request.form.get('validationOp')
-        # if op == "0":
-        #     return "please choose a comparator"
-        at = request.form.get('attributeList')
-        # if int(at) == 0:
-        #     return "please choose an attribute"
-        vmin = request.form.get('min')
-        if len(vmin) == 0:
-            vmin = None
-        vmax = request.form.get('max')
-        if len(vmax) == 0:
-            vmax = None
-        # Get existing trialTraitInteger, if any.
-        tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
-        newTTI = tti is None
-        if newTTI:
-            tti = models.TrialTraitInteger()
-        tti.trial_id = trialId
-        tti.trait_id = traitId
-        tti.min = vmin
-        tti.max = vmax
-        if int(op) > 0 and int(at) > 0:
-            tti.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
-        if newTTI:
-            sess.DB().add(tti)
-        sess.DB().commit()
-        return trialPage(sess, trialId)
+        if trt.type == T_INTEGER:
+            op = request.form.get('validationOp')
+            # if op == "0":
+            #     return "please choose a comparator" mfk now javascript? No but we need js check that if one of comp and att chosen both are.
+            at = request.form.get('attributeList')
+            # if int(at) == 0:
+            #     return "please choose an attribute"
+            vmin = request.form.get('min')
+            if len(vmin) == 0:
+                vmin = None
+            vmax = request.form.get('max')
+            if len(vmax) == 0:
+                vmax = None
+            # Get existing trialTraitInteger, if any.
+            tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
+            newTTI = tti is None
+            if newTTI:
+                tti = models.TrialTraitInteger()
+            tti.trial_id = trialId
+            tti.trait_id = traitId
+            tti.min = vmin
+            tti.max = vmax
+            if int(op) > 0 and int(at) > 0:
+                tti.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
+            if newTTI:
+                sess.DB().add(tti)
+            sess.DB().commit()
+            return trialPage(sess, trialId)
+        if trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
+            op = request.form.get('validationOp')
+            # if op == "0":
+            #     return "please choose a comparator" mfk now javascript? No but we need js check that if one of comp and att chosen both are.
+            at = request.form.get('attributeList')
+            vmin = request.form.get('min')
+            if len(vmin) == 0:
+                vmin = None
+            vmax = request.form.get('max')
+            if len(vmax) == 0:
+                vmax = None
+            # Get existing trialTraitInteger, if any.
+            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
+            newTTN = ttn is None
+            if newTTN:
+                ttn = models.TrialTraitNumeric()
+            ttn.trial_id = trialId
+            ttn.trait_id = traitId
+            ttn.min = vmin
+            ttn.max = vmax
+            if int(op) > 0 and int(at) > 0:
+                ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
+            if newTTN:
+                sess.DB().add(ttn)
+            sess.DB().commit()
+            return trialPage(sess, trialId)
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -805,7 +891,7 @@ def addSysTrait2Trial(sess, trialId):
 @dec_check_session()
 def traitInstance(sess, traitInstanceId):
 #-----------------------------------------------------------------------
-# Display the data for specified trait instance. t_integer
+# Display the data for specified trait instance.
 # MFK this should probably display RepSets, not individual TIs
 #
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
