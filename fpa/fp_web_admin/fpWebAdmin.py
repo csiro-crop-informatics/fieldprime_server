@@ -609,7 +609,9 @@ def traitValidation(sess, trialId, traitId):
 
     if request.method == 'GET':  #xxx
         if trt.type == T_INTEGER:
-            # Form generated on the fly below, template better?
+            #
+            # Generate form on the fly. Could use template but there's lots of variables.
+            #
             tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
             # xxx need to get decimal version if decimal. Maybe make tti type have getMin/getMax func and use for both types
             minText = ""
@@ -618,8 +620,8 @@ def traitValidation(sess, trialId, traitId):
             maxText = ""
             if tti and tti.max is not None:
                 maxText = "value='{0}'".format(tti.max)
-            bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
-            bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
+            minMaxBounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
+            minMaxBounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
 
             # Parse condition string, if present, to retrieve comparator and attribute.
             # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
@@ -658,24 +660,30 @@ def traitValidation(sess, trialId, traitId):
             conts = 'Trial: ' + trial.name
             conts += '<br>Trait: ' + trt.caption
             conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
-            conts += bounds
+            conts += minMaxBounds
             conts += '<p>Integer traits can be validated by comparison with an attribute:'
             conts += '<br>Trait value should be ' + valOp + attListHtml
             conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
 
             return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
-        else if trt.type == T_INTEGER or trt.type == T_DECIMAL:  #mfk clone of above, remove above when numeric works for integer.
-            # Form generated on the fly below, template better?
+        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:  #mfk clone of above, remove above when numeric works for integer.
+            #
+            # Generate form on the fly. Could use template but there's lots of variables.
+            # Make this a separate function to generate html form, so can be used from
+            # trait creation page.
+            #
             ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
-            # xxx need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
+
+            # Min and Max:
+            # need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
             minText = ""
             if ttn and ttn.min is not None:
-                minText = "value='{0}'".format(ttn.min)
+                minText = "value='{0}'".format(ttn.getMin())
             maxText = ""
             if ttn and ttn.max is not None:
-                maxText = "value='{0}'".format(ttn.max)
-            bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
-            bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
+                maxText = "value='{0}'".format(ttn.getMax())
+            minMaxBounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
+            minMaxBounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
 
             # Parse condition string, if present, to retrieve comparator and attribute.
             # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
@@ -712,19 +720,25 @@ def traitValidation(sess, trialId, traitId):
             attListHtml += '</select>'
 
             # javascript to check that if one of comp and att chosen both are:
-            conts = """
+            script = """
                 <script>
                 function validateTraitDetails() {
+                    //alert("hallo");
+                    //return false;
+
                     var att = document.getElementById("tdAttribute").value;
                     var comp = document.getElementById("tdCompOp").value;
 
                     var attPresent = (att === null || att === "");
-                    var compPresent = comp === null || comp === "";
-                    if (attPresent && !compPresent)
+                    //alert(attPresent ? "att yes" : "att no");
+                    //return false;
+
+                    var compPresent = (comp === null || comp === "");
+                    if (attPresent && !compPresent) {
                         alert("Attribute selected with no comparitor specified, please fix.");
                         return false;
                     }
-                    if (!attPresent && compPresent)
+                    if (!attPresent && compPresent) {
                         alert("Comparitor selected with no attibute specified, please fix.");
                         return false;
                     }
@@ -736,13 +750,15 @@ def traitValidation(sess, trialId, traitId):
             conts = 'Trial: ' + trial.name
             conts += '<br>Trait: ' + trt.caption
             conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
-            conts += bounds
+            conts += minMaxBounds
             conts += '<p>Integer traits can be validated by comparison with an attribute:'
             conts += '<br>Trait value should be ' + valOp + attListHtml
             # MFK why the history.back?
-            conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
+            #conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
+            conts += '<p><input type="button" style="color:red" value="Cancel"><input type="submit" style="color:red" value="Submit">'
 
-            return dataPage(sess, content=HtmlForm(conts, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
+            return dataPage(sess, content=script + HtmlForm(conts, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
+
         return dataPage(sess, content='No validation for this trait type', title=title)
     if request.method == 'POST':
         if trt.type == T_INTEGER:

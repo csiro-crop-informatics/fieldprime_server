@@ -157,12 +157,16 @@ class TrialTraitInteger(DeclarativeBase):
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
 
 class TrialTraitNumeric(DeclarativeBase):
-    __tablename__ = 'trialTraitInteger'
+    __tablename__ = 'trialTraitNumeric'
     max = Column(u'max', DECIMAL(precision=18, scale=9))
     min = Column(u'min', DECIMAL(precision=18, scale=9))
     cond = Column(u'validation', TEXT())
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
+    def getMin(self):
+        return self.min.normalize()   # stripped of unnecessary zeroes
+    def getMax(self):
+        return self.max.normalize()
 
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'

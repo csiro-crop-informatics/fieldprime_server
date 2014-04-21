@@ -162,11 +162,11 @@ create table trialTraitInteger(
 -- Extension of trialTrait table for intended for decimal traits,
 -- but maybe we can use this for integer traits too..
 -- 
-create table trialTraitDecimal(
+create table trialTraitNumeric(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
-  min        DECIMAL(11,3),
-  max        DECIMAL(11,3),
+  min        DECIMAL(18,9),
+  max        DECIMAL(18,9),
   validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
