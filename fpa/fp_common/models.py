@@ -460,6 +460,7 @@ def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
         return ttid
     return None
 def GetTrialTraitNumericDetails(dbc, trait_id, trial_id): #replace above with this if poss
+# Return TrialTraitNumeric for specified trait/trial, or None if none exists.
     tti = dbc.query(TrialTraitNumeric).filter(and_(
             TrialTraitNumeric.trait_id == trait_id,
             TrialTraitNumeric.trial_id == trial_id

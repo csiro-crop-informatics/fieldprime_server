@@ -19,13 +19,14 @@ def GetString(x):
     return x()
 
 
-def HtmlForm(content, post=False):
+def HtmlForm(content, post=False, onsubmit=''):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.
 # NB content can be either a string, or a function returning one.
 #
     c = content if isinstance(content, str) else content()
-    return "<form method='{0}'>".format('POST' if post else 'GET') + c + "</form>"
+    submitItem = ' onsubmit="{0}"'.format(onsubmit) if onsubmit else ''
+    return "<form method='{0}'{1}>".format('POST' if post else 'GET', submitItem) + c + "</form>"
 
 
 def HtmlFieldset(content, legend):

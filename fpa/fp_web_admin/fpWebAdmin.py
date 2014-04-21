@@ -666,14 +666,14 @@ def traitValidation(sess, trialId, traitId):
             return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
         else if trt.type == T_INTEGER or trt.type == T_DECIMAL:  #mfk clone of above, remove above when numeric works for integer.
             # Form generated on the fly below, template better?
-            tti = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
-            # xxx need to get decimal version if decimal. Maybe make tti type have getMin/getMax func and use for both types
+            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
+            # xxx need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
             minText = ""
-            if tti and tti.min is not None:
-                minText = "value='{0}'".format(tti.min)
+            if ttn and ttn.min is not None:
+                minText = "value='{0}'".format(ttn.min)
             maxText = ""
-            if tti and tti.max is not None:
-                maxText = "value='{0}'".format(tti.max)
+            if ttn and ttn.max is not None:
+                maxText = "value='{0}'".format(ttn.max)
             bounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
             bounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
 
@@ -685,16 +685,16 @@ def traitValidation(sess, trialId, traitId):
             # we save here, must be understood on the app.
             atId = -1
             op = ""
-            if tti and tti.cond is not None:
-                tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
+            if ttn and ttn.cond is not None:
+                tokens = ttn.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
                 if len(tokens) != 3:
-                    return "bad condition: " + tti.cond
+                    return "bad condition: " + ttn.cond
                 op = tokens[1]
                 atClump = tokens[2]
                 atId = int(atClump[4:])
 
             # Show available comparison operators:
-            valOp = '<select name="validationOp">'
+            valOp = '<select name="validationOp" id="tdCompOp">'
             valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
             for c in comparatorCodes:
                 valOp += '<option value="{0}" {2}>{1}</option>'.format(
@@ -702,14 +702,36 @@ def traitValidation(sess, trialId, traitId):
             valOp += '</select>'
 
             # Attribute list:
-            attListHtml = '<select name="attributeList">'
+            attListHtml = '<select name="attributeList" id="tdAttribute">'
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
-                if att.datatype == T_DECIMAL:  # xxx restrict to integer attributes
+                if att.datatype == T_DECIMAL:  # xxx restrict to decimal attributes
                     attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
                         att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
+
+            # javascript to check that if one of comp and att chosen both are:
+            conts = """
+                <script>
+                function validateTraitDetails() {
+                    var att = document.getElementById("tdAttribute").value;
+                    var comp = document.getElementById("tdCompOp").value;
+
+                    var attPresent = (att === null || att === "");
+                    var compPresent = comp === null || comp === "";
+                    if (attPresent && !compPresent)
+                        alert("Attribute selected with no comparitor specified, please fix.");
+                        return false;
+                    }
+                    if (!attPresent && compPresent)
+                        alert("Comparitor selected with no attibute specified, please fix.");
+                        return false;
+                    }
+                    return true;
+                }
+                </script>
+            """
 
             conts = 'Trial: ' + trial.name
             conts += '<br>Trait: ' + trt.caption
@@ -717,9 +739,10 @@ def traitValidation(sess, trialId, traitId):
             conts += bounds
             conts += '<p>Integer traits can be validated by comparison with an attribute:'
             conts += '<br>Trait value should be ' + valOp + attListHtml
+            # MFK why the history.back?
             conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
 
-            return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
+            return dataPage(sess, content=HtmlForm(conts, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
         return dataPage(sess, content='No validation for this trait type', title=title)
     if request.method == 'POST':
         if trt.type == T_INTEGER:
