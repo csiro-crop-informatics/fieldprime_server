@@ -13,10 +13,12 @@ added). There must be columns for "row" and "column", to identify each node.
 And every other column will be assumed to be an attribute to be either added,
 or to overwrite an existing attribute of the same name.
 <p>
-Attributes can be of integer or text types. The type is deduced from the values:
+Attributes can be of integer, decimal, or text type. The type is deduced from the values:
 If all the values specified are valid integers then the attribute will have
-integer type, otherwise it will be text. Note attributes intended for specifying
-a walk order must be integer type.
+integer type, otherwise if all are valid decimal values the type will be decimal,
+otherwise it will be text.
+<p>
+Note attributes intended for specifying a walk order must be integer type.
 </div>
 <form enctype="multipart/form-data"
   action=""

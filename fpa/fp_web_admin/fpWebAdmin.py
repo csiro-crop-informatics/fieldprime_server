@@ -3,7 +3,7 @@
 #
 #
 
-import os, sys, time
+import os, sys, time, re
 import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import json, jsonify
@@ -59,7 +59,7 @@ def dec_check_session(returnNoneSess=False):
             COOKIE_NAME = 'sid'
             sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            g.rootUrl = url_for('main') # Set global var g, accessible by templates, to the url for this func
+            g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
             if not sess.Valid():
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
@@ -94,7 +94,7 @@ def CheckPassword(user, password):
 
 def FrontPage(sess, msg=''):
 #-----------------------------------------------------------------------
-# Return HTML Response for main user page after login
+# Return HTML Response for urlMain user page after login
 #
     sess.resetLastUseTime()    # This should perhaps be in dataPage, assuming it will only run immediately
                                # after login has been checked (i.e. can't click on link on page that's been
@@ -115,7 +115,7 @@ def TrialTraitTableHtml(trial):
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         # Add "Detail" button for trait types with extra configuration:
         if trt.type == T_INTEGER or trt.type == T_DECIMAL:
-            url = url_for('traitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
+            url = url_for('urlTraitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
             validateButton = HtmlButtonLink2("Details", url)
             out += "<td>" + validateButton  + "</td>"
     out += "</table>"
@@ -149,15 +149,15 @@ def TrialHtml(sess, trialId):
             return "No attributes found"
         out = "<ul>"
         for att in attList:
-            out += "<li><a href={0}>{1}</a></li>".format(url_for("attributeDisplay", trialId=trialId, attId=att.id), att.name)
+            out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
         out += "</ul>"
-        out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("attributeUpload", trialId=trialId))
+        out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
         return out
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
     # Traits:
-    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("newTrait", trialId=trialId))
-    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('addSysTrait2Trial', trialId=trialId))
+    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
+    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trialId))
     addSysTraitForm += '<input type="submit" value="Submit">'
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
@@ -189,13 +189,13 @@ def TrialHtml(sess, trialId):
             out = ""
             if len(oneSet) == 1:
                 out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
-                    url_for('traitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
+                    url_for('urlTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
             else:
                 out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
                 out += '<ul>'
                 for oti in oneSet:
                     out += "<li><a href={0}>&nbsp;Sample{1}</a></li>".format(
-                        url_for('traitInstance', traitInstanceId=oti.id), oti.sampleNum)
+                        url_for('urlTraitInstance', traitInstanceId=oti.id), oti.sampleNum)
                 out += '</ul>'
             return out
 
@@ -268,19 +268,19 @@ def dataNavigationContent(sess):
 # Return html content for navigation bar on a data page
 #
     nc = "<h1>User {0}</h1>".format(sess.GetUser())
-    nc += '<a href="{0}">Profile/Passwords</a>'.format(url_for('userDetails', userName=g.userName))
+    nc += '<a href="{0}">Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
     nc += '<hr clear="all">'
 
     trials = GetTrials(sess)
     trialListHtml = "No trials yet" if len(trials) < 1 else ""
     for t in trials:
-        trialListHtml += "<li><a href={0}>{1}</a></li>".format(url_for("showTrial", trialId=t.id), t.name)
+        trialListHtml += "<li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
     nc += "<h2>Trials:</h2>"
     nc += trialListHtml + HtmlButtonLink("Create New Trial", url_for("newTrial"))
     nc += '<hr>'
     nc += HtmlButtonLink("Download app", url_for("downloadApp"))
     nc += '<hr>'
-    nc += '<a href="{0}">System Traits</a>'.format(url_for('systemTraits', userName=g.userName))
+    nc += '<a href="{0}">System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
     return nc
 
 
@@ -303,7 +303,7 @@ def dataTemplatePage(sess, template, **kwargs):
 
 def trialPage(sess, trialId):
 #----------------------------------------------------------------------------
-# Return response that is the main page for specified file, or error message.
+# Return response that is the urlMain page for specified file, or error message.
 #
     trialh = TrialHtml(sess, trialId)
     if trialh is None:
@@ -313,7 +313,7 @@ def trialPage(sess, trialId):
 
 @app.route('/trial/<trialId>', methods=["GET"])
 @dec_check_session()
-def showTrial(sess, trialId):
+def urlTrial(sess, trialId):
 #===========================================================================
 # Page to display/modify a single trial.
 #
@@ -335,7 +335,7 @@ def AddSysTrialTrait(sess, trialId, traitId):
         cur.close()
         con.commit()
     except mdb.Error, e:
-        return  usrdb + " " + qry
+        return  usrdb
     return None
 
 
@@ -350,7 +350,7 @@ def allowed_file(filename):  # MFK cloned code warning
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-def NewTraitCategorical(sess, request, newTrait):
+def NewTraitCategorical(sess, request, newTraitID):
     capKeys = [key for key in request.form.keys() if key.startswith("caption_")]
     for key in capKeys:
         caption = request.form.get(key)
@@ -360,11 +360,11 @@ def NewTraitCategorical(sess, request, newTrait):
         if imageURLFile:
             sentFilename = secure_filename(imageURLFile.filename)
             if allowed_file(sentFilename):
-                subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(newTrait.id))
+                subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(newTraitID))
                 if not os.path.exists(subpath):
                     os.makedirs(subpath)
                 imageURLFile.save(subpath +  "/" + sentFilename)
-                imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + sess.GetUser() + "/" + str(newTrait.id) + "/" + sentFilename
+                imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + sess.GetUser() + "/" + str(newTraitID) + "/" + sentFilename
             else:
                 pass  # should issue a warning perhaps?
 
@@ -372,7 +372,7 @@ def NewTraitCategorical(sess, request, newTrait):
         ncat = models.TraitCategory()
         ncat.value = value
         ncat.caption = caption
-        ncat.trait_id = newTrait.id
+        ncat.trait_id = newTraitID
         ncat.imageURL = imageURL
         sess.DB().add(ncat)
 
@@ -425,7 +425,7 @@ def CreateNewTrait(sess,  trialId, request):
 
     # Trait type specific processing:
     if int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
-        NewTraitCategorical(sess, request, ntrt)
+        NewTraitCategorical(sess, request, ntrt.id)
     elif int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
         pass
 
@@ -573,7 +573,7 @@ def newTrial(sess):
 
 @app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()
-def newTrait(sess, trialId):
+def urlNewTrait(sess, trialId):
 #===========================================================================
 # Page for trait creation.
 #
@@ -592,13 +592,16 @@ def newTrait(sess, trialId):
 
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
-def traitValidation(sess, trialId, traitId):
+def urlTraitValidation(sess, trialId, traitId):
 #===========================================================================
 # Page to display/modify validation parameters for a trait.
 # Currently only relevant for integer traits.
 #
-    trial = dbUtil.GetTrial(sess, trialId)
     trt = dbUtil.GetTrait(sess, traitId)
+    if trt.type != T_INTEGER and trt.type != T_DECIMAL:
+        return trialPage(sess, trialId)
+
+    trial = dbUtil.GetTrial(sess, trialId)
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
     comparatorCodes = [
         ["gt", "Greater Than", 1],
@@ -608,7 +611,7 @@ def traitValidation(sess, trialId, traitId):
     ]
 
     if request.method == 'GET':  #xxx
-        if trt.type == T_INTEGER:
+        if False and trt.type == T_INTEGER:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             #
@@ -682,8 +685,8 @@ def traitValidation(sess, trialId, traitId):
             maxText = ""
             if ttn and ttn.max is not None:
                 maxText = "value='{0}'".format(ttn.getMax())
-            minMaxBounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
-            minMaxBounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
+            minMaxBounds = "<p>Minimum: <input type='text' name='min' id=tdMin {0}>".format(minText)
+            minMaxBounds += "<p>Maximum: <input type='text' name='max' id=tdMax {0}><br>".format(maxText);
 
             # Parse condition string, if present, to retrieve comparator and attribute.
             # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
@@ -714,32 +717,45 @@ def traitValidation(sess, trialId, traitId):
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
-                if att.datatype == T_DECIMAL:  # xxx restrict to decimal attributes
+                if att.datatype == T_DECIMAL or att.datatype == T_INTEGER:  # xxx restrict to decimal attributes
                     attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
                         att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
 
-            # javascript to check that if one of comp and att chosen both are:
+            # javascript form validation
+            # NEED TO Check that min and max are valid int or decimal
+            # Check that if one of comp and att chosen both are
+            # Note this is the same validation for integer and decimal. So integer
+            # will allow decimal min/max. Could be made strict, but I'm not sure this is bad.
             script = """
                 <script>
-                function validateTraitDetails() {
-                    //alert("hallo");
-                    //return false;
+                function isValidDecimal(inputtxt) {
+                    var decPat =  /^[+-]?[0-9]+(?:\.[0-9]+)?$/g;
+                    return inputtxt.match(decPat);
+                }
 
+                function validateTraitDetails() {
+                    // Check min and max fields:
+                    if (!isValidDecimal(document.getElementById("tdMin").value)) {
+                        alert('Invalid value for minimum');
+                        return false;
+                    }
+                    if (!isValidDecimal(document.getElementById("tdMax").value)) {
+                        alert('Invalid value for maximum');
+                        return false;
+                    }
+
+                    // Check attribute/comparator fields, either both or neither present:
                     var att = document.getElementById("tdAttribute").value;
                     var comp = document.getElementById("tdCompOp").value;
-
-                    var attPresent = (att === null || att === "");
-                    //alert(attPresent ? "att yes" : "att no");
-                    //return false;
-
-                    var compPresent = (comp === null || comp === "");
+                    var attPresent = (att !== null && att !== "0");
+                    var compPresent = (comp !== null && comp !== "0");
                     if (attPresent && !compPresent) {
-                        alert("Attribute selected with no comparitor specified, please fix.");
+                        alert("Attribute selected with no comparator specified, please fix.");
                         return false;
                     }
                     if (!attPresent && compPresent) {
-                        alert("Comparitor selected with no attibute specified, please fix.");
+                        alert("Comparator selected with no attibute specified, please fix.");
                         return false;
                     }
                     return true;
@@ -753,15 +769,15 @@ def traitValidation(sess, trialId, traitId):
             conts += minMaxBounds
             conts += '<p>Integer traits can be validated by comparison with an attribute:'
             conts += '<br>Trait value should be ' + valOp + attListHtml
-            # MFK why the history.back?
-            #conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
-            conts += '<p><input type="button" style="color:red" value="Cancel"><input type="submit" style="color:red" value="Submit">'
+            conts += ('\n<p><input type="button" style="color:red" value="Cancel"' +
+                ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
+            conts += '\n<input type="submit" style="color:red" value="Submit">'
 
             return dataPage(sess, content=script + HtmlForm(conts, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
 
         return dataPage(sess, content='No validation for this trait type', title=title)
     if request.method == 'POST':
-        if trt.type == T_INTEGER:
+        if False and trt.type == T_INTEGER:
             op = request.form.get('validationOp')
             # if op == "0":
             #     return "please choose a comparator" mfk now javascript? No but we need js check that if one of comp and att chosen both are.
@@ -790,17 +806,20 @@ def traitValidation(sess, trialId, traitId):
             sess.DB().commit()
             return trialPage(sess, trialId)
         if trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
-            op = request.form.get('validationOp')
-            # if op == "0":
-            #     return "please choose a comparator" mfk now javascript? No but we need js check that if one of comp and att chosen both are.
-            at = request.form.get('attributeList')
+            op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
+            if not re.match('[0-4]', op):
+                return "Invalid operation {0}".format(op) # should be some function to show error page..
+            at = request.form.get('attributeList') # value should be valid attribute ID
+
+            # Check min/max:
             vmin = request.form.get('min')
             if len(vmin) == 0:
                 vmin = None
             vmax = request.form.get('max')
             if len(vmax) == 0:
                 vmax = None
-            # Get existing trialTraitInteger, if any.
+
+            # Get existing trialTraitNumeric, or create new one if none:
             ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
             newTTN = ttn is None
             if newTTN:
@@ -814,11 +833,12 @@ def traitValidation(sess, trialId, traitId):
             if newTTN:
                 sess.DB().add(ttn)
             sess.DB().commit()
-            return trialPage(sess, trialId)
+            #return trialPage(sess, trialId)
+            return redirect(url_for("urlTrial", trialId=trialId))
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
-def attributeUpload(sess, trialId):
+def urlAttributeUpload(sess, trialId):
     if request.method == 'GET':
         return dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes')
 
@@ -832,7 +852,7 @@ def attributeUpload(sess, trialId):
 
 @app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
-def attributeDisplay(sess, trialId, attId):
+def urlAttributeDisplay(sess, trialId, attId):
     tua = dbUtil.GetAttribute(sess, attId)
     r = "Attribute {0}".format(tua.name)
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
@@ -847,7 +867,7 @@ def attributeDisplay(sess, trialId, attId):
 
 @app.route('/user/<userName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
-def userDetails(sess, userName):
+def urlUserDetails(sess, userName):
     title = "Profile"
     if request.method == 'GET':
         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
@@ -903,7 +923,7 @@ def userDetails(sess, userName):
 
 @app.route('/user/<userName>/systemTraits/', methods=['GET', 'POST'])
 @dec_check_session()
-def systemTraits(sess, userName):
+def urlSystemTraits(sess, userName):
 #---------------------------------------------------------------------------
 #
 #
@@ -912,14 +932,14 @@ def systemTraits(sess, userName):
         sysTraits = GetSysTraits(sess)
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.TraitListHtmlTable(sysTraits)
         r = HtmlFieldset(
-            HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("newTrait", trialId='sys')),
+            HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
         return dataPage(sess, title='System Traits', content=r)
 
 
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
-def addSysTrait2Trial(sess, trialId):
+def urlAddSysTrait2Trial(sess, trialId):
     errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
     if errMsg:
         return dataPage(sess, content=errMsg, title='Error')
@@ -928,7 +948,7 @@ def addSysTrait2Trial(sess, trialId):
 
 @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
-def traitInstance(sess, traitInstanceId):
+def urlTraitInstance(sess, traitInstanceId):
 #-----------------------------------------------------------------------
 # Display the data for specified trait instance.
 # MFK this should probably display RepSets, not individual TIs
@@ -962,23 +982,23 @@ def traitInstance(sess, traitInstanceId):
 
 @app.route('/user/<userName>/', methods=['GET'])
 @dec_check_session()
-def userHome(sess, userName):
+def urlUserHome(sess, userName):
     return FrontPage(sess)
 
 @app.route('/logout', methods=["GET"])
 @dec_check_session()
-def logout(sess):
+def urlLogout(sess):
     sess.close()
-    return redirect(url_for('main'))
+    return redirect(url_for('urlMain'))
 
 @app.route('/info/<pagename>', methods=["GET"])
 @dec_check_session(True)
-def infoPage(sess, pagename):
-    g.rootUrl = url_for('main')
+def urlInfoPage(sess, pagename):
+    g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
 @app.route('/', methods=["GET", "POST"])
-def main():
+def urlMain():
 #-----------------------------------------------------------------------
 # Entry point for FieldPrime web admin.
 # As a GET it presents a login screen.
@@ -997,7 +1017,7 @@ def main():
 # to where the user was originally trying to get to..
 #
 # Perhaps all of the app.routes should start with a /trial/<trialId>, even when this is not strictly
-# necessary, eg for traitInstance, which doesn't need it since the TI id is unique within db.
+# necessary, eg for urlTraitInstance, which doesn't need it since the TI id is unique within db.
 # Or perhaps it should be /user/userName/[trial/trialId]/
 #
 # Might want to change displayed url for some things eg the op to change password ends up displaying
@@ -1029,7 +1049,7 @@ def main():
         return render_template('sessError.html', msg=error, title='FieldPrime Login')
 
     # Request method is 'GET':
-    return infoPage('fieldprime')
+    return urlInfoPage('fieldprime')
 
 
 ##############################################################################################################

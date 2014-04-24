@@ -68,9 +68,11 @@ class AttributeValue(DeclarativeBase):
 
     def setValueWithTypeUpdate(self, newVal):
     # Set the value, and if the val is not an integer, set the type to text.
+    # NB by default datatypes are integer, if necessary fall back to decimal,
+    # and then to string
         self.value = newVal
-        if not util.isInt(newVal):
-            self.trialUnitAttribute.datatype = T_STRING
+        if not self.trialUnitAttribute.datatype == T_STRING and not util.isInt(newVal):
+            self.trialUnitAttribute.datatype = T_DECIMAL if util.isNumeric(newVal) else T_STRING
 
 
 class Datum(DeclarativeBase):

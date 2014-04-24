@@ -3,7 +3,7 @@
 {% block dataContent %}
 
 <fieldset><legend><h3>Contact Details</h3></legend>
-  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=contact">
+  <form method="POST" action="{{url_for('urlUserDetails', userName=g.userName)}}?op=contact">
     <p> Name and email address of a contact for this account:
     <p> Contact name: <input type="text" name="contactName" style="width: 200px;" value="{{contactName}}">
     <p> Contact email: <input type=text name="contactEmail" style="width: 200px;" value="{{contactEmail}}">
@@ -15,7 +15,7 @@
 </fieldset>
 
 <fieldset><legend><h3>Reset Admin password</h3></legend>
-  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=newpw">
+  <form method="POST" action="{{url_for('urlUserDetails', userName=g.userName)}}?op=newpw">
     <p> The <i>Admin Password</i> is the password used to login to this web server to
       manage the trials. I.e. the one you must have used at some stage to get to this page.
     <p> Enter your login name: <input type="text" name="login">
@@ -30,7 +30,7 @@
 </fieldset>
 
 <fieldset><legend><h3>Reset Scoring Devices Password</h3></legend>
-  <form method="POST" action="{{url_for('userDetails', userName=g.userName)}}?op=setAppPassword">
+  <form method="POST" action="{{url_for('urlUserDetails', userName=g.userName)}}?op=setAppPassword">
     <p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
       to allow them to download trial information, and upload trial scores. If this is not configured,
       or if it is blank, then the scoring devices will be able to download and upload without configuring

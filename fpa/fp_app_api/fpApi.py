@@ -1,6 +1,6 @@
 # fpApi.py
 # Michael Kirk 2013
-# 
+#
 #
 
 from flask import Flask, request, Response, url_for
@@ -12,13 +12,20 @@ from functools import wraps
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 
+if __name__ == '__main__':
+    import os,sys,inspect
+    currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parentdir = os.path.dirname(currentdir)
+    sys.path.insert(0,parentdir)
+
+from fp_common.const import *
 
 ### SetUp: ######################################################################################
 if __name__ == '__main__':
     import os,sys,inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
-    sys.path.insert(0,parentdir) 
+    sys.path.insert(0,parentdir)
 
 app = Flask(__name__)
 try:
@@ -77,7 +84,7 @@ def trial_list(username):
 # Return JSON list of available trials for user
 #
     password = request.args.get('pw', '')
-    dbc, errMsg = dal.DbConnectAndAuthenticate(username, password) 
+    dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
     if dbc is None:
         return JsonErrorResponse(errMsg)
 
@@ -100,7 +107,7 @@ def trial_list(username):
 def get_trial(username, trl, dbc):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
-# 
+#
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
 
@@ -147,14 +154,14 @@ def get_trial(username, trl, dbc):
 
         # Trial unit attributes:
         for n in tuNames:
-            jtu[n] = getattr(ctu, n)  
-      
+            jtu[n] = getattr(ctu, n)
+
         # Attribute values:
         if len(ctu.attVals) > 0:
             if int(clientVersion) > 0:
                 atts = {}
                 for att in ctu.attVals:
-                    atts[att.trialUnitAttribute.name] = att.value   
+                    atts[att.trialUnitAttribute.name] = att.value
                     jtu['attvals'] = atts
             else:     # MFK - support for old clients, remove when all clients updated
                 for att in ctu.attVals:
@@ -164,7 +171,7 @@ def get_trial(username, trl, dbc):
         if ctu.latitude is not None and ctu.longitude is not None:
             jloc = [ctu.latitude, ctu.longitude]
             jtu['location'] = jloc
-     
+
         tuList.append(jtu)
     jtrl['trialUnits'] = tuList
 
@@ -189,7 +196,7 @@ def get_trial(username, trl, dbc):
                                       token=servToken, _external=True)
 
         #########################################################################
-        # Here we should have trait datatype specific stuff. Using polymorphism? 
+        # Here we should have trait datatype specific stuff. Using polymorphism?
         #
 
         # Categorical traits:
@@ -208,16 +215,27 @@ def get_trial(username, trl, dbc):
                                                traitid=trt.id, token=servToken, _external=True)
 
         # Integer traits:
-        elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
+#         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
+#             # get the trialTraitInteger object, and send the contents
+#             tti = dal.GetTrialTraitIntegerDetails(dbc, trt.id, trl.id)
+#             if tti is not None:
+#                 val = {}
+#                 val['min'] = tti.min
+#                 val['max'] = tti.max
+#                 val['cond'] = tti.cond
+#                 jtrait['validation'] = val
+
+        # Numeric traits (integer and decimal):
+        elif trt.type == T_DECIMAL or trt.type == T_INTEGER:
             # get the trialTraitInteger object, and send the contents
-            tti = dal.GetTrialTraitIntegerDetails(dbc, trt.id, trl.id)
-            if tti is not None:
+            ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
+            if ttn is not None:
                 val = {}
-                val['min'] = tti.min
-                val['max'] = tti.max
-                val['cond'] = tti.cond
+                val['min'] = ttn.getMin()
+                val['max'] = ttn.getMax()
+                val['cond'] = ttn.cond
                 jtrait['validation'] = val
- 
+
         #########################################################################
 
         traitList.append(jtrait)
@@ -371,7 +389,7 @@ def create_adhoc(username, trl, dbc):
     #vmin = request.args.get('min', '')
     #vmax = request.args.get('max', '')
     vmin = -1000000
-    vmax = 1000000   
+    vmax = 1000000
     # MFK Need to get rid of min and max, from general trait, it needs to be trait specific
     ntrt, errMsg = dal.CreateTrait2(dbc, caption, description, vtype, dal.SYSTYPE_ADHOC, vmin, vmax)
     if not ntrt:

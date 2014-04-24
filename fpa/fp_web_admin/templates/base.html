@@ -35,7 +35,7 @@
     {# Login fields, or name of logged in user and logout button: #}
     <div id="loginout">
       {% if not loggedIn %} <!-- If there is NO user logged in: -->
-      <FORM method="POST" action="{{ url_for('main') }}">
+      <FORM method="POST" action="{{ url_for('urlMain') }}">
         <b>Signin:</b>
         User name: <input type="text" name="username">
         Password: <input type=password name="password">
@@ -43,7 +43,7 @@
       </FORM>
       {% else %} <!-- If there IS a user logged in: -->
       Logged in as {{g.userName}}
-      <button  onClick="window.location=' {{ url_for('logout') }}'">Logout</button>
+      <button  onClick="window.location=' {{ url_for('urlLogout') }}'">Logout</button>
       {% endif %}
     </div>
 
@@ -57,14 +57,14 @@
       {# Add UserData page if use is logged in: #}
       {% if loggedIn %}
 	  <li {% if pagename is not defined %} class="active" {% endif %}>
-        <a href={{ url_for('userHome', userName=g.userName) }}>User Data</a>
+        <a href={{ url_for('urlUserHome', userName=g.userName) }}>User Data</a>
       </li>
       {% endif %}
 
-	  <li {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='fieldprime') }}">FieldPrime</a></li>
-	  <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='news') }}">News</a></li>
-	  <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='about') }}">About</a></li>
-	  <li {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('infoPage', pagename='contact') }}">Contact</a></li>
+	  <li {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}">FieldPrime</a></li>
+	  <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}">News</a></li>
+	  <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}">About</a></li>
+	  <li {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}">Contact</a></li>
     </ul>
   </div>
   <!-- <hr> -->
