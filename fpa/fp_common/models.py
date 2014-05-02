@@ -102,6 +102,7 @@ class Datum(DeclarativeBase):
                 value = trtCat.caption
         if type == T_DATE: value = self.numValue
         if type == T_PHOTO: value = self.txtValue
+        #MFK return link to photo.
         #if type == T_LOCATION: value = d.txtValue
 
         # Convert None to "NA"
@@ -149,6 +150,16 @@ class TraitInstance(DeclarativeBase):
     trait = relation('Trait', primaryjoin='TraitInstance.trait_id==Trait.id')
     trial = relation('Trial', primaryjoin='TraitInstance.trial_id==Trial.id')
     trialUnits = relation('TrialUnit', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datum, secondaryjoin='Datum.trialUnit_id==TrialUnit.id')
+
+    def getDeviceId(self):
+        return self.token.split('.')[0]
+    def getDownloadTime(self):
+        return self.token.split('.')[1]
+    def numData(self):
+        session = Session.object_session(self)
+        count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
+        return count
+
 
 class TrialTraitInteger(DeclarativeBase):
     __tablename__ = 'trialTraitInteger'

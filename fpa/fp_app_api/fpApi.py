@@ -436,4 +436,6 @@ def hello_world():
 
 # For local testing:
 if __name__ == '__main__':
+    from os.path import expanduser
+    app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.run(debug=True, host='0.0.0.0')

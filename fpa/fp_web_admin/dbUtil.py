@@ -80,6 +80,9 @@ def GetTrialFromDBsess(sess, trialID):
     return sess.DB().query(Trial).filter(Trial.id == trialID).one()
 
 def GetTraitInstancesForTrial(sess, trialID):
+#-----------------------------------------------------------------------
+# Return all the traitInstances for the specified trial,
+# ordered by trait, token, seqnum, samplenum.
     return sess.DB().query(TraitInstance).filter(
         TraitInstance.trial_id == trialID).order_by(
         TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()

@@ -1,4 +1,4 @@
-# fpApi.py
+# fpWebAdmin.py
 # Michael Kirk 2013
 #
 #
@@ -121,6 +121,76 @@ def TrialTraitTableHtml(trial):
     out += "</table>"
     return out
 
+def htmlTrialScoreSets(sess, trialId):
+    # Trait Instances:
+    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
+
+    #def tis():
+    if len(tiList) < 1:
+        return "No trait score sets yet"
+    #out = "<ul>"
+    out = ""
+    #startIndex = 0
+    #index = 0
+    lastSeqNum = -1
+    lastTraitId = -1
+    lastToken = 'x'
+    oneSet = []
+
+    # func for use in loop below:
+#     def processGroup1(oneSet):
+#         out = ""
+#         if len(oneSet) == 1:
+#             out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
+#                 url_for('urlScoreSetTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
+#         else:
+#             out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
+#             out += '<ul>'
+#             for oti in oneSet:
+#                 out += "<li><a href={0}>&nbsp;Sample{1}</a></li>".format(
+#                     url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum)
+#             out += '</ul>'
+#         return out
+    def processGroup2(oneSet):
+        out = "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
+        if False and len(oneSet) == 1:
+            out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
+                url_for('urlScoreSetTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
+        else:
+            #out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
+            for oti in oneSet:
+                out += """    <tr>
+                <td>{2}</td>
+                <td style='border-left:1px solid grey;'>{4}</td>
+                <td style='border-left:1px solid grey;'>{3}</td>
+                <td style='border-left:1px solid grey;'>{5}</td>
+                <td style='border-left:1px solid grey;'><a href={0}>&nbsp;Sample{1}</a></td></tr>\n""".format(
+                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.trait.caption,
+                    oti.seqNum, oti.getDeviceId(), oti.numData())
+        out += '  </tbody>\n'
+        return out
+
+    # MFK looks like we have assumptions about ordering here:
+    out += ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
+            '<thead><tr><th>Trait</th><th>Device Id</th><th>seqNum</th><th>Score Count</th><th>samples</th></tr></thead>\n')
+    for ti in tiList:
+        #++index
+        traitId = ti.trait_id
+        seqNum = ti.seqNum
+        token = ti.token
+        if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId or token != lastToken):
+            out += processGroup2(oneSet)
+            oneSet = []
+        lastSeqNum = seqNum
+        lastTraitId = traitId
+        lastToken = token
+        oneSet.append(ti)
+    if lastSeqNum > -1:
+        out += processGroup2(oneSet)
+    out +=  "\n</table>\n"
+
+    return HtmlForm(HtmlFieldset(out, "Trait Score Sets:"))
+
 
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
@@ -129,7 +199,7 @@ def TrialHtml(sess, trialId):
     trial = dbUtil.GetTrial(sess, trialId)
     if trial is None: return None
 
-    # Trial name and details:
+    # Trial name and details: ------------------------------------------
     trialDetails = ''
     if trial.site: trialDetails += trial.site
     if trial.year:
@@ -142,7 +212,7 @@ def TrialHtml(sess, trialId):
     if trialDetails: trialNameAndDetails += ' (' + trialDetails + ')'
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
-    # Attributes:
+    # Attributes: ------------------------------------------
     attList = dbUtil.GetTrialAttributes(sess, trialId)
     def atts():
         if len(attList) < 1:
@@ -155,7 +225,7 @@ def TrialHtml(sess, trialId):
         return out
     r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
 
-    # Traits:
+    # Traits: ------------------------------------------
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trialId))
     addSysTraitForm += '<input type="submit" value="Submit">'
@@ -170,56 +240,10 @@ def TrialHtml(sess, trialId):
     addSysTraitForm += '</select></form>'
     r += HtmlFieldset(HtmlForm(TrialTraitTableHtml(trial)) + createTraitButton + addSysTraitForm, "Traits:")
 
-    # Trait Instances:
-    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
-    def tis():
-        if len(tiList) < 1:
-            return "No trait score sets yet"
-        #out = "<ul>"
-        out = ""
-        #startIndex = 0
-        #index = 0
-        lastSeqNum = -1
-        lastTraitId = -1
-        lastToken = 'x'
-        oneSet = []
+    # Score sets: ------------------------------------------
+    r += htmlTrialScoreSets(sess, trialId)
 
-        # func for use in loop below:
-        def processGroup(oneSet):
-            out = ""
-            if len(oneSet) == 1:
-                out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
-                    url_for('urlTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
-            else:
-                out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
-                out += '<ul>'
-                for oti in oneSet:
-                    out += "<li><a href={0}>&nbsp;Sample{1}</a></li>".format(
-                        url_for('urlTraitInstance', traitInstanceId=oti.id), oti.sampleNum)
-                out += '</ul>'
-            return out
-
-        for ti in tiList:
-            #++index
-            traitId = ti.trait_id
-            seqNum = ti.seqNum
-            token = ti.token
-            if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId or token != lastToken):
-                out += processGroup(oneSet)
-                oneSet = []
-            lastSeqNum = seqNum
-            lastTraitId = traitId
-            lastToken = token
-            oneSet.append(ti)
-        if lastSeqNum > -1:
-            out += processGroup(oneSet)
-
-        return out + "</ul>"
-    r += HtmlForm(HtmlFieldset(tis, "Trait Score Sets:"))
-
-    #============================================================================
-    # Download data section:
-    #
+    # Score Data: ------------------------------------------
 
     # Javascript function to generate the href for the download links.
     # The generated link includes trialId and the user selected output options.
@@ -240,7 +264,7 @@ function downloadURL() {{
     return out;
 }}
 </script>
-""".format(url_for("TrialDataTSV", trialId=trialId))
+""".format(url_for("urlTrialDataTSV", trialId=trialId))
 
     dl = ""
     dl += jscript
@@ -248,15 +272,16 @@ function downloadURL() {{
     dl += "Select columns to view/download:<br>"
     dl += "<select multiple id='tdms'>";
     dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
-    dl += "<option value='user' selected='selected'>User Idents</option>";
-    dl += "<option value='gps' selected='selected'>GPS info</option>";
-    dl += "<option value='notes' selected='selected'>Notes</option>";
-    dl += "<option value='attributes' selected='selected'>Attributes</option>";
-    dl += "</select>";
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL()'>"
-    dl +=     "View tab separated score data (or right click and Save Link As to download)</a>"
+    dl += "<option value='user' selected='selected'>User Idents</option>"
+    dl += "<option value='gps' selected='selected'>GPS info</option>"
+    dl += "<option value='notes' selected='selected'>Notes</option>"
+    dl += "<option value='attributes' selected='selected'>Attributes</option>"
+    dl += "</select>"
     dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>".format(trial.name)
-    dl +=     "Download tab separated score data (browser permitting, Chrome and Firefox OK, IE not yet)</a>"
+    dl +=     "<button>Download Trial Data</button></a>"
+    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</a>"
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL()' onContextMenu='this.href=downloadURL()'>"
+    dl +=     "View tab separated score data</a>"
     dl += "<br>Note data is TAB separated"
     r += HtmlFieldset(dl, "Score Data:")
 
@@ -453,7 +478,7 @@ def downloadApp(sess):
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
-def TrialDataTSV(sess, trialId):
+def urlTrialDataTSV(sess, trialId):
 #-----------------------------------------------------------------------
 # Returns trial data as plain text tsv form - i.e. for download.
 # The data is arranged in trial unit rows, and trait instance value and attribute
@@ -532,7 +557,7 @@ def TrialDataTSV(sess, trialId):
                 r += "{0}{1}".format(SEP, d.getValue())
                 # Write any other datum fields specified:
                 if showTime:
-                    r += "{0}{1}".format(SEP, d.timestamp)
+                    r += "{0}{1}".format(SEP, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(d.timestamp/1000)))
                 if showUser:
                     r += "{0}{1}".format(SEP, d.userid)
                 if showGps:
@@ -948,7 +973,7 @@ def urlAddSysTrait2Trial(sess, trialId):
 
 @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
-def urlTraitInstance(sess, traitInstanceId):
+def urlScoreSetTraitInstance(sess, traitInstanceId):
 #-----------------------------------------------------------------------
 # Display the data for specified trait instance.
 # MFK this should probably display RepSets, not individual TIs
@@ -968,6 +993,14 @@ def urlTraitInstance(sess, traitInstanceId):
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
 
+#MFK way to provide images to authenticated user only?
+# @app.route("/imgs/<path:path>")
+# def images(path):
+#     generate_img(path)
+#     fullpath = "./imgs/" + path
+#     resp = flask.make_response(open(fullpath).read())
+#     resp.content_type = "image/jpeg"
+#     return resp
 
 # def TraitInstanceHtml(sess, tiId):
 # #-----------------------------------------------------------------------
@@ -1017,7 +1050,7 @@ def urlMain():
 # to where the user was originally trying to get to..
 #
 # Perhaps all of the app.routes should start with a /trial/<trialId>, even when this is not strictly
-# necessary, eg for urlTraitInstance, which doesn't need it since the TI id is unique within db.
+# necessary, eg for urlScoreSetTraitInstance, which doesn't need it since the TI id is unique within db.
 # Or perhaps it should be /user/userName/[trial/trialId]/
 #
 # Might want to change displayed url for some things eg the op to change password ends up displaying

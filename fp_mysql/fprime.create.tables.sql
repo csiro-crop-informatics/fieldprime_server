@@ -1,7 +1,7 @@
--- 
+--
 -- SQL statements to create tables for an fprime instance.
 -- NB, assumes database is created and used.
--- 
+--
 -- -----------------------------------------------------------------------------------------------------
 
 
@@ -36,7 +36,7 @@ create table trial(
 -- So genotype, pedigree, and barcode will be removed (and possibly description).
 -- All trial unit attributes other than the mandatory first four will be stored
 -- via the trialUnitAttribute and attributeValue tables.
--- 
+--
 create table trialUnit(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   trial_id    INT NOT NULL,
@@ -46,15 +46,16 @@ create table trialUnit(
   barcode     text,
   latitude    DOUBLE,
   longitude   DOUBLE,
+  UNIQUE uc_trialrowcol (trial_id, row, col),
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 
--- 
+--
 -- trialUnitAttribute
 --
 -- To allow for arbitrary extra trial unit attributes, not anticipated at design time.
--- 
+--
 create table trialUnitAttribute(
   id         INT PRIMARY KEY AUTO_INCREMENT,
   trial_id   INT NOT NULL,
@@ -82,7 +83,7 @@ create table trialUnitNote(
   FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE
 );
 
--- 
+--
 -- attributeValue
 --
 create table attributeValue(
@@ -145,7 +146,7 @@ create table trialTrait(
 -- Extension of trait table for datatype integer.
 -- But - we need trial specific trait attributes!
 -- Should this instead refer to key of trialTrait?
--- 
+--
 create table trialTraitInteger(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
@@ -161,7 +162,7 @@ create table trialTraitInteger(
 -- trialTraitNumeric
 -- Extension of trialTrait table for intended for decimal traits,
 -- but maybe we can use this for integer traits too..
--- 
+--
 create table trialTraitNumeric(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
@@ -213,5 +214,10 @@ create table datum(
   PRIMARY KEY(trialUnit_id, traitInstance_id, timestamp),
   FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id),
   FOREIGN KEY(traitInstance_id) REFERENCES traitInstance(id)
+);
+
+create table deviceName(
+  androidId  CHAR(16) PRIMARY KEY,
+  nickName   VARCHAR(63)
 );
 
