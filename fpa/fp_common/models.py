@@ -36,7 +36,7 @@ datum = Table(u'datum', metadata,
     Column(u'gps_long', Float(asdecimal=True)),
     Column(u'gps_lat', Float(asdecimal=True)),
     Column(u'userid', TEXT()),
-    Column(u'notes', TEXT()),
+    #Column(u'notes', TEXT()),
     Column(u'numValue', DECIMAL(precision=11, scale=3)),
     Column(u'txtValue', TEXT()),
 )

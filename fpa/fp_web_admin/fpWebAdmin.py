@@ -501,8 +501,6 @@ def urlTrialDataTSV(sess, trialId):
         numColsPerValue += 1
     if showGps:
         numColsPerValue += 2
-    if showNotes:
-        numColsPerValue += 1         # MFK NOTE this will need to be removed when we deprecate datum notes
 
     # Headers:
     r = "Row" + SEP + "Column"
@@ -519,8 +517,6 @@ def urlTrialDataTSV(sess, trialId):
             r += "{1}{0}_user".format(tiName, SEP)
         if showGps:
             r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, SEP)
-        if showNotes:
-            r += SEP + "{0}.notes".format(tiName)
     if showNotes:
         r += SEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
     r += '\n'
@@ -562,9 +558,6 @@ def urlTrialDataTSV(sess, trialId):
                     r += "{0}{1}".format(SEP, d.userid)
                 if showGps:
                     r += "{0}{1}{0}{2}".format(SEP, d.gps_lat, d.gps_long)
-                if showNotes:
-                    r += SEP
-                    if d.notes != None and len(d.notes) > 0: r += d.notes  ######### MFK move old notes, discontinue support!
 
         # Notes, as list separated by pipe symbols:
         if showNotes:
