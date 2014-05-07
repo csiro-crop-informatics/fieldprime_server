@@ -3,7 +3,7 @@
 #
 #
 
-import os, sys, time, re
+import os, sys, re
 import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import json, jsonify
@@ -20,6 +20,7 @@ if __name__ == '__main__':
 import dbUtil
 import fpTrait
 import fp_common.models as models
+import fp_common.util as util
 import fpTrial
 import fpUtil
 from fp_common.const import *
@@ -553,7 +554,8 @@ def urlTrialDataTSV(sess, trialId):
                 r += "{0}{1}".format(SEP, d.getValue())
                 # Write any other datum fields specified:
                 if showTime:
-                    r += "{0}{1}".format(SEP, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(d.timestamp/1000)))
+                    #r += "{0}{1}".format(SEP, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(d.timestamp/1000)))
+                    r += "{0}{1}".format(SEP, util.epoch2dateTime(d.timestamp))
                 if showUser:
                     r += "{0}{1}".format(SEP, d.userid)
                 if showGps:
@@ -628,66 +630,8 @@ def urlTraitValidation(sess, trialId, traitId):
         ["le", "Less Than or Equal to", 4]
     ]
 
-    if request.method == 'GET':  #xxx
-        if False and trt.type == T_INTEGER:
-            #
-            # Generate form on the fly. Could use template but there's lots of variables.
-            #
-            tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
-            # xxx need to get decimal version if decimal. Maybe make tti type have getMin/getMax func and use for both types
-            minText = ""
-            if tti and tti.min is not None:
-                minText = "value='{0}'".format(tti.min)
-            maxText = ""
-            if tti and tti.max is not None:
-                maxText = "value='{0}'".format(tti.max)
-            minMaxBounds = "<p>Minimum: <input type='text' name='min' {0}>".format(minText)
-            minMaxBounds += "<p>Maximum: <input type='text' name='max' {0}><br>".format(maxText);
-
-            # Parse condition string, if present, to retrieve comparator and attribute.
-            # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
-            # The only supported comparison at present is comparing the score to a
-            # single attribute.
-            # NB, this format needs to be in sync with the version on the app. I.e. what
-            # we save here, must be understood on the app.
-            atId = -1
-            op = ""
-            if tti and tti.cond is not None:
-                tokens = tti.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
-                if len(tokens) != 3:
-                    return "bad condition: " + tti.cond
-                op = tokens[1]
-                atClump = tokens[2]
-                atId = int(atClump[4:])
-
-            # Show available comparison operators:
-            valOp = '<select name="validationOp">'
-            valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
-            for c in comparatorCodes:
-                valOp += '<option value="{0}" {2}>{1}</option>'.format(
-                    c[2], c[1], 'selected="selected"' if op == c[0] else "")
-            valOp += '</select>'
-
-            # Attribute list:
-            attListHtml = '<select name="attributeList">'
-            attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
-            atts = dbUtil.GetTrialAttributes(sess, trialId)
-            for att in atts:
-                if att.datatype == T_INTEGER:  # xxx restrict to integer attributes
-                    attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
-                        att.id, att.name, "selected='selected'" if att.id == atId else "")
-            attListHtml += '</select>'
-
-            conts = 'Trial: ' + trial.name
-            conts += '<br>Trait: ' + trt.caption
-            conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
-            conts += minMaxBounds
-            conts += '<p>Integer traits can be validated by comparison with an attribute:'
-            conts += '<br>Trait value should be ' + valOp + attListHtml
-            conts += '<p><input type="button" style="color:red" value="Cancel" onclick="history.back()"><input type="submit" style="color:red" value="Submit">'
-
-            return dataPage(sess, content=HtmlForm(conts, post=True), title='Trait Validation')
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:  #mfk clone of above, remove above when numeric works for integer.
+    if request.method == 'GET':
+        if trt.type == T_INTEGER or trt.type == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             # Make this a separate function to generate html form, so can be used from
@@ -735,7 +679,7 @@ def urlTraitValidation(sess, trialId, traitId):
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
             atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
-                if att.datatype == T_DECIMAL or att.datatype == T_INTEGER:  # xxx restrict to decimal attributes
+                if att.datatype == T_DECIMAL or att.datatype == T_INTEGER:
                     attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
                         att.id, att.name, "selected='selected'" if att.id == atId else "")
             attListHtml += '</select>'
@@ -979,21 +923,40 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
     r += "<p><table border='1'>"
-    r += "<tr><td>Row</td><td>Column</td><td>Timestamp</td><td>Value</td></tr>"
+    r += "<tr><td>Row</td><td>Column</td><td>Time</td><td>Value</td></tr>"
     for d in data:
+        if typ == T_PHOTO:  # Special case for photos. Display a link to show the photo.
+                            # Perhaps this should be done in Datum.getValue, but we don't have all info.
+            fname = models.photoFileName(sess.GetUser(),
+                                         ti.trial_id,
+                                         ti.trait_id,
+                                         d.trialUnit.id,
+                                         ti.token,
+                                         ti.seqNum,
+                                         ti.sampleNum)
+            value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+        else:
+            value = d.getValue()
+
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
-            d.trialUnit.row, d.trialUnit.col, d.timestamp, d.getValue())
+            d.trialUnit.row, d.trialUnit.col, util.epoch2dateTime(d.timestamp), value)
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
 
-#MFK way to provide images to authenticated user only?
-# @app.route("/imgs/<path:path>")
-# def images(path):
-#     generate_img(path)
-#     fullpath = "./imgs/" + path
-#     resp = flask.make_response(open(fullpath).read())
-#     resp.content_type = "image/jpeg"
-#     return resp
+@app.route("/photo/<filename>", methods=['GET'])
+@dec_check_session()
+def urlPhoto(sess, filename):
+# This is a way to provide images to authenticated user only.
+# An alternative would be to put the image in a static folder,
+# but then (I think) they must be visible to everyone.
+# Note this method is presumably slower to run than just having
+# a static URL. I'm not sure whether the performance hit is significant.
+    fullpath = app.config['PHOTO_UPLOAD_FOLDER'] + filename
+    if not os.path.isfile(fullpath):
+        return "Can't find file {0}".format(fullpath)   #MFK xxx, need standard error display function
+    resp = make_response(open(fullpath).read())
+    resp.content_type = "image/jpeg"
+    return resp
 
 # def TraitInstanceHtml(sess, tiId):
 # #-----------------------------------------------------------------------
@@ -1095,5 +1058,6 @@ def LogDebug(hdr, text):
 if __name__ == '__main__':
     from os.path import expanduser
     app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
+    app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.run(debug=True, host='0.0.0.0', port=5001)
 

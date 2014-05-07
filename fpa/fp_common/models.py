@@ -89,9 +89,9 @@ class Datum(DeclarativeBase):
         type = self.traitInstance.trait.type
         value = '?'
         if type == T_INTEGER: value = self.numValue
-        if type == T_DECIMAL: value = self.numValue
-        if type == T_STRING: value = self.txtValue
-        if type == T_CATEGORICAL:
+        elif type == T_DECIMAL: value = self.numValue
+        elif type == T_STRING: value = self.txtValue
+        elif type == T_CATEGORICAL:
             value = self.numValue
             # Need to look up the text for the value:
             if value is not None:
@@ -100,9 +100,16 @@ class Datum(DeclarativeBase):
                 trtCat = session.query(TraitCategory).filter(
                     and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
                 value = trtCat.caption
-        if type == T_DATE: value = self.numValue
-        if type == T_PHOTO: value = self.txtValue
-        #MFK return link to photo.
+        elif type == T_DATE: value = self.numValue
+        elif type == T_PHOTO:
+#             session = Session.object_session(self)
+#             traitId = self.traitInstance.trait.id
+#             nodeId = self.trialUnit.id
+#             trialId = self.trialUnit.trial_id
+#             value = photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum, fileExtension):
+            value = self.txtValue
+
+            #MFK return link to photo.
         #if type == T_LOCATION: value = d.txtValue
 
         # Convert None to "NA"
@@ -369,7 +376,7 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
 #-------------------------------------------------------------------------------------------------
 # Return None for success, else an error message.
 #
-    valueFieldName = 'txtValue' if  trtType == 2 or trtType == 5 else 'numValue'
+    valueFieldName = 'txtValue' if  trtType == T_STRING or trtType == T_PHOTO else 'numValue'
     qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}) values '.format(
         'datum', 'trialUnit_id', 'traitInstance_id',
         'timestamp', 'gps_long', 'gps_lat', 'userid',
@@ -486,6 +493,11 @@ def GetTrialTraitNumericDetails(dbc, trait_id, trial_id): #replace above with th
         ttid = tti[0]
         return ttid
     return None
+
+def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
+    return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
+
+
 
 # def LogDebug(hdr, text):
 # #-------------------------------------------------------------------------------------------------

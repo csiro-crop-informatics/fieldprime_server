@@ -3,7 +3,7 @@ from dbUtil import GetEngine
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
-# 
+#
 # WebSess
 # Server side session object. Once created, a session will have an id, and state
 # is stored in the file system. This may be retrieved by specifying an existing
@@ -19,7 +19,7 @@ SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 # stored username and password.
 #
 class WebSess(object):
-    def __init__(self, forceNew=False, sid=None, timeout=300, sessFileDir='/tmp'):
+    def __init__(self, forceNew=False, sid=None, timeout=900, sessFileDir='/tmp'):
     #------------------------------------------------------------------
         self.mTimeout = timeout
         # set sid or create new one:
@@ -40,8 +40,8 @@ class WebSess(object):
         self.sessFile = sessFileDir + '/sess_' + self.mSid
         self.data = shelve.open(self.sessFile, writeback=True)
         os.chmod(self.sessFile, 0660)
- 
-    def close(self): 
+
+    def close(self):
     #------------------------------------------------------------------
         sessFile = self.sessFile
         print sessFile

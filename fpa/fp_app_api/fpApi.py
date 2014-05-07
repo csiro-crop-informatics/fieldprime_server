@@ -214,17 +214,6 @@ def get_trial(username, trl, dbc):
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
                                                traitid=trt.id, token=servToken, _external=True)
 
-        # Integer traits:
-#         elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
-#             # get the trialTraitInteger object, and send the contents
-#             tti = dal.GetTrialTraitIntegerDetails(dbc, trt.id, trl.id)
-#             if tti is not None:
-#                 val = {}
-#                 val['min'] = tti.min
-#                 val['max'] = tti.max
-#                 val['cond'] = tti.cond
-#                 jtrait['validation'] = val
-
         # Numeric traits (integer and decimal):
         elif trt.type == T_DECIMAL or trt.type == T_INTEGER:
             # get the trialTraitInteger object, and send the contents
@@ -268,24 +257,33 @@ def upload_trait_data(username, trial, dbc, traitid, token):
 # upload_photo()
 # Trait instances are uniquely identified by trial/trait/token/seqNum/sampleNum.
 #
-
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+
 @app.route('/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/photo/', methods=['POST'])
 @dec_get_trial(False)
-#-------------------------------------------------------------------------------------------------
 def upload_photo(username, trial, dbc, traitid, token):
+#-------------------------------------------------------------------------------------------------
+# Handle a photo upload from the app.
+# These are uniquely identified by dbusername/trial/trait/token/seqNum/sampleNum.
+# These are all provided in the url except for seqNum and sampleNum which come
+# (out-of-band) as parameters.
+#
     seqNum = request.args.get('seqNum', '')
     sampNum = request.args.get('sampleNum', '')
     file = request.files.get('uploadedfile')
     #LogDebug("upload_photo:", seqNum + ':' + sampNum)
+
     if file and allowed_file(file.filename):
         sentFilename = secure_filename(file.filename)
         #LogDebug("upload_photo:", 'filename:' + sentFilename)
-        saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
+        # MFK old way, remove when happy:
+        #saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
+        (nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
+        saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
         #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
         file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
     return Response('success')
@@ -294,7 +292,7 @@ def upload_photo(username, trial, dbc, traitid, token):
 #
 # process_ti_json()
 # Return None on success, else error string.
-# Separate func as used in two places (but one of these places now obselete, as we now upload individual tis)
+# Separate func as used in two places (but one of these places now obsolete, as we now upload individual tis)
 def process_ti_json(ti, trial, traitID, token, dbc):
     try:
         dayCreated = ti["dayCreated"]
