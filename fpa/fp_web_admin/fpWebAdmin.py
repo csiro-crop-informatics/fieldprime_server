@@ -997,7 +997,7 @@ def urlPhoto(sess, filename):
 # a static URL. I'm not sure whether the performance hit is significant.
     fullpath = app.config['PHOTO_UPLOAD_FOLDER'] + filename
     if not os.path.isfile(fullpath):
-        return "Can't find file {0}".format(fullpath)   #MFK xxx, need standard error display function
+        return dataErrorPage(sess, "Can't find file {0}".format(fullpath))
     resp = make_response(open(fullpath).read())
     resp.content_type = "image/jpeg"
     return resp
