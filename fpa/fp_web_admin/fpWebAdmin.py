@@ -4,6 +4,7 @@
 #
 
 import os, sys, re
+import zipfile, ntpath
 import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import json, jsonify
@@ -11,6 +12,7 @@ from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 from functools import wraps
 
+# If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
     import os,sys,inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -103,7 +105,7 @@ def FrontPage(sess, msg=''):
     return dataPage(sess, content=msg, title="User: " + sess.GetUser())
 
 
-def TrialTraitTableHtml(trial):
+def htmlTrialTraitTable(trial):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
@@ -123,35 +125,17 @@ def TrialTraitTableHtml(trial):
     return out
 
 def htmlTrialScoreSets(sess, trialId):
+#----------------------------------------------------------------------------------------------------
+# Returns HTML for list of trial score sets.
     # Trait Instances:
     tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
-
-    #def tis():
     if len(tiList) < 1:
         return "No trait score sets yet"
-    #out = "<ul>"
     out = ""
-    #startIndex = 0
-    #index = 0
     lastSeqNum = -1
     lastTraitId = -1
     lastToken = 'x'
     oneSet = []
-
-    # func for use in loop below:
-#     def processGroup1(oneSet):
-#         out = ""
-#         if len(oneSet) == 1:
-#             out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
-#                 url_for('urlScoreSetTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
-#         else:
-#             out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
-#             out += '<ul>'
-#             for oti in oneSet:
-#                 out += "<li><a href={0}>&nbsp;Sample{1}</a></li>".format(
-#                     url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum)
-#             out += '</ul>'
-#         return out
     def processGroup2(oneSet):
         out = "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
         if False and len(oneSet) == 1:
@@ -171,7 +155,7 @@ def htmlTrialScoreSets(sess, trialId):
         out += '  </tbody>\n'
         return out
 
-    # MFK looks like we have assumptions about ordering here:
+    # NB we have assumptions about ordering in tiList here:
     out += ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
             '<thead><tr><th>Trait</th><th>Device Id</th><th>seqNum</th><th>Score Count</th><th>samples</th></tr></thead>\n')
     for ti in tiList:
@@ -189,9 +173,21 @@ def htmlTrialScoreSets(sess, trialId):
     if lastSeqNum > -1:
         out += processGroup2(oneSet)
     out +=  "\n</table>\n"
+    return out
 
-    return HtmlForm(HtmlFieldset(out, "Trait Score Sets:"))
-
+def htmlTrialAttributes(sess, trialId):
+#----------------------------------------------------------------------------------------------------
+# Returns HTML for trial attributes.
+# MFK - improve this, have table, not bullets, showing type and number of values, also delete button? modify?
+    attList = dbUtil.GetTrialAttributes(sess, trialId)
+    if len(attList) < 1:
+        return "No attributes found"
+    out = "<ul>"
+    for att in attList:
+        out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
+    out += "</ul>"
+    out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
+    return out
 
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
@@ -214,17 +210,7 @@ def TrialHtml(sess, trialId):
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
     # Attributes: ------------------------------------------
-    attList = dbUtil.GetTrialAttributes(sess, trialId)
-    def atts():
-        if len(attList) < 1:
-            return "No attributes found"
-        out = "<ul>"
-        for att in attList:
-            out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
-        out += "</ul>"
-        out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
-        return out
-    r += HtmlForm(HtmlFieldset(atts, "Attributes:"))
+    r += HtmlFieldset(htmlTrialAttributes(sess, trialId), "Attributes:")
 
     # Traits: ------------------------------------------
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
@@ -239,10 +225,11 @@ def TrialHtml(sess, trialId):
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
     addSysTraitForm += '</select></form>'
-    r += HtmlFieldset(HtmlForm(TrialTraitTableHtml(trial)) + createTraitButton + addSysTraitForm, "Traits:")
+    r += HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:")
 
     # Score sets: ------------------------------------------
-    r += htmlTrialScoreSets(sess, trialId)
+    #r += HtmlForm(HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Trait Score Sets:"))
+    r += HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Trait Score Sets:")
 
     # Score Data: ------------------------------------------
 
@@ -280,7 +267,7 @@ function downloadURL() {{
     dl += "</select>"
     dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>".format(trial.name)
     dl +=     "<button>Download Trial Data</button></a>"
-    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</a>"
+    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
     dl += "<br><a href='dummy' onclick='this.href=downloadURL()' onContextMenu='this.href=downloadURL()'>"
     dl +=     "View tab separated score data</a>"
     dl += "<br>Note data is TAB separated"
@@ -326,6 +313,10 @@ def dataTemplatePage(sess, template, **kwargs):
     nc = dataNavigationContent(sess) # Generate content for navigation bar:
     return render_template(template, navContent=nc, **kwargs)
 
+def dataErrorPage(sess, errMsg):
+#----------------------------------------------------------------------------
+# Show error message in user data page.
+    return dataPage(sess, content=errMsg, title='Error')
 
 def trialPage(sess, trialId):
 #----------------------------------------------------------------------------
@@ -605,7 +596,7 @@ def urlNewTrait(sess, trialId):
     if request.method == 'POST':
         errMsg = CreateNewTrait(sess, trialId, request)
         if errMsg:
-            return dataPage(sess, content=errMsg, title='Error')
+            return dataErrorPage(sess, errMsg)
         if trialId == 'sys':
             return FrontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
@@ -904,7 +895,7 @@ def urlSystemTraits(sess, userName):
 def urlAddSysTrait2Trial(sess, trialId):
     errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
     if errMsg:
-        return dataPage(sess, content=errMsg, title='Error')
+        return dataErrorPage(sess, errMsg)
     # If all is well, display the trial page:
     return trialPage(sess, trialId)
 
@@ -918,9 +909,16 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
     typ = ti.trait.type
     name = ti.trait.caption + '_' + str(ti.seqNum) + ' sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
-    data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == traitInstanceId).all()
+    data = dbUtil.getTraitInstanceData(sess, traitInstanceId)
     r = "Score Set: {0}".format(name)
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+
+    # For photo score sets add button to download photos as zip file:
+    if typ == T_PHOTO:
+        r += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
+                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
+         + "<button>Download Photos as Zip file</button></a>"
+         + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
     r += "<p><table border='1'>"
     r += "<tr><td>Row</td><td>Column</td><td>Time</td><td>Value</td></tr>"
@@ -943,6 +941,52 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
 
+
+def makeZipArchive(sess, traitInstanceId, archiveFileName):
+#-----------------------------------------------------------------------
+# Create zip archive of all the photos for the given traitInstance.
+    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    if ti.trait.type != T_PHOTO:
+        return 'Not a photo trait'
+    data = dbUtil.getTraitInstanceData(sess, traitInstanceId)
+    try:
+        with zipfile.ZipFile(archiveFileName, 'w') as myzip:  # MFK xxx how to return false on error, exception handler?
+            for d in data:
+                # Add all the photos in the traitInstance to the archive
+                fname = models.photoFileName(sess.GetUser(),
+                                             ti.trial_id,
+                                             ti.trait_id,
+                                             d.trialUnit.id,
+                                             ti.token,
+                                             ti.seqNum,
+                                             ti.sampleNum)
+                print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
+                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, fname)
+    except Exception, e:
+        return 'A problem occurred:\n{0}\n{1}'.format(type(e), e.args)
+    return None
+
+def photoArchiveZipFileName(sess, traitInstanceId):
+#-----------------------------------------------------------
+# Generate file name for zip of photos in traitInstance.
+    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.GetUser(), ti.trial.name, traitInstanceId)
+
+@app.route("/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
+@dec_check_session()
+def urlPhotoScoreSetArchive(sess, traitInstanceId):
+#--------------------------------------------------------------------
+# Return zipped archive of the photos for given traitInstance
+    archFname = photoArchiveZipFileName(sess, traitInstanceId)
+    errMsg = makeZipArchive(sess, traitInstanceId, archFname)
+    if errMsg is not None:
+        return dataErrorPage(sess, errMsg)
+    resp = make_response(open(archFname).read())
+    resp.content_type = "image/jpeg"
+    os.remove(archFname)    # delete the file
+    return resp
+
+
 @app.route("/photo/<filename>", methods=['GET'])
 @dec_check_session()
 def urlPhoto(sess, filename):
@@ -957,16 +1001,6 @@ def urlPhoto(sess, filename):
     resp = make_response(open(fullpath).read())
     resp.content_type = "image/jpeg"
     return resp
-
-# def TraitInstanceHtml(sess, tiId):
-# #-----------------------------------------------------------------------
-# # Returns html for data for specified trait instance.
-# #
-#     data = sess.DB().query(models.Datum).filter(models.Datum.traitInstance_id == tiId).all()
-#     r = "Row Column Timestamp numValue textValue<br>"
-#     for d in data:
-#         r += "{0} {1} {2} {3} {4}<br>".format(d.trialUnit.row, d.trialUnit.col, d.timestamp, d.numValue, d.txtValue)
-#     return r
 
 
 @app.route('/user/<userName>/', methods=['GET'])

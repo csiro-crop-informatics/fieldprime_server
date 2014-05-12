@@ -495,6 +495,7 @@ def GetTrialTraitNumericDetails(dbc, trait_id, trial_id): #replace above with th
     return None
 
 def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
+# Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
 
 

@@ -132,3 +132,7 @@ def GetTrialUnitNotes(sess, trialUnit_id):
 
 def getTraitInstance(sess, traitInstance_id):
     return sess.DB().query(TraitInstance).filter(TraitInstance.id == traitInstance_id).one()
+
+def getTraitInstanceData(sess, traitInstance_id):
+    return sess.DB().query(Datum).filter(Datum.traitInstance_id == traitInstance_id).all()
+
