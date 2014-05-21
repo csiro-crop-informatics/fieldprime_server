@@ -104,7 +104,7 @@ create table trait(
   description text NOT NULL,
   type        INT NOT NULL,
   sysType     INT NOT NULL,
--- remove tid
+-- The following are no longer used, I think:
   tid         text,
   unit        text,
   min         decimal,
@@ -136,8 +136,8 @@ create table trialTrait(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
   PRIMARY KEY(trial_id, trait_id),
-  FOREIGN KEY(trait_id) REFERENCES trait(id),
-  FOREIGN KEY(trial_id) REFERENCES trial(id)
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 
