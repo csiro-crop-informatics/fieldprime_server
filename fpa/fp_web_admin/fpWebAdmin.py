@@ -180,12 +180,14 @@ def htmlTrialAttributes(sess, trialId):
 # Returns HTML for trial attributes.
 # MFK - improve this, have table, not bullets, showing type and number of values, also delete button? modify?
     attList = dbUtil.GetTrialAttributes(sess, trialId)
+    out = ""
     if len(attList) < 1:
-        return "No attributes found"
-    out = "<ul>"
-    for att in attList:
-        out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
-    out += "</ul>"
+        out += "No attributes found"
+    else:
+        out = "<ul>"
+        for att in attList:
+            out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
+            out += "</ul>"
     out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
     return out
 
