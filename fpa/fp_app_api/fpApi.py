@@ -5,6 +5,7 @@
 
 from flask import Flask, request, Response, url_for
 from flask import json, jsonify
+import simplejson           # Needed because json.dumps fails for Decimal
 
 import os, sys, time
 from datetime import datetime
@@ -230,7 +231,7 @@ def get_trial(username, trl, dbc):
         traitList.append(jtrait)
     jtrl['traits'] = traitList
 
-    return Response(json.dumps(jtrl), mimetype='application/json')
+    return Response(simplejson.dumps(jtrl), mimetype='application/json')
 
 #
 # upload_trait_data()
