@@ -4,7 +4,8 @@
 #
 
 from flask import Flask, request, Response, url_for
-from flask import json, jsonify
+#from flask import json, jsonify
+import simplejson as json
 
 import os, sys, time
 from datetime import datetime
@@ -195,6 +196,14 @@ def get_trial(username, trl, dbc):
         jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
                                       token=servToken, _external=True)
 
+        #
+        # Barcode - NB we rely on the fact that there are (now) no sys traits on the client.
+        #
+        trlTrt = dal.getTrialTrait(dbc, trl.id, trt.id)
+        barcode = trlTrt.barcodeAtt_id
+        if (barcode is not None):
+            jtrait['barcodeAttId'] = barcode
+
         #########################################################################
         # Here we should have trait datatype specific stuff. Using polymorphism?
         #
@@ -220,10 +229,20 @@ def get_trial(username, trl, dbc):
             ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
             if ttn is not None:
                 val = {}
-                val['min'] = ttn.getMin()
-                val['max'] = ttn.getMax()
-                val['cond'] = ttn.cond
-                jtrait['validation'] = val
+                # min:
+                tmin = ttn.getMin()
+                if tmin is not None:
+                    val['min'] = tmin
+                # max:
+                tmax = ttn.getMax()
+                if tmax is not None:
+                    val['max'] = tmax
+                # Condition:
+                if (ttn.cond):
+                    val['cond'] = ttn.cond
+
+                if len(val) > 0:  # Don't send record if empty
+                    jtrait['validation'] = val
 
         #########################################################################
 

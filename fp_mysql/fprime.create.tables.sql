@@ -103,12 +103,12 @@ create table trait(
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
   type        INT NOT NULL,
-  sysType     INT NOT NULL,
+  sysType     INT NOT NULL
 -- The following are no longer used, I think:
-  tid         text,
-  unit        text,
-  min         decimal,
-  max         decimal
+--  tid         text,
+--  unit        text,
+--  min         decimal,
+--  max         decimal,
 );
 
 
@@ -131,13 +131,16 @@ create table traitCategory(
 --
 -- trialTrait
 -- Records the traits associated with each trial.
+-- Also attributes specific to a trialTrait, but not the trait type.
 --
 create table trialTrait(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
+  barcodeAtt_id integer,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
-  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
+  FOREIGN KEY(barcodeAtt_id) REFERENCES trialUnitAttribute(id)
 );
 
 
