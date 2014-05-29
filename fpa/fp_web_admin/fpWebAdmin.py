@@ -105,6 +105,10 @@ def FrontPage(sess, msg=''):
     return dataPage(sess, content=msg, title="User: " + sess.GetUser())
 
 
+#####################################################################################################
+# Trial page functions:
+#
+
 def htmlTrialTraitTable(trial):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for table showing all the traits for trial.
@@ -117,7 +121,7 @@ def htmlTrialTraitTable(trial):
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         # Add "Detail" button for trait types with extra configuration:
-        if trt.type == T_INTEGER or trt.type == T_DECIMAL:
+        if trt.type in [T_INTEGER, T_DECIMAL, T_CATEGORICAL]:
             url = url_for('urlTraitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
             validateButton = HtmlButtonLink2("Details", url)
             out += "<td>" + validateButton  + "</td>"
@@ -178,17 +182,24 @@ def htmlTrialScoreSets(sess, trialId):
 def htmlTrialAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
-# MFK - improve this, have table, not bullets, showing type and number of values, also delete button? modify?
+# MFK - improve this, showing type and number of values, also delete button? modify?
     attList = dbUtil.GetTrialAttributes(sess, trialId)
-    out = ""
+    out = ''
     if len(attList) < 1:
         out += "No attributes found"
     else:
-        out = "<ul>"
+        out = "<table border='1'>"
+        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
+            "Name", "Datatype", "Values")
         for att in attList:
-            out += "<li><a href={0}>{1}</a></li>".format(url_for("urlAttributeDisplay", trialId=trialId, attId=att.id), att.name)
-            out += "</ul>"
+            valuesButton = HtmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
+                   att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton)
+        out += "</table>"
+
+    # Add button to upload new/modified attributes:
     out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
+
     return out
 
 def TrialHtml(sess, trialId):
@@ -217,7 +228,7 @@ def TrialHtml(sess, trialId):
     # Traits: ------------------------------------------
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trialId))
-    addSysTraitForm += '<input type="submit" value="Submit">'
+    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
     for st in sysTraits:
@@ -277,6 +288,16 @@ function downloadURL() {{
 
     return r
 
+def trialPage(sess, trialId):
+#----------------------------------------------------------------------------
+# Return response that is the urlMain page for specified file, or error message.
+#
+    trialh = TrialHtml(sess, trialId)
+    if trialh is None:
+        trialh = "No such trial"
+    return dataPage(sess, content=trialh, title='Trial Data')
+
+
 
 def dataNavigationContent(sess):
 #----------------------------------------------------------------------------
@@ -319,16 +340,6 @@ def dataErrorPage(sess, errMsg):
 #----------------------------------------------------------------------------
 # Show error message in user data page.
     return dataPage(sess, content=errMsg, title='Error')
-
-def trialPage(sess, trialId):
-#----------------------------------------------------------------------------
-# Return response that is the urlMain page for specified file, or error message.
-#
-    trialh = TrialHtml(sess, trialId)
-    if trialh is None:
-        trialh = "No such trial"
-    return dataPage(sess, content=trialh, title='Trial Data')
-
 
 @app.route('/trial/<trialId>', methods=["GET"])
 @dec_check_session()
@@ -400,7 +411,7 @@ def CreateNewTrait(sess,  trialId, request):
 # Create trait in db, from data from html form.
 # trialId is id of trial if a local trait, else it is 'sys'.
 # Returns error message if there's a problem, else None.
-#
+#xxx
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
@@ -603,6 +614,22 @@ def urlNewTrait(sess, trialId):
             return FrontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
 
+# def attributeListHtmlSelect(sess, trialId, selectedId=None, datatypes=None):
+# #===========================================================================
+# # HTML for form select drop down for selecting an attribute.
+# # Currently only relevant for integer traits.
+# #
+#     # Attribute list:
+#     attListHtml = '<select name="attributeList" id="tdAttribute">'
+#     attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
+#     atts = dbUtil.GetTrialAttributes(sess, trialId)
+#     for att in atts:
+#         if datatypes is not None or att.datatype in datatypes:
+#             attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
+#                 att.id, att.name, "selected='selected'" if att.id == selectedId else "")
+#     attListHtml += '</select>'
+#     return attListHtml
+
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
 def urlTraitValidation(sess, trialId, traitId):
@@ -611,10 +638,9 @@ def urlTraitValidation(sess, trialId, traitId):
 # Currently only relevant for integer traits.
 #
     trt = dbUtil.GetTrait(sess, traitId)
-    if trt.type != T_INTEGER and trt.type != T_DECIMAL:
-        return trialPage(sess, trialId)
-
+    trlTrt = dbUtil.getTrialTrait(sess, trialId, traitId)
     trial = dbUtil.GetTrial(sess, trialId)
+
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
     comparatorCodes = [
         ["gt", "Greater Than", 1],
@@ -624,6 +650,27 @@ def urlTraitValidation(sess, trialId, traitId):
     ]
 
     if request.method == 'GET':
+        ### Form fields applicable to all traits:
+        formh = 'Trial: ' + trial.name
+        formh += '<br>Trait: ' + trt.caption
+        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
+
+        # Trait barcode selection:
+        # MFK do not allow barcode selection for sys traits.
+        # In the future we probably won't have sys traits (here), but there might
+        # be legacy ones which we need to cope with. MFK actually it will crash below accessing uninitialized atts
+        if trt.sysType == SYSTYPE_TRIAL:
+            attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
+            attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
+            atts = dbUtil.GetTrialAttributes(sess, trialId)
+            for att in atts:
+                attSelector += '<option value="{0}" {2}>{1}</option>'.format(
+                    att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
+            attSelector += '</select>'
+            formh += attSelector
+        else:
+            return dataErrorPage("unexpected system type")
+
         if trt.type == T_INTEGER or trt.type == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
@@ -649,6 +696,12 @@ def urlTraitValidation(sess, trialId, traitId):
             # single attribute.
             # NB, this format needs to be in sync with the version on the app. I.e. what
             # we save here, must be understood on the app.
+            # MFK note attribute id seems to be stored as text in cond string, will seems
+            # not ideal. Probably should be a field in the table trialTraitNumeric.
+            # Note that the same issue applies in the app database There is one advantage
+            # I see to having a string is that we can change what is stored without requiring
+            # a database structure change. And db structure changes on the app require
+            # a database replace on the app.
             atId = -1
             op = ""
             if ttn and ttn.cond is not None:
@@ -670,7 +723,6 @@ def urlTraitValidation(sess, trialId, traitId):
             # Attribute list:
             attListHtml = '<select name="attributeList" id="tdAttribute">'
             attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
-            atts = dbUtil.GetTrialAttributes(sess, trialId)
             for att in atts:
                 if att.datatype == T_DECIMAL or att.datatype == T_INTEGER:
                     attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
@@ -691,6 +743,7 @@ def urlTraitValidation(sess, trialId, traitId):
 
                 function validateTraitDetails() {
                     // Check min and max fields:
+                    /* It should be OK to have no min or max:
                     if (!isValidDecimal(document.getElementById("tdMin").value)) {
                         alert('Invalid value for minimum');
                         return false;
@@ -699,6 +752,7 @@ def urlTraitValidation(sess, trialId, traitId):
                         alert('Invalid value for maximum');
                         return false;
                     }
+                    */
 
                     // Check attribute/comparator fields, either both or neither present:
                     var att = document.getElementById("tdAttribute").value;
@@ -718,48 +772,28 @@ def urlTraitValidation(sess, trialId, traitId):
                 </script>
             """
 
-            conts = 'Trial: ' + trial.name
-            conts += '<br>Trait: ' + trt.caption
-            conts += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
-            conts += minMaxBounds
-            conts += '<p>Integer traits can be validated by comparison with an attribute:'
-            conts += '<br>Trait value should be ' + valOp + attListHtml
-            conts += ('\n<p><input type="button" style="color:red" value="Cancel"' +
+            formh += minMaxBounds
+            formh += '<p>Integer traits can be validated by comparison with an attribute:'
+            formh += '<br>Trait value should be ' + valOp + attListHtml
+            formh += ('\n<p><input type="button" style="color:red" value="Cancel"' +
                 ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
-            conts += '\n<input type="submit" style="color:red" value="Submit">'
+            formh += '\n<input type="submit" style="color:red" value="Submit">'
 
-            return dataPage(sess, content=script + HtmlForm(conts, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
+            return dataPage(sess, content=script + HtmlForm(formh, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
 
-        return dataPage(sess, content='No validation for this trait type', title=title)
+        return dataPage(sess, content=HtmlForm(formh, post=True), title='Trait Validation')
+        #return dataPage(sess, content='No validation for this trait type', title=title)
     if request.method == 'POST':
-        if False and trt.type == T_INTEGER:
-            op = request.form.get('validationOp')
-            # if op == "0":
-            #     return "please choose a comparator" mfk now javascript? No but we need js check that if one of comp and att chosen both are.
-            at = request.form.get('attributeList')
-            # if int(at) == 0:
-            #     return "please choose an attribute"
-            vmin = request.form.get('min')
-            if len(vmin) == 0:
-                vmin = None
-            vmax = request.form.get('max')
-            if len(vmax) == 0:
-                vmax = None
-            # Get existing trialTraitInteger, if any.
-            tti = models.GetTrialTraitIntegerDetails(sess.DB(), traitId, trialId)
-            newTTI = tti is None
-            if newTTI:
-                tti = models.TrialTraitInteger()
-            tti.trial_id = trialId
-            tti.trait_id = traitId
-            tti.min = vmin
-            tti.max = vmax
-            if int(op) > 0 and int(at) > 0:
-                tti.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
-            if newTTI:
-                sess.DB().add(tti)
-            sess.DB().commit()
-            return trialPage(sess, trialId)
+        ### Form fields applicable to all traits:
+        # Trait barcode selection:
+        #MFK sys traits? barcode field is an trialUnitAttribute id but this is associated with a trial
+        # we either have to move it to trialTrait, or make all trial traits non system traits.
+        barcodeAttId = request.form.get('bcAttribute')  # value should be valid attribute ID
+        if barcodeAttId == 'none':
+            trlTrt.barcodeAtt_id = None
+        else:
+            trlTrt.barcodeAtt_id = barcodeAttId
+
         if trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
             op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
             if not re.match('[0-4]', op):
@@ -787,9 +821,11 @@ def urlTraitValidation(sess, trialId, traitId):
                 ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
             if newTTN:
                 sess.DB().add(ttn)
-            sess.DB().commit()
-            #return trialPage(sess, trialId)
-            return redirect(url_for("urlTrial", trialId=trialId))
+
+        sess.DB().commit()
+
+        return redirect(url_for("urlTrial", trialId=trialId))
+
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -895,6 +931,8 @@ def urlSystemTraits(sess, userName):
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def urlAddSysTrait2Trial(sess, trialId):
+# MFK here we should copy the system trait, not use it.
+#
     errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
     if errMsg:
         return dataErrorPage(sess, errMsg)

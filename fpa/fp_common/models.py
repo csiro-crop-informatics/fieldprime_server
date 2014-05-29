@@ -54,10 +54,16 @@ traitInstance = Table(u'traitInstance', metadata,
 trialTrait = Table(u'trialTrait', metadata,
     Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False),
     Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False),
+    Column(u'barcodeAtt_id', INTEGER(), ForeignKey('trialUnitAttribute.id'), nullable=True)
 )
 
 
 ### sqlalchemy CLASSES: ######################################################################
+
+class TrialTrait(DeclarativeBase):
+    __table__ = trialTrait
+    #relation definitions:
+    barcodeAtt = relation('TrialUnitAttribute', primaryjoin='TrialTrait.barcodeAtt_id==TrialUnitAttribute.id')
 
 class AttributeValue(DeclarativeBase):
     __table__ = attributeValue
@@ -136,6 +142,7 @@ class Trait(DeclarativeBase):
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trial_id==Trial.id')
     categories = relation('TraitCategory')    # NB, only relevant for Categorical type
 
+
 class TraitCategory(DeclarativeBase):
     __tablename__ = 'traitCategory'
     __table_args__ = {}
@@ -184,9 +191,9 @@ class TrialTraitNumeric(DeclarativeBase):
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
     def getMin(self):
-        return self.min.normalize()   # stripped of unnecessary zeroes
+        return None if self.min is None else self.min.normalize()   # stripped of unnecessary zeroes
     def getMax(self):
-        return self.max.normalize()
+        return None if self.max is None else self.max.normalize()
 
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
@@ -331,6 +338,11 @@ def GetTrial(dbc, trialid):
     except sqlalchemy.exc.SQLAlchemyError, e:
         return None
     return trl
+
+
+def getTrialTrait(dbc, trialId, traitId):
+    return dbc.query(TrialTrait).filter(
+        and_(TrialTrait.trait_id == traitId, TrialTrait.trial_id == trialId)).one()
 
 
 def GetTrialList(dbc):

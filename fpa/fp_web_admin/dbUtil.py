@@ -13,7 +13,7 @@ from sqlalchemy.orm import relation
 
 from functools import wraps
 
-from fp_common.models import Trial, Trait, TrialUnit, TrialUnitAttribute, \
+from fp_common.models import Trial, Trait, TrialTrait, TrialUnit, TrialUnitAttribute, \
     AttributeValue, TraitInstance, Datum, TrialUnitNote, TraitCategory, \
     SYSTYPE_SYSTEM, System
 
@@ -71,6 +71,10 @@ def setSystemValue(sess, name, value):
 
 def GetTrait(sess, traitId):
     return sess.DB().query(Trait).filter(Trait.id == traitId).one()
+
+def getTrialTrait(sess, trialId, traitId):
+    return sess.DB().query(TrialTrait).filter(
+        and_(TrialTrait.trait_id == traitId, TrialTrait.trial_id == trialId)).one()
 
 def GetTraitCategory(sess, traitId, value):
     return sess.DB().query(TraitCategory).filter(
