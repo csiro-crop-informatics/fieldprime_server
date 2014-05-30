@@ -656,20 +656,15 @@ def urlTraitValidation(sess, trialId, traitId):
         formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
 
         # Trait barcode selection:
-        # MFK do not allow barcode selection for sys traits.
-        # In the future we probably won't have sys traits (here), but there might
-        # be legacy ones which we need to cope with. MFK actually it will crash below accessing uninitialized atts
-        if trt.sysType == SYSTYPE_TRIAL:
-            attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
-            attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
-            atts = dbUtil.GetTrialAttributes(sess, trialId)
-            for att in atts:
-                attSelector += '<option value="{0}" {2}>{1}</option>'.format(
-                    att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
-            attSelector += '</select>'
-            formh += attSelector
-        else:
-            return dataErrorPage("unexpected system type")
+        # Note it doesn't matter if a sysTrait, since the barcode is stored in trialTrait
+        attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
+        attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
+        atts = dbUtil.GetTrialAttributes(sess, trialId)
+        for att in atts:
+            attSelector += '<option value="{0}" {2}>{1}</option>'.format(
+                att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
+        attSelector += '</select>'
+        formh += attSelector
 
         if trt.type == T_INTEGER or trt.type == T_DECIMAL:
             #
