@@ -140,42 +140,47 @@ def htmlTrialScoreSets(sess, trialId):
     lastTraitId = -1
     lastToken = 'x'
     oneSet = []
-    def processGroup2(oneSet):
+    def processGroup(oneSet):
         out = "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
         if False and len(oneSet) == 1:
             out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
                 url_for('urlScoreSetTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
         else:
-            #out += "<b>{0}:{1}</b>".format(oneSet[0].trait.caption, oneSet[0].seqNum)
+            first = True
+            tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
             for oti in oneSet:
-                out += """    <tr>
-                <td>{2}</td>
-                <td style='border-left:1px solid grey;'>{4}</td>
-                <td style='border-left:1px solid grey;'>{3}</td>
-                <td style='border-left:1px solid grey;'>{5}</td>
-                <td style='border-left:1px solid grey;'><a href={0}>&nbsp;Sample{1}</a></td></tr>\n""".format(
-                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.trait.caption,
-                    oti.seqNum, oti.getDeviceId(), oti.numData())
+                out += "<tr>"
+                out += tdPattern.format(oti.trait.caption if first else "")
+                out += tdPattern.format(util.formatJapDate(oti.dayCreated) if first else "")
+                out += tdPattern.format(oti.getDeviceId() if first else "")
+                out += tdPattern.format(oti.seqNum if first else "")
+                out += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores</a></td>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData()))
+                #out += tdPattern.format(oti.numData())
+                out += "</tr>\n"
+                first = False
+
         out += '  </tbody>\n'
         return out
 
     # NB we have assumptions about ordering in tiList here:
     out += ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
-            '<thead><tr><th>Trait</th><th>Device Id</th><th>seqNum</th><th>Score Count</th><th>samples</th></tr></thead>\n')
+            '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
+            '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
     for ti in tiList:
         #++index
         traitId = ti.trait_id
         seqNum = ti.seqNum
         token = ti.token
         if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId or token != lastToken):
-            out += processGroup2(oneSet)
+            out += processGroup(oneSet)
             oneSet = []
         lastSeqNum = seqNum
         lastTraitId = traitId
         lastToken = token
         oneSet.append(ti)
     if lastSeqNum > -1:
-        out += processGroup2(oneSet)
+        out += processGroup(oneSet)
     out +=  "\n</table>\n"
     return out
 
@@ -956,7 +961,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
     r += "<p><table border='1'>"
-    r += "<tr><td>Row</td><td>Column</td><td>Time</td><td>Value</td></tr>"
+    r += "<tr><th>Row</th><th>Column</th><th>Value</th><th>User</th><th>Time</th><th>Latitude</th><th>Longitude</th></tr>"
     for d in data:
         if typ == T_PHOTO:  # Special case for photos. Display a link to show the photo.
                             # Perhaps this should be done in Datum.getValue, but we don't have all info.
@@ -971,8 +976,8 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
         else:
             value = d.getValue()
 
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
-            d.trialUnit.row, d.trialUnit.col, util.epoch2dateTime(d.timestamp), value)
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
+            d.trialUnit.row, d.trialUnit.col, value, d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long)
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
 

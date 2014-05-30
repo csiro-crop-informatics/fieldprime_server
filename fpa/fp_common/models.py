@@ -399,8 +399,9 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
         valueField = ('"' + str(dat['value']) + '"') if 'value' in dat else 'null'
         notesField = ('"' + dat['notes'] + '"') if 'notes' in dat else 'null'
         try:
+            # Node trialUnit_id has changed to 'node_id' in the protocol, hence cater for both
             qry += '({0}, {1}, {2}, {3}, {4}, "{5}", {6}, {7}),'.format(
-                dat['trialUnit_id'], tiID, dat['timestamp'],
+                dat.get('node_id') or dat.get('trialUnit_id'), tiID, dat['timestamp'],
                 dat['gps_long'], dat['gps_lat'], dat['userid'], notesField, valueField)
         except Exception, e:
             return 'Error parsing traitInstance:data ' + e.args[0]

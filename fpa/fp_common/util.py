@@ -23,3 +23,9 @@ def isNumeric(x):
 def epoch2dateTime(timestamp):
 # Return readable date/time string from timestamp (assumed to be in milliseconds).
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))
+
+def formatJapDate(jdate):
+    year = jdate / 10000
+    month = (jdate % 10000) / 100
+    day = jdate % 100
+    return '{0}/{1}/{2}'.format(day, month, year)
