@@ -108,6 +108,7 @@ def get_trial(username, trl, dbc):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
 #
+    LogDebug('get_trial', 'start')
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
 
@@ -127,6 +128,7 @@ def get_trial(username, trl, dbc):
     jtrl['serverToken'] = servToken
 
     # Attribute descriptors:
+    LogDebug('get_trial', 'pre attributes')
     attDefs = []
     for att in trl.tuAttributes:
         tua = {}
@@ -140,7 +142,8 @@ def get_trial(username, trl, dbc):
             attDefs.append(att.name)
     jtrl['attributes'] = attDefs
 
-    # Trial Units:
+    # Nodes:
+    LogDebug('get_trial', 'pre nodes')
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
     jtrl['numTrialUnit'] = len(trl.trialUnits)   # MFK check if no trial units this is zero, not null
@@ -176,6 +179,7 @@ def get_trial(username, trl, dbc):
     jtrl['trialUnits'] = tuList
 
     # Traits:
+    LogDebug('get_trial', 'pre traits')
     traitList = []
     traitFieldNames = ['id', 'sysType', 'min', 'max', 'caption', 'description', 'type', 'unit']
     for trt in trl.traits:
@@ -428,10 +432,11 @@ def JsonErrorResponse(errMsg):
 def LogDebug(hdr, text):
 #-------------------------------------------------------------------------------------------------
 # Writes stuff to file system (for debug)
-    f = open('/tmp/fieldPrimeDebug','a')
-    print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
-    print >>f, text
-    f.close
+    if gdbg:
+        f = open('/tmp/fieldPrimeDebug','a')
+        print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
+        print >>f, text
+        f.close
 
 
 #-------------------------------------------------------------------------------------------------
