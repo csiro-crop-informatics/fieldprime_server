@@ -195,6 +195,23 @@ class TrialTraitNumeric(DeclarativeBase):
     def getMax(self):
         return None if self.max is None else self.max.normalize()
 
+#
+# class ScoreSet
+# NOT a database class, but a container for a set of traitInstances that
+# make up a scoreSet
+#
+class ScoreSet:
+    def __init__(self, trait_id, seqNum, token):
+        self.trait_id = trait_id
+        self.seqNum = seqNum
+        self.token = token
+        self.instances = []
+    def addInstance(self, ti):
+        self.instances.append(ti)
+    def getInstances(self):
+        return self.instances
+
+
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
     __table_args__ = {}
@@ -228,6 +245,47 @@ class Trial(DeclarativeBase):
 
         return tu
 
+    def numScores(self):
+        tis = self.getTraitInstances()
+        count = 0
+        for ti in tis:
+            count += ti.numData()
+        return count
+
+    def numScoreSets(self):
+        ss = self.getScoreSets()
+        return len(ss)
+
+    def getTraitInstances(self):
+    #-----------------------------------------------------------------------
+    # Return all the traitInstances for this trial, ordered by trait, token, seqnum, samplenum.
+    # So traitInstances in the same scoreSet are contiguous.
+        session = Session.object_session(self)
+        return session.query(TraitInstance).filter(
+            TraitInstance.trial_id == self.id).order_by(
+            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
+
+    def getScoreSets(self):
+    #----------------------------------------------------------------------------------------------------
+    # Returns list of ScoreSets for this trial.
+        scoreSets = []
+        tiList = self.getTraitInstances()
+        lastSeqNum = -1
+        lastTraitId = -1
+        lastToken = 'x'
+        for ti in tiList:   # Note we have assumptions about ordering in tiList here
+            traitId = ti.trait_id
+            seqNum = ti.seqNum
+            token = ti.token
+            if seqNum != lastSeqNum or traitId != lastTraitId or token != lastToken:
+                # First ti in a new scoreSet, create and add the ScoreSet:
+                nss = ScoreSet(traitId, seqNum, token)
+                scoreSets.append(nss)
+            nss.addInstance(ti)
+            lastSeqNum = seqNum
+            lastTraitId = traitId
+            lastToken = token
+        return scoreSets
 
 class TrialUnit(DeclarativeBase):
     __tablename__ = 'trialUnit'

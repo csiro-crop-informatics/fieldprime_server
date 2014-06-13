@@ -98,7 +98,9 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         ntrial.acronym = tacro
         db.add(ntrial)
         db.commit()
-        updateTrialFile(sess, f, ntrial.id)
+        res = updateTrialFile(sess, f, ntrial.id)
+        if res is not None and 'error' in res:
+            return res
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"Database error ({0})".format(e.orig.args)}
     return None

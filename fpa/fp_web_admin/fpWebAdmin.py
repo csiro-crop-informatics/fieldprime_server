@@ -128,7 +128,7 @@ def htmlTrialTraitTable(trial):
     out += "</table>"
     return out
 
-def htmlTrialScoreSets(sess, trialId):
+def OLDhtmlTrialScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for list of trial score sets.
     # Trait Instances:
@@ -183,6 +183,40 @@ def htmlTrialScoreSets(sess, trialId):
         out += processGroup(oneSet)
     out +=  "\n</table>\n"
     return out
+
+def htmlTrialScoreSets(sess, trialId):
+#----------------------------------------------------------------------------------------------------
+# Returns HTML for list of trial score sets.
+    trl = dbUtil.GetTrial(sess, trialId)
+    scoreSets = trl.getScoreSets()
+    if len(scoreSets) < 1:
+        return "No trait score sets yet"
+    htm = ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
+            '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
+            '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
+    for ss in scoreSets:
+        tis = ss.getInstances()
+        htm += "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
+        if False and len(ss) == 1:
+            htm += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
+                url_for('urlScoreSetTraitInstance', traitInstanceId=tis[0].id), tis[0].trait.caption, ss.seqNum)
+        else:
+            first = True
+            tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
+            for oti in tis:
+                htm += "<tr>"
+                htm += tdPattern.format(oti.trait.caption if first else "")
+                htm += tdPattern.format(util.formatJapDate(oti.dayCreated) if first else "")
+                htm += tdPattern.format(oti.getDeviceId() if first else "")
+                htm += tdPattern.format(oti.seqNum if first else "")
+                htm += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores</a></td>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData()))
+                #htm += tdPattern.format(oti.numData())
+                htm += "</tr>\n"
+                first = False
+        htm += '  </tbody>\n'
+    htm +=  "\n</table>\n"
+    return htm
 
 def htmlTrialAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
@@ -246,7 +280,6 @@ def TrialHtml(sess, trialId):
     r += HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:")
 
     # Score sets: ------------------------------------------
-    #r += HtmlForm(HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Trait Score Sets:"))
     r += HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Trait Score Sets:")
 
     # Score Data: ------------------------------------------
@@ -596,9 +629,37 @@ def newTrial(sess):
         res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
         if res is not None and 'error' in res:
-            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
+            return dataErrorPage(sess, res['error'])
+            #return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
         else:
             return FrontPage(sess)
+
+@app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
+@dec_check_session()
+def urlDeleteTrial(sess, trialId):
+#===========================================================================
+# Page for trial deletion. Display trial stats and request confirmation
+# of delete.
+# NOT USED YET
+#
+    trl = models.GetTrial(sess.DB(), trialId)
+    if request.method == 'GET':
+        out = '';
+        out += 'Trial {0} contains:<br>'.format(trl.name)
+        out += '{0} Score Sets<br>'.format(trl.numScoreSets())
+        out += '{0} Scores<br>'.format(trl.numScores())
+        out += 'Do you really want to delete this trial?'
+        return dataPage(sess, title='Delete Trial', content=out)
+    if request.method == 'POST':
+        uploadFile = request.files['file']
+        res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
+                                      request.form.get('year'), request.form.get('acronym'))
+        if res is not None and 'error' in res:
+            return dataErrorPage(sess, res['error'])
+            #return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
+        else:
+            return FrontPage(sess)
+
 
 @app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()
