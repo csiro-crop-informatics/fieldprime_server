@@ -158,7 +158,7 @@ create table trialTraitInteger(
   validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
-  FOREIGN KEY(trial_id) REFERENCES trial(id)
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 --
@@ -174,12 +174,13 @@ create table trialTraitNumeric(
   validation TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
-  FOREIGN KEY(trial_id) REFERENCES trial(id)
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 --
 -- traitInstance
--- MFK should add Android ID?
+-- A traitInstance is uniquely identified by trial/trait/seqNum/sampleNum/token.
+-- They are grouped into score set by trial/trait/seqNum/token.
 --
 create table traitInstance(
   id          INT PRIMARY KEY AUTO_INCREMENT,
@@ -191,7 +192,7 @@ create table traitInstance(
   token       VARCHAR(31) NOT NULL,
   UNIQUE(trial_id, trait_id, seqNum, sampleNum, token),
   FOREIGN KEY(trait_id) REFERENCES trait(id),
-  FOREIGN KEY(trial_id) REFERENCES trial(id)
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
 
