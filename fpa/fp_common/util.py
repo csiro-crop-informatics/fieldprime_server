@@ -29,3 +29,10 @@ def formatJapDate(jdate):
     month = (jdate % 10000) / 100
     day = jdate % 100
     return '{0}/{1}/{2}'.format(day, month, year)
+
+ldbg = False
+def ldebug(txt):
+#-------------------------------------------------------------------------------------------------
+# For debug output when running locally for debugging. Prints message if ldbg true.
+    if ldbg:
+        print txt
