@@ -83,7 +83,6 @@ def ParseTrialUnitCSV(f):
     return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
 
 
-
 def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
@@ -101,11 +100,20 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         db.commit()
         res = updateTrialFile(sess, f, ntrial.id)
         if res is not None and 'error' in res:
+            deleteTrial(sess, ntrial)   # delete the new trial if some error
             return res
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"Database error ({0})".format(e.orig.args)}
     return None
 
+def deleteTrial(sess, trl):
+#-----------------------------------------------------------------------
+# Delete this trial from the DB - I'm not sure where this leaves the in memory
+# objects..
+    db = sess.DB()
+    db.query(Trial).filter(Trial.id == trl.id).delete()
+    db.commit()
+    return None
 
 def updateTrialFile(sess, trialCsv, trialId):
 #-----------------------------------------------------------------------
