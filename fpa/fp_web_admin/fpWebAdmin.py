@@ -629,8 +629,8 @@ def newTrial(sess):
         res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
         if res is not None and 'error' in res:
-            return dataErrorPage(sess, res['error'])
-            #return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
+            #return dataErrorPage(sess, res['error'])
+            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
         else:
             return FrontPage(sess)
 

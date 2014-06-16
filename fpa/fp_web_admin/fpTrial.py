@@ -38,15 +38,15 @@ def ParseTrialUnitCSV(f):
     fixIndex = {}
     attIndex = {}
     for hd in hdrs:
-        if not hd:
-            return {'error':"Error - Empty column header found, aborting."}
-        hdl = hd.lower()
+        hdl = hd.strip().lower()
+        if not hdl:
+            return {'error':"Error - Empty header found for column {0}, aborting.".format(numFields + 1)}
         if hdl in FIXED_ATTRIBUTES:
             fixIndex[hdl] = numFields
-        elif hd in attIndex.keys():
+        elif hdl in attIndex.keys():
             return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
         else:
-            attIndex[hd] = numFields
+            attIndex[hdl] = numFields
         numFields += 1
 
     # Check both row and column are present:
