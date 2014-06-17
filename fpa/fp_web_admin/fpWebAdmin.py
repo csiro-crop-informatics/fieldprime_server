@@ -1198,6 +1198,7 @@ def fpLog(msg):
 #-------------------------------------------------------------------------------------------------
 # Write to fplog
 # Could put switch here to turn logging on/off, or set level.
+# Maybe should record IP address if we have it.
 #
     f = open(app.config['FPLOG_FILE'], 'a')
     print >>f, '{0}\t{1}'.format(strftime("%Y-%m-%d %H:%M:%S"), msg)
