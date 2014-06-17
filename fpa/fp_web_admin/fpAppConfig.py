@@ -1,7 +1,8 @@
 # fpAppConfig.py
 # Michael Kirk 2013
-# 
-# for use by flask: app.config.from_object()
+#
+# For use by flask: app.config.from_object()
+# Can (should?) be used to customize a server installation
 #
 
 
@@ -15,3 +16,6 @@ CATEGORY_IMAGE_FOLDER = '***REMOVED***/htdocs/fpt/categoryImages/'
 #CATEGORY_IMAGE_FOLDER = '/tmp/categoryImages/'
 CATEGORY_IMAGE_URL_BASE = 'https://***REMOVED***/fpt/categoryImages/'
 # DEBUG = True
+
+# Log file to write to:
+FPLOG_FILE = '***REMOVED***/fplog/fp.log'

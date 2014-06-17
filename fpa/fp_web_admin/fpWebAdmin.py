@@ -11,6 +11,7 @@ from flask import json, jsonify
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 from functools import wraps
+from time import strftime
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
@@ -55,15 +56,18 @@ def dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
+# If returnNoneSess is true, then the function is returned even if session is
+# invalid, but with None as the session parameter - this can be used for pages
+# that don't require a user to be logged in.
 #
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
             COOKIE_NAME = 'sid'
-            sid = request.cookies.get(COOKIE_NAME)                                         # Get the session id from cookie (if there)
+            sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
-            if not sess.Valid():
+            if not sess.Valid():  # Check if session is still valid
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
                 return render_template('sessError.html', title='Field Prime Login',
@@ -1161,9 +1165,11 @@ def urlMain():
         elif not password:
             error = 'No password'
         elif not CheckPassword(username, password):
+            fpLog('Login failed attempt for user {0}'.format(username))
             error = 'Invalid password'
         else:
             # Good to go, show the user front page, after adding cookie:
+            fpLog('Login from user {0}'.format(username))
             sess.resetLastUseTime()
             sess.SetUserDetails(username, password)
             g.userName = username
@@ -1188,11 +1194,20 @@ def LogDebug(hdr, text):
     print >>f, "------------------"
     f.close
 
+def fpLog(msg):
+#-------------------------------------------------------------------------------------------------
+# Write to fplog
+# Could put switch here to turn logging on/off, or set level.
+#
+    f = open(app.config['FPLOG_FILE'], 'a')
+    print >>f, '{0}\t{1}'.format(strftime("%Y-%m-%d %H:%M:%S"), msg)
+    f.close
 
 # For local testing:
 if __name__ == '__main__':
     from os.path import expanduser
     app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
+    app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
     app.run(debug=True, host='0.0.0.0', port=5001)
 
