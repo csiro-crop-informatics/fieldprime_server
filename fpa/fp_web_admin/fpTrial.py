@@ -100,18 +100,18 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         db.commit()
         res = updateTrialFile(sess, f, ntrial.id)
         if res is not None and 'error' in res:
-            deleteTrial(sess, ntrial)   # delete the new trial if some error
+            deleteTrial(sess, ntrial.id)   # delete the new trial if some error
             return res
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"Database error ({0})".format(e.orig.args)}
     return None
 
-def deleteTrial(sess, trl):
+def deleteTrial(sess, trialId):
 #-----------------------------------------------------------------------
 # Delete this trial from the DB - I'm not sure where this leaves the in memory
 # objects..
     db = sess.DB()
-    db.query(Trial).filter(Trial.id == trl.id).delete()
+    db.query(Trial).filter(Trial.id == trialId).delete()
     db.commit()
     return None
 

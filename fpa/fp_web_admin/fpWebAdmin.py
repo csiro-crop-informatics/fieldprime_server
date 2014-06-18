@@ -265,6 +265,11 @@ def TrialHtml(sess, trialId):
     if trialDetails: trialNameAndDetails += ' (' + trialDetails + ')'
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
+    # Add DELETE button:
+    r += '<p>'
+    r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trialId))
+    r += '<p>'
+
     # Attributes: ------------------------------------------
     r += HtmlFieldset(htmlTrialAttributes(sess, trialId), "Attributes:")
 
@@ -647,23 +652,38 @@ def urlDeleteTrial(sess, trialId):
 # NOT USED YET
 #
     trl = models.GetTrial(sess.DB(), trialId)
-    if request.method == 'GET':
-        out = '';
+    def getHtml(msg=''):
+        out = '<div style="color:red">{0}</div><p>'.format(msg);  # should be red style="color:red"
         out += 'Trial {0} contains:<br>'.format(trl.name)
         out += '{0} Score Sets<br>'.format(trl.numScoreSets())
         out += '{0} Scores<br>'.format(trl.numScores())
-        out += 'Do you really want to delete this trial?'
-        return dataPage(sess, title='Delete Trial', content=out)
+        out += '<p>Password required: <input type=password name="password">'
+        out += '<p>Do you really want to delete this trial?'
+        out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
+        out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
+        return dataPage(sess, title='Delete Trial',
+                        content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
+                                                          'Really Delete Trial {0}?'.format(trl.name)))
+    if request.method == 'GET':
+        return getHtml()
     if request.method == 'POST':
-        uploadFile = request.files['file']
-        res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
-                                      request.form.get('year'), request.form.get('acronym'))
-        if res is not None and 'error' in res:
-            return dataErrorPage(sess, res['error'])
-            #return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
-        else:
-            return FrontPage(sess)
+        out = ''
+        if request.form.get('yesDelete'):
+            if not request.form.get('password'):
+                 return getHtml('You must provide a password')
 
+            suser = sess.GetUser()
+            password = request.form.get('password')
+            spw = sess.GetPassword()
+            if password != spw:
+                return getHtml('Password is incorrect')
+            else:
+                # Delete the trial:
+                fpTrial.deleteTrial(sess, trialId)
+                return dataPage(sess, '', 'Trial Deleted')
+        else:
+            # Do nothing:
+            return FrontPage(sess)
 
 @app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()

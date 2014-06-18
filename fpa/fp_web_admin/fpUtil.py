@@ -37,6 +37,12 @@ def HtmlFieldset(content, legend):
     c = content if isinstance(content, str) else content()
     return "<fieldset><legend><h3>" + legend + "</h3></legend>" + c + "</fieldset>"
 
+def htmlHeaderFieldset(content, legend):
+#-----------------------------------------------------------------------
+# Returns html to show legend as a header2 and then the content in a fieldset.
+#
+    return "<h2>{0}</h2><fieldset>{1}</fieldset>".format(legend, content)
+
 
 def Exit(sess=None):
 #-----------------------------------------------------------------------
