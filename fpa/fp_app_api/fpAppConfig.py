@@ -1,8 +1,9 @@
 # fpAppConfig.py
 # Michael Kirk 2013
-# 
-# for use by flask: app.config.from_object()
 #
+# Configuration for web service for android client.
+# For use by flask: app.config.from_object()
+# Can (should?) be used to customize a server installation
 
 
 # Flask config params:
@@ -14,4 +15,5 @@ DATA_ACCESS_MODULE = 'fp_common.models'      # Name of the py file providing the
 
 # DEBUG = True
 
-#app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False    # this didn't work I think, so using dump not jsonify
+# Log file to write to:
+FPLOG_FILE = '***REMOVED***/fplog/fp.log'

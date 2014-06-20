@@ -29,6 +29,7 @@ import fpUtil
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
+import fp_common.util as util
 
 import websess
 
@@ -1185,11 +1186,11 @@ def urlMain():
         elif not password:
             error = 'No password'
         elif not CheckPassword(username, password):
-            fpLog('Login failed attempt for user {0}'.format(username))
+            util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
             error = 'Invalid password'
         else:
             # Good to go, show the user front page, after adding cookie:
-            fpLog('Login from user {0}'.format(username))
+            util.fpLog(app, 'Login from user {0}'.format(username))
             sess.resetLastUseTime()
             sess.SetUserDetails(username, password)
             g.userName = username
@@ -1214,15 +1215,6 @@ def LogDebug(hdr, text):
     print >>f, "------------------"
     f.close
 
-def fpLog(msg):
-#-------------------------------------------------------------------------------------------------
-# Write to fplog
-# Could put switch here to turn logging on/off, or set level.
-# Maybe should record IP address if we have it.
-#
-    f = open(app.config['FPLOG_FILE'], 'a')
-    print >>f, '{0}\t{1}'.format(strftime("%Y-%m-%d %H:%M:%S"), msg)
-    f.close
 
 # For local testing:
 if __name__ == '__main__':

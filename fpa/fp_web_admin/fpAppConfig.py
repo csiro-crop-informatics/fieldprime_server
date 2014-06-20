@@ -1,6 +1,7 @@
 # fpAppConfig.py
 # Michael Kirk 2013
 #
+# Configuration for web service for browser account login.
 # For use by flask: app.config.from_object()
 # Can (should?) be used to customize a server installation
 #

@@ -36,3 +36,19 @@ def ldebug(txt):
 # For debug output when running locally for debugging. Prints message if ldbg true.
     if ldbg:
         print txt
+
+def fpLog(app, msg):
+#-------------------------------------------------------------------------------------------------
+# Write to fplog
+# Could put switch here to turn logging on/off, or set level.
+# Maybe should record IP address if we have it.
+# app is expected to be the wsgi app, and it should have a config
+# variable FPLOG_FILE specifying the full path to the file to log to.
+# The msg is appended to that file.
+#
+    try:     # Don't crash out if logging not working
+        f = open(app.config['FPLOG_FILE'], 'a')
+        print >>f, '{0}\t{1}'.format(time.strftime("%Y-%m-%d %H:%M:%S"), msg)
+        f.close
+    except Exception, e:
+        pass

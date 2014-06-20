@@ -19,13 +19,14 @@ if __name__ == '__main__':
     sys.path.insert(0,parentdir)
 
 from fp_common.const import *
+import fp_common.util as util
 
 ### SetUp: ######################################################################################
 if __name__ == '__main__':
-    import os,sys,inspect
+    import os, sys, inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
-    sys.path.insert(0,parentdir)
+    sys.path.insert(0, parentdir)
 
 app = Flask(__name__)
 try:
@@ -57,6 +58,10 @@ def dec_get_trial(jsonReturn):
     def param_dec(func):
         @wraps(func)
         def inner(username, trialid, *args, **kwargs):
+            # Log request:
+            util.fpLog(app, "client ver:{0} user:{1} andid:{2}".format(
+                request.args.get('ver', '0'), username, request.args.get('andid', '')))
+
             password = request.args.get('pw', '')
             dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
             if dbc is None:
@@ -127,7 +132,7 @@ def get_trial(username, trl, dbc):
     servToken = androidId + "." + str(int(time.time()))
     jtrl['serverToken'] = servToken
 
-    # Attribute descriptors:
+    # Node Attribute descriptors:
     LogDebug('get_trial', 'pre attributes')
     attDefs = []
     for att in trl.tuAttributes:
@@ -141,6 +146,12 @@ def get_trial(username, trl, dbc):
         else:     # MFK - support for old clients, remove when all clients updated
             attDefs.append(att.name)
     jtrl['attributes'] = attDefs
+    ### MFK
+    ### Note duplication here, we want to change 'attributes' to 'nodeAttributes', but need to continue
+    ### support for old clients which will look only for 'attributes'. Can remove the 'attributes' version
+    ### when all clients are updated.
+    ###
+    jtrl['nodeAttributes'] = attDefs
 
     # Nodes:
     LogDebug('get_trial', 'pre nodes')
@@ -459,4 +470,6 @@ def hello_world():
 if __name__ == '__main__':
     from os.path import expanduser
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
+    app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
     app.run(debug=True, host='0.0.0.0')
+
