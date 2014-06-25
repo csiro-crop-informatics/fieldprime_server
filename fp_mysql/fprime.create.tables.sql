@@ -29,6 +29,24 @@ create table trial(
 
 
 --
+-- trialAtt
+--
+-- Place to store additional per trial info without needing to alter
+-- table structures (att short for attribute).
+-- Currently allow only one value for each trial/name. We could
+-- change this if necessary, but note some code, attow, relies
+-- on this property and would need changing if this changed.
+--
+create table trialAtt(
+  trial_id    integer not null,
+  name        varchar(63) not null,
+  value       text,
+  PRIMARY KEY (trial_id, name),
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+);
+
+
+--
 -- trialUnit
 -- Each trial has a set of trialUnits (eg plots)
 -- NB, the text attributes will be moved to another table,so as to allow
