@@ -117,10 +117,15 @@ def get_trial(username, trl, dbc):
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
 
-    # Trial attributes:
+    # Trial json object members:
     jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
     jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
     jtrl['uploadURL'] = url_for('upload_trial', username=username, trialid=trl.id, _external=True)
+    # Add trial attributes from database:
+    jtatts = {}
+    for tatt in trl.trialAtts:
+        jtatts[tatt.name] = tatt.value
+    jtrl['trialAttributes'] = jtatts
 
     # Server Token:
     # Use the android device ID postfixed with the current time in seconds as the serverTrialId.
@@ -192,7 +197,7 @@ def get_trial(username, trl, dbc):
     # Traits:
     LogDebug('get_trial', 'pre traits')
     traitList = []
-    traitFieldNames = ['id', 'sysType', 'min', 'max', 'caption', 'description', 'type', 'unit']
+    traitFieldNames = ['id', 'sysType', 'caption', 'description', 'type']
     for trt in trl.traits:
         jtrait = {}
         # Fields common to all traits:
@@ -356,8 +361,9 @@ def process_ti_json(ti, trial, traitID, token, dbc):
 # {"name":"josh", "serverToken":"tok",
 # "traitInstances":[{"trait_id":1,"dayCreated":2,"seqNum":1,"sampleNum":1,"data":[]}]}
 #
-# NB - currently not used, replaced by individual ti upload above
-# Actually, we're using it again now, for notes.
+# Currently only used for uploading node notes, since the traitInstances are
+# individually uploaded via the upload_trait_data().
+#
 # MFK - Ideally we would add the token to the URL, as has been done for upload_trait_data.
 # Have to be carefully however about breaking the protocol for devices out there with
 # the URL without a token..
@@ -372,30 +378,12 @@ def upload_trial(username, trial, dbc):
     if not jtrial:
         return Response('Bad or missing JSON')
     try:
-        token = jtrial['serverToken']
+        token = jtrial[jTrialUpload['serverToken']]
     except Exception, e:
         return Response('Missing field: ' + e.args[0])
 
-    # Process trait instances:  MFK current client will not upload tis this way, but need to leave this
-    # here a while perhaps while there still may be older clients.
-    if 'traitInstance' in jtrial:
-        tis = jtrial['traitInstances']
-        for ti in tis:  # loop over tis, note returns error if any fail.
-            try:
-                traitID = ti["trait_id"];  # This could be part of trait upload instance URL
-                dayCreated = ti["dayCreated"]
-                seqNum = ti["seqNum"]
-                sampleNum = ti["sampleNum"]
-                aData = ti["data"]
-            except Exception, e:
-                return Response('Missing traitInstance field: ' + e.args[0] + trial.name)
-
-            errMsg = process_ti_json(ti, trial, traitID, token, dbc)
-            if (errMsg is not None):
-                return Response(errMsg)
-
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.AddTrialUnitNotes(dbc, token, jtrial['notes'])
+        err = dal.AddTrialUnitNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
             return Response(err)
 

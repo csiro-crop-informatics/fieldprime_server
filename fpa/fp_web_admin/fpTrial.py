@@ -86,7 +86,7 @@ def ParseTrialUnitCSV(f):
 def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
-# Return None on success, else dictionary with 'error' key.
+# Return Trial object on success, string error message.
 #
     db = sess.DB()
     try:
@@ -101,10 +101,10 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         res = updateTrialFile(sess, f, ntrial.id)
         if res is not None and 'error' in res:
             deleteTrial(sess, ntrial.id)   # delete the new trial if some error
-            return res
+            return res['error']
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"Database error ({0})".format(e.orig.args)}
-    return None
+    return ntrial
 
 def deleteTrial(sess, trialId):
 #-----------------------------------------------------------------------

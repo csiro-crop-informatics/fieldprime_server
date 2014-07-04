@@ -38,3 +38,20 @@ TABLE_ATTRIBUTE_VALUES = "attributeValue"
 AV_TUA_ID = "trialUnitAttribute_id"
 AV_TRIAL_UNIT = "trialUnit_id"
 AV_VALUE = "value"
+
+#
+# JSON names:
+# Having the values here will allow firstly the ability to change a json name for all references
+# in a single place, and secondly a single place (here) to find json names (rather than scattered
+# through the code.
+#
+# NOTE they are not all here yet (just the one I was bitten by!)
+
+# Trial Uploads:
+jTrialUpload = {'serverToken':'serverToken',
+                'notes':'notes',
+                }
+
+# Notes:
+jNotesUpload = {'node_id':'node_id', 'timestamp':'timestamp', 'userid':'userid', 'note':'note' }
+

@@ -116,7 +116,7 @@ class Datum(DeclarativeBase):
             value = self.txtValue
 
             #MFK return link to photo.
-        #if type == T_LOCATION: value = d.txtValue
+        #if type ==     T_LOCATION: value = d.txtValue
 
         # Convert None to "NA"
         if value is None:
@@ -131,12 +131,9 @@ class Trait(DeclarativeBase):
     caption = Column(u'caption', VARCHAR(length=63), nullable=False)
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
-    max = Column(u'max', DECIMAL(precision=10, scale=0))
-    min = Column(u'min', DECIMAL(precision=10, scale=0))
     sysType = Column(u'sysType', INTEGER(), nullable=False)
-    tid = Column(u'tid', TEXT())
+    #tid = Column(u'tid', TEXT())
     type = Column(u'type', INTEGER(), nullable=False)
-    unit = Column(u'unit', TEXT())
 
     #relation definitions
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trial_id==Trial.id')
@@ -227,6 +224,7 @@ class Trial(DeclarativeBase):
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
     tuAttributes = relation('TrialUnitAttribute')
     trialUnits = relation('TrialUnit')
+    trialAtts = relation('TrialAtt')
 
     def addOrGetNode(self, row, col):
         try:
@@ -286,6 +284,22 @@ class Trial(DeclarativeBase):
             lastTraitId = traitId
             lastToken = token
         return scoreSets
+
+
+class TrialAtt(DeclarativeBase):
+    __tablename__ = 'trialAtt'
+    __table_args__ = {}
+
+    #column definitions:
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
+    name = Column(u'name', TEXT(), primary_key=True)
+    value = Column(u'value', TEXT())
+
+    def __init__(self, tid, name, value):
+        self.trial_id = tid
+        self.name = name
+        self.value = value
+
 
 class TrialUnit(DeclarativeBase):
     __tablename__ = 'trialUnit'
@@ -486,7 +500,8 @@ def AddTrialUnitNotes(dbc, token, notes):
     for n in notes:
         try:
             qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
-                n['trialUnit_id'], n['timestamp'], n['userid'], token, n['note'])
+                n[jNotesUpload['node_id']], n[jNotesUpload['timestamp']],
+                n[jNotesUpload['userid']], token, n[jNotesUpload['note']])
         except Exception, e:
             return 'Error parsing note ' + e.args[0]
 
