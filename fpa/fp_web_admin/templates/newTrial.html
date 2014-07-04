@@ -66,11 +66,12 @@ function validateTrialForm() {
             <input type="text" name="acronym"><br>
           </td>
         </tr>
+        {{extraElements|safe}}
         <tr>
-          <td >
+          <td>
             <label>Trial Plan CSV File<span class="small">List of trial nodes, and attributes (mandatory)</span></label>
           </td>
-          <td >
+          <td>
             <input type="file" id='uploadFile_id' name="file">
           </td>
         </tr>

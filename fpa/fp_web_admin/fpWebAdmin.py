@@ -626,23 +626,76 @@ def urlTrialDataTSV(sess, trialId):
 
     return Response(r, content_type='text/plain')
 
+
 @app.route('/newTrial/', methods=["GET", "POST"])
 @dec_check_session()
 def newTrial(sess):
 #===========================================================================
 # Page for trial creation.
 #
+    #
+    # Trial attribute stuff. We want table driven presentation of allowed trial attributes.
+    #
+
+    #
+    # class trialAttHtmlElement
+    # NOT a database class, but a container for a set of traitInstances that
+    # make up a scoreSet
+    #
+    class trialAttHtmlElement:
+        def __init__(self, prompt, subPrompt, ename, eid, dbName=None):
+            self.prompt = prompt
+            self.subPrompt = subPrompt
+            self.ename = ename
+            self.eid = eid
+            self.dbName = dbName if dbName is not None else ename
+
+    def htmlTrialAttribute(ta):
+    #------------------------------------------------------------------
+    # Html string giving table record for display by newTrial.html. Note
+    # this is not ideal, as we have the preferred display details both here
+    # and in newTrial.html. Ideally this would be all here or all there.
+    # Here is currently used for dynamically determined elements while
+    # newTrial.html has the trial attributes that are in all trials.
+    #
+        out = '''
+            <tr>
+              <td >
+                <label>{0}<span class="small">{1}</span></label>
+              </td>
+              <td >
+                <input type="text" id='{2}' name="{3}">
+              </td>
+            </tr>
+            '''.format(ta.prompt, ta.subPrompt, ta.eid, ta.ename)
+        return out
+
+    # Trial attribute list:
+    taList = []
+    #taList = [trialAttHtmlElement('hey', 'give us a hey', 'heyid', 'heyname'),
+    #          trialAttHtmlElement('ho', 'give us a ho', 'hoid', 'honame')]
+
+    # Get
+    extras = ''
+    for tae in taList:
+        extras += htmlTrialAttribute(tae)
     if request.method == 'GET':
-        return dataTemplatePage(sess, 'newTrial.html', title='Create Trial')
+        return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
     if request.method == 'POST':
         uploadFile = request.files['file']
-        res = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
+        trl = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
-        if res is not None and 'error' in res:
-            #return dataErrorPage(sess, res['error'])
-            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = res['error'])
-        else:
-            return FrontPage(sess)
+        # Handle error (trl will be string error message):
+        if type(trl) is str:
+            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = trl, extraElements=extras)
+        #
+        # All good. Trial created. Set extra trial attributes.
+        # MFK in general we will need insert or update (merge)
+        #
+        for tae in taList:
+            sess.DB().add(models.TrialAtt(trl.id, tae.dbName, request.form.get(tae.ename)))
+        sess.DB().commit()
+        return FrontPage(sess)
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
@@ -769,10 +822,10 @@ def urlTraitValidation(sess, trialId, traitId):
             # need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
             minText = ""
             if ttn and ttn.min is not None:
-                minText = "value='{0}'".format(ttn.getMin())
+                minText = "value='{:f}'".format(ttn.getMin())
             maxText = ""
             if ttn and ttn.max is not None:
-                maxText = "value='{0}'".format(ttn.getMax())
+                maxText = "value='{:f}'".format(ttn.getMax())
             minMaxBounds = "<p>Minimum: <input type='text' name='min' id=tdMin {0}>".format(minText)
             minMaxBounds += "<p>Maximum: <input type='text' name='max' id=tdMax {0}><br>".format(maxText);
 
