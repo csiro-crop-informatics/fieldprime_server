@@ -92,10 +92,16 @@ def GetTraitInstancesForTrial(sess, trialID):
         TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
 def GetTrialAttributes(sess, trialID):
-    return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.trial_id == trialID).all()
+    return sess.DB().query(TrialUnitAttribute).filter(
+        TrialUnitAttribute.trial_id == trialID).order_by(TrialUnitAttribute.name).all()
 
 def GetAttribute(sess, attId):
     return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.id == attId).one()
+
+def getNodes(sess, trialId):
+#-----------------------------------------------------------------------
+# Return nodes for the specified trial, sorted by row/col
+    return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id==trialId).order_by(TrialUnit.row, TrialUnit.col).all()
 
 @oneException2None
 def getAttributeValue(sess, trialUnitId, trialUnitAttributeId):

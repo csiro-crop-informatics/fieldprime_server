@@ -241,8 +241,12 @@ def htmlTrialAttributes(sess, trialId):
                    att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton)
         out += "</table>"
 
+    # Add BROWSE button:
+    out += '<p>'
+    out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrial", trialId=trialId))
+
     # Add button to upload new/modified attributes:
-    out += '<p>' + fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -697,13 +701,51 @@ def newTrial(sess):
         sess.DB().commit()
         return FrontPage(sess)
 
+
+@app.route('/browseTrial/<trialId>/', methods=["GET", "POST"])
+@dec_check_session()
+def urlBrowseTrial(sess, trialId):
+#===========================================================================
+# Page for display of trial data.
+#
+    attList = dbUtil.GetTrialAttributes(sess, trialId)
+    nodeList = dbUtil.getNodes(sess, trialId)
+
+    r = ''
+    r += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    r += '<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    r += '<script>$(document).ready(function() { $("#trialData").dataTable({"scrollX":true});} );</script>'
+
+    # generate html table of the trial data:
+    r += '<p><table id="trialData" class="display" cellspacing="0" width="100%">'
+    hdrs = '<th>Row</th><th>Column</th>'
+    for att in attList:
+        hdrs += '<th>{0}</th>'.format(att.name)
+    r += '<thead><tr>{0}</tr></thead>'.format(hdrs)
+    r += '<tfoot><tr>{0}</tr></tfoot>'.format(hdrs)
+    r += '<tbody>'
+    for n in nodeList:
+        r += '<tr>'
+        r += '<td>{0}</td><td>{1}</td>'.format(n.row, n.col)
+        for att in attList:
+            val = dbUtil.getAttributeValue(sess, n.id, att.id)
+            if val is None:
+                val = ''
+            else:
+                val = val.value
+            r += '<td>{0}</td>'.format(val)
+        r += '</tr>'
+    r += '</tbody></table>'
+
+    return dataPage(sess, content=r, title='Browse')
+
+
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
 def urlDeleteTrial(sess, trialId):
 #===========================================================================
 # Page for trial deletion. Display trial stats and request confirmation
 # of delete.
-# NOT USED YET
 #
     trl = models.GetTrial(sess.DB(), trialId)
     def getHtml(msg=''):
