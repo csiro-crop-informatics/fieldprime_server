@@ -29,13 +29,13 @@ def TraitListHtmlTable(traitList):
     if len(traitList) < 1:
         return "No traits configured"
     out = "<table border='1'>"
-    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>".format("Caption", "Description", "Type", "Min", "Max")
+    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Caption", "Description", "Type")
     for trt in traitList:
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type], trt.min, trt.max)
+        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
     out += "</table>"
     return out
 
 
 
- 
+

@@ -114,9 +114,6 @@ def getAttributeValue(sess, trialUnitId, trialUnitAttributeId):
 def GetAttributeValues(sess, trialUnitAttributeId):
     return sess.DB().query(AttributeValue).filter(AttributeValue.trialUnitAttribute_id == trialUnitAttributeId).all()
 
-def GetTrialUnits(sess, trialID):
-    return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id == trialID).all()
-
 def GetTrialUnit(sess, trialId, row, col):
     return sess.DB().query(TrialUnit).filter(and_(TrialUnit.trial_id == trialId, TrialUnit.row == row, TrialUnit.col == col)).one()
 
