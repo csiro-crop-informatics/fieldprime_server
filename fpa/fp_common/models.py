@@ -100,6 +100,9 @@ class Datum(DeclarativeBase):
             # type == T_PHOTO
             return 'txtValue'
 
+    def isNA(self):
+        return self.txtValue is None and self.numValue is None
+
     def getValue(self):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.

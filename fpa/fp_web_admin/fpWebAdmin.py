@@ -1274,14 +1274,17 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     for d in data:
         if typ == T_PHOTO:  # Special case for photos. Display a link to show the photo.
                             # Perhaps this should be done in Datum.getValue, but we don't have all info.
-            fname = models.photoFileName(sess.GetUser(),
-                                         ti.trial_id,
-                                         ti.trait_id,
-                                         d.trialUnit.id,
-                                         ti.token,
-                                         ti.seqNum,
-                                         ti.sampleNum)
-            value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+            if d.isNA():
+                value = 'NA'
+            else:
+                fname = models.photoFileName(sess.GetUser(),
+                                             ti.trial_id,
+                                             ti.trait_id,
+                                             d.trialUnit.id,
+                                             ti.token,
+                                             ti.seqNum,
+                                             ti.sampleNum)
+                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()
 
