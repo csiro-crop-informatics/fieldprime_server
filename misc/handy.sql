@@ -94,7 +94,7 @@ and t1.id - t2.id != 96
 ;
 
 update datum, trialUnit t set trialUnit_id = trialUnit_id - 96
-where datum.trialUnit_id = t.id and traitInstance_id = 36 and row = 8 
+where datum.trialUnit_id = t.id and traitInstance_id = 36 and row = 8
 
 select row, count(*) from datum d, trialUnit t, traitInstance i
 where d.trialUnit_id = t.id
@@ -118,7 +118,7 @@ select row, col, numValue from datum z, trialUnit t, traitInstance iz
 where z.trialUnit_id = t.id
 and t.trial_id = 3
 and z.traitInstance_id = iz.id
-and iz.trait_id = 9 
+and iz.trait_id = 9
 ;
 
 
@@ -139,7 +139,7 @@ insert ignore into attributeValues (trialUnitAttribute_id, trialUnit_id, value)
 select 54, trialUnit_id, concat(substring(CAST(numValue AS CHAR),7,2),'/',substring(CAST(numValue AS CHAR),5,2))
 from datum where traitInstance_id in (37,39,65,67)
 and numValue is not null;
- 
+
 select count(*) from datum where traitInstance_id in (57,59,70);
 select count(*) from datum where traitInstance_id in (30,35,61,63);
 select count(*) from datum where traitInstance_id in (37,39,65,67);
@@ -199,7 +199,7 @@ group by d.trialUnit_id
 
 
 ### Within group histograms of categorical scores: #######################################
-## Aim is to make a table that gives a histogram of the categorical values 
+## Aim is to make a table that gives a histogram of the categorical values
 ## collect for each group (family here) where the group is defined by an attribute.
 ## Bit of a brute force method here, relying on the fact that we only have a small number
 ## of categories - might be easier to export out to csv and do in perl.
