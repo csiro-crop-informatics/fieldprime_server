@@ -41,6 +41,8 @@ def ParseTrialUnitCSV(f):
         hdl = hd.strip().lower()
         if not hdl:
             return {'error':"Error - Empty header found for column {0}, aborting.".format(numFields + 1)}
+        if len(hdl) > 127:
+             return {'error':"Error - column header too long {0} for column {1}, aborting.".format(hdl, numFields + 1)}
         if hdl in FIXED_ATTRIBUTES:
             fixIndex[hdl] = numFields
         elif hdl in attIndex.keys():

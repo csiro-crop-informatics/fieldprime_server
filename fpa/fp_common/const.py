@@ -53,5 +53,20 @@ jTrialUpload = {'serverToken':'serverToken',
                 }
 
 # Notes:
-jNotesUpload = {'node_id':'node_id', 'timestamp':'timestamp', 'userid':'userid', 'note':'note' }
+jNotesUpload = {
+    'node_id':'node_id',
+    'timestamp':'timestamp',
+    'userid':'userid',
+    'note':'note'
+}
+
+# Data upload:
+jDataUpload = {
+    'node_id':'node_id',
+    'timestamp':'timestamp',
+    'userid':'userid',
+    'gps_long':'gps_long',
+    'gps_lat':'gps_lat',
+    'value':'value'
+}
 

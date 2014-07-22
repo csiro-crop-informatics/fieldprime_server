@@ -309,6 +309,9 @@ def upload_photo(username, trial, dbc, traitid, token):
 # These are uniquely identified by dbusername/trial/trait/token/seqNum/sampleNum.
 # These are all provided in the url except for seqNum and sampleNum which come
 # (out-of-band) as parameters.
+# The photos are saved in the PHOTO_UPLOAD_FOLDER folder, with the name encoding
+# all the relevant info:
+# '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
 #
     seqNum = request.args.get('seqNum', '')
     sampNum = request.args.get('sampleNum', '')
