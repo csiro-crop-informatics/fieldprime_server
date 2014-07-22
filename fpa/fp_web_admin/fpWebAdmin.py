@@ -53,6 +53,19 @@ LOGIN_TIMEOUT = 1500          # Idle time before requiring web user to login aga
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
 
+def getMYSQLDBConnection(sess):
+#-------------------------------------------------------------------------------
+# Return mysqldb connection for user associated with session
+#
+    try:
+        usrname = dbUserName(sess.GetUser())
+        usrdb = dbName(sess.GetUser())
+        con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
+        return con
+    except mdb.Error, e:
+        return None
+
+
 def dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
@@ -305,37 +318,55 @@ def TrialHtml(sess, trialId):
     # Could do a redirect? but have to pass all the params..
     #
     jscript = """
-<script>
-// func to set the href of the passed link to a URL for the trial data as plaintext tsv
-function downloadURL() {{
-    var tdms = document.getElementById('tdms');
-    var out = '{0}?';
-    // Add parameters indicating what to include in the download
-    for (var i=0; i<tdms.length; i++)
-        if (tdms[i].selected)
-          out += '&' + tdms[i].value + '=1';
-    return out;
-}}
-</script>
-""".format(url_for("urlTrialDataTSV", trialId=trialId))
+    <script>
+    function downloadURL(tables) {{
+        var tdms = document.getElementById('tdms');
+        var out = tables ? '{1}?' : '{0}?';
+        // Add parameters indicating what to include in the download
+        for (var i=0; i<tdms.length; i++)
+            if (tdms[i].selected)
+              out += '&' + tdms[i].value + '=1';
+        return out;
+    }}
+    </script>
+    """.format(url_for("urlTrialDataTSV", trialId=trialId), url_for("urlTrialDataBrowse", trialId=trialId))
+
+#     jq1 = """
+#     <link rel=stylesheet type=text/css href="{0}">
+#     <script src="{1}"></script>
+#     """.format(url_for('static', filename='jquery.multiselect.css'), url_for('static', filename='jquery.multiselect.js'))
+#
+#     jq = """
+#     <script>
+#     $(document).ready(
+#         function() {
+#             $("#tdms").multiselectMenu();
+#         });
+#     </script>
+#     """
+#     jscript += jq1 + jq
+    #MFK perhaps instead of a multi select list we should have checkboxes. Contents of list are not dynamically
+    # determined and checkboxes look nicer and are easier to use.
 
     dl = ""
     dl += jscript
     # Multi select output columns:
     dl += "Select columns to view/download:<br>"
-    dl += "<select multiple id='tdms'>";
+    dl += "<select multiple='multiple' id='tdms'>";
     dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
     dl += "<option value='user' selected='selected'>User Idents</option>"
     dl += "<option value='gps' selected='selected'>GPS info</option>"
     dl += "<option value='notes' selected='selected'>Notes</option>"
     dl += "<option value='attributes' selected='selected'>Attributes</option>"
     dl += "</select>"
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL()'>".format(trial.name)
+    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
     dl +=     "<button>Download Trial Data</button></a>"
     dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL()' onContextMenu='this.href=downloadURL()'>"
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
     dl +=     "View tab separated score data</a>"
     dl += "<br>Note data is TAB separated"
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
+    dl +=     "<button>Browse Trial Data</button></a>"
     r += HtmlFieldset(dl, "Score Data:")
 
     return r
@@ -401,23 +432,23 @@ def urlTrial(sess, trialId):
 #
     return trialPage(sess, trialId)
 
-
 def AddSysTrialTrait(sess, trialId, traitId):
 #-----------------------------------------------------------------------
 # Return error string, None for success
+# MFK perhaps this would be better done with sqlalchemy?
 #
     if traitId == "0":
         return "Select a system trait to add"
     try:
-        usrname = dbUserName(sess.GetUser())
-        usrdb = dbName(sess.GetUser())
-        con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
+        con = getMYSQLDBConnection(sess)
+        if con is None:
+            return "Error accessing database"
         cur = con.cursor()
         cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
         cur.close()
         con.commit()
     except mdb.Error, e:
-        return  usrdb
+        return "Error accessing database"
     return None
 
 
@@ -463,7 +494,7 @@ def CreateNewTrait(sess,  trialId, request):
 # Create trait in db, from data from html form.
 # trialId is id of trial if a local trait, else it is 'sys'.
 # Returns error message if there's a problem, else None.
-#xxx
+#
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
@@ -531,104 +562,6 @@ def downloadApp(sess):
         if fnmatch(fname, '*.apk'):
             apkListHtml += '<p><a href="{0}">{1}</a>'.format(url_for('static', filename = 'apk/'+fname), fname)
     return dataPage(sess, content=apkListHtml, title='Download App')
-
-
-@app.route('/trial/<trialId>/data/', methods=['GET'])
-@dec_check_session()
-def urlTrialDataTSV(sess, trialId):
-#-----------------------------------------------------------------------
-# Returns trial data as plain text tsv form - i.e. for download.
-# The data is arranged in trial unit rows, and trait instance value and attribute
-# columns.
-#
-    showGps = request.args.get("gps")
-    showUser = request.args.get("user")
-    showTime = request.args.get("timestamp")
-    showNotes = request.args.get("notes")
-    showAttributes = request.args.get("attributes")
-    SEP = '\t'
-    # Get Trait Instances:
-    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
-
-    # Work out number of columns for each trait instance:
-    numColsPerValue = 1
-    if showTime:
-        numColsPerValue += 1
-    if showUser:
-        numColsPerValue += 1
-    if showGps:
-        numColsPerValue += 2
-
-    # Headers:
-    r = "Row" + SEP + "Column"
-    if showAttributes:
-        trl = dbUtil.GetTrial(sess, trialId)
-        for tua in trl.tuAttributes:
-            r += SEP + tua.name
-    for ti in tiList:
-        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        r += "{1}{0}".format(tiName, SEP)
-        if showTime:
-            r += "{1}{0}_timestamp".format(tiName, SEP)
-        if showUser:
-            r += "{1}{0}_user".format(tiName, SEP)
-        if showGps:
-            r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, SEP)
-    if showNotes:
-        r += SEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
-    r += '\n'
-
-    # Data:
-    tuList = dbUtil.GetTrialUnits(sess, trialId)
-    for tu in tuList:
-        # Row and Col:
-        r += "{0}{2}{1}".format(tu.row, tu.col, SEP)
-
-        # Attribute Columns:
-        if showAttributes:
-            for tua in trl.tuAttributes:
-                r += SEP
-                av = dbUtil.getAttributeValue(sess, tu.id, tua.id)
-                if av is not None:
-                    r += av.value
-
-        # Scores:
-        for ti in tiList:
-            type = ti.trait.type
-            datums = dbUtil.GetDatum(sess, tu.id, ti.id)
-            if len(datums) == 0:  # Handle case where no datum:
-                r += SEP * numColsPerValue
-            else:  # Data present
-                # There probably shouldn't be multiple, but if there is, we use the most recent.
-                # Could remove this when/if sure that it's one or zero datums.
-                lastDatum = datums[0]
-                for d in datums:
-                    if d.timestamp > lastDatum.timestamp: lastDatum = d
-                d = lastDatum
-
-                # Write the value:
-                r += "{0}{1}".format(SEP, d.getValue())
-                # Write any other datum fields specified:
-                if showTime:
-                    #r += "{0}{1}".format(SEP, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(d.timestamp/1000)))
-                    r += "{0}{1}".format(SEP, util.epoch2dateTime(d.timestamp))
-                if showUser:
-                    r += "{0}{1}".format(SEP, d.userid)
-                if showGps:
-                    r += "{0}{1}{0}{2}".format(SEP, d.gps_lat, d.gps_long)
-
-        # Notes, as list separated by pipe symbols:
-        if showNotes:
-            r += SEP + '"'
-            tuNotes = dbUtil.GetTrialUnitNotes(sess, tu.id)
-            for note in tuNotes:
-                r += '{0}|'.format(note.note)
-            r += '"'
-
-        # End the line:
-        r += "\n"
-
-    return Response(r, content_type='text/plain')
 
 
 @app.route('/newTrial/', methods=["GET", "POST"])
@@ -701,6 +634,45 @@ def newTrial(sess):
         sess.DB().commit()
         return FrontPage(sess)
 
+def getAttributeColumns(sess, trialId, attList):
+#-----------------------------------------------------------------------
+# Returns a list of columns one for each attribute in attList - each column
+# being an array of attribute values with one entry for each node in the trial.
+# The columns are in the same order as attList, and the column entries are
+# ordered by row/col. Missing values are given as the empty string.
+    con = getMYSQLDBConnection(sess)
+    qry = """
+        select a.value from trialUnit n left join attributeValue a
+        on n.id = a.trialUnit_id and a.trialUnitAttribute_id = %s
+        where n.trial_id = %s
+        order by row, col"""
+    attValList = []
+    for att in attList:
+        valList = []
+        cur = con.cursor()
+        cur.execute(qry, (att.id, trialId))
+        for row in cur.fetchall():  # can we just store cur.fetchall()? Yes we could, but perhaps better this way
+            valList.append("" if row[0] is None else row[0])
+        attValList.append(valList)
+        cur.close()
+    return attValList
+
+def htmlDataTableMagic(tableId):
+#----------------------------------------------------------------------------
+# Html required to have a datatable table work, pass in the dom id
+    r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    r += '<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    r += '<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+    r += """<script>
+    $(document).ready(function() {{
+        $("#{0}").dataTable( {{
+            "fnInitComplete": function(oSettings, json) {{$("#{0}").show();}}
+          }});
+    }});
+    </script>
+    """.format(tableId)
+    return r
+
 
 @app.route('/browseTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
@@ -711,32 +683,192 @@ def urlBrowseTrial(sess, trialId):
     attList = dbUtil.GetTrialAttributes(sess, trialId)
     nodeList = dbUtil.getNodes(sess, trialId)
 
-    r = ''
-    r += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    r += '<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r += '<script>$(document).ready(function() { $("#trialData").dataTable({"scrollX":true});} );</script>'
+    # Get all the attribute values:
+    attValList = getAttributeColumns(sess, trialId, attList)
 
     # generate html table of the trial data:
-    r += '<p><table id="trialData" class="display" cellspacing="0" width="100%">'
+    r = htmlDataTableMagic('trialData')
+    r += '<p><table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">'
     hdrs = '<th>Row</th><th>Column</th>'
     for att in attList:
         hdrs += '<th>{0}</th>'.format(att.name)
     r += '<thead><tr>{0}</tr></thead>'.format(hdrs)
     r += '<tfoot><tr>{0}</tr></tfoot>'.format(hdrs)
     r += '<tbody>'
-    for n in nodeList:
+    for nodeIndex, n in enumerate(nodeList):
         r += '<tr>'
         r += '<td>{0}</td><td>{1}</td>'.format(n.row, n.col)
-        for att in attList:
-            val = dbUtil.getAttributeValue(sess, n.id, att.id)
-            if val is None:
-                val = ''
-            else:
-                val = val.value
-            r += '<td>{0}</td>'.format(val)
+        for attIndex, att in enumerate(attList):
+            r += '<td>{0}</td>'.format(attValList[attIndex][nodeIndex])
         r += '</tr>'
     r += '</tbody></table>'
 
+    return dataPage(sess, content=r, title='Browse')
+
+
+def getDataColumns(sess, trialId, tiList):
+#-----------------------------------------------------------------------
+# SQL query - this is a bit complicated:
+# Get a row for each node in a given trial, showing the most recent value for the node
+# for a given trait instance. Note we can distinguish NA from not present as
+# those rows that have a non null value for any of the d1 fields that are alway
+# non null - eg timestamp. The values we need are the datum value (type appropriate)
+# and the score metadata. There must be a result for every node, and these must be
+# in row/col order.
+# NB we could pass in which metadata parameters are required, rather than getting them all.
+# Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
+# The columns are in the same order as tiList. Timestamp is given in readable form.
+#
+    con = getMYSQLDBConnection(sess)
+    qry = """
+    select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
+    from trialUnit t
+      left join datum d1 on t.trial_id = %s and t.id = d1.trialUnit_id and d1.traitInstance_id = %s
+      left join datum d2 on d1.trialUnit_id = d2.trialUnit_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
+    where (d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null
+    order by row, col
+    """
+    print qry
+    outList = []
+    for ti in tiList:
+        valList = []
+        outList.append
+        cur = con.cursor()
+        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.type)), (trialId, ti.id, ti.id))
+        for row in cur.fetchall():
+            timestamp = row[1]
+            if timestamp is None:          # no datum record case
+                valList.append(["","","","",""])
+            else:
+                val = row[0]
+                if val is None: val = "NA"
+                valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
+        outList.append(valList)
+        cur.close()
+    return outList
+
+def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, table=False):
+#-----------------------------------------------------------------------
+# Returns trial data as plain text tsv form - i.e. for download, or as html table.
+# The data is arranged in node rows, and trait instance score and attribute columns.
+# Form params indicate what score metadata to display.
+#
+# Note we have improved performance (over a separate query for each value) by getting
+# the data for each trait instance with one sql query.
+# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
+# If necessary we could check the dataset size and if necessary switch to a different method.
+# for example server side mode datatables.
+# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
+# datatables browse could show/hide columns and export current selection to tsv.
+#
+    # Get Trait Instances:
+    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)  # get Trait Instances
+    valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
+
+    # Work out number of columns for each trait instance:
+    numColsPerValue = 1
+    if showTime:
+        numColsPerValue += 1
+    if showUser:
+        numColsPerValue += 1
+    if showGps:
+        numColsPerValue += 2
+
+    # Format controls, table or tsv
+    #tables = True
+    SEP = '</td><td>' if table else '\t'
+    HSEP = '</th><th>'
+    ROWSTART = '<tr><td>' if table else ''
+    ROWEND = '</td></tr>\n' if table else '\n'
+    HSEP = '</th><th>' if table else '\t'
+    HROWSTART = '<thead><th>' if table else ''
+    HROWEND = '</th></thead>\n' if table else '\n'
+    # MFK unify with browseData (for attributes
+    r = '<table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">' if table else ''
+
+    # Headers:
+    r += HROWSTART
+    r += "Row" + HSEP + "Column"
+    if showAttributes:
+        trl = dbUtil.GetTrial(sess, trialId)
+        attValList = getAttributeColumns(sess, trialId, trl.tuAttributes)  # Get all the att vals in advance
+        for tua in trl.tuAttributes:
+            r += HSEP + tua.name
+    for ti in tiList:
+        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
+        r += "{1}{0}".format(tiName, HSEP)
+        if showTime:
+            r += "{1}{0}_timestamp".format(tiName, HSEP)
+        if showUser:
+            r += "{1}{0}_user".format(tiName, HSEP)
+        if showGps:
+            r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, HSEP)
+    if showNotes:
+        r += HSEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
+    r += HROWEND
+
+    # Data:
+    nodeList = dbUtil.getNodes(sess, trialId)
+    for nodeIndex, node in enumerate(nodeList):
+        r += ROWSTART
+
+        # Row and Col:
+        r += "{0}{2}{1}".format(node.row, node.col, SEP)
+
+        # Attribute Columns:
+        if showAttributes:
+            for ind, tua in enumerate(trl.tuAttributes):
+                r += SEP
+                r += attValList[ind][nodeIndex]
+
+        # Scores:
+        for tiIndex, ti in enumerate(tiList):
+            [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
+            # Write the value:
+            r += "{0}{1}".format(SEP, val)
+            # Write any other datum fields specified:
+            if showTime:
+                r += "{0}{1}".format(SEP, timestamp)
+            if showUser:
+                r += "{0}{1}".format(SEP, userid)
+            if showGps:
+                r += "{0}{1}{0}{2}".format(SEP, lat, long)
+
+        # Notes, as list separated by pipe symbols:
+        if showNotes:
+            r += SEP + '"'
+            tuNotes = dbUtil.GetTrialUnitNotes(sess, node.id)
+            for note in tuNotes:
+                r += '{0}|'.format(note.note)
+            r += '"'
+
+        # End the line:
+        r += ROWEND
+
+    r += '</table>' if table else ''
+    return r
+
+@app.route('/trial/<trialId>/data/', methods=['GET'])
+@dec_check_session()
+def urlTrialDataTSV(sess, trialId):
+    showGps = request.args.get("gps")
+    showUser = request.args.get("user")
+    showTime = request.args.get("timestamp")
+    showNotes = request.args.get("notes")
+    showAttributes = request.args.get("attributes")
+    r = getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, False)
+    return Response(r, content_type='text/plain')
+
+@app.route('/trial/<trialId>/data/browse', methods=['GET'])
+@dec_check_session()
+def urlTrialDataBrowse(sess, trialId):
+    showGps = request.args.get("gps")
+    showUser = request.args.get("user")
+    showTime = request.args.get("timestamp")
+    showNotes = request.args.get("notes")
+    showAttributes = request.args.get("attributes")
+    r = htmlDataTableMagic('trialData')
+    r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dataPage(sess, content=r, title='Browse')
 
 
@@ -767,11 +899,7 @@ def urlDeleteTrial(sess, trialId):
         if request.form.get('yesDelete'):
             if not request.form.get('password'):
                  return getHtml('You must provide a password')
-
-            suser = sess.GetUser()
-            password = request.form.get('password')
-            spw = sess.GetPassword()
-            if password != spw:
+            if request.form.get('password') != sess.GetPassword():
                 return getHtml('Password is incorrect')
             else:
                 # Delete the trial:
@@ -1059,28 +1187,28 @@ def urlUserDetails(sess, userName):
                 return dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
                                         errMsg="Contact details saved", title=title)
 
-        suser = form.get("login")
+        # Changing admin or app password:
+        currUser = sess.GetUser()
+        currPass = sess.GetPassword()
         password = form.get("password")
+        if password != currPass:
+            sess.close()
+            return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
         newpassword1 = form.get("newpassword1")
         newpassword2 = form.get("newpassword2")
-        if not (suser and password and newpassword1 and newpassword2):
+        if not (password and newpassword1 and newpassword2):
             return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
         if newpassword1 != newpassword2:
             return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
-        if not CheckPassword(suser, password):
-            sess.close()
-            return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
 
         # OK, all good, change their password:
         try:
-            usrname = dbUserName(suser)
-            usrdb = dbName(suser)
-            con = mdb.connect('localhost', usrname, password, usrdb)
+            con = getMYSQLDBConnection(sess)
             cur = con.cursor()
             msg = ''
             if op == 'newpw':
-                cur.execute("set password for %s@localhost = password(%s)", (usrname, newpassword1))
-                sess.SetUserDetails(suser, newpassword1)
+                cur.execute("set password for %s@localhost = password(%s)", (dbUserName(sess.GetUser()), newpassword1))
+                sess.SetUserDetails(currUser, newpassword1)
                 msg = 'Admin password reset successfully'
             elif op == 'setAppPassword':
                 cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)

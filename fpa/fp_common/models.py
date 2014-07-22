@@ -14,7 +14,7 @@ __all__ = ['Trial', 'TrialUnit', 'TrialUnitAttribute', 'AttributeValue', 'Datum'
 from sqlalchemy import *
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relation, sessionmaker, Session
+from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from const import *
 import util
 
@@ -87,6 +87,18 @@ class Datum(DeclarativeBase):
     #relation definitions
     trialUnit = relation('TrialUnit', primaryjoin='Datum.trialUnit_id==TrialUnit.id')
     traitInstance = relation('TraitInstance', primaryjoin='Datum.traitInstance_id==TraitInstance.id')
+
+    @staticmethod
+    def valueFieldName(traitType):
+        if (type == T_INTEGER or
+            type == T_DECIMAL or
+            type == T_CATEGORICAL or
+            type == T_DATE):
+            return 'numValue'
+        else:
+            # type == T_STRING
+            # type == T_PHOTO
+            return 'txtValue'
 
     def getValue(self):
     #------------------------------------------------------------------
@@ -222,9 +234,9 @@ class Trial(DeclarativeBase):
 
     #relation definitions:
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
-    tuAttributes = relation('TrialUnitAttribute')
-    trialUnits = relation('TrialUnit')
-    trialAtts = relation('TrialAtt')
+    tuAttributes = relationship('TrialUnitAttribute')
+    trialUnits = relationship('TrialUnit')
+    trialAtts = relationship('TrialAtt')
 
     def addOrGetNode(self, row, col):
         try:
@@ -380,7 +392,6 @@ def GetEngineForApp(targetUser):
     return dbsess
 
 
-
 # This should use alchemy and return connection
 def DbConnectAndAuthenticate(username, password):
 #-------------------------------------------------------------------------------------------------
@@ -458,35 +469,37 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 
 def AddTraitInstanceData(dbc, tiID, trtType, aData):
 #-------------------------------------------------------------------------------------------------
+# Insert or update datum records for specified trait instance.
+# Params:
+# dbc - db connection
+# tiID - id of trait instance
+# trtType - type of trait instance
+# aData - array of data values, json from device
+#
 # Return None for success, else an error message.
 #
-    valueFieldName = 'txtValue' if  trtType == T_STRING or trtType == T_PHOTO else 'numValue'
-    qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}) values '.format(
-        'datum', 'trialUnit_id', 'traitInstance_id',
-        'timestamp', 'gps_long', 'gps_lat', 'userid',
-        'notes', valueFieldName)
-    for dat in aData:
-        # have to see what format value is in in json, ideally string would be quoted,
-        # and number not. note mysql should cope with quotes around numbers.
-        valueField = ('"' + str(dat['value']) + '"') if 'value' in dat else 'null'
-        notesField = ('"' + dat['notes'] + '"') if 'notes' in dat else 'null'
-        try:
-            # Node trialUnit_id has changed to 'node_id' in the protocol, hence cater for both
-            qry += '({0}, {1}, {2}, {3}, {4}, "{5}", {6}, {7}),'.format(
-                dat.get('node_id') or dat.get('trialUnit_id'), tiID, dat['timestamp'],
-                dat['gps_long'], dat['gps_lat'], dat['userid'], notesField, valueField)
-        except Exception, e:
-            return 'Error parsing traitInstance:data ' + e.args[0]
+    # Construct list of dictionaries of values to insert:
+    try:
+        valueFieldName = 'txtValue' if  trtType == T_STRING or trtType == T_PHOTO else 'numValue'
+        print 'valueFieldName : {0}'.format(valueFieldName)
+        dlist = []
 
-    # NB we are assuming there is at least one datum (we checked for this above):
-    qry = qry[:-1] # Fix up last char:
-
-    # call sql to do multi insert:  Need to import LogDebug func for this
-    # if gdbg:
-    #     LogDebug("sql qry", qry)
-    dbc.bind.execute(qry)
-
-    return None;
+        for jdat in aData:
+            dlist.append({
+                 'trialUnit_id' : (jdat.get(jDataUpload['node_id']) or jdat.get('trialUnit_id')),
+                 'traitInstance_id' : tiID,
+                 'timestamp' : jdat[jDataUpload['timestamp']],
+                 'gps_long' : jdat[jDataUpload['gps_long']],
+                 'gps_lat' : jdat[jDataUpload['gps_lat']],
+                 'userid' : jdat[jDataUpload['userid']],
+                 valueFieldName : jdat[jDataUpload['value']] if jDataUpload['value'] in jdat else None
+            })
+        insob = datum.insert().prefix_with("ignore")
+        res = dbc.execute(insob, dlist)
+        dbc.commit()
+        return None
+    except Exception, e:
+        return "An error occurred"
 
 
 def AddTrialUnitNotes(dbc, token, notes):
