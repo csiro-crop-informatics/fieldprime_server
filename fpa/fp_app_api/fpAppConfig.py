@@ -17,3 +17,6 @@ DATA_ACCESS_MODULE = 'fp_common.models'      # Name of the py file providing the
 
 # Log file to write to:
 FPLOG_FILE = '***REMOVED***/fplog/fp.log'
+
+# Flag directory
+FP_FLAG_DIR = '***REMOVED***/fplog/'
