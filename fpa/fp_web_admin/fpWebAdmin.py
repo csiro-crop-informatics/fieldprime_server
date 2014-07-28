@@ -723,9 +723,9 @@ def getDataColumns(sess, trialId, tiList):
     qry = """
     select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
     from trialUnit t
-      left join datum d1 on t.trial_id = %s and t.id = d1.trialUnit_id and d1.traitInstance_id = %s
+      left join datum d1 on t.id = d1.trialUnit_id and d1.traitInstance_id = %s
       left join datum d2 on d1.trialUnit_id = d2.trialUnit_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
-    where (d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null
+    where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
     order by row, col
     """
     print qry
@@ -734,7 +734,7 @@ def getDataColumns(sess, trialId, tiList):
         valList = []
         outList.append
         cur = con.cursor()
-        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.type)), (trialId, ti.id, ti.id))
+        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.type)), (ti.id, trialId, ti.id))
         for row in cur.fetchall():
             timestamp = row[1]
             if timestamp is None:          # no datum record case
@@ -1413,7 +1413,7 @@ def urlMain():
             error = 'No password'
         elif not CheckPassword(username, password):
             util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
-            error = 'Invalid password'
+            error = 'Invalid Password'
         else:
             # Good to go, show the user front page, after adding cookie:
             util.fpLog(app, 'Login from user {0}'.format(username))

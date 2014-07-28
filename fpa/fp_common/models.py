@@ -90,14 +90,14 @@ class Datum(DeclarativeBase):
 
     @staticmethod
     def valueFieldName(traitType):
-        if (type == T_INTEGER or
-            type == T_DECIMAL or
-            type == T_CATEGORICAL or
-            type == T_DATE):
+        if (traitType == T_INTEGER or
+            traitType == T_DECIMAL or
+            traitType == T_CATEGORICAL or
+            traitType == T_DATE):
             return 'numValue'
         else:
-            # type == T_STRING
-            # type == T_PHOTO
+            # traitType == T_STRING
+            # traitType == T_PHOTO
             return 'txtValue'
 
     def isNA(self):
