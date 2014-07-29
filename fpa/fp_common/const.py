@@ -39,6 +39,15 @@ AV_TUA_ID = "trialUnitAttribute_id"
 AV_TRIAL_UNIT = "trialUnit_id"
 AV_VALUE = "value"
 
+TI_SEQNUM = "seqNum"
+TI_SAMPNUM = "sampleNum"
+DM_TIMESTAMP = "timestamp"
+DM_USERID = "userid"
+DM_GPS_LAT = "gps_lat"
+DM_GPS_LONG = "gps_long"
+DM_NODE_ID = "node_id"
+DM_TRAITINSTANCE_ID = "traitInstance_id"
+
 #
 # JSON names:
 # Having the values here will allow firstly the ability to change a json name for all references

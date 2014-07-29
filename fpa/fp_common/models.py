@@ -504,6 +504,33 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     except Exception, e:
         return "An error occurred"
 
+def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat, gpslong):
+#-------------------------------------------------------------------------------------------------
+# Insert or update datum records for specified trait instance.
+# Params:
+# dbc - db connection
+# tiID - id of trait instance
+# trtType - type of trait instance
+# aData - array of data values, json from device
+#
+# Return None for success, else an error message.
+#
+    # Construct list of dictionaries of values to insert:
+    try:
+        valueFieldName = datum.valueFieldName(trtType)
+        ins = datum.insert().prefix_with('ignore').values(
+            DM_TRAITINSTANCE_ID = tiID,
+            DM_NODE_ID = nodeId,
+            DM_TIMESTAMP = timestamp,
+            DM_USERID = userid,
+            DM_GPS_LAT = gpslat,
+            DM_GPS_LONG = gpslong,
+            valueFieldName = 'xxx')
+        res = dbc.execute(ins)
+        dbc.commit()
+        return None
+    except Exception, e:
+        return "An error occurred"
 
 def AddTrialUnitNotes(dbc, token, notes):
 #-------------------------------------------------------------------------------------------------

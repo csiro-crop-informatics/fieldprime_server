@@ -309,12 +309,22 @@ def upload_photo(username, trial, dbc, traitid, token):
 # These are uniquely identified by dbusername/trial/trait/token/seqNum/sampleNum.
 # These are all provided in the url except for seqNum and sampleNum which come
 # (out-of-band) as parameters.
+# MFK - it looks like node Id is uploaded in the file name (must this be same as server node id?)
 # The photos are saved in the PHOTO_UPLOAD_FOLDER folder, with the name encoding
 # all the relevant info:
 # '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
 #
-    seqNum = request.args.get('seqNum', '')
-    sampNum = request.args.get('sampleNum', '')
+    seqNum = request.args.get(TI_SEQNUM, '')
+    sampNum = request.args.get(TI_SAMPNUM, '')
+    timestamp = request.args.get(DM_TIMESTAMP, '')
+    userid = request.args.get(DM_USERID, '')
+    gpslat = request.args.get(DM_GPS_LAT, '')
+    gpslong = request.args.get(DM_GPS_LONG, '')
+    nodeId = request.args.get(DM_NODE_ID, '')
+    PINKY = request.args.get('pinky', '')
+    # MFK get other fields, but check what happens if they're not present. Maybe just add datum if they are?
+
+
     file = request.files.get('uploadedfile')
     #LogDebug("upload_photo:", seqNum + ':' + sampNum)
 
@@ -327,7 +337,17 @@ def upload_photo(username, trial, dbc, traitid, token):
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
         #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
         file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-    return Response('success')
+
+        # Now save datum record:
+        # get TI - this should already exist, which is why we can pass in 0 for dayCreated
+        dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
+        if dbTi is None:
+            return error_404('Failed photo upload : no trait instance')
+        dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
+
+        return Response('success')
+    else:
+        return error_404('Failed photo upload : bad file')
 
 
 #
@@ -445,8 +465,8 @@ def LogDebug(hdr, text):
 #-------------------------------------------------------------------------------------------------
 # Old stuff:
 
-def error_404():
-    response = Response('Resource not found')
+def error_404(msg):
+    response = Response(msg)
     response.status_code = 404
     return response
 
