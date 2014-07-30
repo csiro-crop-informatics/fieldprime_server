@@ -88,6 +88,7 @@ def trial_list(username):
 #-------------------------------------------------------------------------------------------------
 # Return JSON list of available trials for user
 #
+    print 'halloggg'
     password = request.args.get('pw', '')
     dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
     if dbc is None:
@@ -336,7 +337,17 @@ def upload_photo(username, trial, dbc, traitid, token):
         (nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
         #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-        file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+
+
+        try:
+            file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+        except Exception, e:
+            #MFK replace prints with flog, test fail case
+            # Need to allow process_ti_json below to support empty ti - or have separate func.
+            print 'failed save {0}'.format(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+            print e.__doc__
+            print e.message
+            return error_404('Failed photo upload : can''t save')
 
         # Now save datum record:
         # get TI - this should already exist, which is why we can pass in 0 for dayCreated
