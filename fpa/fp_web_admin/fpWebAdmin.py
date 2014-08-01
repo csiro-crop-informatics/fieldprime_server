@@ -731,6 +731,14 @@ def getDataColumns(sess, trialId, tiList):
     print qry
     outList = []
     for ti in tiList:
+        # If trait type is categorical then the values will be numbers which should be
+        # converted into names (via the traitCategory table), retrieve the map for the
+        # trait first:
+        if ti.trait.type == T_CATEGORICAL:
+            catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.DB(), ti.trait_id)
+        else:
+            catMap = None
+
         valList = []
         outList.append
         cur = con.cursor()
@@ -742,6 +750,8 @@ def getDataColumns(sess, trialId, tiList):
             else:
                 val = row[0]
                 if val is None: val = "NA"
+                elif catMap is not None:   # map value to name for categorical trait
+                    val = catMap[int(val)]
                 valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
         outList.append(valList)
         cur.close()
@@ -1448,5 +1458,11 @@ if __name__ == '__main__':
     app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
+
+    # Setup logging:
+    app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
+    util.initLogging(app, True)  # Specify print log messages
+    util.flog("calling flog")
+
     app.run(debug=True, host='0.0.0.0', port=5001)
 

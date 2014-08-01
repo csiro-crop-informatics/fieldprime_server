@@ -11,7 +11,6 @@ from flask import render_template
 import fpUtil
 import dbUtil
 from fp_common.models import Trial, TrialUnit, TrialUnitAttribute, AttributeValue, Trait
-from fp_common.util import ldebug
 
 #
 # Special column headers.

@@ -168,6 +168,17 @@ class TraitCategory(DeclarativeBase):
     #relation definitions
     trait = relation('Trait', primaryjoin='TraitCategory.trait_id==Trait.id')
 
+    @staticmethod
+    def getCategoricalTraitValue2NameMap(dbc, traitId):
+    # Return dictionary providing value to caption map for specified trait.
+    # The trait should be categorical, if not empty map will be returned, I think.
+        cats = dbc.query(TraitCategory).filter(TraitCategory.trait_id == traitId).all()
+        util.flog('num cats: {0}'.format(len(cats)))
+        retMap = {}
+        for cat in cats:
+            retMap[cat.value] = cat.caption
+        return retMap
+
 
 class TraitInstance(DeclarativeBase):
     __table__ = traitInstance
@@ -484,7 +495,6 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     # Construct list of dictionaries of values to insert:
     try:
         valueFieldName = 'txtValue' if  trtType == T_STRING or trtType == T_PHOTO else 'numValue'
-        print 'valueFieldName : {0}'.format(valueFieldName)
         dlist = []
 
         for jdat in aData:
@@ -517,19 +527,23 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
 #
     # Construct list of dictionaries of values to insert:
     try:
-        valueFieldName = datum.valueFieldName(trtType)
-        ins = datum.insert().prefix_with('ignore').values(
-            DM_TRAITINSTANCE_ID = tiID,
-            DM_NODE_ID = nodeId,
-            DM_TIMESTAMP = timestamp,
-            DM_USERID = userid,
-            DM_GPS_LAT = gpslat,
-            DM_GPS_LONG = gpslong,
-            valueFieldName = 'xxx')
+        valueFieldName = Datum.valueFieldName(trtType)
+        ins = datum.insert().prefix_with('ignore').values({
+             DM_NODE_ID_SERVER_VERSION: nodeId,
+             DM_TRAITINSTANCE_ID : tiID,
+             DM_TIMESTAMP : timestamp,
+             DM_GPS_LONG : gpslong,
+             DM_GPS_LAT : gpslat,
+             DM_USERID : userid,
+             valueFieldName : 'xxx'
+        })
         res = dbc.execute(ins)
         dbc.commit()
         return None
     except Exception, e:
+        util.flog('AddTraitInstanceDatum: {0},{1},{2},{3},{4},{5}'.format(tiID,trtType,nodeId,timestamp, userid, gpslat))
+        util.flog(e.__doc__)
+        util.flog(e.message)
         return "An error occurred"
 
 def AddTrialUnitNotes(dbc, token, notes):

@@ -1,5 +1,6 @@
 #
 # wsgi_adm_entry.py
+# Michael Kirk 2013
 # This is the entry point for the FieldPrime admin pages on the server.
 # The function of this file is to export a runnable called "application",
 # which will be used by wsgi to service requests.
@@ -16,7 +17,7 @@ fpdown = os.path.isfile(flagdir + "/fpdown")
 if fpdown:
     import sys
     def application(environ, start_response):
-        status = '200 OK'
+        status = '500 Server Down'
         output = 'FieldPrime is currently down for maintenance'
         response_headers = [('Content-type', 'text/plain'),
                             ('Content-Length', str(len(output)))]
@@ -28,19 +29,6 @@ else:
     application.config['SESS_FILE_DIR'] =  '***REMOVED***/fpa/wsessions'
     application.config['FP_FLAG_DIR'] =  flagdir
 
-    # MFK Need a place to do things before anything else, hopefully that is here.
-    # EG check for flag file indicating system not available
+    # Setup logging:
     util.initLogging(application)
     util.flog("wsgi_adm_entry called")
-
-
-# Code to add log message to file (delete?):
-#import time
-#def LogDebug(hdr, text):
-##-------------------------------------------------------------------------------------------------
-## Writes stuff to file system (for debug) - not routinely used..
-#    f = open('/tmp/fieldPrimeDebug','a')
-#    print >>f, '{0}\t{1}:{2}'.format(time.strftime("%Y-%m-%d %H:%M:%S"), hdr, text)
-#    f.close
-#
-#LogDebug('wsgi', 'admin entry')

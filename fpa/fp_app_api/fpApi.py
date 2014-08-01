@@ -12,6 +12,7 @@ from functools import wraps
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 
+# If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
     import os,sys,inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -20,6 +21,7 @@ if __name__ == '__main__':
 
 from fp_common.const import *
 import fp_common.util as util
+
 
 ### SetUp: ######################################################################################
 if __name__ == '__main__':
@@ -271,26 +273,46 @@ def get_trial(username, trl, dbc):
 
     return Response(json.dumps(jtrl), mimetype='application/json')
 
-#
-# upload_trait_data()
-# Trait instances are uniquely identified by trial/trait/token/seqNum/sampleNum.
-#
+
 @app.route('/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
-#-------------------------------------------------------------------------------------------------
 def upload_trait_data(username, trial, dbc, traitid, token):
+#-------------------------------------------------------------------------------------------------
+# Process upload of json trait instance data.
+# Trait instances are uniquely identified by trial/trait/token/seqNum/sampleNum.
+#
     password = request.args.get('pw', '')
     jti = request.json
-    if gdbg:
-        LogDebug("upload_trial:", json.dumps(jti))
     if not jti:
         return Response('Bad or missing JSON')
+    util.flog("upload_trait_data:\n" + json.dumps(jti))
 
-    errMsg = process_ti_json(jti, trial, traitid, token, dbc)
-    if (errMsg is not None):
-        return Response(errMsg)
+    # Return None on success, else error string.
+    # Separate func as used in two places (but one of these places now obsolete, as we now upload individual tis)
+    # Get json fields:
+    try:
+        dayCreated = jti["dayCreated"]
+        seqNum = jti["seqNum"]
+        sampleNum = jti["sampleNum"]
+    except Exception, e:
+        return Response('Missing required traitInstance field: ' + e.args[0] + trial.name)
+    try:
+        aData = jti["data"]
+    except Exception, e:
+        aData = None
+
+    # Get/Create trait instance:
+    dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
+    if dbTi is None:
+        return Response('Unexpected error retrieving or creating trait instance')
+
+    # Add the data, if there is any:
+    if aData is None or len(aData) <= 0:
+        errMsg = None
     else:
-        return Response('success')
+        errMsg = dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.type, aData)
+
+    return (Response('success') if errMsg is None else Response(errMsg))
 
 #
 # upload_photo()
@@ -321,69 +343,35 @@ def upload_photo(username, trial, dbc, traitid, token):
     userid = request.args.get(DM_USERID, '')
     gpslat = request.args.get(DM_GPS_LAT, '')
     gpslong = request.args.get(DM_GPS_LONG, '')
-    nodeId = request.args.get(DM_NODE_ID, '')
-    PINKY = request.args.get('pinky', '')
-    # MFK get other fields, but check what happens if they're not present. Maybe just add datum if they are?
+    nodeId = request.args.get(DM_NODE_ID_CLIENT_VERSION, '')
 
+    util.flog('upload_photo:node {0}, seq {1} samp {2}'.format(nodeId, seqNum, sampNum))
 
     file = request.files.get('uploadedfile')
-    #LogDebug("upload_photo:", seqNum + ':' + sampNum)
-
     if file and allowed_file(file.filename):
         sentFilename = secure_filename(file.filename)
-        #LogDebug("upload_photo:", 'filename:' + sentFilename)
-        # MFK old way, remove when happy:
-        #saveName = '{0}_{1}_{2}_{3}_{4}_{5}_{6}'.format(username, trial.id, traitid, token, seqNum, sampNum, sentFilename)
         (nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
-        #LogDebug("upload_photo saveName:", app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-
-
         try:
             file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
         except Exception, e:
-            #MFK replace prints with flog, test fail case
-            # Need to allow process_ti_json below to support empty ti - or have separate func.
-            print 'failed save {0}'.format(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
-            print e.__doc__
-            print e.message
-            return error_404('Failed photo upload : can''t save')
+            util.flog('failed save {0}'.format(app.config['PHOTO_UPLOAD_FOLDER'] + saveName))
+            util.flog(e.__doc__)
+            util.flog(e.message)
+            return serverErrorResponse('Failed photo upload : can''t save')
 
         # Now save datum record:
         # get TI - this should already exist, which is why we can pass in 0 for dayCreated
         dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
         if dbTi is None:
-            return error_404('Failed photo upload : no trait instance')
-        dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
-
-        return Response('success')
+            return serverErrorResponse('Failed photo upload : no trait instance')
+        res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
+        if res is None:
+            return Response('success')
+        else:
+            return serverErrorResponse('Failed photo upload : datum create fail')
     else:
-        return error_404('Failed photo upload : bad file')
-
-
-#
-# process_ti_json()
-# Return None on success, else error string.
-# Separate func as used in two places (but one of these places now obsolete, as we now upload individual tis)
-def process_ti_json(ti, trial, traitID, token, dbc):
-    try:
-        dayCreated = ti["dayCreated"]
-        seqNum = ti["seqNum"]
-        sampleNum = ti["sampleNum"]
-        aData = ti["data"]
-    except Exception, e:
-        return 'Missing traitInstance field: ' + e.args[0] + trial.name
-
-    # There seems no point in processing a traitInstance with no data:
-    if len(aData) <= 0:
-        return None
-
-    dbTi = dal.GetOrCreateTraitInstance(dbc, traitID, trial.id, seqNum, sampleNum, dayCreated, token)
-    if dbTi is None:
-        return 'Unexpected error retrieving or creating trait instance'
-
-    # Now add the datums:
-    return dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.type, aData)
+        return serverErrorResponse('Failed photo upload : bad file')
 
 
 #
@@ -481,6 +469,12 @@ def error_404(msg):
     response.status_code = 404
     return response
 
+def serverErrorResponse(msg):
+    util.flog(msg)
+    response = Response(msg)
+    response.status = '500 {0}'.format(msg)
+    return response
+
 
 #############################################################################################
 
@@ -493,5 +487,11 @@ if __name__ == '__main__':
     from os.path import expanduser
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
+
+    # Setup logging:
+    app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
+    util.initLogging(app, True)  # Specify print log messages
+    util.flog("calling flog")
+
     app.run(debug=True, host='0.0.0.0')
 
