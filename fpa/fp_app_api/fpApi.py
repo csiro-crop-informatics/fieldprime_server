@@ -362,14 +362,18 @@ def upload_photo(username, trial, dbc, traitid, token):
 
         # Now save datum record:
         # get TI - this should already exist, which is why we can pass in 0 for dayCreated
-        dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
-        if dbTi is None:
-            return serverErrorResponse('Failed photo upload : no trait instance')
-        res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
-        if res is None:
-            return Response('success')
+        if nodeId is not None and len(nodeId) > 0:
+            dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
+            if dbTi is None:
+                return serverErrorResponse('Failed photo upload : no trait instance')
+            res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
+            if res is None:
+                return Response('success')
+            else:
+                return serverErrorResponse('Failed photo upload : datum create fail')
         else:
-            return serverErrorResponse('Failed photo upload : datum create fail')
+            util.flog('upload_photo: no nodeId, presumed old app version')
+            return Response('success')
     else:
         return serverErrorResponse('Failed photo upload : bad file')
 

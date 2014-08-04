@@ -18,9 +18,10 @@ if fpdown:
     import sys
     def application(environ, start_response):
         status = '500 Server Down'
-        output = 'FieldPrime is currently down for maintenance'
-        response_headers = [('Content-type', 'text/plain'),
-                            ('Content-Length', str(len(output)))]
+        output = '<h1>Sorry, FieldPrime is currently down for maintenance</h1>'
+        response_headers = [('Content-type', 'text/html'),
+                            ('Content-Length', str(len(output))),
+                            ('Cache-Control', 'no-cache, no-store, must-revalidate')]
         start_response(status, response_headers)
         return [output]
 else:
