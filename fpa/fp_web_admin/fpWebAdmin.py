@@ -26,6 +26,7 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
+import trialAtt
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
@@ -146,61 +147,6 @@ def htmlTrialTraitTable(trial):
     out += "</table>"
     return out
 
-def OLDhtmlTrialScoreSets(sess, trialId):
-#----------------------------------------------------------------------------------------------------
-# Returns HTML for list of trial score sets.
-    # Trait Instances:
-    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)
-    if len(tiList) < 1:
-        return "No trait score sets yet"
-    out = ""
-    lastSeqNum = -1
-    lastTraitId = -1
-    lastToken = 'x'
-    oneSet = []
-    def processGroup(oneSet):
-        out = "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
-        if False and len(oneSet) == 1:
-            out += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
-                url_for('urlScoreSetTraitInstance', traitInstanceId=oneSet[0].id), oneSet[0].trait.caption, oneSet[0].seqNum)
-        else:
-            first = True
-            tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
-            for oti in oneSet:
-                out += "<tr>"
-                out += tdPattern.format(oti.trait.caption if first else "")
-                out += tdPattern.format(util.formatJapDate(oti.dayCreated) if first else "")
-                out += tdPattern.format(oti.getDeviceId() if first else "")
-                out += tdPattern.format(oti.seqNum if first else "")
-                out += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores</a></td>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData()))
-                #out += tdPattern.format(oti.numData())
-                out += "</tr>\n"
-                first = False
-
-        out += '  </tbody>\n'
-        return out
-
-    # NB we have assumptions about ordering in tiList here:
-    out += ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
-            '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
-            '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
-    for ti in tiList:
-        #++index
-        traitId = ti.trait_id
-        seqNum = ti.seqNum
-        token = ti.token
-        if lastSeqNum > -1 and (seqNum != lastSeqNum  or traitId != lastTraitId or token != lastToken):
-            out += processGroup(oneSet)
-            oneSet = []
-        lastSeqNum = seqNum
-        lastTraitId = traitId
-        lastToken = token
-        oneSet.append(ti)
-    if lastSeqNum > -1:
-        out += processGroup(oneSet)
-    out +=  "\n</table>\n"
-    return out
 
 def htmlTrialScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
@@ -236,7 +182,7 @@ def htmlTrialScoreSets(sess, trialId):
     htm +=  "\n</table>\n"
     return htm
 
-def htmlTrialAttributes(sess, trialId):
+def htmlNodeAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
 # MFK - improve this, showing type and number of values, also delete button? modify?
@@ -263,14 +209,9 @@ def htmlTrialAttributes(sess, trialId):
 
     return out
 
-def TrialHtml(sess, trialId):
-#-----------------------------------------------------------------------
-# Returns the HTML for a top level page to display/manage a given trial.
-#
-    trial = dbUtil.GetTrial(sess, trialId)
-    if trial is None: return None
-
-    # Trial name and details: ------------------------------------------
+def trialNameDetails(sess, trial):
+#--------------------------------------------------------------------
+# Return HTML for trial name, details and top level config:
     trialDetails = ''
     if trial.site: trialDetails += trial.site
     if trial.year:
@@ -285,11 +226,22 @@ def TrialHtml(sess, trialId):
 
     # Add DELETE button:
     r += '<p>'
-    r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trialId))
+    r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
     r += '<p>'
+    return r
+
+
+def TrialHtml(sess, trialId):
+#-----------------------------------------------------------------------
+# Returns the HTML for a top level page to display/manage a given trial.
+#
+    trial = dbUtil.GetTrial(sess, trialId)
+    if trial is None: return None
+
+    r = trialNameDetails(sess, trial)
 
     # Attributes: ------------------------------------------
-    r += HtmlFieldset(htmlTrialAttributes(sess, trialId), "Attributes:")
+    r += HtmlFieldset(htmlNodeAttributes(sess, trialId), "Node Attributes:")
 
     # Traits: ------------------------------------------
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
@@ -307,7 +259,7 @@ def TrialHtml(sess, trialId):
     r += HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:")
 
     # Score sets: ------------------------------------------
-    r += HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Trait Score Sets:")
+    r += HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Score Sets:")
 
     # Score Data: ------------------------------------------
 
@@ -570,52 +522,11 @@ def newTrial(sess):
 #===========================================================================
 # Page for trial creation.
 #
-    #
+
     # Trial attribute stuff. We want table driven presentation of allowed trial attributes.
-    #
-
-    #
-    # class trialAttHtmlElement
-    # NOT a database class, but a container for a set of traitInstances that
-    # make up a scoreSet
-    #
-    class trialAttHtmlElement:
-        def __init__(self, prompt, subPrompt, ename, eid, dbName=None):
-            self.prompt = prompt
-            self.subPrompt = subPrompt
-            self.ename = ename
-            self.eid = eid
-            self.dbName = dbName if dbName is not None else ename
-
-    def htmlTrialAttribute(ta):
-    #------------------------------------------------------------------
-    # Html string giving table record for display by newTrial.html. Note
-    # this is not ideal, as we have the preferred display details both here
-    # and in newTrial.html. Ideally this would be all here or all there.
-    # Here is currently used for dynamically determined elements while
-    # newTrial.html has the trial attributes that are in all trials.
-    #
-        out = '''
-            <tr>
-              <td >
-                <label>{0}<span class="small">{1}</span></label>
-              </td>
-              <td >
-                <input type="text" id='{2}' name="{3}">
-              </td>
-            </tr>
-            '''.format(ta.prompt, ta.subPrompt, ta.eid, ta.ename)
-        return out
-
-    # Trial attribute list:
-    taList = []
-    #taList = [trialAttHtmlElement('hey', 'give us a hey', 'heyid', 'heyname'),
-    #          trialAttHtmlElement('ho', 'give us a ho', 'hoid', 'honame')]
-
-    # Get
     extras = ''
-    for tae in taList:
-        extras += htmlTrialAttribute(tae)
+    for tae in trialAtt.gTrialAttributes:
+        extras += tae.htmlElement()
     if request.method == 'GET':
         return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
     if request.method == 'POST':
@@ -629,7 +540,7 @@ def newTrial(sess):
         # All good. Trial created. Set extra trial attributes.
         # MFK in general we will need insert or update (merge)
         #
-        for tae in taList:
+        for tae in trialAtt.gTrialAttributes:
             sess.DB().add(models.TrialAtt(trl.id, tae.dbName, request.form.get(tae.ename)))
         sess.DB().commit()
         return FrontPage(sess)

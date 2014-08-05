@@ -57,6 +57,9 @@ DM_TRAITINSTANCE_ID = "traitInstance_id"
 #
 # NOTE they are not all here yet (just the one I was bitten by!)
 
+JTRL_TRIAL_ATTRIBUTES = 'trialAttributes'
+
+
 # Trial Uploads:
 jTrialUpload = {'serverToken':'serverToken',
                 'notes':'notes',

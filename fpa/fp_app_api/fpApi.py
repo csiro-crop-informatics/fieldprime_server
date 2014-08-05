@@ -90,7 +90,6 @@ def trial_list(username):
 #-------------------------------------------------------------------------------------------------
 # Return JSON list of available trials for user
 #
-    print 'halloggg'
     password = request.args.get('pw', '')
     dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
     if dbc is None:
@@ -128,7 +127,7 @@ def get_trial(username, trl, dbc):
     jtatts = {}
     for tatt in trl.trialAtts:
         jtatts[tatt.name] = tatt.value
-    jtrl['trialAttributes'] = jtatts
+    jtrl[JTRL_TRIAL_ATTRIBUTES] = jtatts
 
     # Server Token:
     # Use the android device ID postfixed with the current time in seconds as the serverTrialId.
@@ -362,6 +361,8 @@ def upload_photo(username, trial, dbc, traitid, token):
 
         # Now save datum record:
         # get TI - this should already exist, which is why we can pass in 0 for dayCreated
+        # MFK note this outer if below is to support old versions of the app, to allow them to
+        # upload their photos in the old way. It should be removed eventually..
         if nodeId is not None and len(nodeId) > 0:
             dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
             if dbTi is None:
