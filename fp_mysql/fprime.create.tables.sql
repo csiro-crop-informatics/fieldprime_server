@@ -234,8 +234,8 @@ create table datum(
   numValue         DECIMAL(11,3),
   txtValue         text,
   PRIMARY KEY(trialUnit_id, traitInstance_id, timestamp),
-  FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id),
-  FOREIGN KEY(traitInstance_id) REFERENCES traitInstance(id)
+  FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE,
+  FOREIGN KEY(traitInstance_id) REFERENCES traitInstance(id) ON DELETE CASCADE
 );
 
 create table deviceName(
