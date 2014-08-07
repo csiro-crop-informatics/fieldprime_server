@@ -507,6 +507,8 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
                  'userid' : jdat[jDataUpload['userid']],
                  valueFieldName : jdat[jDataUpload['value']] if jDataUpload['value'] in jdat else None
             })
+        # Note we use ignore because the same data items may be uploaded more than
+        # once, and this should not cause the insert to fail.
         insob = datum.insert().prefix_with("ignore")
         res = dbc.execute(insob, dlist)
         dbc.commit()
