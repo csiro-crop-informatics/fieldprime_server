@@ -901,7 +901,18 @@ def urlTraitValidation(sess, trialId, traitId):
         attSelector += '</select>'
         formh += attSelector
 
-        if trt.type == T_INTEGER or trt.type == T_DECIMAL:
+        if trt.type == T_CATEGORICAL:
+            div = '<div id="traitDiv"></div>\n'
+            scrpt1 = """<script src="{0}"></script>\n""".format(url_for('static', filename='newTrait.js'))
+            scrpt2 = """<script type="text/javascript">
+            $(document).ready ( function(){
+                if (typeof(SetTraitFormElements) === "function") {
+                   SetTraitFormElements('traitDiv', '3');
+                   alert('SetTraitFormElements called');
+                } else alert('no SetTraitFormElements');
+            });</script>"""
+            formh += div + scrpt1 + scrpt2
+        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             # Make this a separate function to generate html form, so can be used from
