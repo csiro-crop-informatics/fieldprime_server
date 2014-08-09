@@ -39,25 +39,46 @@ function removeRow(btn) {
  * CategoryTraitFormElement()
  * Returns html table for category entry, users can add or delete rows.
  */
-function CategoryTraitFormElement(newDivId) {
+function CategoryTraitFormElement(newDivId, presets) {
     var html = "<fieldset><legend>Categories:</legend>";
     html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0">';
     html += '<input type="hidden" id="catCount" name="catCount" value="1" />';            // hidden row counter, note may be gaps in the count
     html += '<tr><td>Caption</td><td>Value</td><td>Image File</td>' +                     // Table headers
         '<td><input name="button" type="button" value="+" onclick="addRow()"</td></tr>';  // new row button
-    html += '<tr>' +                                                                      // add first row (no remove button)
-        '<td width="191"><input type="text" id="caption_0" name="caption_0" /></td>' +
-        '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
-        '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
-        '</tr></table>';
+    if (presets !== undefined) {
+        for (var i = 0; i < presets.length; i++) {
+            html += '<tr>' +                                                                      // add first row (no remove button)
+                '<td width="191"><input type="text" id="caption_0" value="' + presets[i].caption + '" name="caption_0" /></td>' +
+                '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
+                '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
+                '</tr>';
+
+    /*
+    if (curVals !== undefined) {
+        alert('yes curvals');
+        var arrayLength = curVals.length;
+        for (var i = 0; i < arrayLength; i++) {
+           alert(curVals[i].caption);
+        }
+    }
+*/
+
+
+
+        }
+    } else {
+        html += '<tr>' +                                                                      // add first row (no remove button)
+            '<td width="191"><input type="text" id="caption_0" name="caption_0" /></td>' +
+            '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
+            '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
+            '</tr>';
+    }
+    html += '</table>';
 
     html += "</fieldset>";
     return html;
 }
 
-function tf(param) {
-    alert('tf');
-}
 /*
  * SetTraitFormElements()
  * Called on select of trait type on newTrait form.
@@ -68,18 +89,14 @@ function tf(param) {
  */
 function SetTraitFormElements(divName, traitType, curVals){
 /*
-    if (typeof curVals === 'undefined') {
-        alert('no curvals');
-        curVals = '';
-    } else {
+    if (curVals !== undefined) {
         alert('yes curvals');
         var arrayLength = curVals.length;
         for (var i = 0; i < arrayLength; i++) {
            alert(curVals[i].caption);
         }
     }
-    */
-    alert('fred');
+*/
     var newDivId = 'SpecificFields';
     var parentDiv = document.getElementById(divName);
 
@@ -112,7 +129,7 @@ function SetTraitFormElements(divName, traitType, curVals){
         parentDiv.appendChild(newdiv);
         break;
     case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
-        var html = CategoryTraitFormElement(newDivId);
+        var html = CategoryTraitFormElement(newDivId, curVals);
         newdiv.innerHTML = html;
         parentDiv.appendChild(newdiv);
         break;

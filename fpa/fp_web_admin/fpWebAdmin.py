@@ -911,7 +911,7 @@ def urlTraitDetails(sess, trialId, traitId):
                     first = False
                 else:
                     catObs += ','
-                catObs += '{{caption:"{0}", imageURL:{1}, value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
+                catObs += '{{caption:"{0}", imageURL:"{1}", value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
                 print catObs
             jsRecDec = '[{0}]'.format(catObs)
             print jsRecDec
@@ -921,9 +921,7 @@ def urlTraitDetails(sess, trialId, traitId):
             scrpt2 = """<script type="text/javascript">
             $(document).ready ( function(){{
                 if (typeof(SetTraitFormElements) === "function") {{
-tf({0});
-                   //SetTraitFormElements('traitDiv', '3', {0});
-                   alert('SetTraitFormElements called');
+                   SetTraitFormElements('traitDiv', '3', {0});
                 }} else alert('no SetTraitFormElements');
             }});</script>""".format(jsRecDec)
             formh += div + scrpt1 + scrpt2
