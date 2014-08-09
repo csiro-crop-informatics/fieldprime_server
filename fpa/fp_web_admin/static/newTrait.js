@@ -55,7 +55,9 @@ function CategoryTraitFormElement(newDivId) {
     return html;
 }
 
-
+function tf(param) {
+    alert('tf');
+}
 /*
  * SetTraitFormElements()
  * Called on select of trait type on newTrait form.
@@ -64,7 +66,20 @@ function CategoryTraitFormElement(newDivId) {
  * Param divName should be the id of the element to which
  * the new fields should be added.
  */
-function SetTraitFormElements(divName, traitType){
+function SetTraitFormElements(divName, traitType, curVals){
+/*
+    if (typeof curVals === 'undefined') {
+        alert('no curvals');
+        curVals = '';
+    } else {
+        alert('yes curvals');
+        var arrayLength = curVals.length;
+        for (var i = 0; i < arrayLength; i++) {
+           alert(curVals[i].caption);
+        }
+    }
+    */
+    alert('fred');
     var newDivId = 'SpecificFields';
     var parentDiv = document.getElementById(divName);
 

@@ -141,7 +141,7 @@ def htmlTrialTraitTable(trial):
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         # Add "Detail" button for trait types with extra configuration:
         if trt.type in [T_INTEGER, T_DECIMAL, T_CATEGORICAL]:
-            url = url_for('urlTraitValidation', trialId=trial.id, traitId=trt.id,  _external=True)
+            url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
             validateButton = HtmlButtonLink2("Details", url)
             out += "<td>" + validateButton  + "</td>"
     out += "</table>"
@@ -867,7 +867,7 @@ def urlNewTrait(sess, trialId):
 
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
-def urlTraitValidation(sess, trialId, traitId):
+def urlTraitDetails(sess, trialId, traitId):
 #===========================================================================
 # Page to display/modify validation parameters for a trait.
 # Currently only relevant for integer traits.
@@ -902,15 +902,30 @@ def urlTraitValidation(sess, trialId, traitId):
         formh += attSelector
 
         if trt.type == T_CATEGORICAL:
+            # Retrieve the categories from the database:
+            catRecs = trt.categories
+            catObs = ''
+            first = True
+            for cat in catRecs:
+                if first:
+                    first = False
+                else:
+                    catObs += ','
+                catObs += '{{caption:"{0}", imageURL:{1}, value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
+                print catObs
+            jsRecDec = '[{0}]'.format(catObs)
+            print jsRecDec
+
             div = '<div id="traitDiv"></div>\n'
             scrpt1 = """<script src="{0}"></script>\n""".format(url_for('static', filename='newTrait.js'))
             scrpt2 = """<script type="text/javascript">
-            $(document).ready ( function(){
-                if (typeof(SetTraitFormElements) === "function") {
-                   SetTraitFormElements('traitDiv', '3');
+            $(document).ready ( function(){{
+                if (typeof(SetTraitFormElements) === "function") {{
+tf({0});
+                   //SetTraitFormElements('traitDiv', '3', {0});
                    alert('SetTraitFormElements called');
-                } else alert('no SetTraitFormElements');
-            });</script>"""
+                }} else alert('no SetTraitFormElements');
+            }});</script>""".format(jsRecDec)
             formh += div + scrpt1 + scrpt2
         elif trt.type == T_INTEGER or trt.type == T_DECIMAL:
             #
