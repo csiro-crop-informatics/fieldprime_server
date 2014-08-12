@@ -35,36 +35,80 @@ function removeRow(btn) {
     document.getElementById('catCount').value = --currval;
 }
 
+function imageURLTableCell(imageURL, index) {
+    var html = '<td width="191" style="white-space:nowrap;">';
+
+    if (imageURL === 'None')
+        html += 'No image';
+    else
+        html += '<a href=' + imageURL + '>Image set</a>';
+    html += '<input type="file" id="imgfile_' + index + '" name="imgfile_' + index + '"/>';
+
+    html += '</td>'
+    return html;
+}
+
 /*
  * CategoryTraitFormElement()
  * Returns html table for category entry, users can add or delete rows.
+ * presets are existing values to put in the table.
+ Let's try to make one without html - aim is to create fieldset/table and
+ add it to newDiv.
+ */
+function CategoryTraitFormElement2(newDiv, presets) {
+    var html = "<fieldset><legend>Categories:</legend>";
+    html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0">';
+    var initCount = (presets !== undefined) ? presets.length : 1;
+    html += '<input type="hidden" id="catCount" name="catCount" value="' + initCount + '" />';            // hidden row counter, note may be gaps in the count
+    html += '<tr><td>Caption</td><td>Value</td><td>Image File</td>' +                     // Table headers
+        '<td><input name="button" type="button" value="+" onclick="addRow()"</td></tr>';  // new row button
+    if (presets !== undefined) {
+        // add rows for existing categories (with no remove button:
+        for (var i = 0; i < presets.length; i++) {
+            html += '<tr>';
+            html += '<td width="191"><input type="text" id="caption_' + i + '" value="'
+                    + presets[i].caption + '" name="caption_' + i + '" /></td>';
+            html += '<td width="191"><input type="text" readonly id="value_' + i + '"  value="'
+                    + presets[i].value + '" name="value_' + i + '" /></td>';
+            // Image URL
+            html += imageURLTableCell(presets[i].imageURL, i);
+            html += '</tr>';
+        }
+    } else {
+        html += '<tr>' +                                                                      // add first row (no remove button)
+            '<td width="191"><input type="text" id="caption_0" name="caption_0" /></td>' +
+            '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
+            '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
+            '</tr>';
+    }
+    html += '</table>';
+
+    html += "</fieldset>";
+    return html;
+}
+/*
+ * CategoryTraitFormElement()
+ * Returns html table for category entry, users can add or delete rows.
+ * presets are existing values to put in the table.
  */
 function CategoryTraitFormElement(newDivId, presets) {
     var html = "<fieldset><legend>Categories:</legend>";
     html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0">';
-    html += '<input type="hidden" id="catCount" name="catCount" value="1" />';            // hidden row counter, note may be gaps in the count
+    var initCount = (presets !== undefined) ? presets.length : 1;
+    html += '<input type="hidden" id="catCount" name="catCount" value="' + initCount + '" />';            // hidden row counter, note may be gaps in the count
     html += '<tr><td>Caption</td><td>Value</td><td>Image File</td>' +                     // Table headers
         '<td><input name="button" type="button" value="+" onclick="addRow()"</td></tr>';  // new row button
     if (presets !== undefined) {
+        // add rows for existing categories (with no remove button:
         for (var i = 0; i < presets.length; i++) {
-            html += '<tr>' +                                                                      // add first row (no remove button)
-                '<td width="191"><input type="text" id="caption_0" value="' + presets[i].caption + '" name="caption_0" /></td>' +
-                '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
-                '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
-                '</tr>';
-
-    /*
-    if (curVals !== undefined) {
-        alert('yes curvals');
-        var arrayLength = curVals.length;
-        for (var i = 0; i < arrayLength; i++) {
-           alert(curVals[i].caption);
-        }
-    }
-*/
-
-
-
+            html += '<tr>';
+            html += '<td width="191"><input type="text" id="caption_' + i + '" value="'
+                    + presets[i].caption + '" name="caption_' + i + '" /></td>';
+            html += '<td width="191"><input type="text" readonly id="value_' + i + '"  value="'
+                    + presets[i].value + '" name="value_' + i + '" /></td>';
+            // Image URL
+            html += imageURLTableCell(presets[i].imageURL, i);
+            html += '</tr>';
         }
     } else {
         html += '<tr>' +                                                                      // add first row (no remove button)
@@ -88,15 +132,6 @@ function CategoryTraitFormElement(newDivId, presets) {
  * the new fields should be added.
  */
 function SetTraitFormElements(divName, traitType, curVals){
-/*
-    if (curVals !== undefined) {
-        alert('yes curvals');
-        var arrayLength = curVals.length;
-        for (var i = 0; i < arrayLength; i++) {
-           alert(curVals[i].caption);
-        }
-    }
-*/
     var newDivId = 'SpecificFields';
     var parentDiv = document.getElementById(divName);
 
@@ -194,13 +229,6 @@ function addInput(divName){
      }
 }
 
-function testjs(msg){
-    alert(msg)
-}
-
-function AddCategory(divId) {
-    alert(divId.id);
-}
 
 function removeCat(r){
     var currval = document.getElementById('catCount').value;

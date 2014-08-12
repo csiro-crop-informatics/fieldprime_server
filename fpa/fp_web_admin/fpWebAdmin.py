@@ -139,11 +139,10 @@ def htmlTrialTraitTable(trial):
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
-        # Add "Detail" button for trait types with extra configuration:
-        if trt.type in [T_INTEGER, T_DECIMAL, T_CATEGORICAL]:
-            url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
-            validateButton = HtmlButtonLink2("Details", url)
-            out += "<td>" + validateButton  + "</td>"
+        # Add "Detail" button:
+        url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
+        validateButton = HtmlButtonLink2("Details", url)
+        out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     return out
 
@@ -404,99 +403,6 @@ def AddSysTrialTrait(sess, trialId, traitId):
     return None
 
 
-# Could put all trait type specific stuff in trait extension classes.
-# Aiming for this file to not contain any type specific code.
-# class pTrait(models.Trait):
-#     def ProcessForm(form):
-#         pass
-
-def allowed_file(filename):  # MFK cloned code warning
-    ALLOWED_EXTENSIONS = set(['jpg', 'jpeg', 'gif'])
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
-
-def NewTraitCategorical(sess, request, newTraitID):
-    capKeys = [key for key in request.form.keys() if key.startswith("caption_")]
-    for key in capKeys:
-        caption = request.form.get(key)
-        value = request.form.get(key.replace("caption_", "value_"))
-        imageURL = None
-        imageURLFile = request.files[key.replace("caption_", "imgfile_")]
-        if imageURLFile:
-            sentFilename = secure_filename(imageURLFile.filename)
-            if allowed_file(sentFilename):
-                subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(newTraitID))
-                if not os.path.exists(subpath):
-                    os.makedirs(subpath)
-                imageURLFile.save(subpath +  "/" + sentFilename)
-                imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + sess.GetUser() + "/" + str(newTraitID) + "/" + sentFilename
-            else:
-                pass  # should issue a warning perhaps?
-
-        # Add new trait category:
-        ncat = models.TraitCategory()
-        ncat.value = value
-        ncat.caption = caption
-        ncat.trait_id = newTraitID
-        ncat.imageURL = imageURL
-        sess.DB().add(ncat)
-
-def CreateNewTrait(sess,  trialId, request):
-#-----------------------------------------------------------------------
-# Create trait in db, from data from html form.
-# trialId is id of trial if a local trait, else it is 'sys'.
-# Returns error message if there's a problem, else None.
-#
-    caption = request.form.get("caption")
-    description = request.form.get("description")
-    type = request.form.get("type")
-
-    # This should be trait type specific (but min, max fields are in trait table):
-    min = request.form.get("min")
-    max = request.form.get("max")
-
-    sysTrait = True if trialId == "sys" else False
-    # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
-    # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
-    # can wait til the adding stage.
-    dbsess = sess.DB()
-    ntrt = models.Trait()
-    ntrt.caption = caption
-    ntrt.description = description
-
-    # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
-    if not sysTrait: # If local, check there's no other trait local to the trial with the same caption:
-        trial = dbUtil.GetTrialFromDBsess(sess, trialId)
-        for x in trial.traits:
-            if x.caption == caption:
-                return 'Error: A local trait with this caption already exists'
-        ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
-        ntrt.sysType = SYSTYPE_TRIAL
-    else:  # If system trait, check there's no other system trait with same caption:
-        sysTraits = dbUtil.GetSysTraits(sess)
-        for x in sysTraits:
-            if x.caption == caption:
-                return 'Error: A system trait with this caption already exists'
-        ntrt.sysType = SYSTYPE_SYSTEM
-
-    ntrt.type = type
-    if min:
-        ntrt.min = min
-    if max:
-        ntrt.max = max
-
-    dbsess.add(ntrt)
-    dbsess.commit()
-
-    # Trait type specific processing:
-    if int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
-        NewTraitCategorical(sess, request, ntrt.id)
-    elif int(ntrt.type) == dal.TRAIT_TYPE_TYPE_IDS['Integer']:
-        pass
-
-    dbsess.add(ntrt)
-    dbsess.commit()
-    return None
 
 
 @app.route('/downloadApp/', methods=['GET'])
@@ -842,243 +748,21 @@ def urlNewTrait(sess, trialId):
         return dataTemplatePage(sess, 'newTrait.html', trialId=trialId, traitTypes=TRAIT_TYPE_TYPE_IDS, title='New Trait')
 
     if request.method == 'POST':
-        errMsg = CreateNewTrait(sess, trialId, request)
+        errMsg = fpTrait.CreateNewTrait(sess, trialId, request)
         if errMsg:
             return dataErrorPage(sess, errMsg)
         if trialId == 'sys':
             return FrontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
 
-# def attributeListHtmlSelect(sess, trialId, selectedId=None, datatypes=None):
-# #===========================================================================
-# # HTML for form select drop down for selecting an attribute.
-# # Currently only relevant for integer traits.
-# #
-#     # Attribute list:
-#     attListHtml = '<select name="attributeList" id="tdAttribute">'
-#     attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
-#     atts = dbUtil.GetTrialAttributes(sess, trialId)
-#     for att in atts:
-#         if datatypes is not None or att.datatype in datatypes:
-#             attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
-#                 att.id, att.name, "selected='selected'" if att.id == selectedId else "")
-#     attListHtml += '</select>'
-#     return attListHtml
 
 @app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
 def urlTraitDetails(sess, trialId, traitId):
 #===========================================================================
-# Page to display/modify validation parameters for a trait.
-# Currently only relevant for integer traits.
+# Page to display/modify the details for a trait.
 #
-    trt = dbUtil.GetTrait(sess, traitId)
-    trlTrt = dbUtil.getTrialTrait(sess, trialId, traitId)
-    trial = dbUtil.GetTrial(sess, trialId)
-
-    title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
-    comparatorCodes = [
-        ["gt", "Greater Than", 1],
-        ["ge", "Greater Than or Equal to", 2],
-        ["lt", "Less Than", 3],
-        ["le", "Less Than or Equal to", 4]
-    ]
-
-    if request.method == 'GET':
-        ### Form fields applicable to all traits:
-        formh = 'Trial: ' + trial.name
-        formh += '<br>Trait: ' + trt.caption
-        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
-
-        # Trait barcode selection:
-        # Note it doesn't matter if a sysTrait, since the barcode is stored in trialTrait
-        attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
-        attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
-        atts = dbUtil.GetTrialAttributes(sess, trialId)
-        for att in atts:
-            attSelector += '<option value="{0}" {2}>{1}</option>'.format(
-                att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
-        attSelector += '</select>'
-        formh += attSelector
-
-        if trt.type == T_CATEGORICAL:
-            # Retrieve the categories from the database:
-            catRecs = trt.categories
-            catObs = ''
-            first = True
-            for cat in catRecs:
-                if first:
-                    first = False
-                else:
-                    catObs += ','
-                catObs += '{{caption:"{0}", imageURL:"{1}", value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
-                print catObs
-            jsRecDec = '[{0}]'.format(catObs)
-            print jsRecDec
-
-            div = '<div id="traitDiv"></div>\n'
-            scrpt1 = """<script src="{0}"></script>\n""".format(url_for('static', filename='newTrait.js'))
-            scrpt2 = """<script type="text/javascript">
-            $(document).ready ( function(){{
-                if (typeof(SetTraitFormElements) === "function") {{
-                   SetTraitFormElements('traitDiv', '3', {0});
-                }} else alert('no SetTraitFormElements');
-            }});</script>""".format(jsRecDec)
-            formh += div + scrpt1 + scrpt2
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:
-            #
-            # Generate form on the fly. Could use template but there's lots of variables.
-            # Make this a separate function to generate html form, so can be used from
-            # trait creation page.
-            #
-            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
-
-            # Min and Max:
-            # need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
-            minText = ""
-            if ttn and ttn.min is not None:
-                minText = "value='{:f}'".format(ttn.getMin())
-            maxText = ""
-            if ttn and ttn.max is not None:
-                maxText = "value='{:f}'".format(ttn.getMax())
-            minMaxBounds = "<p>Minimum: <input type='text' name='min' id=tdMin {0}>".format(minText)
-            minMaxBounds += "<p>Maximum: <input type='text' name='max' id=tdMax {0}><br>".format(maxText);
-
-            # Parse condition string, if present, to retrieve comparator and attribute.
-            # Format of the string is: ^. <2_char_comparator_code> att:<attribute_id>$
-            # The only supported comparison at present is comparing the score to a
-            # single attribute.
-            # NB, this format needs to be in sync with the version on the app. I.e. what
-            # we save here, must be understood on the app.
-            # MFK note attribute id seems to be stored as text in cond string, will seems
-            # not ideal. Probably should be a field in the table trialTraitNumeric.
-            # Note that the same issue applies in the app database There is one advantage
-            # I see to having a string is that we can change what is stored without requiring
-            # a database structure change. And db structure changes on the app require
-            # a database replace on the app.
-            atId = -1
-            op = ""
-            if ttn and ttn.cond is not None:
-                tokens = ttn.cond.split()  # [["gt", "Greater than", 0?], ["ge"...]]?
-                if len(tokens) != 3:
-                    return "bad condition: " + ttn.cond
-                op = tokens[1]
-                atClump = tokens[2]
-                atId = int(atClump[4:])
-
-            # Show available comparison operators:
-            valOp = '<select name="validationOp" id="tdCompOp">'
-            valOp += '<option value="0">&lt;Choose Comparator&gt;</option>'
-            for c in comparatorCodes:
-                valOp += '<option value="{0}" {2}>{1}</option>'.format(
-                    c[2], c[1], 'selected="selected"' if op == c[0] else "")
-            valOp += '</select>'
-
-            # Attribute list:
-            attListHtml = '<select name="attributeList" id="tdAttribute">'
-            attListHtml += '<option value="0">&lt;Choose Attribute&gt;</option>'
-            for att in atts:
-                if att.datatype == T_DECIMAL or att.datatype == T_INTEGER:
-                    attListHtml += '<option value="{0}" {2}>{1}</option>'.format(
-                        att.id, att.name, "selected='selected'" if att.id == atId else "")
-            attListHtml += '</select>'
-
-            # javascript form validation
-            # NEED TO Check that min and max are valid int or decimal
-            # Check that if one of comp and att chosen both are
-            # Note this is the same validation for integer and decimal. So integer
-            # will allow decimal min/max. Could be made strict, but I'm not sure this is bad.
-            script = """
-                <script>
-                function isValidDecimal(inputtxt) {
-                    var decPat =  /^[+-]?[0-9]+(?:\.[0-9]+)?$/g;
-                    return inputtxt.match(decPat);
-                }
-
-                function validateTraitDetails() {
-                    // Check min and max fields:
-                    /* It should be OK to have no min or max:
-                    if (!isValidDecimal(document.getElementById("tdMin").value)) {
-                        alert('Invalid value for minimum');
-                        return false;
-                    }
-                    if (!isValidDecimal(document.getElementById("tdMax").value)) {
-                        alert('Invalid value for maximum');
-                        return false;
-                    }
-                    */
-
-                    // Check attribute/comparator fields, either both or neither present:
-                    var att = document.getElementById("tdAttribute").value;
-                    var comp = document.getElementById("tdCompOp").value;
-                    var attPresent = (att !== null && att !== "0");
-                    var compPresent = (comp !== null && comp !== "0");
-                    if (attPresent && !compPresent) {
-                        alert("Attribute selected with no comparator specified, please fix.");
-                        return false;
-                    }
-                    if (!attPresent && compPresent) {
-                        alert("Comparator selected with no attibute specified, please fix.");
-                        return false;
-                    }
-                    return true;
-                }
-                </script>
-            """
-
-            formh += minMaxBounds
-            formh += '<p>Integer traits can be validated by comparison with an attribute:'
-            formh += '<br>Trait value should be ' + valOp + attListHtml
-            formh += ('\n<p><input type="button" style="color:red" value="Cancel"' +
-                ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
-            formh += '\n<input type="submit" style="color:red" value="Submit">'
-
-            return dataPage(sess, content=script + HtmlForm(formh, post=True, onsubmit='return validateTraitDetails()'), title='Trait Validation')
-
-        return dataPage(sess, content=HtmlForm(formh, post=True), title='Trait Validation')
-        #return dataPage(sess, content='No validation for this trait type', title=title)
-    if request.method == 'POST':
-        ### Form fields applicable to all traits:
-        # Trait barcode selection:
-        #MFK sys traits? barcode field is an trialUnitAttribute id but this is associated with a trial
-        # we either have to move it to trialTrait, or make all trial traits non system traits.
-        barcodeAttId = request.form.get('bcAttribute')  # value should be valid attribute ID
-        if barcodeAttId == 'none':
-            trlTrt.barcodeAtt_id = None
-        else:
-            trlTrt.barcodeAtt_id = barcodeAttId
-
-        if trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
-            op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
-            if not re.match('[0-4]', op):
-                return "Invalid operation {0}".format(op) # should be some function to show error page..
-            at = request.form.get('attributeList') # value should be valid attribute ID
-
-            # Check min/max:
-            vmin = request.form.get('min')
-            if len(vmin) == 0:
-                vmin = None
-            vmax = request.form.get('max')
-            if len(vmax) == 0:
-                vmax = None
-
-            # Get existing trialTraitNumeric, or create new one if none:
-            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
-            newTTN = ttn is None
-            if newTTN:
-                ttn = models.TrialTraitNumeric()
-            ttn.trial_id = trialId
-            ttn.trait_id = traitId
-            ttn.min = vmin
-            ttn.max = vmax
-            if int(op) > 0 and int(at) > 0:
-                ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
-            if newTTN:
-                sess.DB().add(ttn)
-
-        sess.DB().commit()
-
-        return redirect(url_for("urlTrial", trialId=trialId))
+    return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
 
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
@@ -1375,7 +1059,9 @@ def urlMain():
 
 
 ##############################################################################################################
-
+def xxx():
+    print 'xxx'
+    print app.config['SESS_FILE_DIR']
 
 def LogDebug(hdr, text):
 #-------------------------------------------------------------------------------------------------
@@ -1393,6 +1079,8 @@ if __name__ == '__main__':
     app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
+    app.config['CATEGORY_IMAGE_FOLDER'] = expanduser("~") + '/proj/fpserver/catPhotos'
+    app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + expanduser("~") + '/proj/fpserver/catPhotos'
 
     # Setup logging:
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
