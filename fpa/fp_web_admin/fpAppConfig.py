@@ -14,7 +14,6 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024             # Limit the size of file uploa
 PHOTO_UPLOAD_FOLDER = '***REMOVED***/photos/'
 DATA_ACCESS_MODULE = 'fp_common.models'      # Name of the py file providing the data access layer.
 CATEGORY_IMAGE_FOLDER = '***REMOVED***/htdocs/fpt/categoryImages/'
-#CATEGORY_IMAGE_FOLDER = '/tmp/categoryImages/'
 CATEGORY_IMAGE_URL_BASE = 'https://***REMOVED***/fpt/categoryImages/'
 # DEBUG = True
 

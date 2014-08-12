@@ -19,14 +19,16 @@ def GetString(x):
     return x()
 
 
-def HtmlForm(content, post=False, onsubmit=''):
+def HtmlForm(content, post=False, onsubmit='', multipart=False):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.
 # NB content can be either a string, or a function returning one.
 #
-    c = content if isinstance(content, str) else content()
-    submitItem = ' onsubmit="{0}"'.format(onsubmit) if onsubmit else ''
-    return "<form method='{0}'{1}>".format('POST' if post else 'GET', submitItem) + c + "</form>"
+    contentPart = content if isinstance(content, str) else content()
+    enctypePart = "enctype='multipart/form-data'" if multipart else ""
+    methodPart = "method='{0}'".format('POST' if post else 'GET')
+    submitPart = ' onsubmit="{0}"'.format(onsubmit) if onsubmit else ''
+    return "<form {0} {1} {2}>\n{3}</form>".format(methodPart, submitPart, enctypePart, contentPart)
 
 
 def HtmlFieldset(content, legend):

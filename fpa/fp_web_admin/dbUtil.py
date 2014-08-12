@@ -76,7 +76,8 @@ def getTrialTrait(sess, trialId, traitId):
     return sess.DB().query(TrialTrait).filter(
         and_(TrialTrait.trait_id == traitId, TrialTrait.trial_id == trialId)).one()
 
-def GetTraitCategory(sess, traitId, value):
+@oneException2None
+def getTraitCategory(sess, traitId, value):
     return sess.DB().query(TraitCategory).filter(
         and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
 
