@@ -142,7 +142,7 @@ create table traitCategory(
   caption     text NOT NULL,
   imageURL    text,
   PRIMARY KEY(trait_id, value),
-  FOREIGN KEY(trait_id) REFERENCES trait(id)
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE
 );
 
 
