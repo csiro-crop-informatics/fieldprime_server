@@ -558,9 +558,15 @@ def AddTrialUnitNotes(dbc, token, notes):
         return None
     for n in notes:
         try:
+            nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')
             qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
-                n[jNotesUpload['node_id']], n[jNotesUpload['timestamp']],
+                nodeId, n[jNotesUpload['timestamp']],
                 n[jNotesUpload['userid']], token, n[jNotesUpload['note']])
+            # Should be this, but have to cope with 'trialUnit_id' coming
+            # from clients for a while..
+            # qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
+            #     n[jNotesUpload['node_id']], n[jNotesUpload['timestamp']],
+            #     n[jNotesUpload['userid']], token, n[jNotesUpload['note']])
         except Exception, e:
             return 'Error parsing note ' + e.args[0]
 

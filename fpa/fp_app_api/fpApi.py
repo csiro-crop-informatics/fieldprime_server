@@ -400,8 +400,8 @@ def upload_photo(username, trial, dbc, traitid, token):
 #-------------------------------------------------------------------------------------------------
 def upload_trial(username, trial, dbc):
     jtrial = request.json
-    if gdbg:
-        LogDebug("upload_trial:", json.dumps(jtrial))
+    util.flog("upload_trial:\n" + json.dumps(jtrial))
+
     if not jtrial:
         return Response('Bad or missing JSON')
     try:
@@ -412,6 +412,7 @@ def upload_trial(username, trial, dbc):
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
         err = dal.AddTrialUnitNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
+            util.flog('AddTrialUnitNotes fail:{0}'.format(err))
             return Response(err)
 
     # All done, return success indicator:

@@ -62,7 +62,7 @@ JTRL_TRIAL_ATTRIBUTES = 'trialAttributes'
 
 # Trial Uploads:
 jTrialUpload = {'serverToken':'serverToken',
-                'notes':'notes',
+                'notes':'notes'
                 }
 
 # Notes:

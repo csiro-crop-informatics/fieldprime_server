@@ -48,44 +48,121 @@ function imageURLTableCell(imageURL, index) {
     return html;
 }
 
+
+function createFieldset(legendText) {
+    var fieldset = document.createElement('fieldset');
+    var legend = fieldset.appendChild(document.createElement("legend"));
+    legend.appendChild( document.createTextNode(legendText));
+    return fieldset;
+}
+
+
 /*
  * CategoryTraitFormElement()
- * Returns html table for category entry, users can add or delete rows.
+ * Adds to newDiv a fieldset containing table of category trait elements.
  * presets are existing values to put in the table.
- Let's try to make one without html - aim is to create fieldset/table and
- add it to newDiv.
+ * MFK: this version of the function an attempt to use only the dom, no html.
  */
 function CategoryTraitFormElement2(newDiv, presets) {
-    var html = "<fieldset><legend>Categories:</legend>";
-    html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0">';
-    var initCount = (presets !== undefined) ? presets.length : 1;
-    html += '<input type="hidden" id="catCount" name="catCount" value="' + initCount + '" />';            // hidden row counter, note may be gaps in the count
-    html += '<tr><td>Caption</td><td>Value</td><td>Image File</td>' +                     // Table headers
-        '<td><input name="button" type="button" value="+" onclick="addRow()"</td></tr>';  // new row button
+    var fset = newDiv.appendChild(createFieldset('Categories'));
+    var tab = fset.appendChild(document.createElement('table'));
+    tab.style.width = "766";
+    tab.style.padding = "0";
+    tab.id = "catTable";
+    tab.style.border="0";
+
+    // Add hidden field that records count:
+    var hiddenCount = fset.appendChild(document.createElement("input"));
+    hiddenCount.type = "hidden";
+    hiddenCount.id = "catCount";
+    hiddenCount.value = (presets !== undefined) ? presets.length : 1;  // hidden row counter, note may be gaps in the count
+
+    // Table header:
+    //MFK - why do the data rows end up in the table header?
+    var hrow = tab.createTHead().insertRow(-1);
+    hrow.insertCell(-1).innerHTML = "Caption";
+    hrow.insertCell(-1).innerHTML = "Value";
+    hrow.insertCell(-1).appendChild(document.createTextNode("Image File"));
+    hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="addRow()">';
+
+    // Table contents:
+    var drow;
+    var dcell;
+    var inp;
     if (presets !== undefined) {
-        // add rows for existing categories (with no remove button:
+        // add rows for existing categories (with no remove button):
         for (var i = 0; i < presets.length; i++) {
-            html += '<tr>';
-            html += '<td width="191"><input type="text" id="caption_' + i + '" value="'
-                    + presets[i].caption + '" name="caption_' + i + '" /></td>';
-            html += '<td width="191"><input type="text" readonly id="value_' + i + '"  value="'
-                    + presets[i].value + '" name="value_' + i + '" /></td>';
-            // Image URL
-            html += imageURLTableCell(presets[i].imageURL, i);
-            html += '</tr>';
+            drow = tab.insertRow(-1);
+
+            // Caption:
+            var capcell = drow.insertCell(-1);
+            capcell.style.width = '191';
+            //capcell.innerHTML = '<input type="text" id="caption_' + i + '" value="'
+            // + presets[i].caption + '" name="caption_' + i + '"/>';
+            var capInput = document.createElement('input');
+            capInput.type = 'text';
+            capInput.id = 'caption_' + i;
+            capInput.name = capInput.id;
+            capInput.value = presets[i].caption;
+            capcell.appendChild(capInput);
+
+            // Value field:
+            var val = document.createElement("input");
+            val.type = "text";
+            val.id = 'value_' + i;
+            val.value = presets[i].value;
+            val.name = 'value_' + i;
+            val.readOnly = true;
+            drow.insertCell(-1).appendChild(val);
+
+            // Image URL:
+            var icel = drow.insertCell(-1);
+            icel.style.width = '191';
+            icel.style.whiteSpace = 'nowrap';
+            if (presets[i].imageURL === 'None') {
+                icel.appendChild(document.createTextNode("No Image"));
+            } else {
+                var anc = document.createElement("A");
+                anc.href = presets[i].imageURL;
+                anc.appendChild(document.createTextNode('Image set'));
+                icel.appendChild(anc);
+            }
+            var fcel = document.createElement("input");
+            fcel.type = 'file';
+            fcel.id = 'imgfile_' + i;
+            fcel.name = 'imgfile_' + i;
+            icel.appendChild(fcel);
         }
     } else {
-        html += '<tr>' +                                                                      // add first row (no remove button)
-            '<td width="191"><input type="text" id="caption_0" name="caption_0" /></td>' +
-            '<td width="191"><input type="text" id="value_0" name="value_0" /></td>' +
-            '<td width="191"><input type="file" id="imgfile_0" name="imgfile_0"/></td>' +
-            '</tr>';
-    }
-    html += '</table>';
+        // Set up single initial row:
+        drow = tab.insertRow(-1);
 
-    html += "</fieldset>";
-    return html;
+        // Caption:
+        dcell = drow.insertCell(-1);
+        dcell.style.width = '191';
+        inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = 'caption_0';
+        inp.name = inp.id;
+        dcell.appendChild(inp);
+
+        // Value field:
+        inp = document.createElement("input");
+        inp.type = "text";
+        inp.id = 'value_0';
+        inp.name = inp.id;
+        drow.insertCell(-1).appendChild(inp);
+
+        // Image URL:
+        inp = document.createElement("input");
+        inp.type = "file";
+        inp.id = 'imgfile_0';
+        inp.name = inp.id;
+        drow.insertCell(-1).appendChild(inp);
+    }
 }
+
+
 /*
  * CategoryTraitFormElement()
  * Returns html table for category entry, users can add or delete rows.
@@ -150,6 +227,7 @@ function SetTraitFormElements(divName, traitType, curVals){
     case "0": // integer
     case "1": // decimal
         break;
+/*
         // type specific stuff here incomplete, should be the same as the Validation button in the traits table
         // Min and Max:
         html = "<p>Minimum: <input type='text' name='min'><p>Maximum: <input type='text' name='max'><br>";
@@ -163,9 +241,10 @@ function SetTraitFormElements(divName, traitType, curVals){
         newdiv.innerHTML = html;
         parentDiv.appendChild(newdiv);
         break;
+*/
     case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
-        var html = CategoryTraitFormElement(newDivId, curVals);
-        newdiv.innerHTML = html;
+        //newdiv.innerHTML = CategoryTraitFormElement(newDivId, curVals);
+        CategoryTraitFormElement2(newdiv, curVals);
         parentDiv.appendChild(newdiv);
         break;
     }
