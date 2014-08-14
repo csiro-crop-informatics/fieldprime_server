@@ -35,18 +35,6 @@ function removeRow(btn) {
     document.getElementById('catCount').value = --currval;
 }
 
-function imageURLTableCell(imageURL, index) {
-    var html = '<td width="191" style="white-space:nowrap;">';
-
-    if (imageURL === 'None')
-        html += 'No image';
-    else
-        html += '<a href=' + imageURL + '>Image set</a>';
-    html += '<input type="file" id="imgfile_' + index + '" name="imgfile_' + index + '"/>';
-
-    html += '</td>'
-    return html;
-}
 
 
 function createFieldset(legendText) {
@@ -63,7 +51,7 @@ function createFieldset(legendText) {
  * presets are existing values to put in the table.
  * MFK: this version of the function an attempt to use only the dom, no html.
  */
-function CategoryTraitFormElement2(newDiv, presets) {
+function CategoryTraitFormElement(newDiv, presets) {
     var fset = newDiv.appendChild(createFieldset('Categories'));
     var tab = fset.appendChild(document.createElement('table'));
     tab.style.width = "766";
@@ -164,11 +152,25 @@ function CategoryTraitFormElement2(newDiv, presets) {
 
 
 /*
- * CategoryTraitFormElement()
+ * OldCategoryTraitFormElement()
  * Returns html table for category entry, users can add or delete rows.
  * presets are existing values to put in the table.
  */
-function CategoryTraitFormElement(newDivId, presets) {
+function OldCategoryTraitFormElement(newDivId, presets) {
+    function imageURLTableCell(imageURL, index) {
+        var html = '<td width="191" style="white-space:nowrap;">';
+
+        if (imageURL === 'None')
+            html += 'No image';
+        else
+            html += '<a href=' + imageURL + '>Image set</a>';
+        html += '<input type="file" id="imgfile_' + index + '" name="imgfile_' + index + '"/>';
+
+        html += '</td>'
+        return html;
+    }
+
+
     var html = "<fieldset><legend>Categories:</legend>";
     html += '<table id="catTable" width="766"  border="0" cellspacing="0" cellpadding="0">';
     var initCount = (presets !== undefined) ? presets.length : 1;
@@ -179,10 +181,10 @@ function CategoryTraitFormElement(newDivId, presets) {
         // add rows for existing categories (with no remove button:
         for (var i = 0; i < presets.length; i++) {
             html += '<tr>';
-            html += '<td width="191"><input type="text" id="caption_' + i + '" value="'
-                    + presets[i].caption + '" name="caption_' + i + '" /></td>';
-            html += '<td width="191"><input type="text" readonly id="value_' + i + '"  value="'
-                    + presets[i].value + '" name="value_' + i + '" /></td>';
+            html += '<td width="191"><input type="text" id="caption_' + i + '" value="' +
+                    presets[i].caption + '" name="caption_' + i + '" /></td>';
+            html += '<td width="191"><input type="text" readonly id="value_' + i + '"  value="' +
+                    presets[i].value + '" name="value_' + i + '" /></td>';
             // Image URL
             html += imageURLTableCell(presets[i].imageURL, i);
             html += '</tr>';
@@ -243,8 +245,8 @@ function SetTraitFormElements(divName, traitType, curVals){
         break;
 */
     case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
-        //newdiv.innerHTML = CategoryTraitFormElement(newDivId, curVals);
-        CategoryTraitFormElement2(newdiv, curVals);
+        //newdiv.innerHTML = OldCategoryTraitFormElement(newDivId, curVals);
+        CategoryTraitFormElement(newdiv, curVals);
         parentDiv.appendChild(newdiv);
         break;
     }
@@ -260,16 +262,16 @@ function ValidateTraitForm()
     try {
         cap = document.getElementById("cap_id").value;
     } catch (e) {
-        alert("Unexpected error validating trait.");
+        window.alert("Unexpected error validating trait.");
         return false;
     }
     if (cap === null || cap === "") {
-        alert("Please provide a caption");
+        window.alert("Please provide a caption");
         return false;
     }
     var selVal = document.getElementById("traitType").value;
     if (selVal < 0) {
-        alert("Please select a trait type");
+        window.alert("Please select a trait type");
         return false;
     }
     // If category trait, check categories:
