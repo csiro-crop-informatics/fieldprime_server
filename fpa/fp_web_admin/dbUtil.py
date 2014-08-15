@@ -105,6 +105,12 @@ def getNodes(sess, trialId):
     return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id==trialId).order_by(TrialUnit.row, TrialUnit.col).all()
 
 @oneException2None
+def getNode(sess, nodeId):
+#-----------------------------------------------------------------------
+# Return node with the given id. MFK Dupe with models.getNode, as is other stuff in here..
+    return sess.DB().query(TrialUnit).filter(TrialUnit.id==nodeId).one()
+
+@oneException2None
 def getAttributeValue(sess, trialUnitId, trialUnitAttributeId):
     return sess.DB().query(AttributeValue).filter(
         and_(

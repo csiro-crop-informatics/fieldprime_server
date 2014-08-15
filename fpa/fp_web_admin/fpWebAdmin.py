@@ -941,8 +941,12 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
                                              ti.token,
                                              ti.seqNum,
                                              ti.sampleNum)
-                print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
-                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, fname)
+                #print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
+                # Generate a name for the photo to have in the zip file. This needs to show row and col.
+                node = dbUtil.getNode(sess, d.trialUnit_id)
+                # MFK - we should allow for alternate file extensions, not assume ".jpg"
+                archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
+                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
     except Exception, e:
         return 'A problem occurred:\n{0}\n{1}'.format(type(e), e.args)
     return None

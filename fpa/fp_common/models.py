@@ -436,8 +436,16 @@ def GetTrial(dbc, trialid):
         return None
     return trl
 
+def getTrait(dbc, traitId):
+#-------------------------------------------------------------------------------------------------
+    try:
+        trt = dbc.query(Trait).filter(Trait.id == traitId).one()
+    except sqlalchemy.exc.SQLAlchemyError, e:
+        return None
+    return trt
 
 def getTrialTrait(dbc, trialId, traitId):
+#-------------------------------------------------------------------------------------------------
     return dbc.query(TrialTrait).filter(
         and_(TrialTrait.trait_id == traitId, TrialTrait.trial_id == trialId)).one()
 
@@ -453,10 +461,10 @@ def GetTrialList(dbc):
 
 def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreated, token):
 #-------------------------------------------------------------------------------------------------
-    # Get the trait instance, if it exists, else make a new one,
-    # In either case, we need the id.
-    # Note how trait instances from different devices are handled
-    # Trait instances are uniquely identified by trial/trait/seqNum/sampleNum and token.
+# Get the trait instance, if it exists, else make a new one,
+# In either case, we need the id.
+# Note how trait instances from different devices are handled
+# Trait instances are uniquely identified by trial/trait/seqNum/sampleNum and token.
     tiSet = dbc.query(TraitInstance).filter(and_(
             TraitInstance.trait_id == traitID,
             TraitInstance.trial_id == trialID,

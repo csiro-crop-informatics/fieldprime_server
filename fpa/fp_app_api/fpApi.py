@@ -300,6 +300,14 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     except Exception, e:
         aData = None
 
+    # MFK: A problem here in that ideally we don't want to create empty scoresets.
+    # The photo upload code, relies on being able to create an empty scoreset on the
+    # server prior to uploading the pictures. Actually, that's now not the case, but
+    # there may be versions of the app out there for a while that do require an empty
+    # set to be created. So for the moment, we'll limit this to photo traits only,
+    # and then remove that when we're confident all apps are updated:
+    if (aData is None or len(aData) <= 0) and dal.getTrait(dbc, traitid).type != T_PHOTO:
+        return Response('success')
     # Get/Create trait instance:
     dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
     if dbTi is None:
@@ -330,8 +338,20 @@ def upload_photo(username, trial, dbc, traitid, token):
 # Handle a photo upload from the app.
 # These are uniquely identified by dbusername/trial/trait/token/seqNum/sampleNum.
 # These are all provided in the url except for seqNum and sampleNum which come
-# (out-of-band) as parameters.
-# MFK - it looks like node Id is uploaded in the file name (must this be same as server node id?)
+# (out-of-band) as form parameters. In addition the score metadata is also provided
+# in the form parameters. This enables us to create the datum record in this function.
+# Note originally we only saved the photo here, and the client would separately upload
+# the traitInstance containing all the meta data as for a non-photo traitInstance.
+# This was problematic because until both the metadata, and the photo itself are both
+# uploaded we have not successfully uploaded. Hence it is better done in a single
+# transaction (this func). Currently, the client will first upload a trait instance
+# WITHOUT any datums, to ensure the traitInstance is created on the server, and to
+# set its creation date. If we didn't do this we would have to upload the creation
+# date with every photo (or at least the first one) so as to allow us to create the
+# traitInstance record in this function (if it was not already present).
+# Note the node Id is uploaded in the file name (this should be same as server node id).
+# But in addition it is (now) also uploaded as a form parameter, this reduces our
+# dependence on it being in the file name (which may change).
 # The photos are saved in the PHOTO_UPLOAD_FOLDER folder, with the name encoding
 # all the relevant info:
 # '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
@@ -343,7 +363,7 @@ def upload_photo(username, trial, dbc, traitid, token):
     gpslat = request.args.get(DM_GPS_LAT, '')
     gpslong = request.args.get(DM_GPS_LONG, '')
     nodeId = request.args.get(DM_NODE_ID_CLIENT_VERSION, '')
-
+    dayCreated = request.args.get(TI_DAYCREATED, '')
     util.flog('upload_photo:node {0}, seq {1} samp {2}'.format(nodeId, seqNum, sampNum))
 
     file = request.files.get('uploadedfile')
@@ -364,7 +384,7 @@ def upload_photo(username, trial, dbc, traitid, token):
         # MFK note this outer if below is to support old versions of the app, to allow them to
         # upload their photos in the old way. It should be removed eventually..
         if nodeId is not None and len(nodeId) > 0:
-            dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, 0, token)
+            dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, dayCreated, token)
             if dbTi is None:
                 return serverErrorResponse('Failed photo upload : no trait instance')
             res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)

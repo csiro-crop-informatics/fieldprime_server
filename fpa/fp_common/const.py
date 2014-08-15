@@ -41,6 +41,7 @@ AV_VALUE = "value"
 
 TI_SEQNUM = "seqNum"
 TI_SAMPNUM = "sampleNum"
+TI_DAYCREATED = "dayCreated"
 DM_TIMESTAMP = "timestamp"
 DM_USERID = "userid"
 DM_GPS_LAT = "gps_lat"
