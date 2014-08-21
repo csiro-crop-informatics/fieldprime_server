@@ -459,8 +459,8 @@ def getAttributeColumns(sess, trialId, attList):
 # ordered by row/col. Missing values are given as the empty string.
     con = getMYSQLDBConnection(sess)
     qry = """
-        select a.value from trialUnit n left join attributeValue a
-        on n.id = a.trialUnit_id and a.trialUnitAttribute_id = %s
+        select a.value from node n left join attributeValue a
+        on n.id = a.node_id and a.nodeAttribute_id = %s
         where n.trial_id = %s
         order by row, col"""
     attValList = []
@@ -539,9 +539,9 @@ def getDataColumns(sess, trialId, tiList):
     con = getMYSQLDBConnection(sess)
     qry = """
     select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
-    from trialUnit t
-      left join datum d1 on t.id = d1.trialUnit_id and d1.traitInstance_id = %s
-      left join datum d2 on d1.trialUnit_id = d2.trialUnit_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
+    from node t
+      left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = %s
+      left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
     where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
     order by row, col
     """
@@ -664,7 +664,7 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
         # Notes, as list separated by pipe symbols:
         if showNotes:
             r += SEP + '"'
-            tuNotes = dbUtil.GetTrialUnitNotes(sess, node.id)
+            tuNotes = dbUtil.GetNodeNotes(sess, node.id)
             for note in tuNotes:
                 r += '{0}|'.format(note.note)
             r += '"'
@@ -789,7 +789,7 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
     aVals = dbUtil.GetAttributeValues(sess, attId)
     for av in aVals:
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.trialUnit.row, av.trialUnit.col, av.value)
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
     r += "</table>"
     return dataPage(sess, content=r, title='Attribute')
 
@@ -909,7 +909,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                 fname = models.photoFileName(sess.GetUser(),
                                              ti.trial_id,
                                              ti.trait_id,
-                                             d.trialUnit.id,
+                                             d.node.id,
                                              ti.token,
                                              ti.seqNum,
                                              ti.sampleNum)
@@ -918,7 +918,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             value = d.getValue()
 
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
-            d.trialUnit.row, d.trialUnit.col, value, d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long)
+            d.node.row, d.node.col, value, d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long)
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
 
@@ -937,13 +937,13 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
                 fname = models.photoFileName(sess.GetUser(),
                                              ti.trial_id,
                                              ti.trait_id,
-                                             d.trialUnit.id,
+                                             d.node.id,
                                              ti.token,
                                              ti.seqNum,
                                              ti.sampleNum)
                 #print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
                 # Generate a name for the photo to have in the zip file. This needs to show row and col.
-                node = dbUtil.getNode(sess, d.trialUnit_id)
+                node = dbUtil.getNode(sess, d.node_id)
                 # MFK - we should allow for alternate file extensions, not assume ".jpg"
                 archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
                 myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)

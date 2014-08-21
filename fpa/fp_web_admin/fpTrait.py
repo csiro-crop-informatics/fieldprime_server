@@ -367,7 +367,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
     if request.method == 'POST':
         ### Form fields applicable to all traits:
         # Trait barcode selection:
-        #MFK sys traits? barcode field is an trialUnitAttribute id but this is associated with a trial
+        #MFK sys traits? barcode field is an nodeAttribute id but this is associated with a trial
         # we either have to move it to trialTrait, or make all trial traits non system traits.
         barcodeAttId = request.form.get('bcAttribute')  # value should be valid attribute ID
         if barcodeAttId == 'none':

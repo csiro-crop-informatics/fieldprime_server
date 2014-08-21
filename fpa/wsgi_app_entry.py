@@ -35,4 +35,4 @@ else:
 
     # Setup logging:
     util.initLogging(application)
-    util.flog("wsgi_app_entry called")
+    #util.flog("wsgi_app_entry called")

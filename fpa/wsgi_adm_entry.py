@@ -32,4 +32,4 @@ else:
 
     # Setup logging:
     util.initLogging(application)
-    util.flog("wsgi_adm_entry called")
+    #util.flog("wsgi_adm_entry called")

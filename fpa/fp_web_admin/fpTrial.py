@@ -10,7 +10,7 @@ import sqlalchemy
 from flask import render_template
 import fpUtil
 import dbUtil
-from fp_common.models import Trial, TrialUnit, TrialUnitAttribute, AttributeValue, Trait
+from fp_common.models import Trial, Node, NodeAttribute, AttributeValue, Trait
 
 #
 # Special column headers.
@@ -25,7 +25,7 @@ ATR_LAT = 'latitude'
 ATR_LON = 'longitude'
 FIXED_ATTRIBUTES = [ATR_ROW, ATR_COL, ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
 
-def ParseTrialUnitCSV(f):
+def ParseNodeCSV(f):
 #-----------------------------------------------------------------------
 # Parses the file to check valid trial input. Also determines the
 # number of fields, and the column index of each fixed and attribute columns.
@@ -65,7 +65,7 @@ def ParseTrialUnitCSV(f):
         del fixIndex[ATR_LON]
 
 
-    # Check trialUnit lines:
+    # Check node lines:
     line = f.readline()
     rowNum = 2
     while line:
@@ -145,7 +145,7 @@ def updateTrialFile(sess, trialCsv, trialId):
 # differing in case.
 #
     # Check trial units csv file:
-    tuFileInfo = ParseTrialUnitCSV(trialCsv)  # Ideally need version that checks trial units, should we allow new ones?
+    tuFileInfo = ParseNodeCSV(trialCsv)  # Ideally need version that checks trial units, should we allow new ones?
     if 'error' in tuFileInfo:
         return tuFileInfo
     fixIndex = tuFileInfo['fixIndex']
@@ -168,13 +168,13 @@ def updateTrialFile(sess, trialCsv, trialId):
                     break
             attExists.append(tua is not None)
             if tua is None:
-                tua = TrialUnitAttribute()
+                tua = NodeAttribute()
                 tua.trial_id = trl.id
                 tua.name = at
                 dbSess.add(tua)
             tuaObs.append(tua)
     except sqlalchemy.exc.SQLAlchemyError as e:
-        return {'error':"DB error adding trialUnitAttribute ({0})".format(e.orig.args)}
+        return {'error':"DB error adding nodeAttribute ({0})".format(e.orig.args)}
     try:
         # Iterate thru the nodes (each line is assumed to be a node):
         trialCsv.seek(0,0)
@@ -221,8 +221,8 @@ def updateTrialFile(sess, trialCsv, trialId):
                 if av is None:
                     # Set up new attribute value:
                     av = AttributeValue()
-                    av.trialUnitAttribute = tua
-                    av.trialUnit = tu
+                    av.nodeAttribute = tua
+                    av.node = tu
                     dbSess.add(av)
 
                 av.setValueWithTypeUpdate(newValue)  # set the value

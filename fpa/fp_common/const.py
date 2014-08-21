@@ -24,8 +24,8 @@ TRAIT_TYPE_NAMES = ["Integer", "Decimal", "Text", "Categorical", "Date", "Photo"
 TRAIT_TYPE_TYPE_IDS = {"Integer":0, "Decimal":1, "Text":2, "Categorical":3, "Date":4, "Photo":5}
 
 
-# Table trialUnitAttribute:
-TABLE_TUA = "trialUnitAttribute"
+# Table nodeAttribute:
+TABLE_TUA = "nodeAttribute"
 TUA_ID = "id"
 TUA_TRIAL_ID = "trial_id"
 TUA_NAME = "name"
@@ -35,8 +35,8 @@ TUA_FUNC = "func"
 
 # Table attributeValue:
 TABLE_ATTRIBUTE_VALUES = "attributeValue"
-AV_TUA_ID = "trialUnitAttribute_id"
-AV_TRIAL_UNIT = "trialUnit_id"
+AV_TUA_ID = "nodeAttribute_id"
+AV_TRIAL_UNIT = "node_id"
 AV_VALUE = "value"
 
 TI_SEQNUM = "seqNum"

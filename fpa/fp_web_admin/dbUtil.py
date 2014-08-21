@@ -13,8 +13,8 @@ from sqlalchemy.orm import relation
 
 from functools import wraps
 
-from fp_common.models import Trial, Trait, TrialTrait, TrialUnit, TrialUnitAttribute, \
-    AttributeValue, TraitInstance, Datum, TrialUnitNote, TraitCategory, \
+from fp_common.models import Trial, Trait, TrialTrait, Node, NodeAttribute, \
+    AttributeValue, TraitInstance, Datum, NodeNote, TraitCategory, \
     SYSTYPE_SYSTEM, System
 
 
@@ -93,56 +93,56 @@ def GetTraitInstancesForTrial(sess, trialID):
         TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
 def GetTrialAttributes(sess, trialID):
-    return sess.DB().query(TrialUnitAttribute).filter(
-        TrialUnitAttribute.trial_id == trialID).order_by(TrialUnitAttribute.name).all()
+    return sess.DB().query(NodeAttribute).filter(
+        NodeAttribute.trial_id == trialID).order_by(NodeAttribute.name).all()
 
 def GetAttribute(sess, attId):
-    return sess.DB().query(TrialUnitAttribute).filter(TrialUnitAttribute.id == attId).one()
+    return sess.DB().query(NodeAttribute).filter(NodeAttribute.id == attId).one()
 
 def getNodes(sess, trialId):
 #-----------------------------------------------------------------------
 # Return nodes for the specified trial, sorted by row/col
-    return sess.DB().query(TrialUnit).filter(TrialUnit.trial_id==trialId).order_by(TrialUnit.row, TrialUnit.col).all()
+    return sess.DB().query(Node).filter(Node.trial_id==trialId).order_by(Node.row, Node.col).all()
 
 @oneException2None
 def getNode(sess, nodeId):
 #-----------------------------------------------------------------------
 # Return node with the given id. MFK Dupe with models.getNode, as is other stuff in here..
-    return sess.DB().query(TrialUnit).filter(TrialUnit.id==nodeId).one()
+    return sess.DB().query(Node).filter(Node.id==nodeId).one()
 
 @oneException2None
-def getAttributeValue(sess, trialUnitId, trialUnitAttributeId):
+def getAttributeValue(sess, nodeId, nodeAttributeId):
     return sess.DB().query(AttributeValue).filter(
         and_(
-            AttributeValue.trialUnit_id == trialUnitId,
-            AttributeValue.trialUnitAttribute_id == trialUnitAttributeId)
+            AttributeValue.node_id == nodeId,
+            AttributeValue.nodeAttribute_id == nodeAttributeId)
         ).one()
 
-def GetAttributeValues(sess, trialUnitAttributeId):
-    return sess.DB().query(AttributeValue).filter(AttributeValue.trialUnitAttribute_id == trialUnitAttributeId).all()
+def GetAttributeValues(sess, nodeAttributeId):
+    return sess.DB().query(AttributeValue).filter(AttributeValue.nodeAttribute_id == nodeAttributeId).all()
 
-def GetTrialUnit(sess, trialId, row, col):
-    return sess.DB().query(TrialUnit).filter(and_(TrialUnit.trial_id == trialId, TrialUnit.row == row, TrialUnit.col == col)).one()
+# def GetNode(sess, trialId, row, col):
+#     return sess.DB().query(Node).filter(and_(Node.trial_id == trialId, Node.row == row, Node.col == col)).one()
 
 def addOrGetNode(sess, trialId, row, col):
 # Retrieve node for specified trial/row/col, creating a new one
 # if not already present.
     try:
-        tu = sess.DB().query(TrialUnit).filter(and_(TrialUnit.trial_id == trialId, TrialUnit.row == row,
-                                                  TrialUnit.col == col)).one()
+        tu = sess.DB().query(Node).filter(and_(Node.trial_id == trialId, Node.row == row,
+                                                  Node.col == col)).one()
     except sqlalchemy.orm.exc.NoResultFound:
         return None
     except sqlalchemy.orm.exc.MultipleResultsFound:
         return None
 
-def GetDatum(sess, trialUnit_id, traitInstance_id):
-    return sess.DB().query(Datum).filter(and_(Datum.trialUnit_id == trialUnit_id, Datum.traitInstance_id == traitInstance_id)).all()
+def GetDatum(sess, node_id, traitInstance_id):
+    return sess.DB().query(Datum).filter(and_(Datum.node_id == node_id, Datum.traitInstance_id == traitInstance_id)).all()
 
 def GetSysTraits(sess):
     return sess.DB().query(Trait).filter(Trait.sysType == SYSTYPE_SYSTEM).all()
 
-def GetTrialUnitNotes(sess, trialUnit_id):
-    return sess.DB().query(TrialUnitNote).filter(TrialUnitNote.trialUnit_id == trialUnit_id).all()
+def GetNodeNotes(sess, node_id):
+    return sess.DB().query(NodeNote).filter(NodeNote.node_id == node_id).all()
 
 def getTraitInstance(sess, traitInstance_id):
     return sess.DB().query(TraitInstance).filter(TraitInstance.id == traitInstance_id).one()

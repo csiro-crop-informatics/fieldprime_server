@@ -134,7 +134,7 @@ def get_trial(username, trl, dbc):
     # This should ensure different tokens for the same trial being downloaded multiple times on
     # a single device (with delete in between), as long as they are not created within the same
     # second (and this is not an expected use case):
-    # MFK And why do we need such tokens? They are currently used in the traitInstance and trialUnitNote table.
+    # MFK And why do we need such tokens? They are currently used in the traitInstance and nodeNote table.
     epoch = int(time.time())
     servToken = androidId + "." + str(int(time.time()))
     jtrl['serverToken'] = servToken
@@ -164,8 +164,8 @@ def get_trial(username, trl, dbc):
     LogDebug('get_trial', 'pre nodes')
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
-    jtrl['numTrialUnit'] = len(trl.trialUnits)   # MFK check if no trial units this is zero, not null
-    for ctu in trl.trialUnits:
+    jtrl['numTrialUnit'] = len(trl.nodes)   # MFK check if no trial units this is zero, not null
+    for ctu in trl.nodes:
         jtu = {}
         # MFK - there is a problem here, the fixed names and the user provided
         # attribute names are in the same name space. This is a problem if, for example
@@ -182,11 +182,11 @@ def get_trial(username, trl, dbc):
             if int(clientVersion) > 0:
                 atts = {}
                 for att in ctu.attVals:
-                    atts[att.trialUnitAttribute.name] = att.value
+                    atts[att.nodeAttribute.name] = att.value
                     jtu['attvals'] = atts
             else:     # MFK - support for old clients, remove when all clients updated
                 for att in ctu.attVals:
-                    jtu[att.trialUnitAttribute.name] = att.value
+                    jtu[att.nodeAttribute.name] = att.value
 
         # GPS location:
         if ctu.latitude is not None and ctu.longitude is not None:
@@ -430,9 +430,9 @@ def upload_trial(username, trial, dbc):
         return Response('Missing field: ' + e.args[0])
 
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.AddTrialUnitNotes(dbc, token, jtrial[jTrialUpload['notes']])
+        err = dal.AddNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
-            util.flog('AddTrialUnitNotes fail:{0}'.format(err))
+            util.flog('AddNodeNotes fail:{0}'.format(err))
             return Response(err)
 
     # All done, return success indicator:

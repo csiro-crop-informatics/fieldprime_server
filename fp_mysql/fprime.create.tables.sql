@@ -47,15 +47,15 @@ create table trialAtt(
 
 
 --
--- trialUnit
--- Each trial has a set of trialUnits (eg plots)
+-- node
+-- Each trial has a set of nodes (eg plots)
 -- NB, the text attributes will be moved to another table,so as to allow
 -- an arbritrary (user specified) set of attributes.
 -- So genotype, pedigree, and barcode will be removed (and possibly description).
 -- All trial unit attributes other than the mandatory first four will be stored
--- via the trialUnitAttribute and attributeValue tables.
+-- via the nodeAttribute and attributeValue tables.
 --
-create table trialUnit(
+create table node(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   trial_id    INT NOT NULL,
   row         INT NOT NULL,
@@ -70,11 +70,11 @@ create table trialUnit(
 
 
 --
--- trialUnitAttribute
+-- nodeAttribute
 --
 -- To allow for arbitrary extra trial unit attributes, not anticipated at design time.
 --
-create table trialUnitAttribute(
+create table nodeAttribute(
   id         INT PRIMARY KEY AUTO_INCREMENT,
   trial_id   INT NOT NULL,
   name       VARCHAR(127) NOT NULL,
@@ -85,32 +85,32 @@ create table trialUnitAttribute(
 );
 
 --
--- trialUnitNote
+-- nodeNote
 -- The uniqueness constraint (may be) required to prevent storing multiple uploads
 -- of the same note from a device (data upload should be idempotent if the data hasn't
 -- changed).
 --
-create table trialUnitNote(
+create table nodeNote(
   id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-  trialUnit_id  INTEGER,
+  node_id  INTEGER,
   timestamp     BIGINT NOT NULL,
   userid        text,
   token         VARCHAR(31) NOT NULL,
   note          text,
-  UNIQUE (trialUnit_id, timestamp, note(100)),
-  FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE
+  UNIQUE (node_id, timestamp, note(100)),
+  FOREIGN KEY(node_id) REFERENCES node(id) ON DELETE CASCADE
 );
 
 --
 -- attributeValue
 --
 create table attributeValue(
-  trialUnitAttribute_id   integer NOT NULL,
-  trialUnit_id            integer NOT NULL,
+  nodeAttribute_id   integer NOT NULL,
+  node_id            integer NOT NULL,
   value                   text NOT NULL,
-  PRIMARY KEY(trialUnitAttribute_id, trialUnit_id),
-  FOREIGN KEY(trialUnitAttribute_id) REFERENCES trialUnitAttribute(id) ON DELETE CASCADE,
-  FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE
+  PRIMARY KEY(nodeAttribute_id, node_id),
+  FOREIGN KEY(nodeAttribute_id) REFERENCES nodeAttribute(id) ON DELETE CASCADE,
+  FOREIGN KEY(node_id) REFERENCES node(id) ON DELETE CASCADE
 );
 
 --
@@ -158,7 +158,7 @@ create table trialTrait(
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
-  FOREIGN KEY(barcodeAtt_id) REFERENCES trialUnitAttribute(id)
+  FOREIGN KEY(barcodeAtt_id) REFERENCES nodeAttribute(id)
 );
 
 
@@ -217,14 +217,14 @@ create table traitInstance(
 --
 -- datum
 --
--- Data value for trialUnit/traitInstance:
+-- Data value for node/traitInstance:
 -- Intended to support multiple kinds of data, hence muliple value
 -- fields. Currently only text and numeric, but we may have to add a blog
 -- type value to cover all possibilities.
 -- NB numValue has to hold values like 20130101
 --
 create table datum(
-  trialUnit_id     INT NOT NULL,
+  node_id     INT NOT NULL,
   traitInstance_id INT NOT NULL,
   timestamp        BIGINT NOT NULL,
   gps_long         DOUBLE,
@@ -233,8 +233,8 @@ create table datum(
   notes            text,
   numValue         DECIMAL(11,3),
   txtValue         text,
-  PRIMARY KEY(trialUnit_id, traitInstance_id, timestamp),
-  FOREIGN KEY(trialUnit_id) REFERENCES trialUnit(id) ON DELETE CASCADE,
+  PRIMARY KEY(node_id, traitInstance_id, timestamp),
+  FOREIGN KEY(node_id) REFERENCES node(id) ON DELETE CASCADE,
   FOREIGN KEY(traitInstance_id) REFERENCES traitInstance(id) ON DELETE CASCADE
 );
 
