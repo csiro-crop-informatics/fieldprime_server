@@ -230,17 +230,61 @@ def trialNameDetails(sess, trial):
     return r
 
 
+
 def TrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
 # Returns the HTML for a top level page to display/manage a given trial.
 #
+    def tabWrap(divId, cont):
+        return '<div id="{0}">\n{1}\n</div>\n\n'.format(divId, cont)
+
     trial = dbUtil.GetTrial(sess, trialId)
     if trial is None: return None
 
-    r = trialNameDetails(sess, trial)
+    r = '''
+    <style>
+tabs-min {
+    background: transparent;
+    border: none;
+}
+tabs-min .ui-widget-header {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #c0c0c0;
+    -moz-border-radius: 0px;
+    -webkit-border-radius: 0px;
+    border-radius: 0px;
+}
+tabs-min .ui-tabs-nav .ui-state-default {
+    background: transparent;
+    border: none;
+}
+tabs-min .ui-tabs-nav .ui-state-active {
+    background: transparent url(img/uiTabsArrow.png) no-repeat bottom center;
+    border: none;
+}
+tabs-min .ui-tabs-nav .ui-state-default a {
+    color: #c0c0c0;
+}
+tabs-min .ui-tabs-nav .ui-state-active a {
+    color: #459e00;
+}
+</style>
+    '''
+
+    r += '''<div id="tabs-min">
+    <ul>
+        <li><a href="#frag1">Top Level</a></li>
+        <li><a href="#frag2">Node Attributes</a></li>
+        <li><a href="#frag3">Traits</a></li>
+        <li><a href="#frag4">Score Sets</a></li>
+        <li><a href="#frag5">Data</a></li>
+    </ul>\n'''
+
+    r += tabWrap('frag1', trialNameDetails(sess, trial))
 
     # Attributes: ------------------------------------------
-    r += HtmlFieldset(htmlNodeAttributes(sess, trialId), "Node Attributes:")
+    r += tabWrap('frag2', HtmlFieldset(htmlNodeAttributes(sess, trialId), "Node Attributes:"))
 
     # Traits: ------------------------------------------
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
@@ -255,10 +299,10 @@ def TrialHtml(sess, trialId):
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
     addSysTraitForm += '</select></form>'
-    r += HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:")
+    r += tabWrap('frag3', HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:"))
 
     # Score sets: ------------------------------------------
-    r += HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Score Sets:")
+    r += tabWrap('frag4', HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Score Sets:"))
 
     # Score Data: ------------------------------------------
 
@@ -318,7 +362,13 @@ def TrialHtml(sess, trialId):
     dl += "<br>Note data is TAB separated"
     dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
     dl +=     "<button>Browse Trial Data</button></a>"
-    r += HtmlFieldset(dl, "Score Data:")
+    r += tabWrap('frag5', HtmlFieldset(dl, "Score Data:"))
+
+    r += '''
+    </div>
+    <script>
+    $("#tabs-min").tabs();
+    </script>'''
 
     return r
 

@@ -40,7 +40,7 @@ class trialAttHtmlElement:
         return out
 
 # Trial attribute list:
-gTrialAttributes = []
+gTrialAttributes = [trialAttHtmlElement('NodeCreation', 'Allow node creation from app', 'ncid', 'ncname')]
 #gTrialAttributes = [trialAttHtmlElement('hey', 'give us a hey', 'heyid', 'heyname'),
 #          trialAttHtmlElement('ho', 'give us a ho!', 'hoid', 'honame')]
 
