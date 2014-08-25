@@ -539,7 +539,7 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
     try:
         valueFieldName = Datum.valueFieldName(trtType)
         ins = datum.insert().prefix_with('ignore').values({
-             DM_NODE_ID_SERVER_VERSION: nodeId,
+             DM_NODE_ID: nodeId,
              DM_TRAITINSTANCE_ID : tiID,
              DM_TIMESTAMP : timestamp,
              DM_GPS_LONG : gpslong,

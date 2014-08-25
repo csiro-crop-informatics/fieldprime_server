@@ -208,7 +208,7 @@ def htmlNodeAttributes(sess, trialId):
 
     return out
 
-def trialNameDetails(sess, trial):
+def htmlTrialNameDetails(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
     trialDetails = ''
@@ -229,9 +229,116 @@ def trialNameDetails(sess, trial):
     r += '<p>'
     return r
 
+def htmlTrialTraits(sess, trial):
+#--------------------------------------------------------------------
+# Return HTML for trial name, details and top level config:
+    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
+    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
+    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
+    addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
+    sysTraits = dbUtil.GetSysTraits(sess)
+    for st in sysTraits:
+        for trt in trial.traits:   # Only add traits not already in trial
+            if trt.id == st.id:
+                break
+        else:
+            addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
+    addSysTraitForm += '</select></form>'
+    return HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
+def htmlTrialData(sess, trial):
+#--------------------------------------------------------------------
+# Return html chunk with table of scores and attributes.
+
+    # Javascript function to generate the href for the download links.
+    # The generated link includes trialId and the user selected output options.
+    # MFK, note we have problem with download link in that if the session has timed
+    # out, the html for the login page will be downloaded instead of the actual data.
+    # Could do a redirect? but have to pass all the params..
+    #
+    jscript = """
+    <script>
+    function downloadURL(tables) {{
+        var tdms = document.getElementById('tdms');
+        var out = tables ? '{1}?' : '{0}?';
+        // Add parameters indicating what to include in the download
+        for (var i=0; i<tdms.length; i++)
+            if (tdms[i].selected)
+              out += '&' + tdms[i].value + '=1';
+        return out;
+    }}
+    </script>
+    """.format(url_for("urlTrialDataTSV", trialId=trial.id), url_for("urlTrialDataBrowse", trialId=trial.id))
+
+#     jq1 = """
+#     <link rel=stylesheet type=text/css href="{0}">
+#     <script src="{1}"></script>
+#     """.format(url_for('static', filename='jquery.multiselect.css'), url_for('static', filename='jquery.multiselect.js'))
+#
+#     jq = """
+#     <script>
+#     $(document).ready(
+#         function() {
+#             $("#tdms").multiselectMenu();
+#         });
+#     </script>
+#     """
+#     jscript += jq1 + jq
+    #MFK perhaps instead of a multi select list we should have checkboxes. Contents of list are not dynamically
+    # determined and checkboxes look nicer and are easier to use.
+
+    dl = ""
+    dl += jscript
+    # Multi select output columns:
+    dl += "Select columns to view/download:<br>"
+    dl += "<select multiple='multiple' id='tdms'>";
+    dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
+    dl += "<option value='user' selected='selected'>User Idents</option>"
+    dl += "<option value='gps' selected='selected'>GPS info</option>"
+    dl += "<option value='notes' selected='selected'>Notes</option>"
+    dl += "<option value='attributes' selected='selected'>Attributes</option>"
+    dl += "</select>"
+    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
+    dl +=     "<button>Download Trial Data</button></a>"
+    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
+    dl +=     "View tab separated score data</a>"
+    dl += "<br>Note data is TAB separated"
+    dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
+    dl +=     "<button>Browse Trial Data</button></a>"
+    return dl
+
+
+class htmlChunkSet:
+    def __init__(self):
+        self.chunks = []
+
+    def addChunk(self, id, title, content):
+        self.chunks.append((id,title,content))
+
+    def html(self):
+        h = ''
+        for c in self.chunks:
+            h += HtmlFieldset(c[2], c[1] + ':')
+            h += '\n'
+        return h
 
 def TrialHtml(sess, trialId):
+#-----------------------------------------------------------------------
+# Returns the HTML for a top level page to display/manage a given trial.
+#
+    trial = dbUtil.GetTrial(sess, trialId)
+    if trial is None: return None
+    hts = htmlChunkSet()
+    hts.addChunk('details', 'Details', htmlTrialNameDetails(sess, trial))
+    hts.addChunk('natts', 'Node Attributes', htmlNodeAttributes(sess, trialId))
+    hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
+    hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
+    hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
+    return hts.html()
+
+
+def OldTrialHtml(sess, trialId):
 #-----------------------------------------------------------------------
 # Returns the HTML for a top level page to display/manage a given trial.
 #
@@ -281,7 +388,7 @@ tabs-min .ui-tabs-nav .ui-state-active a {
         <li><a href="#frag5">Data</a></li>
     </ul>\n'''
 
-    r += tabWrap('frag1', trialNameDetails(sess, trial))
+    r += tabWrap('frag1', htmlTrialNameDetails(sess, trial))
 
     # Attributes: ------------------------------------------
     r += tabWrap('frag2', HtmlFieldset(htmlNodeAttributes(sess, trialId), "Node Attributes:"))
