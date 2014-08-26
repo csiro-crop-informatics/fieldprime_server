@@ -394,6 +394,7 @@ margin:2px 0 20px 10px;
 
 /*** Tabs: ********************************************************************/
 /*body { font-size: 80%; font-family: 'Lucida Grande', Verdana, Arial, Sans-Serif; }*/
+/*
 ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
 ul#tabs li { display: inline; }
 ul#tabs li a { color: #42454a; background-color: #dedbde; border: 1px solid #c9c3ba; border-bottom: none; padding: 0.3em; text-decoration: none; }
@@ -401,5 +402,78 @@ ul#tabs li a:hover { background-color: #f1f0ee; }
 ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
 div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }
 div.tabContent.hide { display: none; }
+
+#headerMenu {
+    white-space: nowrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+#headerMenu > li {
+    /* Note we want this menu horizontal, this can be achieved with "float:left",
+     * but then the menu will wrap if browser window is made too narrow. So instead
+     * we are using "display:inline-block", in conjunction with the "white-space:nowrap"
+     * in the parent. This works, except the menu items get an extra separation added between
+     * them, which is - to some extent - fixed by the negative right margin command.
+     * See http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping.
+     /
+    width: 100px;
+    display: inline-block;
+    margin: 0 -3px 0 0;
+}
+#headerMenu li a {
+    color: #818181;
+    /*font-size: 15px;/
+    line-height: 30px;
+    text-decoration: none;
+}
+#headerMenu li a:hover {
+    color: #000000;
+}
+#headerMenu li.active a {
+    color: #f99600;
+}
+
+*/
+ul#tabs {
+    list-style-type: none;
+    white-space: nowrap;
+    margin: 30px 0 0 0;
+    padding: 0 0 0.3em 0;
+}
+ul#tabs > li {
+    min-width: 120px;
+    display: inline-block;
+    color: yellow;
+    background-color: red;
+    margin: 0;
+}
+ul#tabs li a {
+    color: #42454a;
+    min-width: 120px;
+    display: block;
+    //background-color: #dedbde;
+    background-color: pink;
+    border: 1px solid #c9c3ba;
+    border-bottom: none;
+    padding: 0.3em;
+    text-decoration: none;
+    margin: 0;
+}
+ul#tabs li a:hover { background-color: #f1f0ee; }
+ul#tabs li a.selected {
+    color: #000;
+    background-color: #f1f0ee;
+    font-weight: bold;
+    padding: 0.7em 0.3em 0.38em 0.3em;
+    //padding: 0.3em;
+}
+div.tabContent {
+    border: 1px solid #c9c3ba;
+    padding: 0.5em;
+}
+div.tabContent.hide {
+    display: none;
+}
 
 /******************************************************************************/

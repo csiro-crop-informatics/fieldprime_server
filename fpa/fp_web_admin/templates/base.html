@@ -21,6 +21,7 @@
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
   <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
   <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
+  <script src="{{ url_for('static', filename='fplib.js') }}"></script>
   <script>{% block javascript %}{% endblock %}</script>
   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='fpStyle.css') }}">
   <title>{{ title }}</title>
@@ -56,14 +57,11 @@
     it specifies the page, and if not defined we are on the Home menu options
     #}
 	<ul id="headerMenu">
-
       {# Add UserData page if use is logged in: #}
       {% if loggedIn %}
 	  <li {% if pagename is not defined %} class="active" {% endif %}>
-        <a href={{ url_for('urlUserHome', userName=g.userName) }}>User Data</a>
-      </li>
+        <a href={{ url_for('urlUserHome', userName=g.userName) }}>User Data</a></li>
       {% endif %}
-
 	  <li {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}">FieldPrime</a></li>
 	  <li {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}">News</a></li>
 	  <li {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}">About</a></li>

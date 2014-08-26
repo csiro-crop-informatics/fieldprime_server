@@ -31,13 +31,14 @@ def HtmlForm(content, post=False, onsubmit='', multipart=False):
     return "<form {0} {1} {2}>\n{3}</form>".format(methodPart, submitPart, enctypePart, contentPart)
 
 
-def HtmlFieldset(content, legend):
+def HtmlFieldset(content, legend=None):
 #-----------------------------------------------------------------------
 # Returns html for a fieldset, with the given content and legend.
 # NB content can be either a string, or a function returning one.
 #
-    c = content if isinstance(content, str) else content()
-    return "<fieldset><legend><h3>" + legend + "</h3></legend>" + c + "</fieldset>"
+    cont = content if isinstance(content, str) else content()
+    leg = '<legend><h3>{0}</h3></legend>'.format(legend) if legend is not None else ''
+    return '<fieldset>{0}{1}</fieldset>'.format(leg, cont)
 
 def htmlHeaderFieldset(content, legend):
 #-----------------------------------------------------------------------
