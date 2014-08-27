@@ -208,6 +208,14 @@ def htmlNodeAttributes(sess, trialId):
 
     return out
 
+@app.route('/trialUpdate/<trialId>', methods=["POST"])
+@dec_check_session()
+def urlTrialNameDetailPost(sess):
+#===========================================================================
+# Page for trial creation.
+#
+    return "not done yet"
+
 def htmlTrialNameDetails(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
@@ -223,10 +231,50 @@ def htmlTrialNameDetails(sess, trial):
     if trialDetails: trialNameAndDetails += ' (' + trialDetails + ')'
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
-    extras = ''
+    extrasForm = ''
     for tae in trialAtt.gTrialAttributes:
-        extras += tae.htmlElement()
-    r += HtmlFieldset(HtmlForm(extras))
+        extrasForm += tae.htmlElement()
+    extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
+    r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
+
+    # JavaScript for AJAX form submission:
+    #http://www.formget.com/form-submit-without-page-refreshing-jquery-php/
+    jscript = '''
+<script>
+$(document).ready(function() {
+    $("#extrasSubmit").click(function() {
+    '''
+
+    #
+    for tae in trialAtt.gTrialAttributes:
+        jscript += 'var {0}=$("#{0}").val()'.format(tae.eid)
+
+    jscript += '''
+        if (false /* put validation here if required */) {
+            alert("Insertion Failed Some Fields are Blank....!!");
+        } else {
+            // Returns successful data submission message when the entered information is stored in database.
+            $.post({0},
+                {
+                // tae loop here again: could we do this in javascript not python?
+                name1: name,
+                email1: email,
+                contact1: contact,
+                gender1: gender,
+                msg1: msg
+                },
+                function(data) {
+                    alert(data);
+                    $('#form')[0].reset(); // To reset form fields
+                }
+            );
+        }
+    });
+});
+</script>
+    '''.format(url_for('urlTrialNameDetailPost', trialId=trial.id))
+
+    r += jscript
 
     # Add DELETE button:
     r += '<p>'
@@ -357,147 +405,6 @@ def TrialHtml(sess, trialId):
     hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
     return '<h2>{0}</h2>'.format(trial.name) + hts.htmlTabs()
 
-
-def OldTrialHtml(sess, trialId):
-#-----------------------------------------------------------------------
-# Returns the HTML for a top level page to display/manage a given trial.
-#
-    def tabWrap(divId, cont):
-        return '<div id="{0}">\n{1}\n</div>\n\n'.format(divId, cont)
-
-    trial = dbUtil.GetTrial(sess, trialId)
-    if trial is None: return None
-
-    r = '''
-    <style>
-tabs-min {
-    background: transparent;
-    border: none;
-}
-tabs-min .ui-widget-header {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid #c0c0c0;
-    -moz-border-radius: 0px;
-    -webkit-border-radius: 0px;
-    border-radius: 0px;
-}
-tabs-min .ui-tabs-nav .ui-state-default {
-    background: transparent;
-    border: none;
-}
-tabs-min .ui-tabs-nav .ui-state-active {
-    background: transparent url(img/uiTabsArrow.png) no-repeat bottom center;
-    border: none;
-}
-tabs-min .ui-tabs-nav .ui-state-default a {
-    color: #c0c0c0;
-}
-tabs-min .ui-tabs-nav .ui-state-active a {
-    color: #459e00;
-}
-</style>
-    '''
-
-    r += '''<div id="tabs-min">
-    <ul>
-        <li><a href="#frag1">Top Level</a></li>
-        <li><a href="#frag2">Node Attributes</a></li>
-        <li><a href="#frag3">Traits</a></li>
-        <li><a href="#frag4">Score Sets</a></li>
-        <li><a href="#frag5">Data</a></li>
-    </ul>\n'''
-
-    r += tabWrap('frag1', htmlTrialNameDetails(sess, trial))
-
-    # Attributes: ------------------------------------------
-    r += tabWrap('frag2', HtmlFieldset(htmlNodeAttributes(sess, trialId), "Node Attributes:"))
-
-    # Traits: ------------------------------------------
-    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trialId))
-    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trialId))
-    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
-    addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
-    sysTraits = dbUtil.GetSysTraits(sess)
-    for st in sysTraits:
-        for trt in trial.traits:   # Only add traits not already in trial
-            if trt.id == st.id:
-                break
-        else:
-            addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
-    addSysTraitForm += '</select></form>'
-    r += tabWrap('frag3', HtmlFieldset(HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm, "Traits:"))
-
-    # Score sets: ------------------------------------------
-    r += tabWrap('frag4', HtmlFieldset(htmlTrialScoreSets(sess, trialId), "Score Sets:"))
-
-    # Score Data: ------------------------------------------
-
-    # Javascript function to generate the href for the download links.
-    # The generated link includes trialId and the user selected output options.
-    # MFK, note we have problem with download link in that if the session has timed
-    # out, the html for the login page will be downloaded instead of the actual data.
-    # Could do a redirect? but have to pass all the params..
-    #
-    jscript = """
-    <script>
-    function downloadURL(tables) {{
-        var tdms = document.getElementById('tdms');
-        var out = tables ? '{1}?' : '{0}?';
-        // Add parameters indicating what to include in the download
-        for (var i=0; i<tdms.length; i++)
-            if (tdms[i].selected)
-              out += '&' + tdms[i].value + '=1';
-        return out;
-    }}
-    </script>
-    """.format(url_for("urlTrialDataTSV", trialId=trialId), url_for("urlTrialDataBrowse", trialId=trialId))
-
-#     jq1 = """
-#     <link rel=stylesheet type=text/css href="{0}">
-#     <script src="{1}"></script>
-#     """.format(url_for('static', filename='jquery.multiselect.css'), url_for('static', filename='jquery.multiselect.js'))
-#
-#     jq = """
-#     <script>
-#     $(document).ready(
-#         function() {
-#             $("#tdms").multiselectMenu();
-#         });
-#     </script>
-#     """
-#     jscript += jq1 + jq
-    #MFK perhaps instead of a multi select list we should have checkboxes. Contents of list are not dynamically
-    # determined and checkboxes look nicer and are easier to use.
-
-    dl = ""
-    dl += jscript
-    # Multi select output columns:
-    dl += "Select columns to view/download:<br>"
-    dl += "<select multiple='multiple' id='tdms'>";
-    dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
-    dl += "<option value='user' selected='selected'>User Idents</option>"
-    dl += "<option value='gps' selected='selected'>GPS info</option>"
-    dl += "<option value='notes' selected='selected'>Notes</option>"
-    dl += "<option value='attributes' selected='selected'>Attributes</option>"
-    dl += "</select>"
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
-    dl +=     "<button>Download Trial Data</button></a>"
-    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
-    dl +=     "View tab separated score data</a>"
-    dl += "<br>Note data is TAB separated"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
-    dl +=     "<button>Browse Trial Data</button></a>"
-    r += tabWrap('frag5', HtmlFieldset(dl, "Score Data:"))
-
-    r += '''
-    </div>
-    <script>
-    $("#tabs-min").tabs();
-    </script>'''
-
-    return r
 
 def trialPage(sess, trialId):
 #----------------------------------------------------------------------------
