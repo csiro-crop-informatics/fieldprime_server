@@ -26,7 +26,7 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
-from fp_web_admin import trialProperties
+import trialProperties
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
