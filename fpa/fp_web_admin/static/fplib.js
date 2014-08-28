@@ -82,12 +82,11 @@ fplib.extrasSubmit = function(event) {
         }
 
         // Returns successful data submission message when the entered information is stored in database.
-        alert(url);
         $.post(url, ffob,
             function(data, textStatus) {
                 alert(data);
-                alert(textStatus);
-                //$('#form')[0].reset(); // To reset form fields
+                //alert(textStatus);   // should we check this is "success"?
+                //$('#form')[0].reset(); // To reset form fields - what's this?
             },
             "html"
         );

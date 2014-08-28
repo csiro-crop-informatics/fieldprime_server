@@ -117,4 +117,11 @@ def trialPropertyTable(sess, trial, create=True):
     out += '</table>\n'
     return out
 
+def processPropertiesForm(sess, trialId, form):
+    for tae in gTrialAttributes:
+        #sess.DB().add(models.TrialAtt(trl.id, tae.dbName, form.get(tae.ename)))
+        # trying to insert or update
+        newProp = models.TrialAtt(trialId, tae.dbName, form.get(tae.ename))
+        newProp = sess.DB().merge(newProp)
+    sess.DB().commit()
 

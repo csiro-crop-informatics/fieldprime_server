@@ -214,8 +214,8 @@ def urlTrialNameDetailPost(sess, trialId):
 #===========================================================================
 # Page for trial creation.
 #
-    print 'urlTrialNameDetailPost'
-    return "not done yet"
+    trialAtt.processPropertiesForm(sess, trialId, request.form)
+    return "Trial Properties Updated on Server"
 
 def htmlTrialNameDetails(sess, trial):
 #--------------------------------------------------------------------
@@ -233,33 +233,16 @@ def htmlTrialNameDetails(sess, trial):
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
     # Make separate (AJAX) form for extras:
-#    extrasForm = ''
-#     for tae in trialAtt.gTrialAttributes:
-#         extrasForm += tae.htmlElement()
     extrasForm = trialAtt.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
     r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
-
-
-#     '''
-#
-#     #
-# #     for tae in trialAtt.gTrialAttributes:
-# #         jscript += 'var {0}=$("#{0}").val()'.format(tae.eid)
-#
-#     jscript += '''
-
     # JavaScript for AJAX form submission:
-    #http://www.formget.com/form-submit-without-page-refreshing-jquery-php/
-
-    jscript = '''
+    r += '''
     <script>
     $(document).ready(function() {
         $("#extrasSubmit").click({url: "%s"}, fplib.extrasSubmit);
     });
     </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
-
-    r += jscript
 
     # Add DELETE button:
     r += '<p>'
