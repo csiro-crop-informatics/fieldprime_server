@@ -17,6 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from const import *
 import util
+from functools import wraps
 
 ### sqlalchemy CONSTANTS: ######################################################################
 
@@ -311,7 +312,41 @@ class Trial(DeclarativeBase):
             lastToken = token
         return scoreSets
 
+def oneException2None(func):
+#--------------------------------------------------------------------
+# Decorator used for sqlalchemy one() queries, which throw exceptions if
+# there isn't exactly one result. This function traps the exceptions, it
+# returns the result if exactly one is found, else None.
+#
+    @wraps(func)
+    def with_traps(*args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        except sqlalchemy.orm.exc.NoResultFound:
+            return None
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            return None
+        return ret
+    return with_traps
 
+
+#
+# TrialAtt
+# Table for trial attributes.
+# NB: what attributes are available to be set are hard-coded into the software.
+# Users may change the values of the hardcoded set, but not create new attributes.
+# Note also that the app web service will sent whatever is in this table (regardless)
+# of what the admin web service currently supports.
+# The values in the table are text, but the real types, as presented to the user, could
+# be boolean, categorical, numeric etc. They are to be sent to the app via json however
+# so must map to some text representation anyway. We could perhaps give them a type, where
+# the types are those supported by json. But for them to be of use on the app, the app
+# code must know the type anyway.
+# Anyway, if we added tables to list the supported types, then the admin interface at least
+# could be driven from the tables, and to add a new attribute we would only need adjust
+# the tables. But we don't have that attow. On the other hand, a table hardcoded in the
+# software isn't necessarily any harder to adjust.
+# MFK - would be better named TrialProperty
 class TrialAtt(DeclarativeBase):
     __tablename__ = 'trialAtt'
     __table_args__ = {}
@@ -325,6 +360,15 @@ class TrialAtt(DeclarativeBase):
         self.trial_id = tid
         self.name = name
         self.value = value
+
+    @staticmethod
+    @oneException2None
+    def getPropertyValue(dbc, trialId, propName):
+    # Return dictionary providing value to caption map for specified trait.
+    # The trait should be categorical, if not empty map will be returned, I think.
+        return dbc.query(TrialAtt).filter(
+                and_(TrialAtt.trial_id == trialId, TrialAtt.name == propName)
+                ).one().value
 
 
 class Node(DeclarativeBase):

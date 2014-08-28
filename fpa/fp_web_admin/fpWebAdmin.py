@@ -214,6 +214,7 @@ def urlTrialNameDetailPost(sess, trialId):
 #===========================================================================
 # Page for trial creation.
 #
+    print 'urlTrialNameDetailPost'
     return "not done yet"
 
 def htmlTrialNameDetails(sess, trial):
@@ -231,68 +232,34 @@ def htmlTrialNameDetails(sess, trial):
     if trialDetails: trialNameAndDetails += ' (' + trialDetails + ')'
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
-    extrasForm = ''
-    for tae in trialAtt.gTrialAttributes:
-        extrasForm += tae.htmlElement()
+    # Make separate (AJAX) form for extras:
+#    extrasForm = ''
+#     for tae in trialAtt.gTrialAttributes:
+#         extrasForm += tae.htmlElement()
+    extrasForm = trialAtt.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
     r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
 
-    r += '<input type="button" onClick=helloWorld(); id="hello-world" value="Hello" />'
-    r += '''
-<script type="text/javascript">
-   function helloWorld() {
-      alert('Helloo World!') ;
-   }
-</script>
 
-<script language="javascript" type="text/javascript">
-$(document).ready(function () {
-    alert("jquery");
-});
-</script>
-
-'''
+#     '''
+#
+#     #
+# #     for tae in trialAtt.gTrialAttributes:
+# #         jscript += 'var {0}=$("#{0}").val()'.format(tae.eid)
+#
+#     jscript += '''
 
     # JavaScript for AJAX form submission:
     #http://www.formget.com/form-submit-without-page-refreshing-jquery-php/
+
     jscript = '''
-<script>
-$(document).ready(function() {alert('ready');});</script><script>
-$(document).ready(function() {
-    $("#extrasSubmit").click(function() {
-    alert('hello');
-    '''
-
-    #
-#     for tae in trialAtt.gTrialAttributes:
-#         jscript += 'var {0}=$("#{0}").val()'.format(tae.eid)
-
-    jscript += '''
-        if (false /* put validation here if required */) {
-            alert("Insertion Failed Some Fields are Blank....!!");
-        } else {
-            // Construct object contain the form fields:
-            var ffob = {};
-            var fels = document.getElementById("extras").elements;
-            for(var i = 0; i < fels.length; i++) {
-                ffob[fels[i].name] = fels[i].value;
-                alert(fels[i].name] + ":" + fels[i].value);
-            }
-
-            // Returns successful data submission message when the entered information is stored in database.
-            $.post(%s, fels,
-                function(data) {
-                    alert(data);
-                    //$('#form')[0].reset(); // To reset form fields
-                }
-            );
-        }
+    <script>
+    $(document).ready(function() {
+        $("#extrasSubmit").click({url: "%s"}, fplib.extrasSubmit);
     });
-});
-</script>
-    ''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
+    </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
 
-    #r += jscript
+    r += jscript
 
     # Add DELETE button:
     r += '<p>'
