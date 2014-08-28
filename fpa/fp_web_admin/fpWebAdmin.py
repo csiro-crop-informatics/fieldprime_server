@@ -26,7 +26,7 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
-import trialAtt
+from fp_web_admin import trialProperties
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
@@ -214,7 +214,7 @@ def urlTrialNameDetailPost(sess, trialId):
 #===========================================================================
 # Page for trial creation.
 #
-    trialAtt.processPropertiesForm(sess, trialId, request.form)
+    trialProperties.processPropertiesForm(sess, trialId, request.form)
     return "Trial Properties Updated on Server"
 
 def htmlTrialNameDetails(sess, trial):
@@ -233,7 +233,7 @@ def htmlTrialNameDetails(sess, trial):
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
     # Make separate (AJAX) form for extras:
-    extrasForm = trialAtt.trialPropertyTable(sess, trial, False)
+    extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
     r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
     # JavaScript for AJAX form submission:
@@ -366,7 +366,7 @@ def TrialHtml(sess, trialId):
     trial = dbUtil.GetTrial(sess, trialId)
     if trial is None: return None
     hts = htmlChunkSet()
-    hts.addChunk('details', 'Details', htmlTrialNameDetails(sess, trial))
+    hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
     hts.addChunk('natts', 'Node Attributes', htmlNodeAttributes(sess, trialId))
     hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
     hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
@@ -483,7 +483,7 @@ def newTrial(sess):
 
     # Trial attribute stuff. We want table driven presentation of allowed trial attributes.
     extras = ''
-    for tae in trialAtt.gTrialAttributes:
+    for tae in trialProperties.gTrialAttributes:
         extras += tae.htmlElement()
     if request.method == 'GET':
         return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
@@ -498,7 +498,7 @@ def newTrial(sess):
         # All good. Trial created. Set extra trial attributes.
         # MFK in general we will need insert or update (merge)
         #
-        for tae in trialAtt.gTrialAttributes:
+        for tae in trialProperties.gTrialAttributes:
             sess.DB().add(models.TrialAtt(trl.id, tae.dbName, request.form.get(tae.ename)))
         sess.DB().commit()
         return FrontPage(sess)
