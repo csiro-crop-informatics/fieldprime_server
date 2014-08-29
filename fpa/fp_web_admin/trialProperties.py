@@ -10,17 +10,33 @@ import fp_common.models as models
 
 #
 # class trialAttHtmlElement
-# NOT a database class, but a container for a set of traitInstances that
-# make up a scoreSet
 #
-class trialAttHtmlElement:
-    def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype='text'):
+class formElement:
+    # Supported element types:
+    TEXT = 1
+    RADIO = 2
+
+    def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype=TEXT, typeSpecificData=None):
+        print 'text {0}'.format(etype)
         self.prompt = prompt
         self.subPrompt = subPrompt
         self.ename = ename
         self.eid = eid
         self.dbName = dbName if dbName is not None else ename
         self.etype = etype
+        self.typeSpecificData = typeSpecificData
+
+    def __wrapElement(self, element):
+        return '''
+            <tr>
+              <td>
+                <label>{0}<span class="small">{1}</span></label>
+              </td>
+              <td>
+                {2}
+              </td>
+            </tr>
+            '''.format(self.prompt, self.subPrompt, element)
 
     def htmlElement(self, value=None):
         #------------------------------------------------------------------
@@ -31,25 +47,34 @@ class trialAttHtmlElement:
         # newTrial.html has the trial attributes that are in all trials.
         # NB Javascript validation function is also in newTrial.html
         #
-
-        out = '''
-            <tr>
-              <td>
-                <label>{0}<span class="small">{1}</span></label>
-              </td>
-              <td>
-                <input type="text" id='{2}' name="{3}" {4}>
-              </td>
-            </tr>
-            '''.format(self.prompt, self.subPrompt, self.eid, self.ename,
-                       ' value="{0}"'.format(value) if value is not None else '')
-        return out
+        print 'text {0}'.format(self.etype)
+        element = ''
+        if self.etype == self.TEXT:
+            element = '''
+                   <input type="text" id='{0}' name="{1}" {2}>
+                '''.format(self.eid, self.ename,
+                           ' value="{0}"'.format(value) if value is not None else '')
+        elif self.etype == self.RADIO:
+            element += '<div class="uifDiv">'
+            for key in self.typeSpecificData:
+                val = self.typeSpecificData[key]
+                print 'val {0} value {1} equal {2} {3} {4}'.format(val, value,
+                    'yes' if val==value else 'no', type(val), type(value))
+                element += '<input class="nostyle" type="radio" name="{0}" value="{1}" {2}>{3}'.format(
+                    self.ename, val, 'checked' if val == value else '', key)
+            element += '</div>'
+        return self.__wrapElement(element)
 
 
 # Trial attribute list:
-gTrialAttributes = [trialAttHtmlElement('NodeCreation', 'Allow node creation from app', 'nodeCreation', 'ncid')]
-#gTrialAttributes = [trialAttHtmlElement('hey', 'give us a hey', 'heyid', 'heyname'),
-#          trialAttHtmlElement('ho', 'give us a ho!', 'hoid', 'honame')]
+# MFK this needs to be an instance of a class, not a global, and passed into trialPropertyTable
+gTrialAttributes = [
+    formElement('NodeCreation', 'Allow node creation from app',
+                'nodeCreation', 'ncid',
+                etype=formElement.RADIO,
+                typeSpecificData={'yes':'true', 'no':'false'})
+]
+
 
 def trialPropertyTable(sess, trial, create=True):
 # Returns html form elements for the current allowed set of trial properties.

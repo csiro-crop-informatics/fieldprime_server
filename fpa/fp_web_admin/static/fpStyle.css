@@ -383,14 +383,31 @@ text-align:right;
 width:140px;
 }
 
-.userInputForm input, .userInputForm select{
+.userInputForm input:not(.nostyle),
+.userInputForm select
+.uifDiv
+{
 float:left;
 /*font-size:12px;
 padding:4px 2px;
 border:solid 1px #aacfe4;*/
 width:200px;
-margin:2px 0 20px 10px;
+margin-top:2px;
+margin-right:0;
+margin-bottom:20px;
+margin-left:10px;
 }
+
+/* Problem here is that there may not be a single input element.
+radio buttons for example. We probably want some container class.
+*/
+.userInputForm input[type="radio"] {
+margin-top:2px;
+margin-right:3px;
+margin-bottom:20px;
+margin-left:10px;
+}
+
 
 /*** Tabs: ********************************************************************/
 /*body { font-size: 80%; font-family: 'Lucida Grande', Verdana, Arial, Sans-Serif; }*/

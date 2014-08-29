@@ -77,8 +77,17 @@ fplib.extrasSubmit = function(event) {
         var fels = document.getElementById("extras").elements;
 
         for (var i = 0; i < fels.length; i++) {
-            ffob[fels[i].name] = fels[i].value;
-            //alert(fels[i].name + ":" + fels[i].value);
+            var el = fels[i];
+            if (el.type === "radio") {  // We only want selected value of radio button set
+                if (el.checked) {
+                    ffob[el.name] = el.value;
+                    //alert(el.name + ":" + el.value + ":" + el.type);
+                }
+            }
+            else {
+                ffob[el.name] = el.value;
+                //alert(el.name + ":" + el.value + ":" + el.type);
+            }
         }
 
         // Returns successful data submission message when the entered information is stored in database.
