@@ -514,7 +514,8 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
             TraitInstance.trial_id == trialID,
             TraitInstance.seqNum == seqNum,
             TraitInstance.sampleNum == sampleNum,
-            TraitInstance.token == token
+            TraitInstance.token == token,
+            TraitInstance.dayCreated == dayCreated
             )).all()
     if len(tiSet) == 1:
         dbTi = tiSet[0]
@@ -568,7 +569,7 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     except Exception, e:
         return "An error occurred"
 
-def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat, gpslong):
+def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat, gpslong, value):
 #-------------------------------------------------------------------------------------------------
 # Insert or update datum records for specified trait instance.
 # Params:
@@ -589,7 +590,7 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
              DM_GPS_LONG : gpslong,
              DM_GPS_LAT : gpslat,
              DM_USERID : userid,
-             valueFieldName : 'xxx'
+             valueFieldName : value
         })
         res = dbc.execute(ins)
         dbc.commit()

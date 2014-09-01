@@ -372,7 +372,18 @@ def upload_photo(username, trial, dbc, traitid, token):
         (nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
         try:
-            file.save(app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
+            # Need to check if file exists, if so postfix copy num to name:
+            fullPath = app.config['PHOTO_UPLOAD_FOLDER'] + saveName
+            base = os.path.splitext(fullPath)[0]
+            ext = os.path.splitext(fullPath)[1]
+            tryAgain = os.path.isfile(fullPath)
+            i = 1
+            while tryAgain:
+                fullPath = '{0}_c{1}{2}'.format(base, i, ext)
+                i += 1
+                tryAgain = os.path.isfile(fullPath)
+
+            file.save(fullPath)
         except Exception, e:
             util.flog('failed save {0}'.format(app.config['PHOTO_UPLOAD_FOLDER'] + saveName))
             util.flog(e.__doc__)
@@ -387,7 +398,8 @@ def upload_photo(username, trial, dbc, traitid, token):
             dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, dayCreated, token)
             if dbTi is None:
                 return serverErrorResponse('Failed photo upload : no trait instance')
-            res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp, userid, gpslat, gpslong)
+            res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp,
+                                            userid, gpslat, gpslong, os.path.basename(fullPath))
             if res is None:
                 return Response('success')
             else:
