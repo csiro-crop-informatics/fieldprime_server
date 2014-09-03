@@ -367,12 +367,19 @@ def upload_photo(username, trial, dbc, traitid, token):
     util.flog('upload_photo:node {0}, seq {1} samp {2}'.format(nodeId, seqNum, sampNum))
 
     file = request.files.get('uploadedfile')
+    util.flog('upload_photo: filename {0}'.format(file.filename))
     if file and allowed_file(file.filename):
+        util.flog('upload_photo: 1')
         sentFilename = secure_filename(file.filename)
-        (nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
-        saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
+        # Old method, file name contains information, now not used, delete..
+        #select count(*) from trait t join traitInstance i on i.trait_id = t.id join datum d on d.traitInstance_id = i.id where t.type = 5;
+        #(nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
+        util.flog('upload_photo: 2')
+        #saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
+        saveName = dal.photoFileName(username, trial.id, traitid, int(nodeId), token, seqNum, sampNum)
+        util.flog('upload_photo: 3')
         try:
-            # Need to check if file exists, if so postfix copy num to name:
+            # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
             fullPath = app.config['PHOTO_UPLOAD_FOLDER'] + saveName
             base = os.path.splitext(fullPath)[0]
             ext = os.path.splitext(fullPath)[1]
