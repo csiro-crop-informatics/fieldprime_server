@@ -1,5 +1,5 @@
 #
-# trialAtt.py
+# trialProperties.py
 # Michael Kirk 2014
 # Provides a trial attribute class and a list of them.
 # Allowed trial attributes are statically determined (by this file).
@@ -9,7 +9,11 @@ import fp_common.models as models
 
 
 #
-# class trialAttHtmlElement
+# class formElement
+# Class for element to go on html form. Element defined by
+# a few parameters, html can then be produced.
+# MFK this should probably be in on file, rather than just used
+# for the single trialProperties form.
 #
 class formElement:
     # Supported element types:
@@ -79,7 +83,7 @@ gTrialAttributes = [
 def trialPropertyTable(sess, trial, create=True):
 # Returns html form elements for the current allowed set of trial properties.
 # If create is true then also the hard-wired trial properties (i.e. those in the
-# trial table, not the trialAtt table) are also included.
+# trial table, not the trialProperty table) are also included.
 #
     out = '<table class="userInputForm">'
     if create:
@@ -124,7 +128,7 @@ def trialPropertyTable(sess, trial, create=True):
         value = None
         if not create:
             # get value
-            value = models.TrialAtt.getPropertyValue(sess.DB(), trial.id, tae.dbName)
+            value = models.TrialProperty.getPropertyValue(sess.DB(), trial.id, tae.dbName)
         out += tae.htmlElement(value)
 
     if create:
@@ -144,9 +148,10 @@ def trialPropertyTable(sess, trial, create=True):
 
 def processPropertiesForm(sess, trialId, form):
     for tae in gTrialAttributes:
-        #sess.DB().add(models.TrialAtt(trl.id, tae.dbName, form.get(tae.ename)))
         # trying to insert or update
-        newProp = models.TrialAtt(trialId, tae.dbName, form.get(tae.ename))
+        newProp = models.TrialProperty(trialId, tae.dbName, form.get(tae.ename))
         newProp = sess.DB().merge(newProp)
     sess.DB().commit()
+
+
 

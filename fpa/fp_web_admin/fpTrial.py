@@ -156,7 +156,7 @@ def updateTrialFile(sess, trialCsv, trialId):
         trl = dbUtil.GetTrial(sess, trialId)
 
         # Add attributes:
-        currAtts = dbUtil.GetTrialAttributes(sess, trialId)
+        currAtts = dbUtil.getNodeAttributes(sess, trialId)
         tuaObs = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
         for at in attIndex.keys():

@@ -59,7 +59,7 @@ DM_TRAITINSTANCE_ID = "traitInstance_id"
 #
 # NOTE they are not all here yet (just the one I was bitten by!)
 
-JTRL_TRIAL_ATTRIBUTES = 'trialAttributes'
+JTRL_TRIAL_PROPERTIES = 'trialProperties'
 
 
 # Trial Uploads:

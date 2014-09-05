@@ -124,10 +124,10 @@ def get_trial(username, trl, dbc):
     jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
     jtrl['uploadURL'] = url_for('upload_trial', username=username, trialid=trl.id, _external=True)
     # Add trial attributes from database:
-    jtatts = {}
-    for tatt in trl.trialAtts:
-        jtatts[tatt.name] = tatt.value
-    jtrl[JTRL_TRIAL_ATTRIBUTES] = jtatts
+    jprops = {}
+    for tp in trl.trialProperties:
+        jprops[tp.name] = tp.value
+    #jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Server Token:
     # Use the android device ID postfixed with the current time in seconds as the serverTrialId.

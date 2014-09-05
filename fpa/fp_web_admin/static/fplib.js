@@ -1,16 +1,19 @@
 var fplib = {};
 
-fplib.initTabs = function (tabULid) {
-    var tabLinks = [];
-    var contentDivs = [];
+fplib.initTabs = function (tabListId) {
+    var tabLinks = {};
+    var contentDivs = {};
 
-    function showTab() {
-      var selectedId = getHash(this.getAttribute('href'));
+    function setTab(tabId) {
+      // store tabId in session storage for retrieval on navigation back to page:
+      if (window.sessionStorage){
+        sessionStorage.setItem("currTrialPageTab", tabId);
+      }
 
       // Highlight the selected tab, and dim all others.
       // Also show the selected content div, and hide all others.
       for (var id in contentDivs) {
-        if (id == selectedId) {
+        if (id == tabId) {
           tabLinks[id].className = 'selected';
           contentDivs[id].className = 'tabContent';
         } else {
@@ -19,8 +22,12 @@ fplib.initTabs = function (tabULid) {
         }
       }
 
-      // Stop the browser following the link
-      return false;
+    }
+
+    function showTab() {
+      var selectedId = getHash(this.getAttribute('href'));
+      setTab(selectedId);
+      return false;  // to stop the browser following the link
     }
 
     function getFirstChildWithTagName(element, tagName) {
@@ -34,11 +41,12 @@ fplib.initTabs = function (tabULid) {
       return url.substring(hashPos + 1);
     }
 
+    //-- Code: ------------------------------------------------------
     var i;
     var id;
 
-    // Grab the tab links and content divs from the page
-    var tabListItems = document.getElementById(tabULid).childNodes;
+    // Get the tab links and content divs from the page
+    var tabListItems = document.getElementById(tabListId).childNodes;
     for (i = 0; i < tabListItems.length; i++ ) {
       if (tabListItems[i].nodeName == "LI") {
         var tabLink = getFirstChildWithTagName(tabListItems[i], 'A');
@@ -49,23 +57,20 @@ fplib.initTabs = function (tabULid) {
     }
 
     // Assign onclick events to the tab links, and
-    // highlight the first tab
-    i = 0;
     var focusFunc = function() { this.blur(); };
     for (id in tabLinks) {
       tabLinks[id].onclick = showTab;
       tabLinks[id].onfocus = focusFunc;
-      if (i === 0) tabLinks[id].className = 'selected';
-      i++;
     }
 
-    // Hide all content divs except the first
-    i = 0;
-    for (id in contentDivs) {
-        if (i !== 0) contentDivs[id].className = 'tabContent hide';
-        i++;
+    var currTab;
+    if (window.sessionStorage){
+      currTab=sessionStorage.getItem("currTrialPageTab");
+      fplib.currTab = currTab
     }
+    setTab(currTab);
 };
+
 
 fplib.extrasSubmit = function(event) {
     var url = event.data.url;

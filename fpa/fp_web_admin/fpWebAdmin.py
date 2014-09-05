@@ -185,7 +185,7 @@ def htmlNodeAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
 # MFK - improve this, showing type and number of values, also delete button? modify?
-    attList = dbUtil.GetTrialAttributes(sess, trialId)
+    attList = dbUtil.getNodeAttributes(sess, trialId)
     out = ''
     if len(attList) < 1:
         out += "No attributes found"
@@ -232,7 +232,7 @@ def htmlTrialNameDetails(sess, trial):
     if trialDetails: trialNameAndDetails += ' (' + trialDetails + ')'
     r = "<p><h3>Trial {0}</h3>".format(trialNameAndDetails)
 
-    # Make separate (AJAX) form for extras:
+    # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
     r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
@@ -244,7 +244,7 @@ def htmlTrialNameDetails(sess, trial):
     });
     </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
 
-    # Add DELETE button:
+    # Add DELETE button: ------------------------------------------------
     r += '<p>'
     r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
     r += '<p>'
@@ -366,11 +366,11 @@ def TrialHtml(sess, trialId):
     trial = dbUtil.GetTrial(sess, trialId)
     if trial is None: return None
     hts = htmlChunkSet()
-    hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
+    hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
     hts.addChunk('natts', 'Node Attributes', htmlNodeAttributes(sess, trialId))
     hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
-    hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
     hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
+    hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
     return '<h2>{0}</h2>'.format(trial.name) + hts.htmlTabs()
 
 
@@ -498,9 +498,7 @@ def newTrial(sess):
         # All good. Trial created. Set extra trial attributes.
         # MFK in general we will need insert or update (merge)
         #
-        for tae in trialProperties.gTrialAttributes:
-            sess.DB().add(models.TrialAtt(trl.id, tae.dbName, request.form.get(tae.ename)))
-        sess.DB().commit()
+        trialProperties.processPropertiesForm(sess, trl.id, request.form)
         return FrontPage(sess)
 
 def getAttributeColumns(sess, trialId, attList):
@@ -549,7 +547,7 @@ def urlBrowseTrial(sess, trialId):
 #===========================================================================
 # Page for display of trial data.
 #
-    attList = dbUtil.GetTrialAttributes(sess, trialId)
+    attList = dbUtil.getNodeAttributes(sess, trialId)
     nodeList = dbUtil.getNodes(sess, trialId)
 
     # Get all the attribute values:
@@ -958,13 +956,21 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             if d.isNA():
                 value = 'NA'
             else:
-                fname = models.photoFileName(sess.GetUser(),
-                                             ti.trial_id,
-                                             ti.trait_id,
-                                             d.node.id,
-                                             ti.token,
-                                             ti.seqNum,
-                                             ti.sampleNum)
+                # New method is to have filename in datum.txtValue, but this may not
+                # be in place for all datums in the database. Older records may have a
+                # txtValue either of 'xxx' or <trial name>/<digits>_<digits>.jpg.
+                # New ones should be the file name, which should include more that one underscore.
+                # Note we could go through the db and change txtValues of photo datums to the new way,
+                # and then dispense with this if.
+                fname = d.txtValue
+                if fname.count('_') < 2 or fname.count('/') != 0:
+                    fname = models.photoFileName(sess.GetUser(),
+                                                 ti.trial_id,
+                                                 ti.trait_id,
+                                                 d.node.id,
+                                                 ti.token,
+                                                 ti.seqNum,
+                                                 ti.sampleNum)
                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()

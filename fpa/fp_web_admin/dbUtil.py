@@ -92,7 +92,7 @@ def GetTraitInstancesForTrial(sess, trialID):
         TraitInstance.trial_id == trialID).order_by(
         TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
-def GetTrialAttributes(sess, trialID):
+def getNodeAttributes(sess, trialID):
     return sess.DB().query(NodeAttribute).filter(
         NodeAttribute.trial_id == trialID).order_by(NodeAttribute.name).all()
 

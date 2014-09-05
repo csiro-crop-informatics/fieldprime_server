@@ -251,7 +251,7 @@ class Trial(DeclarativeBase):
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
     tuAttributes = relationship('NodeAttribute')
     nodes = relationship('Node')
-    trialAtts = relationship('TrialAtt')
+    trialProperties = relationship('TrialProperty')
 
     def addOrGetNode(self, row, col):
         try:
@@ -331,7 +331,7 @@ def oneException2None(func):
 
 
 #
-# TrialAtt
+# TrialProperty
 # Table for trial attributes.
 # NB: what attributes are available to be set are hard-coded into the software.
 # Users may change the values of the hardcoded set, but not create new attributes.
@@ -347,8 +347,8 @@ def oneException2None(func):
 # the tables. But we don't have that attow. On the other hand, a table hardcoded in the
 # software isn't necessarily any harder to adjust.
 # MFK - would be better named TrialProperty
-class TrialAtt(DeclarativeBase):
-    __tablename__ = 'trialAtt'
+class TrialProperty(DeclarativeBase):
+    __tablename__ = 'trialProperty'
     __table_args__ = {}
 
     #column definitions:
@@ -366,8 +366,8 @@ class TrialAtt(DeclarativeBase):
     def getPropertyValue(dbc, trialId, propName):
     # Return dictionary providing value to caption map for specified trait.
     # The trait should be categorical, if not empty map will be returned, I think.
-        return dbc.query(TrialAtt).filter(
-                and_(TrialAtt.trial_id == trialId, TrialAtt.name == propName)
+        return dbc.query(TrialProperty).filter(
+                and_(TrialProperty.trial_id == trialId, TrialProperty.name == propName)
                 ).one().value
 
 
