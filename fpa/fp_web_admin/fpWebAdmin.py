@@ -396,11 +396,12 @@ def dataNavigationContent(sess):
     trials = GetTrials(sess)
     trialListHtml = "No trials yet" if len(trials) < 1 else ""
     for t in trials:
-        trialListHtml += "<li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+        trialListHtml += "\n  <li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
     nc += "<h2>Trials:</h2>"
     nc += trialListHtml + HtmlButtonLink("Create New Trial", url_for("newTrial"))
     nc += '<hr>'
     nc += HtmlButtonLink("Download app", url_for("downloadApp"))
+    nc += HtmlButtonLink("App User Guide", 'https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub')
     nc += '<hr>'
     nc += '<a href="{0}">System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
     return nc
@@ -527,17 +528,49 @@ def getAttributeColumns(sess, trialId, attList):
 def htmlDataTableMagic(tableId):
 #----------------------------------------------------------------------------
 # Html required to have a datatable table work, pass in the dom id
+#
     r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    r += '<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r += '<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
-    r += """<script>
-    $(document).ready(function() {{
-        $("#{0}").dataTable( {{
-            "fnInitComplete": function(oSettings, json) {{$("#{0}").show();}}
-          }});
-    }});
+    r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+
+    # We need to initialize the jquery datatable, but also a bit of hacking
+    # to set the width of the page. We use the datatables scrollX init param
+    # to get a horizontal scroll on the table, but it seems very hard in css to
+    # get the table to fill the available screen space and not have the right
+    # hand edge invisible off to the right of the page. You can set the width
+    # of the dataTables_wrapper to a fixed amount and that works, but doesn't
+    # reflect the actual window size. If you set the width to 100%, it just doesn't
+    # work - partly it seems because we are using css tables (i.e. if I try the
+    # same code NOT in these tables 100% does work. So we are doing here at the moment
+    # is to (roughly) set the trialData_wrapper width to the appropriate size
+    # after the datatable is initialized and hook up a handler to redo this whenever
+    # the screen is resized. Not very nice or future proof, but it will have to do for
+    # the moment..
+
+    r += """
+    <script>
+    function setTrialDataWrapperWidth() {
+        var w = window;
+        var c = $(".dataContent").width();
+        var leftBarWidth = $("#dataLeftBar").width();
+        var setWidthTo = w.innerWidth - leftBarWidth - 60;
+        //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
+        document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
+    }
+
+    $(document).ready(
+        function() {
+            $("#%s").dataTable( {
+              "fnInitComplete": function(oSettings, json) {$("#%s").show();},
+              "scrollX": true
+            });
+            setTrialDataWrapperWidth();
+            window.addEventListener('resize', setTrialDataWrapperWidth);
+        }
+    );
     </script>
-    """.format(tableId)
+    """ % (tableId, tableId)
+
     return r
 
 
@@ -661,7 +694,8 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     HROWSTART = '<thead><th>' if table else ''
     HROWEND = '</th></thead>\n' if table else '\n'
     # MFK unify with browseData (for attributes
-    r = '<table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">' if table else ''
+    #r = '<table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">' if table else ''
+    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" >' if table else ''
 
     # Headers:
     r += HROWSTART
