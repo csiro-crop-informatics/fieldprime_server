@@ -509,6 +509,7 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 # In either case, we need the id.
 # Note how trait instances from different devices are handled
 # Trait instances are uniquely identified by trial/trait/seqNum/sampleNum and token.
+    util.flog("GetOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum, dayCreated, token))
     tiSet = dbc.query(TraitInstance).filter(and_(
             TraitInstance.trait_id == traitID,
             TraitInstance.trial_id == trialID,
