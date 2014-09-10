@@ -344,6 +344,10 @@ def htmlTrialData(sess, trial):
 
 
 class htmlChunkSet:
+#-----------------------------------------------------------------------
+# Class to manage a page made of separate "chunks", these can be
+# displayed either as tabs or as fieldsets.
+#
     def __init__(self):
         self.chunks = []
 

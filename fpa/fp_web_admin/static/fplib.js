@@ -1,5 +1,32 @@
+/*
+ * Create fplib object: A single global variable to hold all the
+ * bits and pieces we need access to globally. In a single object
+ * so as not to pollute the global namespace too much.
+ */
 var fplib = {};
 
+
+/*
+ * initTabs()
+ * parameter tabListId should be the id of a UL element containing links
+ * for the desired tabs. Each LI should be an anchor for the relevant div
+ * on the page.
+ * Note there is a section in fpStyle.css for styling the tabs. Unfortunately
+ * It seems to be assuming that tabListId is "tabs".
+ * Perhaps we should be adding the style directly in this func..
+
+ something like:
+
+var css='table td:hover{background-color:#00ff00}';
+style=document.createElement('style');
+if (style.styleSheet)
+    style.styleSheet.cssText=css;
+else
+    style.appendChild(document.createTextNode(css));
+document.getElementsByTagName('head')[0].appendChild(style);
+
+
+ */
 fplib.initTabs = function (tabListId) {
     var tabLinks = {};
     var contentDivs = {};
@@ -50,6 +77,7 @@ fplib.initTabs = function (tabListId) {
     for (i = 0; i < tabListItems.length; i++ ) {
       if (tabListItems[i].nodeName == "LI") {
         var tabLink = getFirstChildWithTagName(tabListItems[i], 'A');
+        //tabLink.style.backgroundColor = "red";    // example of setting style..
         id = getHash(tabLink.getAttribute('href'));
         tabLinks[id] = tabLink;
         contentDivs[id] = document.getElementById(id);
@@ -64,9 +92,9 @@ fplib.initTabs = function (tabListId) {
     }
 
     var currTab;
-    if (window.sessionStorage){
+    if (window.sessionStorage) {
       currTab=sessionStorage.getItem("currTrialPageTab");
-      fplib.currTab = currTab
+      fplib.currTab = currTab;
     }
     setTab(currTab);
 };
