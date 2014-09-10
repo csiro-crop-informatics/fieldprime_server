@@ -3,7 +3,7 @@
 #
 #
 
-import os, sys, re
+import os, sys, re, traceback
 import zipfile, ntpath
 import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
@@ -53,6 +53,19 @@ LOGIN_TIMEOUT = 1500          # Idle time before requiring web user to login aga
 
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
+
+@app.errorhandler(500)
+def internalError(e):
+#-------------------------------------------------------------------------------
+# Trap for Internal Server Errors, these are typically as exception raised
+# due to some problem in code or database. We log the details. Possibly should
+# try to send an email (to me I guess) to raise the alarm..
+#
+    util.flog('internal error:')
+    util.flog(e)
+    util.flog(traceback.format_exc())
+    return 'FieldPrime: Internal Server Error'
+
 
 def getMYSQLDBConnection(sess):
 #-------------------------------------------------------------------------------
@@ -1023,7 +1036,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
         return 'Not a photo trait'
     data = dbUtil.getTraitInstanceData(sess, traitInstanceId)
     try:
-        with zipfile.ZipFile(archiveFileName, 'w') as myzip:  # MFK xxx how to return false on error, exception handler?
+        with zipfile.ZipFile(archiveFileName, 'w') as myzip:
             for d in data:
                 # Add all the photos in the traitInstance to the archive
                 fname = models.photoFileName(sess.GetUser(),
@@ -1155,19 +1168,6 @@ def urlMain():
 
 
 ##############################################################################################################
-def xxx():
-    print 'xxx'
-    print app.config['SESS_FILE_DIR']
-
-def LogDebug(hdr, text):
-#-------------------------------------------------------------------------------------------------
-# Writes stuff to file system (for debug) - not routinely used..
-    f = open('/tmp/fieldPrimeDebug','a')
-    print >>f, "--- " + hdr + ": ---"
-    print >>f, text
-    print >>f, "------------------"
-    f.close
-
 
 # For local testing:
 if __name__ == '__main__':

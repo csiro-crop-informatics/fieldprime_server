@@ -626,7 +626,6 @@ def AddNodeNotes(dbc, token, notes):
 
     qry = qry[:-1] # Remove last comma
     # call sql to do multi insert:
-    # if gdbg: LogDebug("sql qry", qry)
     dbc.bind.execute(qry)
     return None;
 
@@ -703,13 +702,3 @@ def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
 
-
-
-# def LogDebug(hdr, text):
-# #-------------------------------------------------------------------------------------------------
-# # Writes stuff to file system (for debug)
-#     from datetime import datetime
-#     f = open('/tmp/fieldPrimeDebug','a')
-#     print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
-#     print >>f, text
-#     f.close

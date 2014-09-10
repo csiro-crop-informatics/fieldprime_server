@@ -96,6 +96,17 @@ def fpLog(app, msg):
     except Exception, e:
         pass
 
+# Old way:
+# def LogDebug(hdr, text):
+# #-------------------------------------------------------------------------------------------------
+# # Writes stuff to file system (for debug) - not routinely used..
+#     f = open('/tmp/fieldPrimeDebug','a')
+#     print >>f, "--- " + hdr + ": ---"
+#     print >>f, text
+#     print >>f, "------------------"
+#     f.close
+
+
 ### End Logging ################################################################
 ################################################################################
 

@@ -115,7 +115,7 @@ def get_trial(username, trl, dbc):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
 #
-    LogDebug('get_trial', 'start')
+    #util.flog('get_trial: start')
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
 
@@ -140,7 +140,7 @@ def get_trial(username, trl, dbc):
     jtrl['serverToken'] = servToken
 
     # Node Attribute descriptors:
-    LogDebug('get_trial', 'pre attributes')
+    #util.flog('get_trial: pre attributes')
     attDefs = []
     for att in trl.tuAttributes:
         tua = {}
@@ -161,7 +161,7 @@ def get_trial(username, trl, dbc):
     jtrl['nodeAttributes'] = attDefs
 
     # Nodes:
-    LogDebug('get_trial', 'pre nodes')
+    #util.flog('get_trial: pre nodes')
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
     jtrl['numTrialUnit'] = len(trl.nodes)   # MFK check if no trial units this is zero, not null
@@ -197,7 +197,7 @@ def get_trial(username, trl, dbc):
     jtrl['trialUnits'] = tuList
 
     # Traits:
-    LogDebug('get_trial', 'pre traits')
+    #util.flog('get_trial: pre traits')
     traitList = []
     traitFieldNames = ['id', 'sysType', 'caption', 'description', 'type']
     for trt in trl.traits:
@@ -493,16 +493,6 @@ def JsonErrorResponse(errMsg):
 # Returns Response with error message in JSON ('error' key)
 #
     return Response(json.dumps({'error':errMsg}), mimetype='application/json')
-
-
-def LogDebug(hdr, text):
-#-------------------------------------------------------------------------------------------------
-# Writes stuff to file system (for debug)
-    if gdbg:
-        f = open('/tmp/fieldPrimeDebug','a')
-        print >>f, "--- " + str(datetime.now()) + " " + hdr + ": -------------------"
-        print >>f, text
-        f.close
 
 
 #-------------------------------------------------------------------------------------------------
