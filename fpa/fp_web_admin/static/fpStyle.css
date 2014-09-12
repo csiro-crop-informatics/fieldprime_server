@@ -410,6 +410,7 @@ margin-left:10px;
 
 
 /*** Tabs: ********************************************************************/
+/* Now all done from java script, except the hover, which we don't really need
 /*body { font-size: 80%; font-family: 'Lucida Grande', Verdana, Arial, Sans-Serif; }*/
 /*
 ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
@@ -452,19 +453,20 @@ div.tabContent.hide { display: none; }
 }
 
 */
+/*
 ul#tabs {
     list-style-type: none;
     white-space: nowrap;
     margin: 30px 0 0 0;
     padding: 0 0 0.3em 0;
 }
+/*
 ul#tabs > li {
-    min-width: 120px;
+    //min-width: 120px;
     display: inline-block;
-    color: yellow;
-    background-color: red;
     margin: 0;
 }
+/*
 ul#tabs li a {
     color: #42454a;
     min-width: 120px;
@@ -478,6 +480,7 @@ ul#tabs li a {
     margin: 0;
 }
 ul#tabs li a:hover { background-color: #f1f0ee; }
+
 ul#tabs li a.selected {
     color: #000;
     background-color: #f1f0ee;
@@ -485,6 +488,7 @@ ul#tabs li a.selected {
     padding: 0.7em 0.3em 0.38em 0.3em;
     //padding: 0.3em;
 }
+
 div.tabContent {
     border: 1px solid #c9c3ba;
     padding: 0.5em;
@@ -492,5 +496,5 @@ div.tabContent {
 div.tabContent.hide {
     display: none;
 }
-
+*/
 /******************************************************************************/
