@@ -37,7 +37,7 @@ create table trial(
 -- change this if necessary, but note some code, attow, relies
 -- on this property and would need changing if this changed.
 --
-create table trialAtt(
+create table trialProperty(
   trial_id    integer not null,
   name        varchar(63) not null,
   value       text,
