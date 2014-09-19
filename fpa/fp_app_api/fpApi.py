@@ -6,7 +6,7 @@
 from flask import Flask, request, Response, url_for
 import simplejson as json
 
-import os, sys, time
+import os, sys, time, traceback
 from datetime import datetime
 from functools import wraps
 from werkzeug import secure_filename
@@ -48,6 +48,17 @@ gdbg = False  # Switch for logging to file
 
 ##################################################################################################
 
+@app.errorhandler(500)
+def internalError(e):
+#-------------------------------------------------------------------------------
+# Trap for Internal Server Errors, these are typically as exception raised
+# due to some problem in code or database. We log the details. Possibly should
+# try to send an email (to me I guess) to raise the alarm..
+#
+    util.flog('internal error:')
+    util.flog(e)
+    util.flog(traceback.format_exc())
+    return 'FieldPrime: Internal Server Error'
 
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
