@@ -283,26 +283,36 @@ class Trial(DeclarativeBase):
 
     def getTraitInstances(self):
     #-----------------------------------------------------------------------
-    # Return all the traitInstances for this trial, ordered by trait, token, seqnum, samplenum.
-    # So traitInstances in the same scoreSet are contiguous.
+    # Return all the traitInstances for this trial, ordered by trait, token, seqnum,
+    # dayCreate, samplenum. So traitInstances in the same scoreSet are contiguous.
+    # NB sorting by dayCreated shouldn't be necessary, but is temporarily needed
+    # - see comment on getScoreSets().
         session = Session.object_session(self)
         return session.query(TraitInstance).filter(
             TraitInstance.trial_id == self.id).order_by(
-            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
+            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum,
+            TraitInstance.dayCreated, TraitInstance.sampleNum).all()
 
     def getScoreSets(self):
     #----------------------------------------------------------------------------------------------------
     # Returns list of ScoreSets for this trial.
+    # NB the use of dayCreated in the comparison shouldn't be necessary, but it is at the moment
+    # for a fix we have for a bug in the app where a scoreset made after deleting a scoreset (of the
+    # same trait) could cause an overwrite of the first scoreset on the server. This now fixed,
+    # but using dayCreated catches most instances of this. When all clients are upgraded, this
+    # can go.
         scoreSets = []
         tiList = self.getTraitInstances()
         lastSeqNum = -1
         lastTraitId = -1
         lastToken = 'x'
+        lastDayCreated = -1
         for ti in tiList:   # Note we have assumptions about ordering in tiList here
             traitId = ti.trait_id
             seqNum = ti.seqNum
             token = ti.token
-            if seqNum != lastSeqNum or traitId != lastTraitId or token != lastToken:
+            dayCreated = ti.dayCreated
+            if seqNum != lastSeqNum or traitId != lastTraitId or token != lastToken or dayCreated != lastDayCreated:
                 # First ti in a new scoreSet, create and add the ScoreSet:
                 nss = ScoreSet(traitId, seqNum, token)
                 scoreSets.append(nss)

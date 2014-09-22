@@ -537,7 +537,6 @@ if __name__ == '__main__':
     # Setup logging:
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
     util.initLogging(app, True)  # Specify print log messages
-    util.flog("calling flog")
 
     app.run(debug=True, host='0.0.0.0')
 

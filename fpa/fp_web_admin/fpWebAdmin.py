@@ -578,15 +578,27 @@ def htmlDataTableMagic(tableId):
     $(document).ready(
         function() {
             $("#%s").dataTable( {
-              "fnInitComplete": function(oSettings, json) {$("#%s").show();},
-              "scrollX": true
+                "scrollX": true,
+
+                "fnPreDrawCallback":function(){
+                    $("#%s").hide();
+                    //$("#loading").show();
+                    //alert("Pre Draw");
+                },
+                "fnDrawCallback":function(){
+                    $("#%s").show();
+                    //$("#loading").hide();
+                    //alert("Draw");
+                },
+
+                "fnInitComplete": function(oSettings, json) {$("#%s").show();}
             });
             setTrialDataWrapperWidth();
             window.addEventListener('resize', setTrialDataWrapperWidth);
         }
     );
     </script>
-    """ % (tableId, tableId)
+    """ % (tableId, tableId, tableId, tableId)
 
     return r
 
@@ -711,8 +723,8 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     HROWSTART = '<thead><th>' if table else ''
     HROWEND = '</th></thead>\n' if table else '\n'
     # MFK unify with browseData (for attributes
-    #r = '<table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">' if table else ''
-    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" >' if table else ''
+    #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if table else ''
+    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%">' if table else ''
 
     # Headers:
     r += HROWSTART
@@ -1185,7 +1197,6 @@ if __name__ == '__main__':
     # Setup logging:
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
     util.initLogging(app, True)  # Specify print log messages
-    util.flog("calling flog")
 
     app.run(debug=True, host='0.0.0.0', port=5001)
 

@@ -21,7 +21,6 @@ class formElement:
     RADIO = 2
 
     def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype=TEXT, typeSpecificData=None):
-        print 'text {0}'.format(etype)
         self.prompt = prompt
         self.subPrompt = subPrompt
         self.ename = ename
@@ -51,7 +50,6 @@ class formElement:
         # newTrial.html has the trial attributes that are in all trials.
         # NB Javascript validation function is also in newTrial.html
         #
-        print 'text {0}'.format(self.etype)
         element = ''
         if self.etype == self.TEXT:
             element = '''
