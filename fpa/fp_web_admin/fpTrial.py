@@ -5,7 +5,7 @@
 #
 
 
-import sys, os
+import sys, os, traceback
 import sqlalchemy
 from flask import render_template
 import fpUtil
@@ -68,15 +68,25 @@ def ParseNodeCSV(f):
     # Check node lines:
     line = f.readline()
     rowNum = 2
+    rowColSet = set()
     while line:
         flds = line.strip().split(',')
         if not len(flds) == numFields:
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
             err += "Bad line was: " + line
             return {'error':err}
-        if not (flds[fixIndex[ATR_ROW]].isdigit and flds[fixIndex[ATR_COL]].isdigit):
+        srow = flds[fixIndex[ATR_ROW]]
+        scol = flds[fixIndex[ATR_COL]]
+        if not (srow.isdigit() and scol.isdigit()):
             return {'error':"Error - row or col field is not integer, line {0}, aborting".format(rowNum)}
-        #print line + "<br>"
+
+        # check for duplicates:
+        nrow = int(srow)
+        ncol = int(scol)
+        if (nrow, ncol) in rowColSet:
+            return {'error':"Error - duplicate row/column pair, line {0}, aborting".format(rowNum)}
+        rowColSet.add((nrow, ncol))
+
         rowNum += 1
         line = f.readline()
 
@@ -87,11 +97,11 @@ def ParseNodeCSV(f):
 def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
-# Return Trial object on success, string error message.
+# Return Trial object, None on success, else None, string error message.
 #
     db = sess.DB()
+    # Create trial:
     try:
-        # Create trial:
         ntrial = Trial()
         ntrial.name = tname
         ntrial.site = tsite
@@ -99,13 +109,17 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         ntrial.acronym = tacro
         db.add(ntrial)
         db.commit()
-        res = updateTrialFile(sess, f, ntrial.id)
-        if res is not None and 'error' in res:
-            deleteTrial(sess, ntrial.id)   # delete the new trial if some error
-            return res['error']
     except sqlalchemy.exc.SQLAlchemyError as e:
-        return {'error':"Database error ({0})".format(e.orig.args)}
-    return ntrial
+        print 'uploadTrialFile e2'
+        deleteTrial(sess, ntrial.id)
+        return (None, "Database error ({0})".format(e.__str__()))
+
+    # Add trial details from csv:
+    res = updateTrialFile(sess, f, ntrial)
+    if res is not None and 'error' in res:
+        deleteTrial(sess, ntrial.id)   # delete the new trial if some error
+        return (None, res['error'])
+    return ntrial, None
 
 def deleteTrial(sess, trialId):
 #-----------------------------------------------------------------------
@@ -116,7 +130,7 @@ def deleteTrial(sess, trialId):
     db.commit()
     return None
 
-def updateTrialFile(sess, trialCsv, trialId):
+def updateTrialFile(sess, trialCsv, trl):
 #-----------------------------------------------------------------------
 # Update trial data according to csv file trialCsv.
 # The trial should already exist. First line is headers,
@@ -144,7 +158,7 @@ def updateTrialFile(sess, trialCsv, trialId):
 # values will match. This precludes having columns with names only
 # differing in case.
 #
-    # Check trial units csv file:
+    # Check csv file:
     tuFileInfo = ParseNodeCSV(trialCsv)  # Ideally need version that checks trial units, should we allow new ones?
     if 'error' in tuFileInfo:
         return tuFileInfo
@@ -152,29 +166,28 @@ def updateTrialFile(sess, trialCsv, trialId):
     attIndex = tuFileInfo['attIndex']
 
     dbSess = sess.DB()
+    # Add (new) node attributes, create/fill attExists, nodeAtts:
     try:
-        trl = dbUtil.GetTrial(sess, trialId)
-
-        # Add attributes:
-        currAtts = dbUtil.getNodeAttributes(sess, trialId)
-        tuaObs = []
+        currAtts = dbUtil.getNodeAttributes(sess, trl.id)
+        nodeAtts = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
         for at in attIndex.keys():
             # Does this attribute already exist?
-            tua = None
+            nodeAtt = None
             for cat in currAtts:
                 if cat.name.upper() == at.upper():
-                    tua = cat
+                    nodeAtt = cat
                     break
-            attExists.append(tua is not None)
-            if tua is None:
-                tua = NodeAttribute()
-                tua.trial_id = trl.id
-                tua.name = at
-                dbSess.add(tua)
-            tuaObs.append(tua)
+            attExists.append(nodeAtt is not None)
+            if nodeAtt is None:
+                nodeAtt = NodeAttribute()
+                nodeAtt.trial_id = trl.id
+                nodeAtt.name = at
+                dbSess.add(nodeAtt)
+            nodeAtts.append(nodeAtt)
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"DB error adding nodeAttribute ({0})".format(e.orig.args)}
+
     try:
         # Iterate thru the nodes (each line is assumed to be a node):
         trialCsv.seek(0,0)
@@ -183,36 +196,31 @@ def updateTrialFile(sess, trialCsv, trialId):
         while line:
             flds = line.strip().split(',')
             # Get or create the node (specified by row/col):
-            tu = trl.addOrGetNode(flds[fixIndex[ATR_ROW]], flds[fixIndex[ATR_COL]])
-            if tu is None:
+            # MFK if duplicate row col?
+            node = trl.addOrGetNode(flds[fixIndex[ATR_ROW]], flds[fixIndex[ATR_COL]])
+            if node is None:
                 out = "Problem getting or creating node: row" + str(flds[fixIndex[ATR_ROW]]) + " col " + str(flds[fixIndex[ATR_COL]])
                 return {'error':out}
 
             # Update fixed node attributes in the node struct:
-            if ATR_BAR in fixIndex.keys(): tu.barcode = flds[fixIndex[ATR_BAR]]
-            if ATR_DES in fixIndex.keys(): tu.description = flds[fixIndex[ATR_DES]]
-            if ATR_LAT in fixIndex.keys(): tu.latitude = flds[fixIndex[ATR_LAT]]
-            if ATR_LON in fixIndex.keys(): tu.longitude = flds[fixIndex[ATR_LON]]
+            if ATR_BAR in fixIndex.keys(): node.barcode = flds[fixIndex[ATR_BAR]]
+            if ATR_DES in fixIndex.keys(): node.description = flds[fixIndex[ATR_DES]]
+            if ATR_LAT in fixIndex.keys(): node.latitude = flds[fixIndex[ATR_LAT]]
+            if ATR_LON in fixIndex.keys(): node.longitude = flds[fixIndex[ATR_LON]]
 
             # add attributes:
             for ind, attName in enumerate(attIndex.keys()):
                 errMsg = 'Error adding {1} attribute {0}:'.format(attName, 'existing' if str(attExists[ind]) else 'new')
-                tua = tuaObs[ind]
+                nodeAtt = nodeAtts[ind]
                 newValue = flds[attIndex[attName]].strip() # get value minus surrounding whitespace
 
                 # Get existing attributeValue if it exists.
                 # If it does and newValue is empty then delete it.
-                av = None
-                if attExists[ind]:
-                    try:
-                        av = dbUtil.getAttributeValue(sess, tu.id, tua.id)
-                    except Exception as e:
-                            errMsg += " tua:" + str(tua.id) + " tuid:" + str(tu.id)
-                            return {'error':("Missing attribute: " + errMsg)}
-                    if av is not None and not newValue:
-                        # If there is existing record, but new value is empty, then delete existing record:
-                        dbSess.delete(av)
-                        continue
+                av = dbUtil.getAttributeValue(sess, node.id, nodeAtt.id)
+                if av is not None and not newValue:
+                    # If there is existing record, but new value is empty, then delete existing record:
+                    dbSess.delete(av)
+                    continue
 
                 if not newValue:  # don't add empty value
                     continue
@@ -221,13 +229,11 @@ def updateTrialFile(sess, trialCsv, trialId):
                 if av is None:
                     # Set up new attribute value:
                     av = AttributeValue()
-                    av.nodeAttribute = tua
-                    av.node = tu
+                    av.nodeAttribute = nodeAtt
+                    av.node = node
                     dbSess.add(av)
 
                 av.setValueWithTypeUpdate(newValue)  # set the value
-#                 if not attExists[ind]:   # Add to db, if new
-#                     dbSess.add(av)
 
             line = trialCsv.readline()
         dbSess.commit()

@@ -60,8 +60,7 @@ class formElement:
             element += '<div class="uifDiv">'
             for key in self.typeSpecificData:
                 val = self.typeSpecificData[key]
-                print 'val {0} value {1} equal {2} {3} {4}'.format(val, value,
-                    'yes' if val==value else 'no', type(val), type(value))
+                #print 'val {0} value {1} equal {2} {3} {4}'.format(val, value, 'yes' if val==value else 'no', type(val), type(value))
                 element += '<input class="nostyle" type="radio" name="{0}" value="{1}" {2}>{3}'.format(
                     self.ename, val, 'checked' if val == value else '', key)
             element += '</div>'

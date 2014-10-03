@@ -121,20 +121,6 @@ def getAttributeValue(sess, nodeId, nodeAttributeId):
 def GetAttributeValues(sess, nodeAttributeId):
     return sess.DB().query(AttributeValue).filter(AttributeValue.nodeAttribute_id == nodeAttributeId).all()
 
-# def GetNode(sess, trialId, row, col):
-#     return sess.DB().query(Node).filter(and_(Node.trial_id == trialId, Node.row == row, Node.col == col)).one()
-
-def addOrGetNode(sess, trialId, row, col):
-# Retrieve node for specified trial/row/col, creating a new one
-# if not already present.
-    try:
-        tu = sess.DB().query(Node).filter(and_(Node.trial_id == trialId, Node.row == row,
-                                                  Node.col == col)).one()
-    except sqlalchemy.orm.exc.NoResultFound:
-        return None
-    except sqlalchemy.orm.exc.MultipleResultsFound:
-        return None
-
 def GetDatum(sess, node_id, traitInstance_id):
     return sess.DB().query(Datum).filter(and_(Datum.node_id == node_id, Datum.traitInstance_id == traitInstance_id)).all()
 

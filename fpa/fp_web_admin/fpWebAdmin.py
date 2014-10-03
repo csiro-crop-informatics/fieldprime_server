@@ -507,11 +507,11 @@ def newTrial(sess):
         return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
     if request.method == 'POST':
         uploadFile = request.files['file']
-        trl = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
+        trl, errMsg = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
         # Handle error (trl will be string error message):
-        if type(trl) is str:
-            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = trl, extraElements=extras)
+        if trl is None:
+            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = errMsg, extraElements=extras)
         #
         # All good. Trial created. Set extra trial attributes.
         # MFK in general we will need insert or update (merge)
@@ -657,7 +657,7 @@ def getDataColumns(sess, trialId, tiList):
     where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
     order by row, col
     """
-    print qry
+    #print qry
     outList = []
     for ti in tiList:
         # If trait type is categorical then the values will be numbers which should be
@@ -886,7 +886,7 @@ def urlAttributeUpload(sess, trialId):
 
     if request.method == 'POST':
         uploadFile = request.files['file']
-        res = fpTrial.updateTrialFile(sess, uploadFile, trialId)
+        res = fpTrial.updateTrialFile(sess, uploadFile, dbUtil.GetTrial(sess, trialId))
         if res is not None and 'error' in res:
             return dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
         else:
