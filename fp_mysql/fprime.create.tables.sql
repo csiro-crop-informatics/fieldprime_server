@@ -64,7 +64,6 @@ create table node(
   barcode     text,
   latitude    DOUBLE,
   longitude   DOUBLE,
-  UNIQUE uc_trialrowcol (trial_id, row, col),
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
