@@ -64,7 +64,7 @@ def internalError(e):
     util.flog('internal error:')
     util.flog(e)
     util.flog(traceback.format_exc())
-    return 'FieldPrime: Internal Server Error'
+    return 'FieldPrime: Internal Server Error <br />{}::{}'.format(app.config['SESS_FILE_DIR'], traceback.format_exc())
 
 
 def getMYSQLDBConnection(sess):
@@ -146,8 +146,8 @@ def htmlTrialTraitTable(trial):
 # Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
         return "No traits configured"
-    out = "<table border='1'>"
-    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
+    out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
+    out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format( 
         "Caption", "Description", "Type", "Details")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
@@ -203,8 +203,8 @@ def htmlNodeAttributes(sess, trialId):
     if len(attList) < 1:
         out += "No attributes found"
     else:
-        out = "<table border='1'>"
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
+        out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
+        out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format(
             "Name", "Datatype", "Values")
         for att in attList:
             valuesButton = HtmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
@@ -217,7 +217,7 @@ def htmlNodeAttributes(sess, trialId):
     out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrial", trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.HtmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -318,7 +318,7 @@ def htmlTrialData(sess, trial):
 #     </script>
 #     """
 #     jscript += jq1 + jq
-    #MFK perhaps instead of a multi select list we should have checkboxes. Contents of list are not dynamically
+    #MFK perhaps instead of a multi select list we should have checkboxes. Contents of list are not dynamically 
     # determined and checkboxes look nicer and are easier to use.
 
     dl = ""
@@ -332,13 +332,13 @@ def htmlTrialData(sess, trial):
     dl += "<option value='notes' selected='selected'>Notes</option>"
     dl += "<option value='attributes' selected='selected'>Attributes</option>"
     dl += "</select>"
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
-    dl +=     "<button>Download Trial Data</button></a>"
-    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
-    dl +=     "View tab separated score data</a>"
-    dl += "<br>Note data is TAB separated"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
+    dl +=     "<button>Download Trial Data</button></a><br />"
+    dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+    dl += "<p><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
+    dl +=     "<button>View tab separated score data</button></a><br />"
+    dl += "<span style='font-size: smaller;'>Note data is TAB separated"
+    dl += "<p><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
     dl +=     "<button>Browse Trial Data</button></a>"
     return dl
 
@@ -388,7 +388,7 @@ def TrialHtml(sess, trialId):
     hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
     hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
     hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
-    return '<h2>{0}</h2>'.format(trial.name) + hts.htmlTabs()
+    return '<h2>Trial: {0}</h2>'.format(trial.name) + hts.htmlTabs()
 
 
 def trialPage(sess, trialId):
@@ -406,21 +406,25 @@ def dataNavigationContent(sess):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1>User {0}</h1>".format(sess.GetUser())
-    nc += '<a href="{0}">Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
-    nc += '<hr clear="all">'
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}.</h1>".format(sess.GetUser())
+    nc += '<div style="float:right; margin-top:10px">'
+    nc += '<a href="{0}">Profile/Passwords.</a>'.format(url_for('urlUserDetails', userName=g.userName))
+    nc += '<a href="{0}">System Traits.</a>'.format(url_for('urlSystemTraits', userName=g.userName))
+    nc += '<a href="{0}">Create New Trial.</a>'.format(url_for("newTrial"))
+    nc += '<a href="{0}">Download App.</a>'.format(url_for("downloadApp"))
+    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">App User Guide.</a>'
+    nc += '</div><div style="clear:both"></div>' 
 
     trials = GetTrials(sess)
-    trialListHtml = "No trials yet" if len(trials) < 1 else ""
+    trialListHtml = None if len(trials) < 1 else "" 
     for t in trials:
         trialListHtml += "\n  <li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-    nc += "<h2>Trials:</h2>"
-    nc += trialListHtml + HtmlButtonLink("Create New Trial", url_for("newTrial"))
-    nc += '<hr>'
-    nc += HtmlButtonLink("Download app", url_for("downloadApp"))
-    nc += HtmlButtonLink("App User Guide", 'https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub')
-    nc += '<hr>'
-    nc += '<a href="{0}">System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
+
+    if trialListHtml:
+        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+        nc += "<h2>Trials:</h2>"
+        nc += trialListHtml
+        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
     return nc
 
 
@@ -617,7 +621,7 @@ def urlBrowseTrial(sess, trialId):
 
     # generate html table of the trial data:
     r = htmlDataTableMagic('trialData')
-    r += '<p><table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">'
+    r += '<p><table class="fptable" id="trialData" class="display" cellspacing="0" width="100%" style="display: none">'
     hdrs = '<th>Row</th><th>Column</th>'
     for att in attList:
         hdrs += '<th>{0}</th>'.format(att.name)
@@ -724,7 +728,7 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     HROWEND = '</th></thead>\n' if table else '\n'
     # MFK unify with browseData (for attributes
     #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if table else ''
-    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%">' if table else ''
+    r = '\n<table class="fptable" id="trialData" class="display" cellspacing="0" width="100%">' if table else ''
 
     # Headers:
     r += HROWSTART
@@ -898,8 +902,8 @@ def urlAttributeDisplay(sess, trialId, attId):
     tua = dbUtil.GetAttribute(sess, attId)
     r = "Attribute {0}".format(tua.name)
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
-    r += "<p><table border='1'>"
-    r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
+    r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
+    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Row", "Column", "Value")
     aVals = dbUtil.GetAttributeValues(sess, attId)
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
@@ -1011,7 +1015,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
-    r += "<p><table border='1'>"
+    r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
     r += "<tr><th>Row</th><th>Column</th><th>Value</th><th>User</th><th>Time</th><th>Latitude</th><th>Longitude</th></tr>"
     for d in data:
         if typ == T_PHOTO:  # Special case for photos. Display a link to show the photo.

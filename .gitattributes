@@ -17,6 +17,15 @@ fpa/fp_web_admin/fpTrait.py -text
 fpa/fp_web_admin/fpTrial.py -text
 fpa/fp_web_admin/fpUtil.py -text
 fpa/fp_web_admin/fpWebAdmin.py -text
+fpa/fp_web_admin/static/css/images/ajax-loader.gif -text
+fpa/fp_web_admin/static/css/images/csiro-logo.png -text
+fpa/fp_web_admin/static/css/images/dark-blue-banner.png -text
+fpa/fp_web_admin/static/css/images/favicon.png -text
+fpa/fp_web_admin/static/css/images/footer-spacer.jpg -text
+fpa/fp_web_admin/static/css/images/grey-gradient.jpg -text
+fpa/fp_web_admin/static/css/images/loading-large.gif -text
+fpa/fp_web_admin/static/css/images/logo.png -text
+fpa/fp_web_admin/static/css/style.css -text
 fpa/fp_web_admin/static/fpIcon.png -text
 fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/static/fplib.js -text

@@ -39,8 +39,8 @@ def TraitListHtmlTable(traitList):
 #
     if len(traitList) < 1:
         return "No traits configured"
-    out = "<table border='1'>"
-    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Caption", "Description", "Type")
+    out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
+    out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Caption", "Description", "Type")
     for trt in traitList:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])

@@ -2,12 +2,12 @@
 
 {% block dataContent %}
 <script src="{{ url_for('static', filename='newTrait.js') }}"></script>
-<h2>Create New {% if trialId == 'sys' %}System{% else %}Trial{% endif %} Trait</h2>
 <div id="attributeData" data-attributes="{{attributesList}}">
   <form enctype="multipart/form-data"
         onsubmit="return ValidateTraitForm()"
         method="post">
     <fieldset>
+      <legend><h3>Create New {% if trialId == 'sys' %}System{% else %}Trial{% endif %} Trait</h3></legend>
       <div class="userInputForm">
         <table>
           <tr>

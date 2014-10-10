@@ -17,7 +17,11 @@ var fplib = {};
 fplib.initTabs = function (tabListId) {
     var tabLinks = {};
     var contentDivs = {};
-    var STORAGE_TAG = "fpCurrTrialPageTab"
+    var STORAGE_TAG = "fpCurrTrialPageTab";
+    var background_color = "#022C38";
+    var color = "#fff";
+    var selected_background_color = "#f00";
+    var selected_color = "#fff";
 
     function setTab(tabId) {
       // store tabId in session storage for retrieval on navigation back to page:
@@ -60,13 +64,14 @@ fplib.initTabs = function (tabListId) {
 
     function styleTabLink(tabLink, selected) {
         tabLink.style.fontWeight = selected ? 'bold' : '';
-        tabLink.style.color = selected ? '#000' : '#42454a';
-        tabLink.style.backgroundColor = selected ? '#f1f0ee' : 'pink';
-        tabLink.style.padding = selected ? '0.7em 0.3em 0.38em 0.3em' : '0.3em';
+        tabLink.style.color = selected ? selected_color : color;
+        tabLink.style.backgroundColor = selected ? selected_background_color : background_color;
+        tabLink.style.padding = selected ? '20px 10px 10px' : '10px';
 
         tabLink.style.minWidth = '120px';
         tabLink.style.display = 'block';
         tabLink.style.border = '1px solid #c9c3ba';
+        tabLink.style.borderRadius = '5px 5px 0 0';
         tabLink.style.borderBottom = 'none';
         tabLink.style.textDecoration = 'none';
         tabLink.style.margin = '0';
@@ -81,7 +86,7 @@ fplib.initTabs = function (tabListId) {
     tabListElement.style.listStyleType = 'none';
     tabListElement.style.whiteSpace = 'nowrap';
     tabListElement.style.margin = '30px 0 0 0';
-    tabListElement.style.padding = '0 0 0.3em 0';
+    tabListElement.style.padding = '0';
 
     // Process the children:
     var tabListItems = tabListElement.childNodes;

@@ -5,21 +5,45 @@ body {
 */
 
 
-button {
-    color:green;
+
+button, input[type=submit], input[type=button] {
+    color: white!important;
+    background-color: #022C38;
+    padding: 5px;
+    border: 1px solid black;
+    border-radius: 5px;
+    text-transform: capitalize;
 }
-input[type=submit] {
-    color:green;
+
+table.fptable, table.fptable tr{
+    border: 1px solid black;
 }
+
+.fptable th{
+    background: #022C38;
+    color: #fff;
+    padding: 10px;
+}
+
+.fptable td{
+    border-top: 1px solid #aaa;
+    padding: 10px;
+}
+
+table.fptable{
+    margin: 20px;
+    border-radius: 5px;
+}
+
 
 /*
  * not_too_wide
  * Eg to limit length of text lines.
- */
+ 
 .not_too_wide {
     max-width: 500px;
 }
-
+*/
 /*** header: *********************************************************
  * Style for the header across the top of all pages.
  */
@@ -71,9 +95,9 @@ input[type=submit] {
 /*------------------------------ CONTENTS ------------------------------*/
 #contents {
 	min-height: 510px;
-	width: 880px;
+	width: 990px;
 	margin: 0 auto;
-	padding: 54px 40px;
+	padding: 30px;
 	list-style: none;
 }
 .date {
@@ -86,6 +110,7 @@ input[type=submit] {
 }
 .date p {
 	margin: 12px 0 0;
+    line-height: normal! important;
 }
 .date p span {
 	display: block;
@@ -97,13 +122,12 @@ input[type=submit] {
 	float: left;
 	background: url(../images/divider.png) repeat-y right top;
 	min-height: 100px;
-	width: 620px;
-	padding-right: 24px;
+	padding: 0 20px 50px 0;
+    margin: 0 20px;
 }
 .main h1, .sidebar h1 {
 	margin: 0 0 12px;
 	position: relative;
-	top: -18px;
 }
 .main h2 span {
 	display: block;
@@ -113,6 +137,7 @@ input[type=submit] {
 /*** news: ********************************/
 .news {
 	list-style: none;
+    padding: 0;
 }
 .news>li {
 	border-top: 1px solid #d5d5d5;
@@ -205,8 +230,7 @@ p a {
 
 
 #about {
-	width: 740px;
-	margin: 0 auto;
+	margin: 0 20px;
 }
 #about h1, .section h1 {
 	border-bottom: 1px solid #e0e0e0;
@@ -275,24 +299,38 @@ p a {
     display: table;  /* Using table so as to get equal column height. */
     /*border: solid 1px*/
     /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
+    min-height: 510px;
+    width: 990px;
+    margin: 0 auto;
+    padding: 30px;
+    list-style: none;
 }
 
 #dataLeftBar {
-    width: 150px;
+    width: 100%;
     min-width: 150px;
-    display: table-cell;
+    /* display: table-cell; */
     vertical-align: top;    /* without this, vertical position is affected by html in
                              * dataContent (when using tables for equal column heights)
                              */
     word-wrap: break-word;
-    background: #eeeeee;
+    /* background: #eeeeee; 
     padding-top: 20px;
-    padding-bottom: 50px;
+    padding-bottom: 50px;*/
     /*float: left; an alternative to tables, but don't get equal column height*/
 }
 
+#dataLeftBar a{
+    margin: 0 4px;
+    /*padding: 5px 10px;
+     background-color: #022C38;
+    color: white;
+    border: 2px solid black;
+    border-radius: 10px;    */
+}
+
 .dataContent {
-    display: table-cell;
+    /* display: table-cell; */
     vertical-align: top;
     width: 100%;
     padding: 15px;
@@ -302,14 +340,20 @@ p a {
 
 .dataContentHelp{
     vertical-align: top;
-    display: table-cell;
-    color:green;
-    background: #ddeedd;
-    width: 250px;
+    color:#fff;
+    background: #eee;
+    width: 950px;
     min-width: 250px;
-    padding-top: 20px;
-    padding-bottom: 50px;
-    padding-left: 10px;
+    padding: 20px;
+    display: block;
+    position: absolute;
+    top: 230px;
+    opacity: 0.9;
+}
+
+fieldset{
+    margin-bottom: 30px;
+    padding: 20px;
 }
 
 /* This is a div containing the help button.
@@ -323,17 +367,19 @@ p a {
                    * just a big value to force the button over to the right.
                    */
     min-width: 250px;
+    padding-bottom: 20px;
+    /*
     padding-top: 20px;
-    padding-left: 10px;
+    padding-left: 10px; */
 }
 
 #helpButton {
-    margin:0px;  /* does nothing */
-    padding: 0px;  /* does nothing */
-    width: 230px;
-    /* width:100%
+    padding: 4px;  /* does nothing */
+    /*width: 230px;
+     width:100%
     height:100%*/
     float:right;
+    background: red;
 }
 
 .dataContentTop {

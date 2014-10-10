@@ -66,4 +66,4 @@ def HtmlButtonLink2(label, click):
 #-----------------------------------------------------------------------
 # This version has the button inside a form, sometimes (eg when within
 # a table cell), this seems to be necessary.
-    return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
+    return "<input type='button' onclick=\"window.location.href='{0}'\" value='{1}' />".format(click, label)
