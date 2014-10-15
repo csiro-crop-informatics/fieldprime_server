@@ -257,7 +257,7 @@ def get_trial(username, trl, dbc):
 
         # Numeric traits (integer and decimal):
         elif trt.type == T_DECIMAL or trt.type == T_INTEGER:
-            # get the trialTraitInteger object, and send the contents
+            # get the trialTraitNumeric object, and send the contents
             ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
             if ttn is not None:
                 val = {}

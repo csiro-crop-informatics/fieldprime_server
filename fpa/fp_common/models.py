@@ -199,14 +199,8 @@ class TraitInstance(DeclarativeBase):
         return count
 
 
-class TrialTraitInteger(DeclarativeBase):
-    __tablename__ = 'trialTraitInteger'
-    max = Column(u'max', INTEGER())
-    min = Column(u'min', INTEGER())
-    cond = Column(u'validation', TEXT())
-    trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
-    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
-
+# class TrialTraitNumeric
+# Validation information specific to a given trial/trait.
 class TrialTraitNumeric(DeclarativeBase):
     __tablename__ = 'trialTraitNumeric'
     max = Column(u'max', DECIMAL(precision=18, scale=9))
@@ -687,17 +681,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     dbc.commit()
     return ntrt, None
 
-
-def GetTrialTraitIntegerDetails(dbc, trait_id, trial_id):
-    tti = dbc.query(TrialTraitInteger).filter(and_(
-            TrialTraitInteger.trait_id == trait_id,
-            TrialTraitInteger.trial_id == trial_id
-            )).all()
-    if len(tti) == 1:
-        ttid = tti[0]
-        return ttid
-    return None
-def GetTrialTraitNumericDetails(dbc, trait_id, trial_id): #replace above with this if poss
+def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
 # Return TrialTraitNumeric for specified trait/trial, or None if none exists.
     tti = dbc.query(TrialTraitNumeric).filter(and_(
             TrialTraitNumeric.trait_id == trait_id,
