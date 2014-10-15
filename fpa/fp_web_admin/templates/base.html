@@ -56,8 +56,8 @@
       <li class="mega-menu" {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
       {% endif %}
                         <li class="mega-menu" {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
-                        <li class="mega-menu" {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-users'></span> About</a></li>
-                        <li class="mega-menu" {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-at'></span> Contact</a></li>
+                        <li class="mega-menu" {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
+                        <li class="mega-menu" {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
                         <li class="mega-menu">
                           {% if loggedIn %}
                             <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
