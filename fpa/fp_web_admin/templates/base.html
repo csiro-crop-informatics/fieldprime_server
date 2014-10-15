@@ -26,8 +26,10 @@
   <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
   <script src="{{ url_for('static', filename='fplib.js') }}"></script>
   <script>{% block javascript %}{% endblock %}</script>
-  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='fpStyle.css') }}">
-  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- Font Awesome for icons -->
+  <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
   <title>{{ title }}</title>
 </head>
 <body>
@@ -46,21 +48,21 @@
                 <div class="menu">
                     <ul>
       {# Add UserData page if use is logged in: #}
-                        <li class="mega-menu"><a href="http://www.csiro.au">CSIRO.au</a></li>
+                        <li class="mega-menu"><a href="http://www.csiro.au" target="_blank"><span class='fa fa-copyright'></span> CSIRO.au</a></li>
       {% if loggedIn %}
     <li class="mega-menu {% if pagename is not defined %} active {% endif %}">
-        <a href={{ url_for('urlUserHome', userName=g.userName) }}>User Data.</a></li>
+        <a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
       {% else %}
-      <li class="mega-menu" {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}">Home. </a></li>
+      <li class="mega-menu" {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
       {% endif %}
-                        <li class="mega-menu" {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}">News.</a></li>
-                        <li class="mega-menu" {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}">About.</a></li>
-                        <li class="mega-menu" {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}">Contact.</a></li>
+                        <li class="mega-menu" {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
+                        <li class="mega-menu" {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-users'></span> About</a></li>
+                        <li class="mega-menu" {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-at'></span> Contact</a></li>
                         <li class="mega-menu">
                           {% if loggedIn %}
-                            <a href="{{ url_for('urlLogout') }}">Log Out.</a>
+                            <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
                           {% else %}
-                            <a href="{{url_for('urlMain')}}">Log In.</a>
+                            <a href="{{url_for('urlMain')}}"><span class='fa fa-sign-in'></span> Log In</a>
                           {% endif %}
                         </li>
                     </ul>

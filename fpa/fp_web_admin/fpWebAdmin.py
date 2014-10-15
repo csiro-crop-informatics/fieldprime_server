@@ -408,11 +408,11 @@ def dataNavigationContent(sess):
 #
     nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}.</h1>".format(sess.GetUser())
     nc += '<div style="float:right; margin-top:10px">'
-    nc += '<a href="{0}">Profile/Passwords.</a>'.format(url_for('urlUserDetails', userName=g.userName))
-    nc += '<a href="{0}">System Traits.</a>'.format(url_for('urlSystemTraits', userName=g.userName))
-    nc += '<a href="{0}">Create New Trial.</a>'.format(url_for("newTrial"))
-    nc += '<a href="{0}">Download App.</a>'.format(url_for("downloadApp"))
-    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">App User Guide.</a>'
+    nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
+    nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
+    nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
+    nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>' 
 
     trials = GetTrials(sess)

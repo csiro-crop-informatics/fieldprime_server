@@ -321,7 +321,8 @@ p a {
 }
 
 #dataLeftBar a{
-    margin: 0 4px;
+    margin: 0 7px;
+    font-size: smaller;
     /*padding: 5px 10px;
      background-color: #022C38;
     color: white;
