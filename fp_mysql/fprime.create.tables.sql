@@ -180,7 +180,7 @@ create table trialTraitInteger(
 
 --
 -- trialTraitNumeric
--- Extension of trialTrait table for intended for decimal traits,
+-- Extension of trialTrait table intended for decimal traits,
 -- but maybe we can use this for integer traits too..
 --
 create table trialTraitNumeric(
@@ -189,6 +189,19 @@ create table trialTraitNumeric(
   min        DECIMAL(18,9),
   max        DECIMAL(18,9),
   validation TEXT,
+  PRIMARY KEY(trial_id, trait_id),
+  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+);
+
+--
+-- trialTraitString
+-- Extension of trialTrait table for string traits,
+--
+create table trialTraitString(
+  trial_id   INT NOT NULL,
+  trait_id   INT NOT NULL,
+  match      TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE

@@ -148,7 +148,6 @@ class Trait(DeclarativeBase):
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     sysType = Column(u'sysType', INTEGER(), nullable=False)
-    #tid = Column(u'tid', TEXT())
     type = Column(u'type', INTEGER(), nullable=False)
 
     #relation definitions
@@ -212,6 +211,15 @@ class TrialTraitNumeric(DeclarativeBase):
         return None if self.min is None else self.min.normalize()   # stripped of unnecessary zeroes
     def getMax(self):
         return None if self.max is None else self.max.normalize()
+
+# class TrialTraitString
+# Validation information specific to a given trial/trait.
+class TrialTraitString(DeclarativeBase):
+    __tablename__ = 'trialTraitString'
+    trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
+    match = Column(u'match', TEXT())
+
 
 #
 # class ScoreSet
@@ -681,6 +689,8 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     dbc.commit()
     return ntrt, None
 
+#MFK these functions should probably be replace by method on trait.
+# Something generic like get trial trait json details.
 def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
 # Return TrialTraitNumeric for specified trait/trial, or None if none exists.
     tti = dbc.query(TrialTraitNumeric).filter(and_(
@@ -691,6 +701,17 @@ def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
         ttid = tti[0]
         return ttid
     return None
+
+def getTrialTraitString(dbc, trait_id, trial_id):
+# Return TrialTraitString for specified trait/trial, or None if none exists.
+    ttlist = dbc.query(TrialTraitString).filter(and_(
+            TrialTraitNumeric.trait_id == trait_id,
+            TrialTraitNumeric.trial_id == trial_id
+            )).all()
+    if len(ttlist) == 1:
+        return ttlist[0]
+    return None
+
 
 def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
