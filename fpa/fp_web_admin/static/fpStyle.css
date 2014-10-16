@@ -94,10 +94,10 @@ table.fptable{
 
 /*------------------------------ CONTENTS ------------------------------*/
 #contents {
-	min-height: 510px;
+	/* min-height: 510px;*/
 	width: 990px;
 	margin: 0 auto;
-	padding: 30px;
+	padding: 30px 30px 60px;
 	list-style: none;
 }
 .date {
@@ -348,13 +348,15 @@ p a {
     text-align: center;
 }
 
+#dataLeftBar li.selected, #dataLeftBar li.selected a{
+    color: red;
+}
 
 #dataLeftBar li.selected:before,
 #dataLeftBar li.selected:hover:before
 {
     content: "\f14a";
     text-align: center;
-    color: red;
 }
 
 #dataLeftBar li:hover:before{

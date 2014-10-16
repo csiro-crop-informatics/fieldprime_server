@@ -407,7 +407,7 @@ def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}. {1}</h1>".format(sess.GetUser(), trialId)
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.GetUser())
     nc += '<div style="float:right; margin-top:10px">'
     nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
