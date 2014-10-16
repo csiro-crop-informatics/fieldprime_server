@@ -278,8 +278,11 @@ def get_trial(username, trl, dbc):
 
         # Text (string) traits:
         elif trt.type == T_STRING:
-            tts = da
-            pass
+            tts = dal.getTraitString(dbc, trt.id, trl.id)
+            if tts is not None:
+                val = {}
+                val['pattern'] = tts.pattern
+                jtrait['validation'] = val
 
         #########################################################################
 

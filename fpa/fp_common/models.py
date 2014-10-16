@@ -212,13 +212,13 @@ class TrialTraitNumeric(DeclarativeBase):
     def getMax(self):
         return None if self.max is None else self.max.normalize()
 
-# class TrialTraitString
+# class TraitString
 # Validation information specific to a given trial/trait.
-class TrialTraitString(DeclarativeBase):
-    __tablename__ = 'trialTraitString'
+class TraitString(DeclarativeBase):
+    __tablename__ = 'traitString'
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
-    match = Column(u'match', TEXT())
+    pattern = Column(u'pattern', TEXT())
 
 
 #
@@ -702,11 +702,12 @@ def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
         return ttid
     return None
 
-def getTrialTraitString(dbc, trait_id, trial_id):
-# Return TrialTraitString for specified trait/trial, or None if none exists.
-    ttlist = dbc.query(TrialTraitString).filter(and_(
-            TrialTraitNumeric.trait_id == trait_id,
-            TrialTraitNumeric.trial_id == trial_id
+def getTraitString(dbc, trait_id, trial_id):
+# Return TraitString for specified trait/trial, or None if none exists.
+    print 'trial {0} trait {1}'.format(trial_id, trait_id)
+    ttlist = dbc.query(TraitString).filter(and_(
+            TraitString.trait_id == trait_id,
+            TraitString.trial_id == trial_id
             )).all()
     if len(ttlist) == 1:
         return ttlist[0]
