@@ -20,7 +20,7 @@ table.fptable, table.fptable tr{
 }
 
 .fptable th{
-    background: #022C38;
+    background-color: #022C38;
     color: #fff;
     padding: 10px;
 }
@@ -330,11 +330,55 @@ p a {
     border-radius: 10px;    */
 }
 
+#dataLeftBar ul{
+    padding-left: 40px;
+}
+
+#dataLeftBar li{
+    display: block;
+    float: left;
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+    margin-bottom: 10px; 
+}
+
+#dataLeftBar li:before{
+    content: "\f10c";
+    text-align: center;
+}
+
+
+#dataLeftBar li.selected:before,
+#dataLeftBar li.selected:hover:before
+{
+    content: "\f14a";
+    text-align: center;
+    color: red;
+}
+
+#dataLeftBar li:hover:before{
+    content: "\f111";
+    text-align: center;
+}
+
+#dataLeftBar hr{
+    clear:both;
+}
+
+#trialData_wrapper{
+    width:100%;
+}
+
+#trialData_wrapper label{
+    width: auto;
+}
+
 .dataContent {
     /* display: table-cell; */
     vertical-align: top;
     width: 100%;
-    padding: 15px;
+    padding: 15px 0 40px;
     word-wrap: normal;
     overflow: hidden;
 }

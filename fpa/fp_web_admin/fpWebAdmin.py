@@ -268,7 +268,6 @@ def htmlTrialTraits(sess, trial):
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
-    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
     for st in sysTraits:
@@ -277,7 +276,9 @@ def htmlTrialTraits(sess, trial):
                 break
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
-    addSysTraitForm += '</select></form>'
+    addSysTraitForm += '</select> &nbsp; '
+    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
+    addSysTraitForm += '</form>'
     return HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
 def htmlTrialData(sess, trial):
@@ -398,15 +399,15 @@ def trialPage(sess, trialId):
     trialh = TrialHtml(sess, trialId)
     if trialh is None:
         trialh = "No such trial"
-    return dataPage(sess, content=trialh, title='Trial Data')
+    return dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
 
 
-def dataNavigationContent(sess):
+def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}.</h1>".format(sess.GetUser())
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}. {1}</h1>".format(sess.GetUser(), trialId)
     nc += '<div style="float:right; margin-top:10px">'
     nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
@@ -418,22 +419,25 @@ def dataNavigationContent(sess):
     trials = GetTrials(sess)
     trialListHtml = None if len(trials) < 1 else "" 
     for t in trials:
-        trialListHtml += "\n  <li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+        if "{}".format(t.id) == "{}".format(trialId):
+            trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+        else:
+            trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
 
     if trialListHtml:
         nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-        nc += "<h2>Trials:</h2>"
+        nc += "<h2>Trials:</h2><ul class='fa-ul'>"
         nc += trialListHtml
-        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+        nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
     return nc
 
 
-def dataPage(sess, title, content):
+def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------
 # Return page for user data with given content and title.
 # The point of this function is to add the navigation content.
 #
-    nc = dataNavigationContent(sess)
+    nc = dataNavigationContent(sess, trialId)
     return render_template('dataPage.html', navContent=nc, content=content, title=title)
 
 def dataTemplatePage(sess, template, **kwargs):
@@ -441,7 +445,11 @@ def dataTemplatePage(sess, template, **kwargs):
 # Return page for user data with given template, kwargs are passed through
 # to the template. The point of this function is to add the navigation content.
 #
-    nc = dataNavigationContent(sess) # Generate content for navigation bar:
+    if 'trialId' in kwargs:
+        nc = dataNavigationContent(sess, trialId=kwargs['trialId'])
+    else:
+        nc = dataNavigationContent(sess)
+    # nc = dataNavigationContent(sess) # Generate content for navigation bar:
     return render_template(template, navContent=nc, **kwargs)
 
 def dataErrorPage(sess, errMsg):
@@ -550,9 +558,9 @@ def htmlDataTableMagic(tableId):
 #----------------------------------------------------------------------------
 # Html required to have a datatable table work, pass in the dom id
 #
-    r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css" />'
     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+    r += '\n<link rel="stylesheet" type="text/css" href="{}" />'.format(url_for('static', filename='jquery.jeditable.css'))
 
     # We need to initialize the jquery datatable, but also a bit of hacking
     # to set the width of the page. We use the datatables scrollX init param
@@ -573,15 +581,18 @@ def htmlDataTableMagic(tableId):
     function setTrialDataWrapperWidth() {
         var w = window;
         var c = $(".dataContent").width();
-        var leftBarWidth = $("#dataLeftBar").width();
-        var setWidthTo = w.innerWidth - leftBarWidth - 60;
+        var leftBarWidth = 0;
+        //var leftBarWidth = $("#dataLeftBar").width();
+        var setWidthTo = w.innerWidth - leftBarWidth;
         //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
-        document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
+        document.getElementById('trialData_wrapper').style.maxWidth = setWidthTo + 'px';
     }
 
     $(document).ready(
         function() {
             $("#%s").dataTable( {
+                "autoWidth" : true,
+
                 "scrollX": true,
 
                 "fnPreDrawCallback":function(){
@@ -636,7 +647,7 @@ def urlBrowseTrial(sess, trialId):
         r += '</tr>'
     r += '</tbody></table>'
 
-    return dataPage(sess, content=r, title='Browse')
+    return dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 
 def getDataColumns(sess, trialId, tiList):
@@ -813,7 +824,7 @@ def urlTrialDataBrowse(sess, trialId):
     showAttributes = request.args.get("attributes")
     r = htmlDataTableMagic('trialData')
     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
-    return dataPage(sess, content=r, title='Browse')
+    return dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
@@ -835,7 +846,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
         return dataPage(sess, title='Delete Trial',
                         content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
-                                                          'Really Delete Trial {0}?'.format(trl.name)))
+                                                          'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
         return getHtml()
     if request.method == 'POST':
@@ -848,7 +859,7 @@ def urlDeleteTrial(sess, trialId):
             else:
                 # Delete the trial:
                 fpTrial.deleteTrial(sess, trialId)
-                return dataPage(sess, '', 'Trial Deleted')
+                return dataPage(sess, '', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
             return FrontPage(sess)
@@ -908,7 +919,7 @@ def urlAttributeDisplay(sess, trialId, attId):
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
     r += "</table>"
-    return dataPage(sess, content=r, title='Attribute')
+    return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
 
 @app.route('/user/<userName>/details/', methods=['GET', 'POST'])
@@ -1045,7 +1056,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
             d.node.row, d.node.col, value, d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long)
     r += "</table>"
-    return dataPage(sess, content=r, title='Score Set Data')
+    return dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):

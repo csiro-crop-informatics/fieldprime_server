@@ -1,0 +1,17 @@
+table.dataTable{
+	margin: 0;
+	display: inherit! important;
+	border: 0;
+}
+table.dataTable thead{
+    background-color: #022C38;
+    color: #fff;
+}
+table.dataTable thead th, 
+table.dataTable thead td {
+	padding: 10px 20px;
+}
+
+.dataTables_scrollHeadInner{
+    background-color: #022C38;	
+}

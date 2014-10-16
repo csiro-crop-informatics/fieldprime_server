@@ -36,6 +36,7 @@ fpa/fp_web_admin/static/fonts/fontawesome-webfont.woff -text
 fpa/fp_web_admin/static/fpIcon.png -text
 fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/static/fplib.js -text
+fpa/fp_web_admin/static/jquery.jeditable.css -text
 fpa/fp_web_admin/static/less/bordered-pulled.less -text
 fpa/fp_web_admin/static/less/core.less -text
 fpa/fp_web_admin/static/less/fixed-width.less -text
