@@ -162,26 +162,10 @@ create table trialTrait(
 
 
 --
--- trialTraitInteger
--- Extension of trait table for datatype integer.
--- But - we need trial specific trait attributes!
--- Should this instead refer to key of trialTrait?
---
-create table trialTraitInteger(
-  trial_id   INT NOT NULL,
-  trait_id   INT NOT NULL,
-  min        INT,
-  max        INT,
-  validation TEXT,
-  PRIMARY KEY(trial_id, trait_id),
-  FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
-  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
-);
-
---
 -- trialTraitNumeric
--- Extension of trialTrait table intended for decimal traits,
--- but maybe we can use this for integer traits too..
+-- Extension of trialTrait table intended for decimal and integer traits.
+-- Should this instead refer to key of trialTrait?
+-- See comment on traitString table.
 --
 create table trialTraitNumeric(
   trial_id   INT NOT NULL,
@@ -195,13 +179,22 @@ create table trialTraitNumeric(
 );
 
 --
--- trialTraitString
+-- traitString
 -- Extension of trialTrait table for string traits,
+-- NB this should perhaps be called trialTraitString, since the
+-- key is the combination of trial and trait. However, I suspect
+-- that eventually a trait may becomes specific to a trial (i.e.
+-- if we want the same trait in a different trial that will be a
+-- separate record, perhaps copied, in the trait table). And traitString
+-- is shorter to type, and also matches the table name used in the
+-- app, where traits already have a unique trial. Note the inconsistency
+-- with trialTraitNumeric, and indeed the existence of table trialTrait.
+-- These perhaps will have to be changed.
 --
-create table trialTraitString(
+create table traitString(
   trial_id   INT NOT NULL,
   trait_id   INT NOT NULL,
-  match      TEXT,
+  pattern    TEXT,
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
