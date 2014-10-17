@@ -355,6 +355,10 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             formh += '<br>Trait value should be ' + valOp + attListHtml
             preform = script
             onsubmit ='return validateTraitDetails()'
+        elif trt.type == T_STRING:
+            tts = models.getTraitString(sess.DB(), traitId, trialId)
+            patText = "value='{0}'".format(tts.pattern) if tts is not None else ""
+            formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
 
         formh += ('\n<p><input type="button" style="color:red" value="Cancel"' +
             ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
@@ -408,6 +412,21 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
             if newTTN:
                 sess.DB().add(ttn)
+        elif trt.type == T_STRING:
+            newPat = request.form.get('pattern')
+            tts = models.getTraitString(sess.DB(), traitId, trialId)
+            if len(newPat) == 0:
+                newPat = None
+            # delete tts if not needed:
+            if not newPat:
+                if tts:
+                    sess.DB().delete(tts)
+            else:
+                if tts:
+                    tts.pattern = newPat
+                else:
+                    tts = models.TraitString(trait_id=traitId, trial_id=trialId, pattern=newPat)
+                    sess.DB().add(tts)
 
         sess.DB().commit()
 

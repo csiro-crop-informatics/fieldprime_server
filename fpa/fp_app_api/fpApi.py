@@ -214,12 +214,10 @@ def get_trial(username, trl, dbc):
     for trt in trl.traits:
         jtrait = {}
         # Fields common to all traits:
-        # Note hacked special case for 'min' and 'max'. These currently sql decimal types,
-        # and they cause failure when converting to json for some reason, unless cast to float.
+        # MFK : systype may no longer be relevant to client.
         for fieldName in traitFieldNames:
             val = getattr(trt, fieldName)
             if val is not None:
-                if fieldName == 'min' or fieldName == 'max': val = float(val)
                 jtrait[fieldName] = val
 
         jtrait['sysType'] = 0    # Hack forcing all traits on client to local (else problem with common upload url)
@@ -241,7 +239,7 @@ def get_trial(username, trl, dbc):
         #
 
         # Categorical traits:
-        if trt.type == dal.TRAIT_TYPE_TYPE_IDS['Categorical']:
+        if trt.type == T_CATEGORICAL:
             cats = []
             for cat in trt.categories:
                 oneCat = {}
@@ -251,13 +249,15 @@ def get_trial(username, trl, dbc):
             jtrait['categories'] = cats
 
         # Photo traits:
-        elif trt.type == dal.TRAIT_TYPE_TYPE_IDS['Photo']:
+        elif trt.type == T_PHOTO:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
                                                traitid=trt.id, token=servToken, _external=True)
 
         # Numeric traits (integer and decimal):
+        # Historical comment: Note hacked special case for 'min' and 'max'. These currently sql decimal types,
+        # and they cause failure when converting to json for some reason, unless cast to float.
         elif trt.type == T_DECIMAL or trt.type == T_INTEGER:
-            # get the trialTraitInteger object, and send the contents
+            # get the trialTraitNumeric object, and send the contents
             ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
             if ttn is not None:
                 val = {}
@@ -275,6 +275,14 @@ def get_trial(username, trl, dbc):
 
                 if len(val) > 0:  # Don't send record if empty
                     jtrait['validation'] = val
+
+        # Text (string) traits:
+        elif trt.type == T_STRING:
+            tts = dal.getTraitString(dbc, trt.id, trl.id)
+            if tts is not None:
+                val = {}
+                val['pattern'] = tts.pattern
+                jtrait['validation'] = val
 
         #########################################################################
 
