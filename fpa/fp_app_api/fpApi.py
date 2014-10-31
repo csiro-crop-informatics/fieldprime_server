@@ -62,8 +62,11 @@ def internalError(e):
 
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
-# Decorator, for functions with username and trialid parameters.
+# Decorator, for app.route functions with username and trialid parameters.
 # It is assumed there is a request var in context. and this contains a password URL parameter "pw".
+# "pw" - Scoring Devices password configured on the client.
+# "ver" - client software version.
+# "andid" - android id of the client device.
 # The password is checked, and the trial object retrieved and passed to the decoratee instead
 # of the trialid. The open db connection is also added as a third parameter.
 # On error, if jsonReturn then a json error message is returned, else a plain text one.
@@ -99,7 +102,16 @@ def dec_get_trial(jsonReturn):
 @app.route('/user/<username>/', methods=['GET'])
 def trial_list(username):
 #-------------------------------------------------------------------------------------------------
-# Return JSON list of available trials for user
+# Return JSON list of available trials for user.
+# They are returned as a JSON object containing a named
+# array of trial:url pairs:
+#    { 'trials': [ <trialName>:<URLtoGetTheTrial>, ... ] }
+#
+# The URL to access this func is(should be) the only URL that has to be provided by the
+# client, either by being hard coded or entered by the user. It should be a "cool" URL,
+# i.e. it should never change.  All other URLs used by the client should be
+# provided by the server, for example in the response to this URL we provide
+# the URLs for further interactions with the server.
 #
     password = request.args.get('pw', '')
     dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
@@ -119,26 +131,17 @@ def trial_list(username):
     dic = {'trials':trialList}
     return Response(json.dumps(dic), mimetype='application/json')
 
-
-@app.route('/user/<username>/trial/<trialid>/', methods=['GET'])
+@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # new method
+@app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # old method
 @dec_get_trial(True)
-def get_trial(username, trl, dbc):
+def get_trial(username, trl, dbc, token=None):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
+#
 #
     #util.flog('get_trial: start')
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
-
-    # Trial json object members:
-    jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
-    jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
-    jtrl['uploadURL'] = url_for('upload_trial', username=username, trialid=trl.id, _external=True)
-    # Add trial attributes from database:
-    jprops = {}
-    for tp in trl.trialProperties:
-        jprops[tp.name] = tp.value
-    jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Server Token:
     # Use the android device ID postfixed with the current time in seconds as the serverTrialId.
@@ -148,7 +151,21 @@ def get_trial(username, trl, dbc):
     # MFK And why do we need such tokens? They are currently used in the traitInstance and nodeNote table.
     epoch = int(time.time())
     servToken = androidId + "." + str(int(time.time()))
-    jtrl['serverToken'] = servToken
+
+    # Trial json object members:
+    jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
+    jtrl['serverToken'] = servToken # MFK This could and should be removed, once client doesn't need it anymore.
+                                    # Currently used in upload of notes, but now we embed it in the uploadURL,
+                                    # and the notes upload should switch to using that.
+
+    jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
+    # jtrl['uploadURL'] = url_for('upload_trial_old_version', username=username, trialid=trl.id, _external=True)
+    jtrl['uploadURL'] = url_for('upload_trial_data', username=username, trialid=trl.id, token=servToken, _external=True)
+    # Add trial attributes from database:
+    jprops = {}
+    for tp in trl.trialProperties:
+        jprops[tp.name] = tp.value
+    jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Node Attribute descriptors:
     #util.flog('get_trial: pre attributes')
@@ -437,7 +454,7 @@ def upload_photo(username, trial, dbc, traitid, token):
 
 
 #
-# upload_trial()
+# upload_trial_data()
 #
 # Test data:
 # https://***REMOVED***/owalboc/user/mk/trial/1/?pw=sec&andid=x
@@ -452,10 +469,14 @@ def upload_photo(username, trial, dbc, traitid, token):
 # Have to be carefully however about breaking the protocol for devices out there with
 # the URL without a token..
 #
+# Note now have old_version. URLs sent and stored on client when this function was
+# used should still be able to access this func (since the URL will match). But now
+# we send out the URL for the new version.
+
 @app.route('/user/<username>/trial/<trialid>/', methods=['POST'])
 @dec_get_trial(False)
 #-------------------------------------------------------------------------------------------------
-def upload_trial(username, trial, dbc):
+def upload_trial_old_version(username, trial, dbc):
     jtrial = request.json
     util.flog("upload_trial:\n" + json.dumps(jtrial))
 
@@ -475,6 +496,60 @@ def upload_trial(username, trial, dbc):
     # All done, return success indicator:
     return Response('success')
 
+@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
+@dec_get_trial(False)
+#-------------------------------------------------------------------------------------------------
+# This version should return JSON!
+def upload_trial_data(username, trial, dbc, token):
+    jtrial = request.json
+    util.flog("upload_trial:\n" + json.dumps(jtrial))
+
+    if not jtrial:
+        return Response('Bad or missing JSON')
+#     try:
+#         token = jtrial[jTrialUpload['serverToken']]  # shouldn't need this now, as have token already.
+#     except Exception, e:
+#         return Response('Missing field: ' + e.args[0])
+
+    # Probably need a 'command' or 'type' field.
+    # different types will need different responses.
+    # Note old client would not have it, so perhaps below must stay
+
+    # Old clients may just send 'notes', we process that here in the manner they expect:
+    if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
+        err = dal.AddNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
+        if err is not None:
+            util.flog('AddNodeNotes fail:{0}'.format(err))
+            return Response(err)
+
+        # All done, return success indicator:
+        return Response('success')
+
+    # Created Nodes:
+    if JTRL_NODES_ARRAY in jtrial:
+        # MFK - make this an array of objects, preferably same format as sent server to client.
+        clientLocalIds = jtrial[JTRL_NODES_ARRAY]
+        serverIds = []
+        # We have to return array of server ids to replace the passed in local ids.
+        # We need to record the local ids so as to be idempotent.
+        tokenId = dal.Token.getTokenId(dbc, token)
+        if tokenId is None:
+            # This should only happen if new client is using trial from old server, hopefully unlikely..
+            # Perhaps we should just add it if missing - but then, it might be a forgery.
+            # now creating it in dal.Token.getTokenId, so this dead code..
+            return JsonErrorResponse("token unexpectedly not found")
+        for newid in clientLocalIds:
+            #print 'new id: {0}'.format(newid)
+            # Create node, or get it if it already exists:
+            nodeId = dal.TokenNode.getOrCreateClientNode(dbc, tokenId, newid, trial.id)
+            serverIds.append(nodeId)
+        returnObj = {'nodeIds':serverIds}
+        return Response(json.dumps(returnObj), mimetype='application/json')  # prob need ob
+
+
+
+    # All done, return success indicator:
+    return Response('success')
 
 @app.route('/user/<username>/trial/<trialid>/createAdHocTrait/', methods=['GET'])
 @dec_get_trial(True)

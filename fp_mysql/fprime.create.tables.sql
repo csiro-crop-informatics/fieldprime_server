@@ -219,6 +219,32 @@ create table traitInstance(
 );
 
 
+-- 
+-- token
+-- Represents server token used to identify client trial downloads.
+-- The token is a composite of the android device id, and the time
+-- the trial was downloaded to it. We may want in the future to have
+-- a separate table for android id, and then this table would have
+-- an id of a androidId table record, and the timestamp field.
+-- 
+create table token(
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  token       VARCHAR(31) NOT NULL UNIQUE
+);
+
+-- 
+-- tokenNode
+-- Used to record nodes created from devices, so as to avoid creating multiple copies.
+-- Note localId is not called local_id because it is not a foreign key, it is from the client.
+-- 
+create table tokenNode(
+  token_id   INT NOT NULL,
+  localId    INT NOT NULL,
+  node_id    INT NOT NULL,
+  UNIQUE(token_id, localId),
+  FOREIGN KEY(token_id) REFERENCES token(id)
+);
+
 --
 -- datum
 --

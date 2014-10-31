@@ -443,6 +443,70 @@ class NodeNote(DeclarativeBase):
     #relation definitions:
     node = relation('Node', primaryjoin='NodeNote.node_id==Node.id')
 
+#
+# class Token
+# Used to record server tokens.
+#
+class Token(DeclarativeBase):
+    __tablename__ = 'token'
+    __table_args__ = {}
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    token = Column(u'token', VARCHAR(length=31), unique=True, nullable=False)
+    def __init__(self, token):
+        self.token = token
+
+    @staticmethod
+    def getTokenId(dbc, token):
+    # Returns token id for token, creating new record if necessary.
+        try:
+            return dbc.query(Token).filter(Token.token == token).one().id
+        except sqlalchemy.orm.exc.NoResultFound:
+            # Make new token
+            nt = Token(token)
+            dbc.add(nt)
+            dbc.commit()
+            return nt.id
+
+#
+# class TokenNode
+# Used to record nodes created from devices, so as to avoid creating multiple copies.
+#
+class TokenNode(DeclarativeBase):
+    __tablename__ = 'tokenNode'
+    __table_args__ = {}
+    token_id = Column(u'token_id', INTEGER(), primary_key=True, nullable=False)
+    localId = Column(u'localId', INTEGER(), unique=True, nullable=False)
+    node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False)
+    UniqueConstraint(token_id, localId)
+    def __init__(self, tokenId, localId, nodeId):
+        self.token_id = tokenId
+        self.localId = localId
+        self.node_id = nodeId
+
+    @staticmethod
+    def getOrCreateClientNode(dbc, tokenId, localId, trialId):
+    # Create new tokenNode from given token and client local id, if not already created.
+    # Returns the id of the new Node, or the already existing one.
+    # MFK should trial Id be determined by token?
+        try:
+            tokNode =  dbc.query(TokenNode).filter(
+                and_(TokenNode.token_id == tokenId, TokenNode.localId == localId)).one()
+            return tokNode.node_id
+        except sqlalchemy.orm.exc.NoResultFound:
+            # Make new node
+            newNode = Node()
+            newNode.trial_id = trialId
+            newNode.row = -1
+            newNode.col = -1
+            dbc.add(newNode)
+            dbc.commit() # commit to get the id
+
+            # Create TokenNode
+            newtn = TokenNode(tokenId, localId, newNode.id)
+            dbc.add(newtn)
+            dbc.commit()
+            return newNode.id
+
 
 ###  Functions:  ##################################################################################################
 
