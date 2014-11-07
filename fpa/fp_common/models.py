@@ -452,17 +452,20 @@ class Token(DeclarativeBase):
     __table_args__ = {}
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     token = Column(u'token', VARCHAR(length=31), unique=True, nullable=False)
-    def __init__(self, token):
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+
+    def __init__(self, token, trialId):
         self.token = token
+        self.trial_id = trialId
 
     @staticmethod
-    def getTokenId(dbc, token):
+    def getTokenId(dbc, token, trialId):
     # Returns token id for token, creating new record if necessary.
         try:
             return dbc.query(Token).filter(Token.token == token).one().id
         except sqlalchemy.orm.exc.NoResultFound:
             # Make new token
-            nt = Token(token)
+            nt = Token(token, trialId)
             dbc.add(nt)
             dbc.commit()
             return nt.id
@@ -474,10 +477,13 @@ class Token(DeclarativeBase):
 class TokenNode(DeclarativeBase):
     __tablename__ = 'tokenNode'
     __table_args__ = {}
-    token_id = Column(u'token_id', INTEGER(), primary_key=True, nullable=False)
-    localId = Column(u'localId', INTEGER(), unique=True, nullable=False)
-    node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False)
-    UniqueConstraint(token_id, localId)
+    token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), primary_key=True, nullable=False)
+    localId = Column(u'localId', INTEGER(), unique=True, primary_key=True, nullable=False)
+    node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
+
+    #relation definitions
+    token = relation('Token', primaryjoin='TokenNode.token_id==Token.id')
+
     def __init__(self, tokenId, localId, nodeId):
         self.token_id = tokenId
         self.localId = localId
@@ -496,8 +502,9 @@ class TokenNode(DeclarativeBase):
             # Make new node
             newNode = Node()
             newNode.trial_id = trialId
-            newNode.row = -1
-            newNode.col = -1
+            newNode.row = 0
+            newNode.col = TokenNode.numCreatedNodesForTrial(dbc, trialId)+1  # local node creation order in trial
+            # count local nodes for the trial and add one.
             dbc.add(newNode)
             dbc.commit() # commit to get the id
 
@@ -506,6 +513,10 @@ class TokenNode(DeclarativeBase):
             dbc.add(newtn)
             dbc.commit()
             return newNode.id
+
+    @staticmethod
+    def numCreatedNodesForTrial(dbc, trialId):
+        return dbc.query(TokenNode).join(TokenNode.token).filter(Token.trial_id == trialId).count()
 
 
 ###  Functions:  ##################################################################################################

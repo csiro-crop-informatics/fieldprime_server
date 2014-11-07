@@ -131,6 +131,12 @@ def trial_list(username):
     dic = {'trials':trialList}
     return Response(json.dumps(dic), mimetype='application/json')
 
+def newServerToken(dbc, androidId, trialId):
+# Create new server token. Store it in the database.
+    token = androidId + "." + str(int(time.time()))
+    dal.Token.getTokenId(dbc, token, trialId)
+    return token
+
 @app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # new method
 @app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # old method
 @dec_get_trial(True)
@@ -149,8 +155,7 @@ def get_trial(username, trl, dbc, token=None):
     # a single device (with delete in between), as long as they are not created within the same
     # second (and this is not an expected use case):
     # MFK And why do we need such tokens? They are currently used in the traitInstance and nodeNote table.
-    epoch = int(time.time())
-    servToken = androidId + "." + str(int(time.time()))
+    servToken = newServerToken(dbc, androidId, trl.id)
 
     # Trial json object members:
     jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
@@ -502,20 +507,16 @@ def upload_trial_old_version(username, trial, dbc):
 # This version should return JSON!
 def upload_trial_data(username, trial, dbc, token):
     jtrial = request.json
-    util.flog("upload_trial:\n" + json.dumps(jtrial))
-
     if not jtrial:
         return Response('Bad or missing JSON')
-#     try:
-#         token = jtrial[jTrialUpload['serverToken']]  # shouldn't need this now, as have token already.
-#     except Exception, e:
-#         return Response('Missing field: ' + e.args[0])
+    util.flog("upload_trial:\n" + json.dumps(jtrial))
 
     # Probably need a 'command' or 'type' field.
     # different types will need different responses.
     # Note old client would not have it, so perhaps below must stay
 
     # Old clients may just send 'notes', we process that here in the manner they expect:
+    # MFK - so what do new clients do different? Nothing attow.
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
         err = dal.AddNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
@@ -525,14 +526,21 @@ def upload_trial_data(username, trial, dbc, token):
         # All done, return success indicator:
         return Response('success')
 
+    #
     # Created Nodes:
+    # Process nodes created on the client. We need to create them on the server,
+    # and send back the ids of the new server versions. This needs to be idempotent,
+    # i.e. if a client sends a node more than once, it should only be created once
+    # on the server. This is managed by recording the token and the client node id
+    # for each created node (in the database).
+    #
     if JTRL_NODES_ARRAY in jtrial:
         # MFK - make this an array of objects, preferably same format as sent server to client.
         clientLocalIds = jtrial[JTRL_NODES_ARRAY]
         serverIds = []
         # We have to return array of server ids to replace the passed in local ids.
         # We need to record the local ids so as to be idempotent.
-        tokenId = dal.Token.getTokenId(dbc, token)
+        tokenId = dal.Token.getTokenId(dbc, token, trial.id)
         if tokenId is None:
             # This should only happen if new client is using trial from old server, hopefully unlikely..
             # Perhaps we should just add it if missing - but then, it might be a forgery.
@@ -545,8 +553,6 @@ def upload_trial_data(username, trial, dbc, token):
             serverIds.append(nodeId)
         returnObj = {'nodeIds':serverIds}
         return Response(json.dumps(returnObj), mimetype='application/json')  # prob need ob
-
-
 
     # All done, return success indicator:
     return Response('success')
