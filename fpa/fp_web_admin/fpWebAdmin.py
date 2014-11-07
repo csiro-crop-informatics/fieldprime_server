@@ -448,7 +448,7 @@ def dataTemplatePage(sess, template, **kwargs):
     if 'trialId' in kwargs:
         nc = dataNavigationContent(sess, trialId=kwargs['trialId'])
     else:
-        nc = dataNavigationContent(sess)
+        nc = dataNavigationContent(sess, trialId="-1")
     # nc = dataNavigationContent(sess) # Generate content for navigation bar:
     return render_template(template, navContent=nc, **kwargs)
 
