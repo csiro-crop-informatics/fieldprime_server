@@ -132,12 +132,14 @@ def trial_list(username):
     return Response(json.dumps(dic), mimetype='application/json')
 
 def newServerToken(dbc, androidId, trialId):
+#-------------------------------------------------------------------------------------------------
 # Create new server token. Store it in the database.
+#
     token = androidId + "." + str(int(time.time()))
     dal.Token.getTokenId(dbc, token, trialId)
     return token
 
-@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # new method
+@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # new method, MFK seems to be no point to this!
 @app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # old method
 @dec_get_trial(True)
 def get_trial(username, trl, dbc, token=None):
