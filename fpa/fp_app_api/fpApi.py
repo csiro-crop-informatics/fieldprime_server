@@ -139,12 +139,21 @@ def newServerToken(dbc, androidId, trialId):
     dal.Token.getTokenId(dbc, token, trialId)
     return token
 
-@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # new method, MFK seems to be no point to this!
-@app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # old method
+@app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
+@app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
 @dec_get_trial(True)
 def get_trial(username, trl, dbc, token=None):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
+#
+# Note we can come to this with either of the 2 urls above. If there is a token present
+# then this is an update, and we don't create a new token (which cause trouble when
+# existing scores sets are re-exported). Currently when the client is getting a new trial,
+# it uses the URL returned to it from the trial_list function. When updating the trial, it uses
+# the "uploadURL" provided to it with the trial. This is a little confusing perhaps. It works,
+# however because this function and the upload_trait_data function have the same URL, but the
+# upload is POST only, and this one is GET only. A better solution perhaps would be to provide
+# an updateURL with the trial. Would have to add support on the client to use this.
 #
 #
     #util.flog('get_trial: start')
@@ -157,7 +166,10 @@ def get_trial(username, trl, dbc, token=None):
     # a single device (with delete in between), as long as they are not created within the same
     # second (and this is not an expected use case):
     # MFK And why do we need such tokens? They are currently used in the traitInstance and nodeNote table.
-    servToken = newServerToken(dbc, androidId, trl.id)
+    if token is None:
+        servToken = newServerToken(dbc, androidId, trl.id)
+    else:
+        servToken = token
 
     # Trial json object members:
     jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
