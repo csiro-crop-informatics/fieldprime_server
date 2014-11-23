@@ -61,6 +61,7 @@ DM_TRAITINSTANCE_ID = "traitInstance_id"
 
 JTRL_TRIAL_PROPERTIES = 'trialProperties'
 
+JTRL_NODES_ARRAY = 'nodes'
 
 # Trial Uploads:
 jTrialUpload = {'serverToken':'serverToken',

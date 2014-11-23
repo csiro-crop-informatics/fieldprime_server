@@ -443,6 +443,81 @@ class NodeNote(DeclarativeBase):
     #relation definitions:
     node = relation('Node', primaryjoin='NodeNote.node_id==Node.id')
 
+#
+# class Token
+# Used to record server tokens.
+#
+class Token(DeclarativeBase):
+    __tablename__ = 'token'
+    __table_args__ = {}
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    token = Column(u'token', VARCHAR(length=31), unique=True, nullable=False)
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+
+    def __init__(self, token, trialId):
+        self.token = token
+        self.trial_id = trialId
+
+    @staticmethod
+    def getTokenId(dbc, token, trialId):
+    # Returns token id for token, creating new record if necessary.
+        try:
+            return dbc.query(Token).filter(Token.token == token).one().id
+        except sqlalchemy.orm.exc.NoResultFound:
+            # Make new token
+            nt = Token(token, trialId)
+            dbc.add(nt)
+            dbc.commit()
+            return nt.id
+
+#
+# class TokenNode
+# Used to record nodes created from devices, so as to avoid creating multiple copies.
+#
+class TokenNode(DeclarativeBase):
+    __tablename__ = 'tokenNode'
+    __table_args__ = {}
+    token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), primary_key=True, nullable=False)
+    localId = Column(u'localId', INTEGER(), unique=True, primary_key=True, nullable=False)
+    node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
+
+    #relation definitions
+    token = relation('Token', primaryjoin='TokenNode.token_id==Token.id')
+
+    def __init__(self, tokenId, localId, nodeId):
+        self.token_id = tokenId
+        self.localId = localId
+        self.node_id = nodeId
+
+    @staticmethod
+    def getOrCreateClientNode(dbc, tokenId, localId, trialId):
+    # Create new tokenNode from given token and client local id, if not already created.
+    # Returns the id of the new Node, or the already existing one.
+    # MFK should trial Id be determined by token?
+        try:
+            tokNode =  dbc.query(TokenNode).filter(
+                and_(TokenNode.token_id == tokenId, TokenNode.localId == localId)).one()
+            return tokNode.node_id
+        except sqlalchemy.orm.exc.NoResultFound:
+            # Make new node
+            newNode = Node()
+            newNode.trial_id = trialId
+            newNode.row = 0
+            newNode.col = TokenNode.numCreatedNodesForTrial(dbc, trialId)+1  # local node creation order in trial
+            # count local nodes for the trial and add one.
+            dbc.add(newNode)
+            dbc.commit() # commit to get the id
+
+            # Create TokenNode
+            newtn = TokenNode(tokenId, localId, newNode.id)
+            dbc.add(newtn)
+            dbc.commit()
+            return newNode.id
+
+    @staticmethod
+    def numCreatedNodesForTrial(dbc, trialId):
+        return dbc.query(TokenNode).join(TokenNode.token).filter(Token.trial_id == trialId).count()
+
 
 ###  Functions:  ##################################################################################################
 
