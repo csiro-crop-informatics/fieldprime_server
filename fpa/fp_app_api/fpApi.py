@@ -138,7 +138,7 @@ def get_trial(username, trl, dbc):
     jprops = {}
     for tp in trl.trialProperties:
         jprops[tp.name] = tp.value
-    #jtrl[JTRL_TRIAL_PROPERTIES] = jprops
+    jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Server Token:
     # Use the android device ID postfixed with the current time in seconds as the serverTrialId.
@@ -175,7 +175,6 @@ def get_trial(username, trl, dbc):
     #util.flog('get_trial: pre nodes')
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
-    jtrl['numTrialUnit'] = len(trl.nodes)   # MFK check if no trial units this is zero, not null
     for ctu in trl.nodes:
         jtu = {}
         # MFK - there is a problem here, the fixed names and the user provided
@@ -205,7 +204,7 @@ def get_trial(username, trl, dbc):
             jtu['location'] = jloc
 
         tuList.append(jtu)
-    jtrl['trialUnits'] = tuList
+    jtrl['trialUnits'] = tuList   # MFK change this to Nodes - when enough clients support this.
 
     # Traits:
     #util.flog('get_trial: pre traits')
