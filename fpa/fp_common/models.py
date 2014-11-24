@@ -322,6 +322,7 @@ class Trial(DeclarativeBase):
             lastSeqNum = seqNum
             lastTraitId = traitId
             lastToken = token
+            lastDayCreated = dayCreated
         return scoreSets
 
 def oneException2None(func):
