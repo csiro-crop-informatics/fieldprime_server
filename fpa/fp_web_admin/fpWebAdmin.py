@@ -545,6 +545,7 @@ def getAttributeColumns(sess, trialId, attList):
 def htmlDataTableMagic(tableId):
 #----------------------------------------------------------------------------
 # Html required to have a datatable table work, pass in the dom id
+# See note below on trialData_wrapper
 #
     r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
@@ -563,6 +564,14 @@ def htmlDataTableMagic(tableId):
     # after the datatable is initialized and hook up a handler to redo this whenever
     # the screen is resized. Not very nice or future proof, but it will have to do for
     # the moment..
+    #
+    # MFK 26/11/14: I've replaced the resize function, which was a call to setTrialDataWrapperWidth()
+    # to be instead just a reload. This works better, setTrialDataWrapperWidth() was centering the table
+    # rows without also centering the table headers. Hopefully the the reload is coming from the
+    # cache rather than the network.
+    #
+    # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
+    # by the dataTable function.
 
     r += """
     <script>
@@ -574,32 +583,30 @@ def htmlDataTableMagic(tableId):
         //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
         document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
     }
-
     $(document).ready(
         function() {
             $("#%s").dataTable( {
                 "scrollX": true,
-
                 "fnPreDrawCallback":function(){
                     $("#%s").hide();
                     //$("#loading").show();
-                    //alert("Pre Draw");
                 },
                 "fnDrawCallback":function(){
                     $("#%s").show();
                     //$("#loading").hide();
-                    //alert("Draw");
                 },
-
                 "fnInitComplete": function(oSettings, json) {$("#%s").show();}
             });
             setTrialDataWrapperWidth();
-            window.addEventListener('resize', setTrialDataWrapperWidth);
+            //window.addEventListener('resize', setTrialDataWrapperWidth);
+            window.addEventListener('resize', function () {
+                "use strict";
+                window.location.reload();
+            });
         }
     );
     </script>
     """ % (tableId, tableId, tableId, tableId)
-
     return r
 
 
@@ -999,9 +1006,33 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 #
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
     typ = ti.trait.type
-    name = ti.trait.caption + '_' + str(ti.seqNum) + ' sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
-    data = dbUtil.getTraitInstanceData(sess, traitInstanceId)
-    r = "Score Set: {0}".format(name)
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
+    data = ti.getData()
+
+    # Show name and some stats:
+    r = ''
+    r += "<h2>Score Set: {0}</h2>".format(name)
+    numDeleted = 0
+    numNA = 0
+    numScoredNodes = 0
+    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
+    numSum = 0
+    for idx, d in enumerate(data):
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+        if overWritten:
+            numDeleted += 1
+        else:
+            numScoredNodes += 1
+            if d.isNA():
+                numNA += 1
+            elif isNumeric:
+                numSum += d.getValue()
+    r += '<br>Number of scored nodes: {0} (including {1} NAs)'.format(numScoredNodes, numNA)
+    r += '<br>Number of overwritten scores: {0}'.format(numDeleted)
+    numValues = numScoredNodes - numNA
+    if isNumeric and numValues > 0:
+        r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
+
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
     # For photo score sets add button to download photos as zip file:
@@ -1011,11 +1042,23 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
-    r += "<p><table border='1'>"
-    r += "<tr><th>Row</th><th>Column</th><th>Value</th><th>User</th><th>Time</th><th>Latitude</th><th>Longitude</th></tr>"
-    for d in data:
-        if typ == T_PHOTO:  # Special case for photos. Display a link to show the photo.
-                            # Perhaps this should be done in Datum.getValue, but we don't have all info.
+    useDataTables = True
+    if useDataTables:
+        r += htmlDataTableMagic('trialData')
+        r += "<p><table id='trialData'>"
+    else:
+        r += "<p><table id='trialData' border='1'>"
+
+    r += ("<thead><tr>" +
+        "<th>Row</th><th>Column</th><th>Value</th><th>User</th><th>Time</th><th>Latitude</th><th>Longitude</th>" +
+        "</thead>")
+    for idx, d in enumerate(data):
+        # Is this an overwritten datum?
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+
+        # Special case for photos. Display a link to show the photo.
+        # Perhaps this should be done in Datum.getValue, but we don't have all info.
+        if typ == T_PHOTO:
             if d.isNA():
                 value = 'NA'
             else:
@@ -1037,12 +1080,12 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()
-
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
-            d.node.row, d.node.col, value, d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long)
+        r += "<tr{7}><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
+            d.node.row, d.node.col, value if not overWritten else ('<del>' + str(value) + '</del>'),
+            d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long,
+            ' bgcolor="#aaaaaa"' if overWritten else '')
     r += "</table>"
     return dataPage(sess, content=r, title='Score Set Data')
-
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
@@ -1050,7 +1093,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
     if ti.trait.type != T_PHOTO:
         return 'Not a photo trait'
-    data = dbUtil.getTraitInstanceData(sess, traitInstanceId)
+    data = ti.getData(True)
     try:
         with zipfile.ZipFile(archiveFileName, 'w') as myzip:
             for d in data:
