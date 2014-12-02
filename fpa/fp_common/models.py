@@ -196,7 +196,32 @@ class TraitInstance(DeclarativeBase):
         session = Session.object_session(self)
         count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
         return count
-
+    def stats(self):
+        # MFK - this not used attow, but see stats obtained in fpWebAdmin:urlScoreSetTraitInstance()
+        # That could be here, but the trouble is we don't want to get data from the db twice, once to
+        # get it, and again to get the stats. Could have getStats as param to getData..
+        sts = {}
+        session = Session.object_session(self)
+        count = session.query(Datum.node_id).filter(Datum.traitInstance_id == self.id).distinct(Datum.node_id).count()
+        sts['numScored'] = count
+        return sts
+    def getData(self, latestOnly=False):
+        #--------------------------------------------------------------------------------
+        # Sort by node id asc, then timestamp desc.
+        # Note this is returning all the data for each node, not just the latest.
+        session = Session.object_session(self)
+        allResults = session.query(Datum) \
+            .filter(Datum.traitInstance_id == self.id) \
+            .order_by(Datum.node_id.asc(), Datum.timestamp.desc()) \
+            .all()
+        if latestOnly:  # Remove all but newest element for each node
+            llen = len(allResults)
+            for i in range(len(allResults)-1, 0, -1):
+                # i goes from last index to second, we compare node_id with previous element's in allResults
+                # and if the same delete the latter:
+                if allResults[i].node_id == allResults[i-1].node_id:
+                    del allResults[i]
+        return allResults
 
 # class TrialTraitNumeric
 # Validation information specific to a given trial/trait.
