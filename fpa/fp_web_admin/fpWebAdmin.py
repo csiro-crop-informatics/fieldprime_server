@@ -997,6 +997,26 @@ def urlAddSysTrait2Trial(sess, trialId):
     # If all is well, display the trial page:
     return trialPage(sess, trialId)
 
+def hackyPhotoFileName(sess, ti, d):
+# This should eventually be replaced by call do models.photoFileName, but:
+# New method is to have filename in datum.txtValue, but this may not
+# be in place for all datums in the database. Older records may have a
+# txtValue either of 'xxx' or <trial name>/<digits>_<digits>.jpg.
+# New ones should be the file name, which should include more that one underscore.
+# Note we could go through the db and change txtValues of photo datums to the new way,
+# and then dispense with this if.
+    fname = d.txtValue
+    if fname.count('_') < 2 or fname.count('/') != 0:
+        fname = models.photoFileName(sess.GetUser(),
+                                     ti.trial_id,
+                                     ti.trait_id,
+                                     d.node.id,
+                                     ti.token,
+                                     ti.seqNum,
+                                     ti.sampleNum)
+    return fname
+
+
 @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
 def urlScoreSetTraitInstance(sess, traitInstanceId):
@@ -1062,21 +1082,22 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             if d.isNA():
                 value = 'NA'
             else:
+                fname = hackyPhotoFileName(sess, ti, d)
                 # New method is to have filename in datum.txtValue, but this may not
                 # be in place for all datums in the database. Older records may have a
                 # txtValue either of 'xxx' or <trial name>/<digits>_<digits>.jpg.
                 # New ones should be the file name, which should include more that one underscore.
                 # Note we could go through the db and change txtValues of photo datums to the new way,
                 # and then dispense with this if.
-                fname = d.txtValue
-                if fname.count('_') < 2 or fname.count('/') != 0:
-                    fname = models.photoFileName(sess.GetUser(),
-                                                 ti.trial_id,
-                                                 ti.trait_id,
-                                                 d.node.id,
-                                                 ti.token,
-                                                 ti.seqNum,
-                                                 ti.sampleNum)
+#                 fname = d.txtValue
+#                 if fname.count('_') < 2 or fname.count('/') != 0:
+#                     fname = models.photoFileName(sess.GetUser(),
+#                                                  ti.trial_id,
+#                                                  ti.trait_id,
+#                                                  d.node.id,
+#                                                  ti.token,
+#                                                  ti.seqNum,
+#                                                  ti.sampleNum)
                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()
@@ -1098,13 +1119,15 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
         with zipfile.ZipFile(archiveFileName, 'w') as myzip:
             for d in data:
                 # Add all the photos in the traitInstance to the archive
-                fname = models.photoFileName(sess.GetUser(),
-                                             ti.trial_id,
-                                             ti.trait_id,
-                                             d.node.id,
-                                             ti.token,
-                                             ti.seqNum,
-                                             ti.sampleNum)
+#                 fname = models.photoFileName(sess.GetUser(),
+#                                              ti.trial_id,
+#                                              ti.trait_id,
+#                                              d.node.id,
+#                                              ti.token,
+#                                              ti.seqNum,
+#                                              ti.sampleNum)
+                fname = hackyPhotoFileName(sess, ti, d)
+
                 #print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
                 # Generate a name for the photo to have in the zip file. This needs to show row and col.
                 node = dbUtil.getNode(sess, d.node_id)

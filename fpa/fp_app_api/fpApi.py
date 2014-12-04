@@ -403,6 +403,10 @@ def upload_photo(username, trial, dbc, traitid, token):
 # set its creation date. If we didn't do this we would have to upload the creation
 # date with every photo (or at least the first one) so as to allow us to create the
 # traitInstance record in this function (if it was not already present).
+#
+# UPDATE - Attow the creation date is sent with each photo, and the client does NOT
+# first create an empty ti.
+#
 # Note the node Id is uploaded in the file name (this should be same as server node id).
 # But in addition it is (now) also uploaded as a form parameter, this reduces our
 # dependence on it being in the file name (which may change).
