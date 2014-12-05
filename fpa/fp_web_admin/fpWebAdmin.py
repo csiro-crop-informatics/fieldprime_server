@@ -624,7 +624,7 @@ def urlBrowseTrial(sess, trialId):
 
     # generate html table of the trial data:
     r = htmlDataTableMagic('trialData')
-    r += '<p><table id="trialData" class="display" cellspacing="0" width="100%" style="display: none">'
+    r += '<p><table id="trialData" class="display"  cellspacing="0" width="100%"  >' # removed style="display:none
     hdrs = '<th>Row</th><th>Column</th>'
     for att in attList:
         hdrs += '<th>{0}</th>'.format(att.name)
