@@ -214,7 +214,7 @@ def htmlNodeAttributes(sess, trialId):
 
     # Add BROWSE button:
     out += '<p>'
-    out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrial", trialId=trialId))
+    out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
 
     # Add button to upload new/modified attributes:
     out += fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
@@ -542,105 +542,61 @@ def getAttributeColumns(sess, trialId, attList):
         cur.close()
     return attValList
 
-def htmlDataTableMagic(tableId):
-#----------------------------------------------------------------------------
-# Html required to have a datatable table work, pass in the dom id
-# See note below on trialData_wrapper
+def getAllAttributeColumns(sess, trialId, fixedOnly=False):
+#-----------------------------------------------------------------------
+# Returns a list of columns of values for each attribute in attList, including
+# the row column and barcode (which are stored in the node table rather than
+# as attribute.  - each column
+# being an array of attribute values with one entry for each node in the trial.
+# The columns are in the same order as attList, and the column entries are
+# ordered by row/col. Missing values are given as the empty string.
+# NB - within columns the order is determined by node id.
 #
-    r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+# If fixedOnly is true, then only row, column and barcode are returned.
+#
 
-    # We need to initialize the jquery datatable, but also a bit of hacking
-    # to set the width of the page. We use the datatables scrollX init param
-    # to get a horizontal scroll on the table, but it seems very hard in css to
-    # get the table to fill the available screen space and not have the right
-    # hand edge invisible off to the right of the page. You can set the width
-    # of the dataTables_wrapper to a fixed amount and that works, but doesn't
-    # reflect the actual window size. If you set the width to 100%, it just doesn't
-    # work - partly it seems because we are using css tables (i.e. if I try the
-    # same code NOT in these tables 100% does work. So we are doing here at the moment
-    # is to (roughly) set the trialData_wrapper width to the appropriate size
-    # after the datatable is initialized and hook up a handler to redo this whenever
-    # the screen is resized. Not very nice or future proof, but it will have to do for
-    # the moment..
-    #
-    # MFK 26/11/14: I've replaced the resize function, which was a call to setTrialDataWrapperWidth()
-    # to be instead just a reload. This works better, setTrialDataWrapperWidth() was centering the table
-    # rows without also centering the table headers. Hopefully the the reload is coming from the
-    # cache rather than the network.
-    #
-    # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
-    # by the dataTable function.
+    # First get row, column, and barcode:
+    con = getMYSQLDBConnection(sess)
+    qry = 'select row, col, barcode from node where trial_id = %s order by id'
+    cur = con.cursor()
+    cur.execute(qry, trialId)
+    colRow = []
+    colCol = []
+    colBarcode = []
+    for row in cur.fetchall():
+        colRow.append("" if row[0] is None else row[0])
+        colCol.append("" if row[1] is None else row[1])
+        colBarcode.append("" if row[2] is None else row[2])
+    attValList = [colRow, colCol, colBarcode]
+    hdrs = ['Row', 'Col', 'Barcode']
 
-    r += """
-    <script>
-    function setTrialDataWrapperWidth() {
-        var w = window;
-        var c = $(".dataContent").width();
-        var leftBarWidth = $("#dataLeftBar").width();
-        var setWidthTo = w.innerWidth - leftBarWidth - 60;
-        //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
-        document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
-    }
-    $(document).ready(
-        function() {
-            $("#%s").dataTable( {
-                "scrollX": true,
-                "fnPreDrawCallback":function(){
-                    $("#%s").hide();
-                    //$("#loading").show();
-                },
-                "fnDrawCallback":function(){
-                    $("#%s").show();
-                    //$("#loading").hide();
-                },
-                "fnInitComplete": function(oSettings, json) {$("#%s").show();}
-            });
-            setTrialDataWrapperWidth();
-            //window.addEventListener('resize', setTrialDataWrapperWidth);
-            window.addEventListener('resize', function () {
-                "use strict";
-                window.location.reload();
-            });
-        }
-    );
-    </script>
-    """ % (tableId, tableId, tableId, tableId)
-    return r
-
+    if not fixedOnly:
+        # And add the other attributes:
+        attList = dbUtil.getNodeAttributes(sess, trialId)
+        qry = """
+            select a.value from node n left join attributeValue a
+            on n.id = a.node_id and a.nodeAttribute_id = %s
+            where n.trial_id = %s
+            order by n.id"""
+        for att in attList:
+            hdrs.append(att.name)
+            valList = []
+            cur = con.cursor()
+            cur.execute(qry, (att.id, trialId))
+            for row in cur.fetchall():  # can we just store cur.fetchall()? Yes we could, but perhaps better this way
+                valList.append("" if row[0] is None else row[0])
+            attValList.append(valList)
+            cur.close()
+    return (hdrs, attValList)
 
 @app.route('/browseTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
-def urlBrowseTrial(sess, trialId):
+def urlBrowseTrialAttributes(sess, trialId):
 #===========================================================================
 # Page for display of trial data.
 #
-    attList = dbUtil.getNodeAttributes(sess, trialId)
-    nodeList = dbUtil.getNodes(sess, trialId)
-
-    # Get all the attribute values:
-    attValList = getAttributeColumns(sess, trialId, attList)
-
-    # generate html table of the trial data:
-    r = htmlDataTableMagic('trialData')
-    r += '<p><table id="trialData" class="display"  cellspacing="0" width="100%"  >' # removed style="display:none
-    hdrs = '<th>Row</th><th>Column</th>'
-    for att in attList:
-        hdrs += '<th>{0}</th>'.format(att.name)
-    r += '<thead><tr>{0}</tr></thead>'.format(hdrs)
-    r += '<tfoot><tr>{0}</tr></tfoot>'.format(hdrs)
-    r += '<tbody>'
-    for nodeIndex, n in enumerate(nodeList):
-        r += '<tr>'
-        r += '<td>{0}</td><td>{1}</td>'.format(n.row, n.col)
-        for attIndex, att in enumerate(attList):
-            r += '<td>{0}</td>'.format(attValList[attIndex][nodeIndex])
-        r += '</tr>'
-    r += '</tbody></table>'
-
-    return dataPage(sess, content=r, title='Browse')
-
+    (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
+    return dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse')
 
 def getDataColumns(sess, trialId, tiList):
 #-----------------------------------------------------------------------
@@ -693,7 +649,7 @@ def getDataColumns(sess, trialId, tiList):
         cur.close()
     return outList
 
-def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, table=False):
+def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, htable=False):
 #-----------------------------------------------------------------------
 # Returns trial data as plain text tsv form - i.e. for download, or as html table.
 # The data is arranged in node rows, and trait instance score and attribute columns.
@@ -722,20 +678,21 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
 
     # Format controls, table or tsv
     #tables = True
-    SEP = '</td><td>' if table else '\t'
+    SEP = '</td><td>' if htable else '\t'
     HSEP = '</th><th>'
-    ROWSTART = '<tr><td>' if table else ''
-    ROWEND = '</td></tr>\n' if table else '\n'
-    HSEP = '</th><th>' if table else '\t'
-    HROWSTART = '<thead><th>' if table else ''
-    HROWEND = '</th></thead>\n' if table else '\n'
+    ROWSTART = '<tr><td>' if htable else ''
+    ROWEND = '</td></tr>\n' if htable else '\n'
+    HSEP = '</th><th>' if htable else '\t'
+    HROWSTART = '<thead><th>' if htable else ''
+    HROWEND = '</th></thead>\n' if htable else '\n'
     # MFK unify with browseData (for attributes
-    #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if table else ''
-    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%">' if table else ''
+    #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if htable else ''
+    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%">' if htable else ''
 
     # Headers:
     r += HROWSTART
     r += "Row" + HSEP + "Column"
+    # xxx need to show row col even if attributes not shown?
     if showAttributes:
         trl = dbUtil.GetTrial(sess, trialId)
         attValList = getAttributeColumns(sess, trialId, trl.tuAttributes)  # Get all the att vals in advance
@@ -792,8 +749,81 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
         # End the line:
         r += ROWEND
 
-    r += '</table>' if table else ''
+    r += '</table>' if htable else ''
     return r
+
+def getTrialData2(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes):
+#-----------------------------------------------------------------------
+# Returns trial data as plain text tsv form - i.e. for download, or as html table.
+# The data is arranged in node rows, and trait instance score and attribute columns.
+# Form params indicate what score metadata to display.
+#
+# Note we have improved performance (over a separate query for each value) by getting
+# the data for each trait instance with one sql query.
+# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
+# If necessary we could check the dataset size and if necessary switch to a different method.
+# for example server side mode datatables.
+# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
+# datatables browse could show/hide columns and export current selection to tsv.
+#
+    # Get Trait Instances:
+    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)   # get Trait Instances
+    valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
+    (hdrs, cols) = getAllAttributeColumns(sess, trialId, showAttributes)
+
+    # Work out number of columns for each trait instance:
+    numColsPerValue = 1
+    if showTime:
+        numColsPerValue += 1
+    if showUser:
+        numColsPerValue += 1
+    if showGps:
+        numColsPerValue += 2
+
+    # Headers:
+    for ti in tiList:
+        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
+        hdrs.append(tiName)
+        if showTime:
+            hdrs.append("{0}_timestamp".format(tiName))
+        if showUser:
+            hdrs.append("{0}_user".format(tiName))
+        if showGps:
+            hdrs.append("{0}_latitude".format(tiName))
+            hdrs.append("{0}_longitude".format(tiName))
+    if showNotes:
+        hdrs.append('Notes') # Putting notes at end in case some commas slip thru and mess up csv structure
+
+    # Data:
+    nodeList = dbUtil.getNodes(sess, trialId) # assuming we get same order as valCols and cols!?
+    for nodeIndex, node in enumerate(nodeList):
+        # Scores:
+        for tiIndex, ti in enumerate(tiList):
+            [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
+            # Write the value:
+            r += "{0}{1}".format(SEP, val)
+            # Write any other datum fields specified:
+            if showTime:
+                r += "{0}{1}".format(SEP, timestamp)
+            if showUser:
+                r += "{0}{1}".format(SEP, userid)
+            if showGps:
+                r += "{0}{1}{0}{2}".format(SEP, lat, long)
+
+        # Notes, as list separated by pipe symbols:
+        if showNotes:
+            r += SEP + '"'
+            tuNotes = dbUtil.GetNodeNotes(sess, node.id)
+            for note in tuNotes:
+                r += '{0}|'.format(note.note)
+            r += '"'
+
+        # End the line:
+        r += ROWEND
+
+    return r
+
+
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
@@ -814,7 +844,7 @@ def urlTrialDataBrowse(sess, trialId):
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    r = htmlDataTableMagic('trialData')
+    r = fpUtil.htmlDataTableMagic('trialData')
     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dataPage(sess, content=r, title='Browse')
 
@@ -1020,8 +1050,9 @@ def hackyPhotoFileName(sess, ti, d):
 @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
 def urlScoreSetTraitInstance(sess, traitInstanceId):
-#-----------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Display the data for specified trait instance.
+# NB deleted data are shown (crossed out), not just the latest for each node.
 # MFK this should probably display RepSets, not individual TIs
 #
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
@@ -1062,16 +1093,47 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
-    useDataTables = True
-    if useDataTables:
-        r += htmlDataTableMagic('trialData')
-        r += "<p><table id='trialData'>"
-    else:
-        r += "<p><table id='trialData' border='1'>"
+#     #
+#     # Data table:
+#     #
+#     hdrs = ('Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+#     cRow = []
+#     cCol = []
+#     cVal = []
+#     cUse = []
+#     cTim = []
+#     cLat = []
+#     cLon = []
+#     for idx, d in enumerate(data):
+#         # Is this an overwritten datum?
+#         overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+#
+#         # Special case for photos. Display a link to show the photo.
+#         # Perhaps this should be done in Datum.getValue, but we don't have all info.
+#         if typ == T_PHOTO:
+#             if d.isNA():
+#                 value = 'NA'
+#             else:
+# #               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
+#                 fname = hackyPhotoFileName(sess, ti, d)
+#                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+#         else:
+#             value = d.getValue()
+#
+#         cRow.append(d.node.row)
+#         cCol.append(d.node.col)
+#         cVal.append(value if not overWritten else ('<del>' + str(value) + '</del>'))
+#         cUse.append(d.userid)
+#         cTim.append(util.epoch2dateTime(d.timestamp))
+#         cLat.append(d.gps_lat)
+#         cLon.append(d.gps_long)
+#     r += fpUtil.htmlDatatable(hdrs, [cRow, cCol, cVal, cUse, cTim, cLat, cLon])
 
-    r += ("<thead><tr>" +
-        "<th>Row</th><th>Column</th><th>Value</th><th>User</th><th>Time</th><th>Latitude</th><th>Longitude</th>" +
-        "</thead>")
+    #
+    # Data table:
+    #
+    hdrs = ('Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    rows = []
     for idx, d in enumerate(data):
         # Is this an overwritten datum?
         overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
@@ -1087,11 +1149,11 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()
-        r += "<tr{7}><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>".format(
-            d.node.row, d.node.col, value if not overWritten else ('<del>' + str(value) + '</del>'),
-            d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long,
-            ' bgcolor="#aaaaaa"' if overWritten else '')
-    r += "</table>"
+        rows.append([d.node.row, d.node.col,
+                     value if not overWritten else ('<del>' + str(value) + '</del>'),
+                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
+    r += fpUtil.htmlDatatableByRow(hdrs, rows)
+
     return dataPage(sess, content=r, title='Score Set Data')
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
