@@ -105,13 +105,13 @@ def htmlDataTableMagic(tableId):
     r += """
     <script>
     function setTrialDataWrapperWidth() {
-        // var w = window;
-        var c = $(".dataContent").width();
+        var w = window;
+        var c = Math.round($(".header").width() - 40);
         // var leftBarWidth = $("#dataLeftBar").width();
-        // var leftBarWidth = 0;
+        var leftBarWidth = 0;
         // var setWidthTo = w.innerWidth - leftBarWidth - 60;
         var setWidthTo = c;
-        // console.log("new width: "+setWidthTo);
+        console.log("inner new: "+setWidthTo);
         //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
         document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
     }
