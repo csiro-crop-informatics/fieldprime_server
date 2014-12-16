@@ -4,7 +4,25 @@ body {
 }
 */
 
+.banner{
+    background: #023;
+}
 
+.banner-container{
+    width: 100%;
+}
+
+.dataTables_scrollHeadInner{
+    padding: 0 ! important;
+}
+.header{
+    border-left: 1px solid #023;
+    border-right: 1px solid #023;
+}
+
+.dataTables_length{
+    padding: 10px 0;
+}
 
 button, input[type=submit], input[type=button] {
     color: white!important;
@@ -20,7 +38,7 @@ table.fptable, table.fptable tr{
 }
 
 .fptable th{
-    background-color: #022C38;
+    background-color: #022C38 ! important;
     color: #fff;
     padding: 10px;
 }
@@ -31,7 +49,7 @@ table.fptable, table.fptable tr{
 }
 
 table.fptable{
-    margin: 20px;
+    margin: 0 ! important;
     border-radius: 5px;
 }
 
@@ -263,9 +281,8 @@ p a {
 /*** footer: ********************************/
 #footer {
     clear:both;
-	background-color: #eeeeee;
 	border-top: 1px solid #000000;
-	padding: 10px 0px;
+	padding: 10px 20px;
     height:30px;
 }
 
@@ -300,9 +317,9 @@ p a {
     /*border: solid 1px*/
     /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
     min-height: 510px;
-    width: 990px;
+    /* width: 100%; */
     margin: 0 auto;
-    padding: 30px;
+    padding: 20px;
     list-style: none;
 }
 
@@ -369,7 +386,7 @@ p a {
 }
 
 #trialData_wrapper{
-    width:100%;
+    /* width:98%;*/
 }
 
 #trialData_wrapper label{
