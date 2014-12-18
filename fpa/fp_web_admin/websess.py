@@ -1,5 +1,11 @@
+# websess.py
+# Michael Kirk 2013
+#
+
 import sha, shelve, time, os
-from dbUtil import GetEngine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
@@ -88,11 +94,21 @@ class WebSess(object):
             self.resetLastUseTime()
         return valid
 
+    def getEngine(self):
+    #-----------------------------------------------------------------------
+    # This should be called once only and the result stored, see DB()
+    #
+        fpUser = 'fp_' + self.GetUser()
+        engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, self.GetPassword(), fpUser))
+        smSession = sessionmaker(bind=engine)   # Create sessionmaker instance
+        dbsess = smSession()                    # Create a session
+        return dbsess
+
     def DB(self):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = GetEngine(self)
+            self.mDBsess = self.getEngine()
         return self.mDBsess
 
 

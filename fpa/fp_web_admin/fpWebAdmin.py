@@ -1240,6 +1240,21 @@ def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
+def ***REMOVED***Check(username, password):
+    import ***REMOVED***
+    ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
+    ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
+    # Validate the credentials against ***REMOVED***.
+    ***REMOVED***_users = ***REMOVED***_server.find(ident=username, allow_ceased=False) if ***REMOVED***_server else None
+    if len(***REMOVED***_users) != 1:
+        print 'The supplied username is unknown.'
+        return False
+    elif not ***REMOVED***_users[0].authenticate(password):
+        print 'wrong ***REMOVED*** password'
+        return False
+    print 'authenticated'
+    return True;
+
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
 #-----------------------------------------------------------------------
@@ -1279,18 +1294,27 @@ def urlMain():
             error = 'No username'
         elif not password:
             error = 'No password'
-        elif not CheckPassword(username, password):
-            util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
-            error = 'Invalid Password'
-        else:
-            # Good to go, show the user front page, after adding cookie:
-            util.fpLog(app, 'Login from user {0}'.format(username))
-            sess.resetLastUseTime()
-            sess.SetUserDetails(username, password)
-            g.userName = username
-            resp = make_response(FrontPage(sess))
-            resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
-            return resp
+
+        if not error:
+            # Try fieldprime login, then ***REMOVED***:
+            if not CheckPassword(username, password):
+                if not ***REMOVED***Check(username, password):
+                    util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
+                    error = 'Invalid Password'
+                else:
+                    username = 'mk'
+
+            if not error:
+                # Good to go, show the user front page, after adding cookie:
+                util.fpLog(app, 'Login from user {0}'.format(username))
+                sess.resetLastUseTime()
+                sess.SetUserDetails(username, password)
+                g.userName = username
+                resp = make_response(FrontPage(sess))
+                resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
+                return resp
+
+        # Error return
         return render_template('sessError.html', msg=error, title='FieldPrime Login')
 
     # Request method is 'GET':

@@ -5,8 +5,6 @@
 #
 
 import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation
@@ -20,17 +18,6 @@ from fp_common.models import Trial, Trait, TrialTrait, Node, NodeAttribute, \
 
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
-
-def GetEngine(sess):
-#-----------------------------------------------------------------------
-# This should be called once only and the result stored,
-# currently done in session module.
-#
-    fpUser = 'fp_' + sess.GetUser()
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, sess.GetPassword(), fpUser))
-    Session = sessionmaker(bind=engine)   # Create sessionmaker instance
-    dbsess = Session()                    # Create a session
-    return dbsess
 
 def oneException2None(func):
 #--------------------------------------------------------------------
