@@ -1297,6 +1297,13 @@ def urlMain():
 
         if not error:
             # Try fieldprime login, then ***REMOVED***:
+            # For ***REMOVED*** check, we should perhaps first check in a system database
+            # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
+            # If it is a known user then what mysql user and password should we use?
+            # We should store the ***REMOVED*** user name in the session in case needed for any metadata,
+            # Or at least log their login.
+            # Should allow user to select from multiple dbs ("accounts" or "projects"?).
+            #
             if not CheckPassword(username, password):
                 if not ***REMOVED***Check(username, password):
                     util.fpLog(app, 'Login failed attempt for user {0}'.format(username))

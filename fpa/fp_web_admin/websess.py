@@ -96,7 +96,8 @@ class WebSess(object):
 
     def getEngine(self):
     #-----------------------------------------------------------------------
-    # This should be called once only and the result stored, see DB()
+    # This should be called once only and the result stored, see DB(),
+    # this code could just be in DB().
     #
         fpUser = 'fp_' + self.GetUser()
         engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, self.GetPassword(), fpUser))
