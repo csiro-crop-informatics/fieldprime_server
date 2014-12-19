@@ -5,6 +5,8 @@
 import sha, shelve, time, os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import fp_common.models as models
+
 
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
@@ -74,42 +76,51 @@ class WebSess(object):
         return float(time.time() - float(self.data.get('lastvisit')))
 
 
-    def SetUserDetails(self, user, password):
+    def setProject(self, project):
+    #------------------------------------------------------------------
+        self.data['project'] = project
+
+    def getProject(self, project):
+    #------------------------------------------------------------------
+        return self.data.get('project')
+
+    def setUserDetails(self, user, password):
     #------------------------------------------------------------------
         self.data['user'] = user
         self.data['password'] = password
 
-    def GetUser(self):
+
+    def getUser(self):
     #------------------------------------------------------------------
         return self.data.get('user')
 
-    def GetPassword(self):
+    def getPassword(self):
     #------------------------------------------------------------------
         return self.data.get('password')
 
-    def Valid(self):
+    def valid(self):
     #------------------------------------------------------------------
         valid = self.data.get('user') and self.timeSinceUse() < self.mTimeout
         if valid:
             self.resetLastUseTime()
         return valid
 
-    def getEngine(self):
-    #-----------------------------------------------------------------------
-    # This should be called once only and the result stored, see DB(),
-    # this code could just be in DB().
-    #
-        fpUser = 'fp_' + self.GetUser()
-        engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, self.GetPassword(), fpUser))
-        smSession = sessionmaker(bind=engine)   # Create sessionmaker instance
-        dbsess = smSession()                    # Create a session
-        return dbsess
+#     def getEngine(self):
+#     #-----------------------------------------------------------------------
+#     # This should be called once only and the result stored, see DB(),
+#     # this code could just be in DB().
+#     #
+#         fpUser = 'fp_' + self.getUser()
+#         engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, self.getPassword(), fpUser))
+#         smSession = sessionmaker(bind=engine)   # Create sessionmaker instance
+#         dbsess = smSession()                    # Create a session
+#         return dbsess
 
     def DB(self):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = self.getEngine()
+            self.mDBsess = models.getSysUserEngine(models.dbName4Project(self.getProject()))
         return self.mDBsess
 
 

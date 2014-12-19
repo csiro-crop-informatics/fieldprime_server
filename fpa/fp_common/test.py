@@ -13,7 +13,7 @@ def photoCheck(dbc, photodir):
                 for dat in data:
                     tval = dat.txtValue
                     if tval.count('_') < 2 or tval.count('/') != 0:
-                        fname = md.photoFileName(username,
+                        fname = md.photoFileName(project,
                                          ti.trial_id,
                                          ti.trait_id,
                                          dat.node.id,
@@ -32,14 +32,14 @@ def photoCheck(dbc, photodir):
 
 ### Main: ###################################################
 if len(sys.argv) > 1:
-    username = sys.argv[1]
+    project = sys.argv[1]
 else:
-    username = 'mk'
+    project = 'mk'
 if len(sys.argv) > 2:
     photodir = sys.argv[2]
 else:
     '/proj/fpserver/photos/'
-dbc = md.GetEngineForApp(username)
+dbc = md.getSysUserEngine(project)
 photoCheck(dbc, photodir)
 
 
