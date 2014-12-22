@@ -80,23 +80,30 @@ class WebSess(object):
     #------------------------------------------------------------------
         self.data['project'] = project
 
-    def getProject(self, project):
+    def getProject(self):
     #------------------------------------------------------------------
         return self.data.get('project')
 
-    def setUserDetails(self, user, password):
+    def setUserDetails(self, user, password):   # may be redundant now (not storing passwords)
     #------------------------------------------------------------------
         self.data['user'] = user
         self.data['password'] = password
 
+    def setUser(self, user):
+    #------------------------------------------------------------------
+        self.data['user'] = user
 
     def getUser(self):
     #------------------------------------------------------------------
         return self.data.get('user')
 
-    def getPassword(self):
+    def setLoginType(self, loginType):
     #------------------------------------------------------------------
-        return self.data.get('password')
+        self.data['loginType'] = loginType
+
+    def getLoginType(self):
+    #------------------------------------------------------------------
+        return self.data.get('loginType')
 
     def valid(self):
     #------------------------------------------------------------------
@@ -105,22 +112,11 @@ class WebSess(object):
             self.resetLastUseTime()
         return valid
 
-#     def getEngine(self):
-#     #-----------------------------------------------------------------------
-#     # This should be called once only and the result stored, see DB(),
-#     # this code could just be in DB().
-#     #
-#         fpUser = 'fp_' + self.getUser()
-#         engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpUser, self.getPassword(), fpUser))
-#         smSession = sessionmaker(bind=engine)   # Create sessionmaker instance
-#         dbsess = smSession()                    # Create a session
-#         return dbsess
-
     def DB(self):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = models.getSysUserEngine(models.dbName4Project(self.getProject()))
+            self.mDBsess = models.getSysUserEngine(self.getProject())
         return self.mDBsess
 
 
