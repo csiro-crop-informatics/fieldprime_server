@@ -49,6 +49,8 @@ import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
 LOGIN_TIMEOUT = 1500          # Idle time before requiring web user to login again
+LOGIN_TYPE_SYSTEM = 1
+LOGIN_TYPE_***REMOVED*** = 2
 
 
 #############################################################################################
@@ -72,9 +74,8 @@ def getMYSQLDBConnection(sess):
 # Return mysqldb connection for user associated with session
 #
     try:
-        usrname = dbUserName(sess.GetUser())
-        usrdb = dbName(sess.GetUser())
-        con = mdb.connect('localhost', usrname, sess.GetPassword(), usrdb)
+        projectDBname = models.dbName4Project(sess.getProject())
+        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, projectDBname)
         return con
     except mdb.Error, e:
         return None
@@ -95,36 +96,22 @@ def dec_check_session(returnNoneSess=False):
             sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
-            if not sess.Valid():  # Check if session is still valid
+            if not sess.valid():  # Check if session is still valid
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
                 return render_template('sessError.html', title='Field Prime Login',
                                        msg='Your session has timed out - please login again.')
-            g.userName = sess.GetUser()
+            g.userName = sess.getUser()
+            g.projectName = sess.getProject()
             return func(sess, *args, **kwargs)
         return inner
     return param_dec
 
 
-def dbUserName(username):
-#-----------------------------------------------------------------------
-# Map username to the database username.
-    return 'fp_' + username
-
 def dbName(username):
 #-----------------------------------------------------------------------
 # Map username to the database name.
     return 'fp_' + username
-
-def CheckPassword(user, password):
-#-----------------------------------------------------------------------
-# Validate user/password, returning boolean indicating success
-#
-    try:
-        con = mdb.connect('localhost', dbUserName(user), password, dbName(user));
-        return True
-    except mdb.Error, e:
-        return False
 
 
 def FrontPage(sess, msg=''):
@@ -134,7 +121,7 @@ def FrontPage(sess, msg=''):
     sess.resetLastUseTime()    # This should perhaps be in dataPage, assuming it will only run immediately
                                # after login has been checked (i.e. can't click on link on page that's been
                                # been sitting around for a long time and have it prevent the timeout).
-    return dataPage(sess, content=msg, title="User: " + sess.GetUser())
+    return dataPage(sess, content=msg, title="FieldPrime")
 
 
 #####################################################################################################
@@ -407,10 +394,10 @@ def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.GetUser())
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0} Project:{1}</h1>".format(sess.getUser(), sess.getProject())
     nc += '<div style="float:right; margin-top:10px">'
-    nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', userName=g.userName))
-    nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', userName=g.userName))
+    nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProject()))
+    nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProject()))
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
     nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
@@ -765,78 +752,6 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     r += '</table>' if htable else ''
     return r
 
-def getTrialData2(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes):
-#-----------------------------------------------------------------------
-# Returns trial data as plain text tsv form - i.e. for download, or as html table.
-# The data is arranged in node rows, and trait instance score and attribute columns.
-# Form params indicate what score metadata to display.
-#
-# Note we have improved performance (over a separate query for each value) by getting
-# the data for each trait instance with one sql query.
-# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
-# If necessary we could check the dataset size and if necessary switch to a different method.
-# for example server side mode datatables.
-# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
-# datatables browse could show/hide columns and export current selection to tsv.
-#
-    # Get Trait Instances:
-    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)   # get Trait Instances
-    valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
-    (hdrs, cols) = getAllAttributeColumns(sess, trialId, showAttributes)
-
-    # Work out number of columns for each trait instance:
-    numColsPerValue = 1
-    if showTime:
-        numColsPerValue += 1
-    if showUser:
-        numColsPerValue += 1
-    if showGps:
-        numColsPerValue += 2
-
-    # Headers:
-    for ti in tiList:
-        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        hdrs.append(tiName)
-        if showTime:
-            hdrs.append("{0}_timestamp".format(tiName))
-        if showUser:
-            hdrs.append("{0}_user".format(tiName))
-        if showGps:
-            hdrs.append("{0}_latitude".format(tiName))
-            hdrs.append("{0}_longitude".format(tiName))
-    if showNotes:
-        hdrs.append('Notes') # Putting notes at end in case some commas slip thru and mess up csv structure
-
-    # Data:
-    nodeList = dbUtil.getNodes(sess, trialId) # assuming we get same order as valCols and cols!?
-    for nodeIndex, node in enumerate(nodeList):
-        # Scores:
-        for tiIndex, ti in enumerate(tiList):
-            [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
-            # Write the value:
-            r += "{0}{1}".format(SEP, val)
-            # Write any other datum fields specified:
-            if showTime:
-                r += "{0}{1}".format(SEP, timestamp)
-            if showUser:
-                r += "{0}{1}".format(SEP, userid)
-            if showGps:
-                r += "{0}{1}{0}{2}".format(SEP, lat, long)
-
-        # Notes, as list separated by pipe symbols:
-        if showNotes:
-            r += SEP + '"'
-            tuNotes = dbUtil.GetNodeNotes(sess, node.id)
-            for note in tuNotes:
-                r += '{0}|'.format(note.note)
-            r += '"'
-
-        # End the line:
-        r += ROWEND
-
-    return r
-
-
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
@@ -889,8 +804,13 @@ def urlDeleteTrial(sess, trialId):
         if request.form.get('yesDelete'):
             if not request.form.get('password'):
                  return getHtml('You must provide a password')
-            if request.form.get('password') != sess.GetPassword():
+            #
+            # Require admin password for delete, even if logged in via ***REMOVED***.
+            # Need to allow admin level ***REMOVED*** users..
+            if not systemPasswordCheck(sess.getProject(), request.form.get('password')):
                 return getHtml('Password is incorrect')
+#             if not passwordCheck(sess, request.form.get('password')):
+#                 return getHtml('Password is incorrect')
             else:
                 # Delete the trial:
                 fpTrial.deleteTrial(sess, trialId)
@@ -957,9 +877,9 @@ def urlAttributeDisplay(sess, trialId, attId):
     return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
 
-@app.route('/user/<userName>/details/', methods=['GET', 'POST'])
+@app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
-def urlUserDetails(sess, userName):
+def urlUserDetails(sess, projectName):
     title = "Profile"
     if request.method == 'GET':
         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
@@ -980,27 +900,34 @@ def urlUserDetails(sess, userName):
                                         errMsg="Contact details saved", title=title)
 
         # Changing admin or app password:
-        currUser = sess.GetUser()
-        currPass = sess.GetPassword()
-        password = form.get("password")
-        if password != currPass:
+        currUser = sess.getUser()
+        oldPassword = form.get("password")
+        if not systemPasswordCheck(sess.getProject(), oldPassword):
             sess.close()
             return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
         newpassword1 = form.get("newpassword1")
         newpassword2 = form.get("newpassword2")
-        if not (password and newpassword1 and newpassword2):
+        if not (oldPassword and newpassword1 and newpassword2):
             return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
         if newpassword1 != newpassword2:
             return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
 
         # OK, all good, change their password:
         try:
-            con = getMYSQLDBConnection(sess)
+            #con = getMYSQLDBConnection(sess)
+
+            # New way - get a connection for the system project user for changing the password.
+            # This to avoid having the fpwserver user needing ability to set passwords (access to mysql database).
+            # Ideally however, we should be able to have admin privileges for ***REMOVED*** users, so remembering the system
+            # user password is not compulsory.
+            usrname = models.dbName4Project(sess.getProject())
+            usrdb = usrname
+            con = mdb.connect('localhost', usrname, oldPassword, usrdb)
+
             cur = con.cursor()
             msg = ''
             if op == 'newpw':
-                cur.execute("set password for %s@localhost = password(%s)", (dbUserName(sess.GetUser()), newpassword1))
-                sess.SetUserDetails(currUser, newpassword1)
+                cur.execute("set password for %s@localhost = password(%s)", (models.dbName4Project(sess.getProject()), newpassword1))
                 msg = 'Admin password reset successfully'
             elif op == 'setAppPassword':
                 cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)
@@ -1013,9 +940,9 @@ def urlUserDetails(sess, userName):
             return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
 
 
-@app.route('/user/<userName>/systemTraits/', methods=['GET', 'POST'])
+@app.route('/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
 @dec_check_session()
-def urlSystemTraits(sess, userName):
+def urlSystemTraits(sess, projectName):
 #---------------------------------------------------------------------------
 #
 #
@@ -1050,7 +977,7 @@ def hackyPhotoFileName(sess, ti, d):
 # and then dispense with this if.
     fname = d.txtValue
     if fname.count('_') < 2 or fname.count('/') != 0:
-        fname = models.photoFileName(sess.GetUser(),
+        fname = models.photoFileName(sess.getProject(),
                                      ti.trial_id,
                                      ti.trait_id,
                                      d.node.id,
@@ -1180,13 +1107,6 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
         with zipfile.ZipFile(archiveFileName, 'w') as myzip:
             for d in data:
                 # Add all the photos in the traitInstance to the archive
-#                 fname = models.photoFileName(sess.GetUser(),
-#                                              ti.trial_id,
-#                                              ti.trait_id,
-#                                              d.node.id,
-#                                              ti.token,
-#                                              ti.seqNum,
-#                                              ti.sampleNum)
                 fname = hackyPhotoFileName(sess, ti, d)
 
                 #print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
@@ -1203,7 +1123,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
 #-----------------------------------------------------------
 # Generate file name for zip of photos in traitInstance.
     ti = dbUtil.getTraitInstance(sess, traitInstanceId)
-    return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.GetUser(), ti.trial.name, traitInstanceId)
+    return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.getProject(), ti.trial.name, traitInstanceId)
 
 @app.route("/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
 @dec_check_session()
@@ -1236,7 +1156,7 @@ def urlPhoto(sess, filename):
     return resp
 
 
-@app.route('/user/<userName>/', methods=['GET'])
+@app.route('/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
     return FrontPage(sess)
@@ -1252,6 +1172,45 @@ def urlLogout(sess):
 def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
+
+def systemPasswordCheck(user, password):
+#-----------------------------------------------------------------------
+# Validate 'system' user/password, returning boolean indicating success.
+# A system user/pass is a mysql user/pass.
+#
+    try:
+        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
+        con.close()
+        return True
+    except mdb.Error, e:
+        return False
+
+def ***REMOVED***PasswordCheck(username, password):
+#-----------------------------------------------------------------------
+# Validate ***REMOVED*** user/password, returning boolean indicating success
+#
+    import ***REMOVED***
+    ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
+    ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
+    # Validate the credentials against ***REMOVED***.
+    ***REMOVED***_users = ***REMOVED***_server.find(ident=username, allow_ceased=False) if ***REMOVED***_server else None
+    if len(***REMOVED***_users) != 1:
+        print 'The supplied username is unknown.'
+        return False
+    elif not ***REMOVED***_users[0].authenticate(password):
+        print 'wrong ***REMOVED*** password'
+        return False
+    print 'authenticated'
+    return True;
+
+def passwordCheck(sess, password):
+#-----------------------------------------------------------------------
+# Check password is valid for current user/loginType
+#
+    if sess.getLoginType() == LOGIN_TYPE_SYSTEM:
+        return systemPasswordCheck(sess.getUser(), password)
+    elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
+        return ***REMOVED***PasswordCheck(sess.getUser(), password)
 
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
@@ -1292,18 +1251,68 @@ def urlMain():
             error = 'No username'
         elif not password:
             error = 'No password'
-        elif not CheckPassword(username, password):
-            util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
-            error = 'Invalid Password'
-        else:
-            # Good to go, show the user front page, after adding cookie:
-            util.fpLog(app, 'Login from user {0}'.format(username))
-            sess.resetLastUseTime()
-            sess.SetUserDetails(username, password)
-            g.userName = username
-            resp = make_response(FrontPage(sess))
-            resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
-            return resp
+
+        if not error:
+            # Try fieldprime login, then ***REMOVED***:
+            # For ***REMOVED*** check, we should perhaps first check in a system database
+            # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
+            # If it is a known user then what mysql user and password should we use?
+            # We should store the ***REMOVED*** user name in the session in case needed for any metadata,
+            # Or at least log their login.
+            # Should allow user to select from multiple dbs ("accounts" or "projects"?).
+            # MFK we shouldn't need to store password if we switch to using system password.
+            # even for project accounts. The password is checked here and used to make the
+            # timestamped cookie.
+            #
+            project = None    # For either login type we need to set a project
+            loginType = None
+            if systemPasswordCheck(username, password):
+                project = username
+                loginType = LOGIN_TYPE_SYSTEM
+            else:
+                #
+                # Not a main project account - try as ***REMOVED*** user.
+                #
+                if ***REMOVED***PasswordCheck(username, password):
+                    # OK, valid ***REMOVED*** user. Find project they have access to:
+                    try:
+                        loginType = LOGIN_TYPE_***REMOVED***
+                        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
+                        qry = """
+                            select up.project from user u join userProject up
+                            on u.id = up.user_id and u.login = %s"""
+                        cur = con.cursor()
+                        cur.execute(qry, (username))
+                        #
+                        # Just get last project for now (will need to present user with list)
+                        #
+                        for row in cur.fetchall():
+                            project = row[0]
+                        cur.close()
+                        if project is None:
+                            error = 'No projects found for user {0}'.format(username)
+
+                    except mdb.Error, e:
+                        error = 'Failed system login'
+                else:
+                    util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
+                    error = 'Invalid Password'
+
+
+            if not error:
+                # Good to go, show the user front page, after adding cookie:
+                util.fpLog(app, 'Login from user {0}'.format(username))
+                sess.resetLastUseTime()
+                sess.setUser(username)
+                sess.setProject(project)
+                sess.setLoginType(loginType)
+                g.userName = username
+                g.projectName = project
+                resp = make_response(FrontPage(sess))
+                resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
+                return resp
+
+        # Error return
         return render_template('sessError.html', msg=error, title='FieldPrime Login')
 
     # Request method is 'GET':

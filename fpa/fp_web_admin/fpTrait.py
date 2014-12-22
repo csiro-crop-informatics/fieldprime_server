@@ -131,13 +131,13 @@ def NewTraitCategorical(sess, request, trt):
                 if allowed_file(sentFilename):
                     # Note, file are stored under a configured category image folder,
                     # and then with path <userName>/<trait id>/<value>.<original file extension>
-                    subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.GetUser(), str(trt.id))
+                    subpath = os.path.join(app.config['CATEGORY_IMAGE_FOLDER'], sess.getProject(), str(trt.id))
                     if not os.path.exists(subpath):
                         os.makedirs(subpath)
                     fileExt = sentFilename.rsplit('.', 1)[1]
                     newFilename = '{0}.{1}'.format(value, fileExt)
                     imageURLFile.save(subpath +  "/" + newFilename)
-                    imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + "/" + sess.GetUser() + "/" + str(trt.id) + "/" + newFilename
+                    imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + "/" + sess.getProject() + "/" + str(trt.id) + "/" + newFilename
                 else:
                     util.flog("NewTraitCategorical bad file name")
         except Exception, e:

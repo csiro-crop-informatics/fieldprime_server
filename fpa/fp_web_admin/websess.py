@@ -1,5 +1,13 @@
+# websess.py
+# Michael Kirk 2013
+#
+
 import sha, shelve, time, os
-from dbUtil import GetEngine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import fp_common.models as models
+
+
 
 SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
 
@@ -68,20 +76,36 @@ class WebSess(object):
         return float(time.time() - float(self.data.get('lastvisit')))
 
 
-    def SetUserDetails(self, user, password):
+    def setProject(self, project):
+    #------------------------------------------------------------------
+        self.data['project'] = project
+
+    def getProject(self):
+    #------------------------------------------------------------------
+        return self.data.get('project')
+
+    def setUserDetails(self, user, password):   # may be redundant now (not storing passwords)
     #------------------------------------------------------------------
         self.data['user'] = user
         self.data['password'] = password
 
-    def GetUser(self):
+    def setUser(self, user):
+    #------------------------------------------------------------------
+        self.data['user'] = user
+
+    def getUser(self):
     #------------------------------------------------------------------
         return self.data.get('user')
 
-    def GetPassword(self):
+    def setLoginType(self, loginType):
     #------------------------------------------------------------------
-        return self.data.get('password')
+        self.data['loginType'] = loginType
 
-    def Valid(self):
+    def getLoginType(self):
+    #------------------------------------------------------------------
+        return self.data.get('loginType')
+
+    def valid(self):
     #------------------------------------------------------------------
         valid = self.data.get('user') and self.timeSinceUse() < self.mTimeout
         if valid:
@@ -92,7 +116,7 @@ class WebSess(object):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = GetEngine(self)
+            self.mDBsess = models.getSysUserEngine(self.getProject())
         return self.mDBsess
 
 

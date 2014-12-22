@@ -549,14 +549,20 @@ class TokenNode(DeclarativeBase):
 
 gdbg = True
 
-def GetEngineForApp(targetUser):
+def dbName4Project(project):
+#-----------------------------------------------------------------------
+# Map project name to the database name.
+    return 'fp_' + project
+
+
+APPUSR = 'fpwserver'
+APPPWD = 'fpws_g00d10ch'
+def getSysUserEngine(targetUser):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    APPUSR = 'fpwserver'
-    APPPWD = 'fpws_g00d10ch'
-    dbname = 'fp_' + targetUser
+    dbname = dbName4Project(targetUser)
     engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
@@ -566,7 +572,7 @@ def GetEngineForApp(targetUser):
 # This should use alchemy and return connection
 def DbConnectAndAuthenticate(username, password):
 #-------------------------------------------------------------------------------------------------
-    dbc = GetEngineForApp(username)    # not sure how this returns error, test..
+    dbc = getSysUserEngine(username)    # not sure how this returns error, test..
     if dbc is None:
         return (None, 'Unknown user/database')
 
