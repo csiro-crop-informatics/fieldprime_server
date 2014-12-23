@@ -408,8 +408,6 @@ def dataNavigationContent(sess, trialId):
     if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
     # Make select of user's projects:
         nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
-        print 'xxxx'
-        print sess.getProject()
         projList, errMsg = getProjects(sess.getUser())
         if not projList:
             error = 'No projects found for user {0}'.format(sess.getUser())
