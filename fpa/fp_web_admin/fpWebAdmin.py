@@ -394,7 +394,8 @@ def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0} Project:{1}</h1>".format(sess.getUser(), sess.getProject())
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
+
     nc += '<div style="float:right; margin-top:10px">'
     nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProject()))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProject()))
@@ -402,6 +403,26 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
     nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>'
+
+
+    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
+    # Make select of user's projects:
+        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
+        print 'xxxx'
+        print sess.getProject()
+        projList, errMsg = getProjects(sess.getUser())
+        if not projList:
+            error = 'No projects found for user {0}'.format(sess.getUser())
+        nc += '''
+        <br>
+        <form action="{0}" method="GET">
+        <select name="project" id="project" onchange="this.form.submit()">'''.format(url_for('urlUserHome', userName=sess.getUser()))
+        for proj in projList:
+            nc += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
+                    proj, 'selected="selected"' if proj == sess.getProject() else '')
+        nc += '</select></form>'
+    else:
+        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
 
     trials = GetTrials(sess)
     trialListHtml = None if len(trials) < 1 else ""
@@ -1159,6 +1180,11 @@ def urlPhoto(sess, filename):
 @app.route('/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
+    print 'here'
+    project = request.args.get('project')
+    if project is not None:
+        print 'proj is:' + project
+        sess.setProject(project)
     return FrontPage(sess)
 
 @app.route('/logout', methods=["GET"])
@@ -1200,7 +1226,6 @@ def ***REMOVED***PasswordCheck(username, password):
     elif not ***REMOVED***_users[0].authenticate(password):
         print 'wrong ***REMOVED*** password'
         return False
-    print 'authenticated'
     return True;
 
 def passwordCheck(sess, password):
@@ -1211,6 +1236,25 @@ def passwordCheck(sess, password):
         return systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
+
+def getProjects(username):
+#-----------------------------------------------------------------------
+# Get project available to specified user - this should be a valid ***REMOVED*** user.
+# Returns tuple, project list and errorMessage (which will be None if no error).
+    try:
+        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
+        qry = """
+            select up.project from user u join userProject up
+            on u.id = up.user_id and u.login = %s"""
+        cur = con.cursor()
+        cur.execute(qry, (username))
+        projects = []
+        for row in cur.fetchall():
+            projects.append(row[0])
+        return (projects, None)
+    except mdb.Error, e:
+        return (None, 'Failed system login')
+
 
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
@@ -1275,25 +1319,13 @@ def urlMain():
                 #
                 if ***REMOVED***PasswordCheck(username, password):
                     # OK, valid ***REMOVED*** user. Find project they have access to:
-                    try:
-                        loginType = LOGIN_TYPE_***REMOVED***
-                        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
-                        qry = """
-                            select up.project from user u join userProject up
-                            on u.id = up.user_id and u.login = %s"""
-                        cur = con.cursor()
-                        cur.execute(qry, (username))
-                        #
-                        # Just get last project for now (will need to present user with list)
-                        #
-                        for row in cur.fetchall():
-                            project = row[0]
-                        cur.close()
-                        if project is None:
-                            error = 'No projects found for user {0}'.format(username)
-
-                    except mdb.Error, e:
+                    loginType = LOGIN_TYPE_***REMOVED***
+                    projList, errMsg = getProjects(username)
+                    if errMsg is not None:
                         error = 'Failed system login'
+                    if not projList:
+                        error = 'No projects found for user {0}'.format(username)
+                    project = projList[0]
                 else:
                     util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                     error = 'Invalid Password'
