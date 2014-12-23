@@ -67,7 +67,8 @@ def HtmlButtonLink2(label, click):
 #-----------------------------------------------------------------------
 # This version has the button inside a form, sometimes (eg when within
 # a table cell), this seems to be necessary.
-    return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
+    return "<input type='button' onclick=\"window.location.href='{0}'\" value='{1}' />".format(click, label)
+    #return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
 
 
 def htmlDataTableMagic(tableId):
@@ -105,9 +106,12 @@ def htmlDataTableMagic(tableId):
     <script>
     function setTrialDataWrapperWidth() {
         var w = window;
-        var c = $(".dataContent").width();
-        var leftBarWidth = $("#dataLeftBar").width();
-        var setWidthTo = w.innerWidth - leftBarWidth - 60;
+        var c = Math.round($(".header").width() - 40);
+        // var leftBarWidth = $("#dataLeftBar").width();
+        var leftBarWidth = 0;
+        // var setWidthTo = w.innerWidth - leftBarWidth - 60;
+        var setWidthTo = c;
+        console.log("inner new: "+setWidthTo);
         //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
         document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
     }
@@ -146,7 +150,7 @@ def htmlDatatable(headers, cols):
         return ''
     numRows = len(cols[0])
     r = htmlDataTableMagic('trialData')
-    r += '<p><table id="trialData" class="display"  cellspacing="0" width="100%"  >'
+    r += '<p><table id="trialData" class="display fptable"  cellspacing="0" width="100%"  >'
     hdrs = ''
     for h in headers:
         hdrs += '<th>{0}</th>'.format(h)
@@ -167,7 +171,7 @@ def htmlDatatableByRow(headers, rows):
 # Data table:
 #
     out = htmlDataTableMagic('trialData')
-    out += '<p><table id="trialData" class="display"  cellspacing="0" width="100%"  >'
+    out += '<p><table id="trialData" class="display fptable"  cellspacing="0" width="100%"  >'
     hdrs = ''
     for h in headers:
         hdrs += '<th>{0}</th>'.format(h)

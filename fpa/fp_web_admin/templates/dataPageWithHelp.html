@@ -16,10 +16,11 @@
   <div class=dataContent>
     {% block dataContentTop %}
     {% endblock %}
-  </div>
-  <div class=dataContentHelpButton>
     <button onclick='toggleHelp()' id='helpButton'>Show Help</button>
   </div>
+  <!-- div class=dataContentHelpButton>
+    <button onclick='toggleHelp()' id='helpButton'>Show Help</button>
+  </div -->
 </div>
 
 {% block dataContentMain %}
@@ -31,7 +32,7 @@
 <div id='helpText' class=dataContentHelp>
   <div class="description not_too_wide">
     <div class=dataContentHelpButton>
-      <button onclick='toggleHelp()' id='helpButton' style='float:left'>Hide Help</button>
+      <button onclick='toggleHelp()' id='helpButton'>Hide Help</button>
     </div>
     {% block dataHelpText %}
     {% endblock %}

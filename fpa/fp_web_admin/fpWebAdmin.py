@@ -66,7 +66,7 @@ def internalError(e):
     util.flog('internal error:')
     util.flog(e)
     util.flog(traceback.format_exc())
-    return 'FieldPrime: Internal Server Error'
+    return 'FieldPrime: Internal Server Error <br />{}::{}'.format(app.config['SESS_FILE_DIR'], traceback.format_exc())
 
 
 def getMYSQLDBConnection(sess):
@@ -133,8 +133,8 @@ def htmlTrialTraitTable(trial):
 # Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
         return "No traits configured"
-    out = "<table border='1'>"
-    out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(
+    out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
+    out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
         "Caption", "Description", "Type", "Details")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
@@ -190,8 +190,8 @@ def htmlNodeAttributes(sess, trialId):
     if len(attList) < 1:
         out += "No attributes found"
     else:
-        out = "<table border='1'>"
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
+        out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
+        out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format(
             "Name", "Datatype", "Values")
         for att in attList:
             valuesButton = HtmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
@@ -204,7 +204,7 @@ def htmlNodeAttributes(sess, trialId):
     out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.HtmlButtonLink2("Upload attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.HtmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -255,7 +255,6 @@ def htmlTrialTraits(sess, trial):
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
-    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dbUtil.GetSysTraits(sess)
     for st in sysTraits:
@@ -264,7 +263,9 @@ def htmlTrialTraits(sess, trial):
                 break
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
-    addSysTraitForm += '</select></form>'
+    addSysTraitForm += '</select> &nbsp; '
+    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
+    addSysTraitForm += '</form>'
     return HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
 def htmlTrialData(sess, trial):
@@ -319,13 +320,13 @@ def htmlTrialData(sess, trial):
     dl += "<option value='notes' selected='selected'>Notes</option>"
     dl += "<option value='attributes' selected='selected'>Attributes</option>"
     dl += "</select>"
-    dl += "<br><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
-    dl +=     "<button>Download Trial Data</button></a>"
-    dl +=     " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
-    dl +=     "View tab separated score data</a>"
-    dl += "<br>Note data is TAB separated"
-    dl += "<br><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
+    dl +=     "<button>Download Trial Data</button></a><br />"
+    dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+    dl += "<p><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
+    dl +=     "<button>View tab separated score data</button></a><br />"
+    dl += "<span style='font-size: smaller;'>Note data is TAB separated"
+    dl += "<p><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
     dl +=     "<button>Browse Trial Data</button></a>"
     return dl
 
@@ -375,7 +376,7 @@ def TrialHtml(sess, trialId):
     hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
     hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
     hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
-    return '<h2>{0}</h2>'.format(trial.name) + hts.htmlTabs()
+    return '<h2>Trial: {0}</h2>'.format(trial.name) + hts.htmlTabs()
 
 
 def trialPage(sess, trialId):
@@ -385,38 +386,64 @@ def trialPage(sess, trialId):
     trialh = TrialHtml(sess, trialId)
     if trialh is None:
         trialh = "No such trial"
-    return dataPage(sess, content=trialh, title='Trial Data')
+    return dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
 
 
-def dataNavigationContent(sess):
+def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
-    nc = "<h1>User:{0}<br>Project:{1}</h1>".format(sess.getUser(), sess.getProject())
-    nc += '<a href="{0}">Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProject()))
-    nc += '<hr clear="all">'
+    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
+
+    nc += '<div style="float:right; margin-top:10px">'
+    nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProject()))
+    nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProject()))
+    nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
+    nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
+    nc += '</div><div style="clear:both"></div>'
+
+
+    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
+    # Make select of user's projects:
+        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
+        projList, errMsg = getProjects(sess.getUser())
+        if not projList:
+            error = 'No projects found for user {0}'.format(sess.getUser())
+        nc += '''
+        <br>
+        <form action="{0}" method="GET">
+        <select name="project" id="project" onchange="this.form.submit()">'''.format(url_for('urlUserHome', userName=sess.getUser()))
+        for proj in projList:
+            nc += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
+                    proj, 'selected="selected"' if proj == sess.getProject() else '')
+        nc += '</select></form>'
+    else:
+        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
 
     trials = GetTrials(sess)
-    trialListHtml = "No trials yet" if len(trials) < 1 else ""
+    trialListHtml = None if len(trials) < 1 else ""
     for t in trials:
-        trialListHtml += "\n  <li><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-    nc += "<h2>Trials:</h2>"
-    nc += trialListHtml + HtmlButtonLink("Create New Trial", url_for("newTrial"))
-    nc += '<hr>'
-    nc += HtmlButtonLink("Download app", url_for("downloadApp"))
-    nc += HtmlButtonLink("App User Guide", 'https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub')
-    nc += '<hr>'
-    nc += '<a href="{0}">System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProject()))
+        if "{}".format(t.id) == "{}".format(trialId):
+            trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+        else:
+            trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+
+    if trialListHtml:
+        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+        nc += "<h2>Trials:</h2><ul class='fa-ul'>"
+        nc += trialListHtml
+        nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
     return nc
 
 
-def dataPage(sess, title, content):
+def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------
 # Return page for user data with given content and title.
 # The point of this function is to add the navigation content.
 #
-    nc = dataNavigationContent(sess)
+    nc = dataNavigationContent(sess, trialId)
     return render_template('dataPage.html', navContent=nc, content=content, title=title)
 
 def dataTemplatePage(sess, template, **kwargs):
@@ -424,7 +451,11 @@ def dataTemplatePage(sess, template, **kwargs):
 # Return page for user data with given template, kwargs are passed through
 # to the template. The point of this function is to add the navigation content.
 #
-    nc = dataNavigationContent(sess) # Generate content for navigation bar:
+    if 'trialId' in kwargs:
+        nc = dataNavigationContent(sess, trialId=kwargs['trialId'])
+    else:
+        nc = dataNavigationContent(sess, trialId="-1")
+    # nc = dataNavigationContent(sess) # Generate content for navigation bar:
     return render_template(template, navContent=nc, **kwargs)
 
 def dataErrorPage(sess, errMsg):
@@ -585,6 +616,7 @@ def urlBrowseTrialAttributes(sess, trialId):
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
     return dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse')
 
+
 def getDataColumns(sess, trialId, tiList):
 #-----------------------------------------------------------------------
 # SQL query - this is a bit complicated:
@@ -674,7 +706,7 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     HROWEND = '</th></thead>\n' if htable else '\n'
     # MFK unify with browseData (for attributes
     #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if htable else ''
-    r = '\n<table id="trialData" class="display" cellspacing="0" width="100%">' if htable else ''
+    r = '\n<table class="fptable" id="trialData" class="display" cellspacing="0" width="100%">' if htable else ''
 
     # Headers:
     r += HROWSTART
@@ -761,7 +793,7 @@ def urlTrialDataBrowse(sess, trialId):
     showAttributes = request.args.get("attributes")
     r = fpUtil.htmlDataTableMagic('trialData')
     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
-    return dataPage(sess, content=r, title='Browse')
+    return dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
@@ -783,7 +815,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
         return dataPage(sess, title='Delete Trial',
                         content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
-                                                          'Really Delete Trial {0}?'.format(trl.name)))
+                                                          'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
         return getHtml()
     if request.method == 'POST':
@@ -801,7 +833,7 @@ def urlDeleteTrial(sess, trialId):
             else:
                 # Delete the trial:
                 fpTrial.deleteTrial(sess, trialId)
-                return dataPage(sess, '', 'Trial Deleted')
+                return dataPage(sess, '', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
             return FrontPage(sess)
@@ -855,13 +887,13 @@ def urlAttributeDisplay(sess, trialId, attId):
     tua = dbUtil.GetAttribute(sess, attId)
     r = "Attribute {0}".format(tua.name)
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
-    r += "<p><table border='1'>"
-    r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format("Row", "Column", "Value")
+    r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
+    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Row", "Column", "Value")
     aVals = dbUtil.GetAttributeValues(sess, attId)
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
     r += "</table>"
-    return dataPage(sess, content=r, title='Attribute')
+    return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
@@ -1081,7 +1113,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                      d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
     r += fpUtil.htmlDatatableByRow(hdrs, rows)
 
-    return dataPage(sess, content=r, title='Score Set Data')
+    return dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
@@ -1146,6 +1178,11 @@ def urlPhoto(sess, filename):
 @app.route('/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
+    print 'here'
+    project = request.args.get('project')
+    if project is not None:
+        print 'proj is:' + project
+        sess.setProject(project)
     return FrontPage(sess)
 
 @app.route('/logout', methods=["GET"])
@@ -1187,7 +1224,6 @@ def ***REMOVED***PasswordCheck(username, password):
     elif not ***REMOVED***_users[0].authenticate(password):
         print 'wrong ***REMOVED*** password'
         return False
-    print 'authenticated'
     return True;
 
 def passwordCheck(sess, password):
@@ -1198,6 +1234,25 @@ def passwordCheck(sess, password):
         return systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
+
+def getProjects(username):
+#-----------------------------------------------------------------------
+# Get project available to specified user - this should be a valid ***REMOVED*** user.
+# Returns tuple, project list and errorMessage (which will be None if no error).
+    try:
+        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
+        qry = """
+            select up.project from user u join userProject up
+            on u.id = up.user_id and u.login = %s"""
+        cur = con.cursor()
+        cur.execute(qry, (username))
+        projects = []
+        for row in cur.fetchall():
+            projects.append(row[0])
+        return (projects, None)
+    except mdb.Error, e:
+        return (None, 'Failed system login')
+
 
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
@@ -1262,25 +1317,13 @@ def urlMain():
                 #
                 if ***REMOVED***PasswordCheck(username, password):
                     # OK, valid ***REMOVED*** user. Find project they have access to:
-                    try:
-                        loginType = LOGIN_TYPE_***REMOVED***
-                        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
-                        qry = """
-                            select up.project from user u join userProject up
-                            on u.id = up.user_id and u.login = %s"""
-                        cur = con.cursor()
-                        cur.execute(qry, (username))
-                        #
-                        # Just get last project for now (will need to present user with list)
-                        #
-                        for row in cur.fetchall():
-                            project = row[0]
-                        cur.close()
-                        if project is None:
-                            error = 'No projects found for user {0}'.format(username)
-
-                    except mdb.Error, e:
+                    loginType = LOGIN_TYPE_***REMOVED***
+                    projList, errMsg = getProjects(username)
+                    if errMsg is not None:
                         error = 'Failed system login'
+                    if not projList:
+                        error = 'No projects found for user {0}'.format(username)
+                    project = projList[0]
                 else:
                     util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                     error = 'Invalid Password'

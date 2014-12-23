@@ -3,10 +3,18 @@
 class="active"
 {% endblock %}
 {% block content %}
-	<div id="contents" class=infoText>
+  <!-- Header: ------------------------------------------------------------------------------>
+
+    {# Determine if anyone is logged in: #}
+    {% set loggedIn = (g.userName and g.userName != 'unknown') %}
+
+    {# Login fields, or name of logged in user and logout button: #}
+      <div id="contents" class=infoText>
+
 		<div id="about">
 			<h1>Welcome to FieldPrime</h1>
-			<h2>FieldPrime Software</h2>
+          <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
+                  <h2>FieldPrime Software</h2>
             <p>
             FieldPrime is a software suite designed to ease the process of
             manual collection and collation of data. Its original use
@@ -16,7 +24,16 @@ class="active"
             which is used for the data collection - and the FieldPrime
             Server, which is used to store and manage the trial data.
 
-
-		</div>
+                <div id="loginout"  class="infoText" style="clear:both; padding-top:25px;">
+                  {% if not loggedIn %} <!-- If there is NO user logged in: -->
+                    <h1>Log in</h1>
+                  <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
+                    <label for='username'>User Name: </label><input type="text" name="username" id='username'><br />
+                    <label for='password'>Password: </label><input type=password name="password" id='password'> 
+                    <input type="submit" value="Login"></p>
+                  </FORM>
+                  {% endif %}
+                </div>
+            </div>
 	</div>
 {% endblock %}

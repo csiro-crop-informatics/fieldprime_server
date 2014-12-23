@@ -4,28 +4,29 @@
 
 <fieldset><legend><h3>Contact Details</h3></legend>
   <form method="POST" action="{{url_for('urlUserDetails', projectName=g.projectName)}}?op=contact">
-    <p> Name and email address of a contact for this account:
-    <p> Contact name: <input type="text" name="contactName" style="width: 200px;" value="{{contactName}}">
-    <p> Contact email: <input type=text name="contactEmail" style="width: 200px;" value="{{contactEmail}}">
-    <p> <input type="submit" value="Save Contact Details">
+    <p> Name and email address of a contact for this account: </p>
+    <label for="contactName">Contact name: </label><input type="text" name="contactName" id="contactName" style="width: 200px;" value="{{contactName}}"><br />
+    <label for="contactEmail">Contact email: </label><input type=text name="contactEmail" id="contactEmail" style="width: 200px;" value="{{contactEmail}}"><br />
+    <p> 
+    <input type="submit" value="Save Contact Details">
+    {% if op == 'contact' %}
+    <font color="red">{{errMsg}}</font>
+    {% endif %}
   </form>
-  {% if op == 'contact' %}
-  <font color="red">{{errMsg}}</font>
-  {% endif %}
 </fieldset>
 
 <fieldset><legend><h3>Reset Admin password</h3></legend>
   <form method="POST" action="{{url_for('urlUserDetails', projectName=g.projectName)}}?op=newpw">
     <p> The <i>Admin Password</i> is the password used to login to this web server to
-      manage the trials. I.e. the one you must have used at some stage to get to this page.
-    <p> Enter your current <i>Admin</i> password: <input type=password name="password">
-    <p>Enter your new password: <input type=password name="newpassword1">
-    <p>Confirm your new password: <input type=password name="newpassword2">
+      manage the trials. I.e. the one you must have used at some stage to get to this page. </p>
+    <label for="password" style='width:200px'> Current <i>Admin</i> password: </label><input type=password name="password" id="password"><br />
+    <label for='newpassword1' style='width:200px'>New password: </label><input type=password name="newpassword1" id='newpassword1'><br />
+    <label for='newpassword2' style='width:200px'>Confirm new password: </label><input type=password name="newpassword2" id="newpassword2"><br />
     <p> <input type="submit" value="Change Admin Password">
+    {% if op == 'newpw' %}
+    <font color="red">{{errMsg}}</font>
+    {% endif %}
   </form>
-  {% if op == 'newpw' %}
-  <font color="red">{{errMsg}}</font>
-  {% endif %}
 </fieldset>
 
 <fieldset><legend><h3>Reset Scoring Devices Password</h3></legend>
@@ -37,15 +38,15 @@
     <p> Note this is not the same as the admin password, (used to login to this web server to
       manage the trials). The app password is less secure than the admin password (it could be retrieved
       from the scoring device with some effort), so this should not be set to the same value as the
-      admin password.
-    <p> Enter your current <i>Admin</i> password: <input type=password name="password">
-    <p>Enter new <i>Scoring Device</i> password: <input type=password name="newpassword1">
-    <p>Confirm new <i>Scoring Device</i> password: <input type=password name="newpassword2">
+      admin password. </p>
+    <label for='admpassword' style='width:280px'>Current <i>Admin</i> password: </label><input type=password name="password" id='admpassword'><br />
+    <label for='newadmpassword1' style='width:280px'>New <i>Scoring Device</i> password: </label><input type=password name="newpassword1" id='newadmpassword1'><br />
+    <label for='newadmpassword2' style='width:280px'>Confirm new <i>Scoring Device</i> password: </label><input type=password name="newpassword2" id='newadmpassword2'><br />
     <p> <input type="submit" value="Change App Password">
-  </form>
   {% if op == 'setAppPassword' %}
   <font color="red">{{errMsg}}</font>
   {% endif %}
+  </form>
 </fieldset>
 
 {% endblock %}
