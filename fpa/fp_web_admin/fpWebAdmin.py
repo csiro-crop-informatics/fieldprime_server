@@ -404,7 +404,9 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>'
 
-
+    # There are currently 2 types of login, ***REMOVED***, and the project login.
+    # ***REMOVED*** users may have access rights to multiple project so they get
+    # a dropdown project selection.
     if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
     # Make select of user's projects:
         nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
@@ -1321,9 +1323,10 @@ def urlMain():
                     projList, errMsg = getProjects(username)
                     if errMsg is not None:
                         error = 'Failed system login'
-                    if not projList:
+                    elif not projList:
                         error = 'No projects found for user {0}'.format(username)
-                    project = projList[0]
+                    else:
+                        project = projList[0]
                 else:
                     util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                     error = 'Invalid Password'
