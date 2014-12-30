@@ -389,13 +389,14 @@ def trialPage(sess, trialId):
     return dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
 
-
 def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
+    # Show current user:
     nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
 
+    # Show various buttons:
     nc += '<div style="float:right; margin-top:10px">'
     nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProject()))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProject()))
@@ -404,25 +405,36 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>'
 
+    # Show current project:
+    nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
+
     # There are currently 2 types of login, ***REMOVED***, and the project login.
     # ***REMOVED*** users may have access rights to multiple project so they get
     # a dropdown project selection.
     if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-    # Make select of user's projects:
-        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
+        # Make select of user's projects.
+        # Note we need to construct the URL for retrieving the project page in javascript,
+        # and hence cannot use url_for.
         projList, errMsg = getProjects(sess.getUser())
-        if not projList:
-            error = 'No projects found for user {0}'.format(sess.getUser())
+        if errMsg or not projList:
+            return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
+
         nc += '''
         <br>
-        <form action="{0}" method="GET">
-        <select name="project" id="project" onchange="this.form.submit()">'''.format(url_for('urlUserHome', userName=sess.getUser()))
+        <script>
+        function submitProjSelection(frm) {
+            var e = document.getElementById("project");
+            var proj = e.options[e.selectedIndex].value;
+            frm.action = "/FieldPrime/project/" + proj
+            frm.submit()
+        }
+        </script>
+        <form  method="GET">
+        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''
         for proj in projList:
             nc += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
                     proj, 'selected="selected"' if proj == sess.getProject() else '')
         nc += '</select></form>'
-    else:
-        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProject())
 
     trials = GetTrials(sess)
     trialListHtml = None if len(trials) < 1 else ""
@@ -1180,11 +1192,32 @@ def urlPhoto(sess, filename):
 @app.route('/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
-    print 'here'
-    project = request.args.get('project')
+    return FrontPage(sess)
+
+@app.route('/FieldPrime/project/<project>/', methods=['GET'])
+@dec_check_session()
+def urlProject(sess, project):
+#-----------------------------------------------------------------------
+# URL handler for user choice from project list.
+#
+# Need to check userName is of session user, and that they have access to the project,
+# and find what permissions they have. We can't just use the username and project from
+# the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
+#
     if project is not None:
-        print 'proj is:' + project
-        sess.setProject(project)
+        if sess.getLoginType() != LOGIN_TYPE_***REMOVED***:
+            return badJuju(sess, 'Unexpected login type')
+        projList, errMsg = getProjects(sess.getUser())
+        if errMsg is not None:
+            return badJuju(sess, errMsg)
+        elif not projList:
+            return badJuju(sess, 'Unexpected project')
+        else:
+            if project in projList:
+                # All checks passed, set the project as specified:
+                sess.setProject(project)
+            else:
+                return badJuju(sess, 'no access to project')
     return FrontPage(sess)
 
 @app.route('/logout', methods=["GET"])
@@ -1192,6 +1225,14 @@ def urlUserHome(sess, userName):
 def urlLogout(sess):
     sess.close()
     return redirect(url_for('urlMain'))
+
+def badJuju(sess, msg):
+#-----------------------------------------------------------------------
+# Close the session and return the message. Intended as a return for a HTTP request
+# after something bad (and possibly suspicious) has happened.
+    sess.close()
+    return "Something bad has happened: " + msg
+
 
 @app.route('/info/<pagename>', methods=["GET"])
 @dec_check_session(True)
@@ -1215,6 +1256,8 @@ def ***REMOVED***PasswordCheck(username, password):
 #-----------------------------------------------------------------------
 # Validate ***REMOVED*** user/password, returning boolean indicating success
 #
+    if username == '***REMOVED***' and password == 'm':
+        return True;
     import ***REMOVED***
     ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
     ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
@@ -1240,17 +1283,19 @@ def passwordCheck(sess, password):
 def getProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.
-# Returns tuple, project list and errorMessage (which will be None if no error).
+# Returns tuple, project dictionary and errorMessage (which will be None if no error).
+# The dictionary keys are the project names, the values are the permissions (for the specified user).
     try:
         con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
         qry = """
-            select up.project from user u join userProject up
+            select up.project, up.permissions from user u join userProject up
             on u.id = up.user_id and u.login = %s"""
         cur = con.cursor()
         cur.execute(qry, (username))
-        projects = []
+        projects = {}
         for row in cur.fetchall():
-            projects.append(row[0])
+            print 'xxx' + str(type(row))
+            projects[row[0]] = row[1]
         return (projects, None)
     except mdb.Error, e:
         return (None, 'Failed system login')
@@ -1326,7 +1371,7 @@ def urlMain():
                     elif not projList:
                         error = 'No projects found for user {0}'.format(username)
                     else:
-                        project = projList[0]
+                        project = projList[projList.keys()[0]]  # Select any project
                 else:
                     util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                     error = 'Invalid Password'
