@@ -76,13 +76,18 @@ class WebSess(object):
         return float(time.time() - float(self.data.get('lastvisit')))
 
 
-    def setProject(self, project):
+    def setProject(self, project, access):
     #------------------------------------------------------------------
-        self.data['project'] = project
+        self.data['projectName'] = project
+        self.data['projectAccess'] = access
 
-    def getProject(self):
+    def getProjectName(self):
     #------------------------------------------------------------------
-        return self.data.get('project')
+        return self.data.get('projectName')
+
+    def getProjectAccess(self):
+    #------------------------------------------------------------------
+        return self.data.get('projectAccess')
 
     def setUserDetails(self, user, password):   # may be redundant now (not storing passwords)
     #------------------------------------------------------------------

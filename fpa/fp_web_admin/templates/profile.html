@@ -7,7 +7,7 @@
     <p> Name and email address of a contact for this account: </p>
     <label for="contactName">Contact name: </label><input type="text" name="contactName" id="contactName" style="width: 200px;" value="{{contactName}}"><br />
     <label for="contactEmail">Contact email: </label><input type=text name="contactEmail" id="contactEmail" style="width: 200px;" value="{{contactEmail}}"><br />
-    <p> 
+    <p>
     <input type="submit" value="Save Contact Details">
     {% if op == 'contact' %}
     <font color="red">{{errMsg}}</font>
@@ -48,6 +48,11 @@
   {% endif %}
   </form>
 </fieldset>
+
+<fieldset><legend><h3>Manage Users</h3></legend>
+{{ usersHTML|safe }}
+</fieldset>
+
 
 {% endblock %}
 
