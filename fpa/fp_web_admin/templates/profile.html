@@ -4,7 +4,7 @@
 
 <fieldset><legend><h3>Contact Details</h3></legend>
   <form method="POST" action="{{url_for('urlUserDetails', projectName=g.projectName)}}?op=contact">
-    <p> Name and email address of a contact for this account: </p>
+    <p> Name and email address of a contact for this project: </p>
     <label for="contactName">Contact name: </label><input type="text" name="contactName" id="contactName" style="width: 200px;" value="{{contactName}}"><br />
     <label for="contactEmail">Contact email: </label><input type=text name="contactEmail" id="contactEmail" style="width: 200px;" value="{{contactEmail}}"><br />
     <p>
@@ -49,10 +49,7 @@
   </form>
 </fieldset>
 
-<fieldset><legend><h3>Manage Users</h3></legend>
 {{ usersHTML|safe }}
-</fieldset>
-
 
 {% endblock %}
 

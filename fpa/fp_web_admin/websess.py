@@ -3,13 +3,15 @@
 #
 
 import sha, shelve, time, os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import fp_common.models as models
 
-
-
-SESSION_FILE_DIR = '***REMOVED***/fp/sessions'
+#
+# Masks and functions for project permissions:
+#
+PROJECT_ACCESS_ALL = 0xffffffff
+PROJECT_ACCESS_ADMIN = 0x00000001
+def adminAccess(perms):
+    return bool(perms & PROJECT_ACCESS_ADMIN)
 
 #
 # WebSess
@@ -64,17 +66,14 @@ class WebSess(object):
     #------------------------------------------------------------------
         self.data['lastvisit'] = repr(time.time())
 
-
     def getLastUseTime(self):
     #------------------------------------------------------------------
         lv = self.data.get('lastvisit')
         return float(lv) if lv else False
 
-
     def timeSinceUse(self):
     #------------------------------------------------------------------
         return float(time.time() - float(self.data.get('lastvisit')))
-
 
     def setProject(self, project, access):
     #------------------------------------------------------------------
@@ -88,11 +87,6 @@ class WebSess(object):
     def getProjectAccess(self):
     #------------------------------------------------------------------
         return self.data.get('projectAccess')
-
-    def setUserDetails(self, user, password):   # may be redundant now (not storing passwords)
-    #------------------------------------------------------------------
-        self.data['user'] = user
-        self.data['password'] = password
 
     def setUser(self, user):
     #------------------------------------------------------------------
@@ -117,11 +111,15 @@ class WebSess(object):
             self.resetLastUseTime()
         return valid
 
+    def adminRights(self):
+    #------------------------------------------------------------------
+    # Does this session have admin rights for its current project?
+        return self.getProjectAccess() & PROJECT_ACCESS_ADMIN
+
     def DB(self):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = models.getSysUserEngine(self.getProject())
+            self.mDBsess = models.getSysUserEngine(self.getProjectName())
         return self.mDBsess
-
 

@@ -51,8 +51,6 @@ dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 LOGIN_TIMEOUT = 1500          # Idle time before requiring web user to login again
 LOGIN_TYPE_SYSTEM = 1
 LOGIN_TYPE_***REMOVED*** = 2
-PROJECT_ACCESS_ALL = 0xffffffff
-PROJECT_ACCESS_ADMIN = 0x00000001
 
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
@@ -408,7 +406,8 @@ def dataNavigationContent(sess, trialId):
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
-    nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
+    if sess.adminRights():
+        nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '</div><div style="clear:both"></div>'
@@ -914,8 +913,7 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "</table>"
     return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
-
-def manageUsersHTML(sess):
+def manageUsersHTML(sess, msg=None):
 # Show list of ***REMOVED*** users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
 #
@@ -925,20 +923,54 @@ def manageUsersHTML(sess):
 # that tab must recheck. This can be done by checking the existing session - the user must have
 # the right access.
     # Check security:
-    if not (sess.getProjectAccess() & PROJECT_ACCESS_ADMIN):
+    if not sess.adminRights():
         return ''
 
-    return '<button>I am a little teapot</button>'
+    cont = '<button>I am a little teapot</button>'
+    # Get user list for this project:
+    users, errMsg = getProjectUsers(sess.getProjectName())
+    if errMsg is not None:
+        return badJuju(sess, errMsg)
+
+    cont += '<form method="POST" action="{0}?op=manageUsers">'.format(
+                                   url_for('urlUserDetails', projectName=g.projectName))
+    cont += '<table><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
+    for login, namePerms in sorted(users.items()):
+        cont += '<tr>'
+        cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
+        cont += '<td><input type="checkbox" {0}</td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
+        cont += '</tr>'
+    cont += '</table>'
+    cont += '<input type="submit" value="Save" name="save">'
+    if msg is not None:
+        cont += '<font color="red">{0}</font>'.format(msg)
+    cont += '</form>'
+
+    out = fpUtil.HtmlFieldset(cont, 'Manage Users')
+    return out
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlUserDetails(sess, projectName):
-    title = "Profile"
-    if request.method == 'GET':
+    if projectName != sess.getProjectName():
+        return badJuju(sess, 'Incorrect project name')
+    if not sess.adminRights():
+        return badJuju(sess, 'No admin rights')
+
+    def theFormAgain(op=None, msg=None):
         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
         cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
-        return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
-                                usersHTML=manageUsersHTML(sess))
+        return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title="Admin",
+                                op=op, errMsg=msg,
+                                usersHTML=manageUsersHTML(sess, msg if op is 'manageUser' else None))
+
+    title = "Profile"
+    if request.method == 'GET':
+        return theFormAgain()
+#         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
+#         cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
+#         return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
+#                                 usersHTML=manageUsersHTML(sess))
     if request.method == 'POST':
         op = request.args.get('op')
         form = request.form
@@ -953,45 +985,54 @@ def urlUserDetails(sess, projectName):
                 return dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
                                         errMsg="Contact details saved", title=title)
 
-        # Changing admin or app password:
-        currUser = sess.getUser()
-        oldPassword = form.get("password")
-        if not systemPasswordCheck(sess.getProjectName(), oldPassword):
-            sess.close()
-            return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
-        newpassword1 = form.get("newpassword1")
-        newpassword2 = form.get("newpassword2")
-        if not (oldPassword and newpassword1 and newpassword2):
-            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
-        if newpassword1 != newpassword2:
-            return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
+        elif op == 'newpw' or op == 'setAppPassword':
+            # Changing admin or app password:
+            # MFK bug here: if we prompt with err message, the contact values are missing.
+            currUser = sess.getUser()
+            oldPassword = form.get("password")
+            if not systemPasswordCheck(sess.getProjectName(), oldPassword):
+                sess.close()
+                return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
+            newpassword1 = form.get("newpassword1")
+            newpassword2 = form.get("newpassword2")
+            if not (oldPassword and newpassword1 and newpassword2):
+                #return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
+                return theFormAgain(op=op, msg="Please fill out all fields")
+            if newpassword1 != newpassword2:
+                return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
 
-        # OK, all good, change their password:
-        try:
-            #con = getMYSQLDBConnection(sess)
+            # OK, all good, change their password:
+            try:
+                #con = getMYSQLDBConnection(sess)
 
-            # New way - get a connection for the system project user for changing the password.
-            # This to avoid having the fpwserver user needing ability to set passwords (access to mysql database).
-            # Ideally however, we should be able to have admin privileges for ***REMOVED*** users, so remembering the system
-            # user password is not compulsory.
-            usrname = models.dbName4Project(sess.getProjectName())
-            usrdb = usrname
-            con = mdb.connect('localhost', usrname, oldPassword, usrdb)
+                # New way - get a connection for the system project user for changing the password.
+                # This to avoid having the fpwserver user needing ability to set passwords (access to mysql database).
+                # Ideally however, we should be able to have admin privileges for ***REMOVED*** users, so remembering the system
+                # user password is not compulsory.
+                usrname = models.dbName4Project(sess.getProjectName())
+                usrdb = usrname
+                con = mdb.connect('localhost', usrname, oldPassword, usrdb)
 
-            cur = con.cursor()
-            msg = ''
-            if op == 'newpw':
-                cur.execute("set password for %s@localhost = password(%s)", (models.dbName4Project(sess.getProjectName()), newpassword1))
-                msg = 'Admin password reset successfully'
-            elif op == 'setAppPassword':
-                cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)
-                con.commit()
-                msg = 'Scoring password reset successfully'
-            con.close()
-            return FrontPage(sess, msg)
-        except mdb.Error, e:
-            sess.close()
-            return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
+                cur = con.cursor()
+                msg = ''
+                if op == 'newpw':
+                    cur.execute("set password for %s@localhost = password(%s)", (models.dbName4Project(sess.getProjectName()), newpassword1))
+                    msg = 'Admin password reset successfully'
+                elif op == 'setAppPassword':
+                    cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)
+                    con.commit()
+                    msg = 'Scoring password reset successfully'
+                con.close()
+                return FrontPage(sess, msg)
+            except mdb.Error, e:
+                sess.close()
+                return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
+        elif op == 'manageUsers':
+            return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
+                                    usersHTML=manageUsersHTML(sess, 'I\'m Sorry Dave, I\'m afraid I can\'t do that'))
+            #return 'I\'m Sorry Dave, I\'m afraid I can\'t do that'
+        else:
+            return badJuju(sess, 'Unexpected operation')
 
 
 @app.route('/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
@@ -1271,24 +1312,25 @@ def systemPasswordCheck(user, password):
         con.close()
         return True
     except mdb.Error, e:
+        #util.flog('system password check failed')
         return False
 
 def ***REMOVED***PasswordCheck(username, password):
 #-----------------------------------------------------------------------
 # Validate ***REMOVED*** user/password, returning boolean indicating success
 #
-    if username == '***REMOVED***' and password == 'm':
-        return True;
+#     if username == '***REMOVED***' and password == 'm':
+#         return True;
     import ***REMOVED***
     ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
     ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
     # Validate the credentials against ***REMOVED***.
     ***REMOVED***_users = ***REMOVED***_server.find(ident=username, allow_ceased=False) if ***REMOVED***_server else None
     if len(***REMOVED***_users) != 1:
-        print 'The supplied username is unknown.'
+        util.flog('The supplied username is unknown.')
         return False
     elif not ***REMOVED***_users[0].authenticate(password):
-        print 'wrong ***REMOVED*** password'
+        #util.flog('wrong ***REMOVED*** password')
         return False
     return True;
 
@@ -1300,6 +1342,23 @@ def passwordCheck(sess, password):
         return systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
+
+def getProjectUsers(project):
+#-----------------------------------------------------------------------
+# Get (***REMOVED***) users associated with specified project.
+# Returns tuple of dictionary and errorMessage (which will be None if no error).
+# The dictionary keys are the user login ids, the values are tuples (name, permissions).
+    try:
+        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
+        qry = 'select login, name, permissions from user join userProject on id = user_id and project = %s'
+        cur = con.cursor()
+        cur.execute(qry, (project))
+        users = {}
+        for row in cur.fetchall():
+            users[row[0]] = row[1], row[2]
+        return (users, None)
+    except mdb.Error, e:
+        return (None, 'Failed system login')
 
 def getProjects(username):
 #-----------------------------------------------------------------------
@@ -1315,7 +1374,6 @@ def getProjects(username):
         cur.execute(qry, (username))
         projects = {}
         for row in cur.fetchall():
-            print 'xxx' + str(type(row))
             projects[row[0]] = row[1]
         return (projects, None)
     except mdb.Error, e:
@@ -1364,12 +1422,10 @@ def urlMain():
 
         if not error:
             # Try fieldprime login, then ***REMOVED***:
-            # For ***REMOVED*** check, we should perhaps first check in a system database
-            # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
             # If it is a known user then what mysql user and password should we use?
             # We should store the ***REMOVED*** user name in the session in case needed for any metadata,
             # Or at least log their login.
-            # Should allow user to select from multiple dbs ("accounts" or "projects"?).
+            #
             # MFK we shouldn't need to store password if we switch to using system password.
             # even for project accounts. The password is checked here and used to make the
             # timestamped cookie.
@@ -1379,34 +1435,32 @@ def urlMain():
             loginType = None
             if systemPasswordCheck(username, password):
                 project = username
-                access = PROJECT_ACCESS_ALL
+                access = websess.PROJECT_ACCESS_ALL
                 loginType = LOGIN_TYPE_SYSTEM
-            else:
+            elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+                # For ***REMOVED*** check, we should perhaps first check in a system database
+                # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
                 #
-                # Not a main project account - try as ***REMOVED*** user.
-                #
-                if ***REMOVED***PasswordCheck(username, password):
-                    # OK, valid ***REMOVED*** user. Find project they have access to:
-                    loginType = LOGIN_TYPE_***REMOVED***
-                    projList, errMsg = getProjects(username)
-                    if errMsg is not None:
-                        error = 'Failed system login'
-                    elif not projList:
-                        error = 'No projects found for user {0}'.format(username)
-                    else:
-                        project = projList.keys()[0]  # Select any project
-                        access = projList[project]
+                # OK, valid ***REMOVED*** user. Find project they have access to:
+                loginType = LOGIN_TYPE_***REMOVED***
+                projList, errMsg = getProjects(username)
+                if errMsg is not None:
+                    error = 'Failed system login'
+                elif not projList:
+                    error = 'No projects found for user {0}'.format(username)
                 else:
-                    util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
-                    error = 'Invalid Password'
-
+                    project = projList.keys()[0]  # Select any project
+                    access = projList[project]
+            else:
+                util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
+                error = 'Invalid Password'
 
             if not error:
                 # Good to go, show the user front page, after adding cookie:
                 util.fpLog(app, 'Login from user {0}'.format(username))
                 sess.resetLastUseTime()
                 sess.setUser(username)
-                sess.setProject(project, projList[project])
+                sess.setProject(project, access)
                 sess.setLoginType(loginType)
                 g.userName = username
                 g.projectName = project
