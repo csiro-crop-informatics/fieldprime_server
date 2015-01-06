@@ -913,6 +913,8 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "</table>"
     return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
+
+
 def manageUsersHTML(sess, msg=None):
 # Show list of ***REMOVED*** users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
@@ -926,7 +928,21 @@ def manageUsersHTML(sess, msg=None):
     if not sess.adminRights():
         return ''
 
-    cont = '<button>I am a little teapot</button>'
+    ajaxFunc = '''
+    <script>
+    function ajFunc() {
+        $.ajax({
+            url:"testajax",
+            data:{a:"A",b:"B"},
+            type:"POST",
+            error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
+            success:function (data, textStatus, jqXHR){alert("successFunc");}
+        });
+    }
+    </script>
+    '''
+
+    cont = '{0}<button onClick=ajFunc()>I am a little teapot</button>'.format(ajaxFunc)
     # Get user list for this project:
     users, errMsg = getProjectUsers(sess.getProjectName())
     if errMsg is not None:
@@ -948,6 +964,10 @@ def manageUsersHTML(sess, msg=None):
 
     out = fpUtil.HtmlFieldset(cont, 'Manage Users')
     return out
+
+@app.route('/user/<projectName>/details/testajax', methods=['POST'])
+@dec_check_session()
+def urlUserDetails(sess, projectName):
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -1028,8 +1048,9 @@ def urlUserDetails(sess, projectName):
                 sess.close()
                 return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
         elif op == 'manageUsers':
-            return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
-                                    usersHTML=manageUsersHTML(sess, 'I\'m Sorry Dave, I\'m afraid I can\'t do that'))
+            return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
+#             return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
+#                                     usersHTML=manageUsersHTML(sess, 'I\'m Sorry Dave, I\'m afraid I can\'t do that'))
             #return 'I\'m Sorry Dave, I\'m afraid I can\'t do that'
         else:
             return badJuju(sess, 'Unexpected operation')
@@ -1319,8 +1340,8 @@ def ***REMOVED***PasswordCheck(username, password):
 #-----------------------------------------------------------------------
 # Validate ***REMOVED*** user/password, returning boolean indicating success
 #
-#     if username == '***REMOVED***' and password == 'm':
-#         return True;
+    if username == '***REMOVED***' and password == 'm':
+        return True;
     import ***REMOVED***
     ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
     ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
