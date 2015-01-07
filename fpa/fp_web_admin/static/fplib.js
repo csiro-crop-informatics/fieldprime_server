@@ -163,3 +163,76 @@ fplib.extrasSubmit = function(event) {
     return false;
 };
 
+
+/*
+ * userAdd
+ * Adds row to user table, with user to fill in the login and permissions.
+ *
+ *
+ */
+//fplib.userAdd = function () {alert("add");};
+//
+fplib.userAdd = function () {
+    var root = document.getElementById('userTable');
+    var row = root.insertRow(1); // insert after header row
+    row.setAttribute("data-addedUser", "y");
+
+    // Add login id input field:
+    var logid = document.createElement("input");
+    logid.type = "text";
+    row.insertCell(-1).appendChild(logid);
+
+    // Name field:
+    row.insertCell(-1).innerHTML = "TBD";
+
+    // Admin checkbox:
+    row.insertCell(-1).innerHTML = '<input type="checkbox">';
+
+    $.ajax({
+        url:"testajax",
+        data:JSON.stringify({a:{x:"XX",y:"Y"},b:"B"}),
+        contentType: "application/json",
+        type:"POST",
+        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
+        success:function (data, textStatus, jqXHR){alert("successFunc");}
+    });
+}
+//
+//fplib.userSaveChanges = function () {alert("save");};
+//
+fplib.userSaveChanges = function () {
+    var userJson = {};
+    var newUsers = {};
+    // get the users and encode them in json
+    var table = document.getElementById("userTable");
+
+    for (var i = 1, row; row = table.rows[i]; i++) {
+    alert('x');
+       if (row.hasAttribute("data-addedUser")) {
+           var loginId = row.cells[0].children[0].value;
+           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
+           newUsers[loginId] = admin;
+       } else {
+           var login = row.cells[0];
+           var loginId = login.innerHTML;
+           if (login.hasAttribute("data-addedUser")) {
+               alert(loginId)
+           }
+           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
+           userJson[loginId] = admin;
+       }
+       userJson['newUsers'] = newUsers;
+    }
+
+    $.ajax({
+        url:"testajax",
+        data:JSON.stringify(userJson),
+        dataType:"json",
+        contentType: "application/json",
+        type:"POST",
+        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc:"+textStatus);},
+        success:function (data, textStatus, jqXHR){alert("successFunc:"+textStatus + JSON.stringify(jqXHR.responseJSON));
+        }
+    });
+}
+//

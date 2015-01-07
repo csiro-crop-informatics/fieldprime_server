@@ -928,54 +928,13 @@ def manageUsersHTML(sess, msg=None):
     if not sess.adminRights():
         return ''
 
-    jsFuncs = '''
-    <script>
-    function userAdd() {
-        $.ajax({
-            url:"testajax",
-            data:JSON.stringify({a:{x:"CA",y:"Y"},b:"B"}),
-            contentType: "application/json",
-            type:"POST",
-            error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
-            success:function (data, textStatus, jqXHR){alert("successFunc");}
-        });
-    }
-    function userSaveChanges() {
-        var userJson = {};
-        // get the users and encode them in json
-        var table = document.getElementById("userTable");
-
-        for (var i = 1, row; row = table.rows[i]; i++) {
-           var login = row.cells[0].innerHTML;
-           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
-           //alert(login);
-           userJson[login] = admin;
-           //for (var j = 0, col; col = row.cells[j]; j++) {
-             //iterate through columns
-             //columns would be accessed using the "col" variable assigned in the for loop
-           //}
-        }
-        $.ajax({
-            url:"testajax",
-            data:JSON.stringify(userJson),
-            contentType: "application/json",
-            type:"POST",
-            error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
-            success:function (data, textStatus, jqXHR){alert("successFunc");}
-        });
-    }
-    </script>
-    '''
-    cont = jsFuncs
-    cont += '<button onClick=userSaveChanges()>Save Changes</button>'
-    cont += '<button onClick=userAdd()>Add User</button>'
+    cont = '<button onClick=fplib.userSaveChanges()>Save Changes</button>'
+    cont += '<button onClick=fplib.userAdd()>Add User</button>'
     # Get user list for this project:
     users, errMsg = getProjectUsers(sess.getProjectName())
     if errMsg is not None:
         return badJuju(sess, errMsg)
 
-    cont += '<form method="POST" action="{0}?op=manageUsers">'.format(
-                                   url_for('urlUserDetails', projectName=g.projectName))
     cont += '<table id=userTable><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
     for login, namePerms in sorted(users.items()):
         cont += '<tr>'
@@ -986,7 +945,6 @@ def manageUsersHTML(sess, msg=None):
     cont += '<input type="submit" value="Save" name="save">'
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
-    cont += '</form>'
 
     out = fpUtil.HtmlFieldset(cont, 'Manage Users')
     return out
@@ -998,19 +956,16 @@ def urlAjax(sess, projectName):
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
 
-    #print 'ajaxf' + request.form.get('b')
-    print 'a'
     try:
         userData = request.json
     except Exception, e:
         print 'exception'
-    print 'b'
+
     if not userData:
-        print 'c'
         return Response('Bad or missing JSON')
     util.flog("ajaxData:\n" + json.dumps(userData))
     print 'ajax ' + json.dumps(userData)
-    return Response('good JSON')
+    return Response(json.dumps({"yes":"no"}), mimetype='application/json')
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
