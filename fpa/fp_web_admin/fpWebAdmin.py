@@ -407,7 +407,7 @@ def dataNavigationContent(sess, trialId):
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
     if sess.adminRights():
-        nc += '<a href="{0}"><span class="fa fa-user"></span> Profile/Passwords</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
+        nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
     nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '</div><div style="clear:both"></div>'
@@ -928,12 +928,37 @@ def manageUsersHTML(sess, msg=None):
     if not sess.adminRights():
         return ''
 
-    ajaxFunc = '''
+    jsFuncs = '''
     <script>
-    function ajFunc() {
+    function userAdd() {
         $.ajax({
             url:"testajax",
-            data:{a:"A",b:"B"},
+            data:JSON.stringify({a:{x:"CA",y:"Y"},b:"B"}),
+            contentType: "application/json",
+            type:"POST",
+            error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
+            success:function (data, textStatus, jqXHR){alert("successFunc");}
+        });
+    }
+    function userSaveChanges() {
+        var userJson = {};
+        // get the users and encode them in json
+        var table = document.getElementById("userTable");
+
+        for (var i = 1, row; row = table.rows[i]; i++) {
+           var login = row.cells[0].innerHTML;
+           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
+           //alert(login);
+           userJson[login] = admin;
+           //for (var j = 0, col; col = row.cells[j]; j++) {
+             //iterate through columns
+             //columns would be accessed using the "col" variable assigned in the for loop
+           //}
+        }
+        $.ajax({
+            url:"testajax",
+            data:JSON.stringify(userJson),
+            contentType: "application/json",
             type:"POST",
             error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
             success:function (data, textStatus, jqXHR){alert("successFunc");}
@@ -941,8 +966,9 @@ def manageUsersHTML(sess, msg=None):
     }
     </script>
     '''
-
-    cont = '{0}<button onClick=ajFunc()>I am a little teapot</button>'.format(ajaxFunc)
+    cont = jsFuncs
+    cont += '<button onClick=userSaveChanges()>Save Changes</button>'
+    cont += '<button onClick=userAdd()>Add User</button>'
     # Get user list for this project:
     users, errMsg = getProjectUsers(sess.getProjectName())
     if errMsg is not None:
@@ -950,11 +976,11 @@ def manageUsersHTML(sess, msg=None):
 
     cont += '<form method="POST" action="{0}?op=manageUsers">'.format(
                                    url_for('urlUserDetails', projectName=g.projectName))
-    cont += '<table><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
+    cont += '<table id=userTable><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
     for login, namePerms in sorted(users.items()):
         cont += '<tr>'
         cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
-        cont += '<td><input type="checkbox" {0}</td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
+        cont += '<td><input type="checkbox" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
         cont += '</tr>'
     cont += '</table>'
     cont += '<input type="submit" value="Save" name="save">'
@@ -967,7 +993,24 @@ def manageUsersHTML(sess, msg=None):
 
 @app.route('/user/<projectName>/details/testajax', methods=['POST'])
 @dec_check_session()
-def urlUserDetails(sess, projectName):
+def urlAjax(sess, projectName):
+    # Check admin rights:
+    if not sess.adminRights():
+        return badJuju(sess, 'No admin rights')
+
+    #print 'ajaxf' + request.form.get('b')
+    print 'a'
+    try:
+        userData = request.json
+    except Exception, e:
+        print 'exception'
+    print 'b'
+    if not userData:
+        print 'c'
+        return Response('Bad or missing JSON')
+    util.flog("ajaxData:\n" + json.dumps(userData))
+    print 'ajax ' + json.dumps(userData)
+    return Response('good JSON')
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
