@@ -19,6 +19,7 @@ fpa/fp_web_admin/fpTrait.py -text
 fpa/fp_web_admin/fpTrial.py -text
 fpa/fp_web_admin/fpUtil.py -text
 fpa/fp_web_admin/fpWebAdmin.py -text
+fpa/fp_web_admin/fpsys.py -text
 fpa/fp_web_admin/***REMOVED***.py -text
 fpa/fp_web_admin/static/css/font-awesome.css -text
 fpa/fp_web_admin/static/css/font-awesome.min.css -text

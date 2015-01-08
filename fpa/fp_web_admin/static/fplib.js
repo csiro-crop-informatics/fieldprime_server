@@ -167,11 +167,7 @@ fplib.extrasSubmit = function(event) {
 /*
  * userAdd
  * Adds row to user table, with user to fill in the login and permissions.
- *
- *
  */
-//fplib.userAdd = function () {alert("add");};
-//
 fplib.userAdd = function () {
     var root = document.getElementById('userTable');
     var row = root.insertRow(1); // insert after header row
@@ -187,46 +183,49 @@ fplib.userAdd = function () {
 
     // Admin checkbox:
     row.insertCell(-1).innerHTML = '<input type="checkbox">';
-
-    $.ajax({
-        url:"testajax",
-        data:JSON.stringify({a:{x:"XX",y:"Y"},b:"B"}),
-        contentType: "application/json",
-        type:"POST",
-        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc");},
-        success:function (data, textStatus, jqXHR){alert("successFunc");}
-    });
 }
-//
-//fplib.userSaveChanges = function () {alert("save");};
-//
-fplib.userSaveChanges = function () {
-    var userJson = {};
+
+/*
+ * setDirty()
+ * Set dirty attribute goUp levels from el.
+ */
+fplib.setDirty = function (el, goUp) {
+    for (var i=0; i<goUp; ++i) {
+        el = el.parentNode;
+    }
+    el.setAttribute("data-dirty", "y");
+}
+
+/*
+ * userSaveChanges
+ * Send user details to server with ajax.
+ * Users are in table with id userTable, rows for new users
+ * are identified by having attribute "data-addedUser" (see
+ * function userAdd).
+ */
+fplib.userSaveChanges = function (destUrl) {
+    var updateUsers = {};
     var newUsers = {};
+    var delUsers = {};
     // get the users and encode them in json
     var table = document.getElementById("userTable");
 
     for (var i = 1, row; row = table.rows[i]; i++) {
-    alert('x');
        if (row.hasAttribute("data-addedUser")) {
            var loginId = row.cells[0].children[0].value;
            var admin = row.cells[2].getElementsByTagName('input')[0].checked;
            newUsers[loginId] = admin;
-       } else {
+       } else if (row.hasAttribute("data-dirty")) {
            var login = row.cells[0];
            var loginId = login.innerHTML;
-           if (login.hasAttribute("data-addedUser")) {
-               alert(loginId)
-           }
            var admin = row.cells[2].getElementsByTagName('input')[0].checked;
-           userJson[loginId] = admin;
+           updateUsers[loginId] = admin;
        }
-       userJson['newUsers'] = newUsers;
     }
 
     $.ajax({
-        url:"testajax",
-        data:JSON.stringify(userJson),
+        url:destUrl,
+        data:JSON.stringify({"update":updateUsers, "create":newUsers, "delete":delUsers}),
         dataType:"json",
         contentType: "application/json",
         type:"POST",
@@ -235,4 +234,4 @@ fplib.userSaveChanges = function () {
         }
     });
 }
-//
+

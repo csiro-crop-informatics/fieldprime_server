@@ -26,7 +26,10 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
+import fpsys
 import trialProperties
+import ***REMOVED***
+
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
@@ -392,6 +395,8 @@ def dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
+    ### User and user specific buttons:
+
     # Show current user:
     nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
 
@@ -401,8 +406,42 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>'
 
+    ### Project and project specific buttons:
+
+    # There are currently 2 types of login, ***REMOVED***, and the project login.
+    # ***REMOVED*** users may have access rights to multiple project so they get
+    # a dropdown project selection. Project logins have access to a single
+    # project only, so they don't get a drop down. Set projectSelectorHtml
+    # accordingly:
+    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
+        # Make select of user's projects.
+        # Note we need to construct the URL for retrieving the project page in javascript,
+        # and hence cannot use url_for.
+        projList, errMsg = fpsys.getProjects(sess.getUser())
+        if errMsg or not projList:
+            return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
+
+        # MFK do we really want a form here?
+        projectSelectorHtml = '''
+        <script>
+        function submitProjSelection(frm) {
+            var e = document.getElementById("project");
+            var proj = e.options[e.selectedIndex].value;
+            frm.action = "/FieldPrime/project/" + proj
+            frm.submit()
+        }
+        </script>
+        <form  method="GET" style='display:inline;'>
+        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''
+        for proj in projList:
+            projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
+                    proj, 'selected="selected"' if proj == sess.getProjectName() else '')
+        projectSelectorHtml += '</select></form>'
+    else:
+        projectSelectorHtml = sess.getProjectName()
+
     # Show current project:
-    nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(sess.getProjectName())
+    nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
@@ -412,33 +451,6 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '</div><div style="clear:both"></div>'
 
-    # There are currently 2 types of login, ***REMOVED***, and the project login.
-    # ***REMOVED*** users may have access rights to multiple project so they get
-    # a dropdown project selection.
-    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-        # Make select of user's projects.
-        # Note we need to construct the URL for retrieving the project page in javascript,
-        # and hence cannot use url_for.
-        projList, errMsg = getProjects(sess.getUser())
-        if errMsg or not projList:
-            return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
-
-        nc += '''
-        <br>
-        <script>
-        function submitProjSelection(frm) {
-            var e = document.getElementById("project");
-            var proj = e.options[e.selectedIndex].value;
-            frm.action = "/FieldPrime/project/" + proj
-            frm.submit()
-        }
-        </script>
-        <form  method="GET">
-        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''
-        for proj in projList:
-            nc += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
-                    proj, 'selected="selected"' if proj == sess.getProjectName() else '')
-        nc += '</select></form>'
 
     trials = GetTrials(sess)
     trialListHtml = None if len(trials) < 1 else ""
@@ -913,8 +925,6 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "</table>"
     return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
-
-
 def manageUsersHTML(sess, msg=None):
 # Show list of ***REMOVED*** users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
@@ -928,34 +938,34 @@ def manageUsersHTML(sess, msg=None):
     if not sess.adminRights():
         return ''
 
-    cont = '<button onClick=fplib.userSaveChanges()>Save Changes</button>'
+    cont = '<button onClick=fplib.userSaveChanges("{0}")>Save Changes</button>'.format(
+                url_for("urlUsers", projectName=sess.getProjectName()))
     cont += '<button onClick=fplib.userAdd()>Add User</button>'
     # Get user list for this project:
-    users, errMsg = getProjectUsers(sess.getProjectName())
+    users, errMsg = fpsys.getProjectUsers(sess.getProjectName())
     if errMsg is not None:
         return badJuju(sess, errMsg)
 
     cont += '<table id=userTable><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
     for login, namePerms in sorted(users.items()):
-        cont += '<tr>'
+        cont += '<tr name="fred">'
         cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
-        cont += '<td><input type="checkbox" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
+        cont += '<td name="a"><input type="checkbox" name="mary" onClick="fplib.setDirty(this, 2)" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
         cont += '</tr>'
     cont += '</table>'
-    cont += '<input type="submit" value="Save" name="save">'
+    #cont += '<input type="submit" value="Save" name="save">'
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
 
-    out = fpUtil.HtmlFieldset(cont, 'Manage Users')
+    out = fpUtil.HtmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
 
-@app.route('/user/<projectName>/details/testajax', methods=['POST'])
+@app.route('/project/<projectName>/users', methods=['POST'])
 @dec_check_session()
-def urlAjax(sess, projectName):
+def urlUsers(sess, projectName):
     # Check admin rights:
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
-
     try:
         userData = request.json
     except Exception, e:
@@ -965,7 +975,25 @@ def urlAjax(sess, projectName):
         return Response('Bad or missing JSON')
     util.flog("ajaxData:\n" + json.dumps(userData))
     print 'ajax ' + json.dumps(userData)
-    return Response(json.dumps({"yes":"no"}), mimetype='application/json')
+    # Go thru userData and process - it might be nice to try using
+    # http CRUD/REST operations here. Identify a user in a project as resource
+    # /project/<project>/user/<userid>. But for the moment we're doing it all here.
+    # We will however use separate functions for what would be the individual
+    # CRUD operations.
+    newUsers = userData.get('create')
+    if newUsers is not None:
+        for user, perms in newUsers.iteritems():
+            errmsg = fpsys.createUser(user, sess.getProjectName(), perms)
+            if errmsg is not None:
+                return Response(json.dumps({"error":errmsg}), mimetype='application/json')
+    updateUsers = userData.get('update')
+    if updateUsers is not None:
+        for user, perms in updateUsers.iteritems():
+            errmsg = fpsys.updateUser(user, sess.getProjectName(), perms)
+            if errmsg is not None:
+                return Response(json.dumps({"error":errmsg}), mimetype='application/json')
+
+    return Response(json.dumps({"status":"ok"}), mimetype='application/json')
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -1288,7 +1316,7 @@ def urlProject(sess, project):
     if project is not None:
         if sess.getLoginType() != LOGIN_TYPE_***REMOVED***:
             return badJuju(sess, 'Unexpected login type')
-        projList, errMsg = getProjects(sess.getUser())
+        projList, errMsg = fpsys.getProjects(sess.getUser())
         if errMsg is not None:
             return badJuju(sess, errMsg)
         elif not projList:
@@ -1338,17 +1366,17 @@ def ***REMOVED***PasswordCheck(username, password):
 #-----------------------------------------------------------------------
 # Validate ***REMOVED*** user/password, returning boolean indicating success
 #
-    if username == '***REMOVED***' and password == 'm':
-        return True;
-    import ***REMOVED***
-    ***REMOVED***_server_url = 'ldap://act.kerberos.csiro.au'
-    ***REMOVED***_server = ***REMOVED***.***REMOVED***Server(***REMOVED***_server_url)
-    # Validate the credentials against ***REMOVED***.
-    ***REMOVED***_users = ***REMOVED***_server.find(ident=username, allow_ceased=False) if ***REMOVED***_server else None
-    if len(***REMOVED***_users) != 1:
+#     if username == '***REMOVED***' and password == 'm':
+#         return True;
+    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
+    if not ***REMOVED***Server:
+        util.flog('Cannot connect to ***REMOVED*** server')
+        return False
+    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(username)
+    if ***REMOVED***User is None:
         util.flog('The supplied username is unknown.')
         return False
-    elif not ***REMOVED***_users[0].authenticate(password):
+    if not ***REMOVED***User.authenticate(password):
         #util.flog('wrong ***REMOVED*** password')
         return False
     return True;
@@ -1362,41 +1390,6 @@ def passwordCheck(sess, password):
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
 
-def getProjectUsers(project):
-#-----------------------------------------------------------------------
-# Get (***REMOVED***) users associated with specified project.
-# Returns tuple of dictionary and errorMessage (which will be None if no error).
-# The dictionary keys are the user login ids, the values are tuples (name, permissions).
-    try:
-        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
-        qry = 'select login, name, permissions from user join userProject on id = user_id and project = %s'
-        cur = con.cursor()
-        cur.execute(qry, (project))
-        users = {}
-        for row in cur.fetchall():
-            users[row[0]] = row[1], row[2]
-        return (users, None)
-    except mdb.Error, e:
-        return (None, 'Failed system login')
-
-def getProjects(username):
-#-----------------------------------------------------------------------
-# Get project available to specified user - this should be a valid ***REMOVED*** user.
-# Returns tuple, project dictionary and errorMessage (which will be None if no error).
-# The dictionary keys are the project names, the values are the permissions (for the specified user).
-    try:
-        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
-        qry = """
-            select up.project, up.permissions from user u join userProject up
-            on u.id = up.user_id and u.login = %s"""
-        cur = con.cursor()
-        cur.execute(qry, (username))
-        projects = {}
-        for row in cur.fetchall():
-            projects[row[0]] = row[1]
-        return (projects, None)
-    except mdb.Error, e:
-        return (None, 'Failed system login')
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -1462,7 +1455,7 @@ def urlMain():
                 #
                 # OK, valid ***REMOVED*** user. Find project they have access to:
                 loginType = LOGIN_TYPE_***REMOVED***
-                projList, errMsg = getProjects(username)
+                projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
                     error = 'Failed system login'
                 elif not projList:
