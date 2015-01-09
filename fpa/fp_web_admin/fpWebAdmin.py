@@ -37,7 +37,8 @@ import fp_common.util as util
 
 import websess
 
-app = Flask(__name__)
+from fp_web_admin import app
+#app = Flask(__name__)
 try:
     app.config.from_object('fp_web_admin.fpAppConfig')
 except ImportError:
@@ -896,7 +897,6 @@ def urlTraitDetails(sess, trialId, traitId):
 #
     return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
 
-
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlAttributeUpload(sess, trialId):
@@ -925,6 +925,10 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "</table>"
     return dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
+#######################################################################################################
+### USERS STUFF: ######################################################################################
+#######################################################################################################
+
 def manageUsersHTML(sess, msg=None):
 # Show list of ***REMOVED*** users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
@@ -939,33 +943,49 @@ def manageUsersHTML(sess, msg=None):
         return ''
 
     cont = '<button onClick=fplib.userSaveChanges("{0}")>Save Changes</button>'.format(
-                url_for("urlUsers", projectName=sess.getProjectName()))
+                url_for("urlUsersPost", projectName=sess.getProjectName()))
     cont += '<button onClick=fplib.userAdd()>Add User</button>'
     # Get user list for this project:
     users, errMsg = fpsys.getProjectUsers(sess.getProjectName())
     if errMsg is not None:
         return badJuju(sess, errMsg)
 
+    cont += '<script>$(fplib.fillUserTable("{0}"))</script>'.format(
+                url_for('urlUsersGet', projectName=sess.getProjectName()))  # javascript will fill the table
     cont += '<table id=userTable><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
-    for login, namePerms in sorted(users.items()):
-        cont += '<tr name="fred">'
-        cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
-        cont += '<td name="a"><input type="checkbox" name="mary" onClick="fplib.setDirty(this, 2)" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
-        cont += '</tr>'
+#     for login, namePerms in sorted(users.items()):
+#         cont += '<tr>'
+#         cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
+#         cont += '<td name="a"><input type="checkbox" onClick="fplib.setDirty(this, 2)" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
+#         cont += '</tr>'
     cont += '</table>'
-    #cont += '<input type="submit" value="Save" name="save">'
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
 
     out = fpUtil.HtmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
 
+@app.route('/project/<projectName>/users', methods=['GET'])
+@dec_check_session()
+def urlUsersGet(sess, projectName):
+    if not sess.adminRights():
+        return badJsonJuju(sess, 'No admin rights')
+    users, errMsg = fpsys.getProjectUsers(sess.getProjectName())
+    if errMsg is not None:
+        return badJsonJuju(sess, errMsg)
+    retjson = []
+    for login, namePerms in sorted(users.items()):
+        retjson.append([login, namePerms[0], namePerms[1]])
+    print 'json dumps:'
+    print json.dumps(retjson)
+    return jsonify({'users':retjson})
+
 @app.route('/project/<projectName>/users', methods=['POST'])
 @dec_check_session()
-def urlUsers(sess, projectName):
-    # Check admin rights:
+def urlUsersPost(sess, projectName):
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
+    # Check admin rights:
     try:
         userData = request.json
     except Exception, e:
@@ -993,7 +1013,7 @@ def urlUsers(sess, projectName):
             if errmsg is not None:
                 return Response(json.dumps({"error":errmsg}), mimetype='application/json')
 
-    return Response(json.dumps({"status":"ok"}), mimetype='application/json')
+    return jsonify({"status":"nok"})
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -1013,10 +1033,6 @@ def urlUserDetails(sess, projectName):
     title = "Profile"
     if request.method == 'GET':
         return theFormAgain()
-#         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
-#         cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
-#         return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
-#                                 usersHTML=manageUsersHTML(sess))
     if request.method == 'POST':
         op = request.args.get('op')
         form = request.form
@@ -1042,7 +1058,6 @@ def urlUserDetails(sess, projectName):
             newpassword1 = form.get("newpassword1")
             newpassword2 = form.get("newpassword2")
             if not (oldPassword and newpassword1 and newpassword2):
-                #return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
                 return theFormAgain(op=op, msg="Please fill out all fields")
             if newpassword1 != newpassword2:
                 return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
@@ -1075,12 +1090,12 @@ def urlUserDetails(sess, projectName):
                 return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
         elif op == 'manageUsers':
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
-#             return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title=title,
-#                                     usersHTML=manageUsersHTML(sess, 'I\'m Sorry Dave, I\'m afraid I can\'t do that'))
-            #return 'I\'m Sorry Dave, I\'m afraid I can\'t do that'
         else:
             return badJuju(sess, 'Unexpected operation')
 
+#######################################################################################################
+### END USERS STUFF: ##################################################################################
+#######################################################################################################
 
 @app.route('/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
 @dec_check_session()
@@ -1341,6 +1356,20 @@ def badJuju(sess, msg):
 # after something bad (and possibly suspicious) has happened.
     sess.close()
     return "Something bad has happened: " + msg
+
+
+def badJsonJuju(sess, error=None):
+#-----------------------------------------------------------------------
+# Close the session and return the message. Intended as a return for a HTTP request
+# after something bad (and possibly suspicious) has happened.
+    sess.close()
+    message = {
+            'status': 500,
+            'message': 'An snail error occurred: ' + error
+    }
+    resp = jsonify(message)
+    resp.status_code = 500
+    return resp
 
 
 @app.route('/info/<pagename>', methods=["GET"])

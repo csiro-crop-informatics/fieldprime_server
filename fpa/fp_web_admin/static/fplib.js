@@ -235,3 +235,27 @@ fplib.userSaveChanges = function (destUrl) {
     });
 }
 
+
+/*
+ * fillUserTable()
+ */
+fplib.fillUserTable = function (url) {
+    return function() {
+        sfunc = function(data) {
+            users = data['users']
+            var root = document.getElementById('userTable');
+            for (var i=0; i<users.length; ++i) {
+                var row = root.insertRow(1); // insert after header row
+                row.insertCell(-1).innerHTML = users[i][0];  // id
+                row.insertCell(-1).innerHTML = users[i][1];  // name
+
+                // Admin checkbox:
+                var perms = users[i][2];
+                var chkd = (perms & 1) ? 'checked' : ''; // shouldn't pass bitmasks
+                row.insertCell(-1).innerHTML = '<input type="checkbox" onClick="fplib.setDirty(this, 2)"' + chkd + '>';
+            }
+        };
+    // error handling?
+        $.getJSON(url, sfunc);
+    }
+}

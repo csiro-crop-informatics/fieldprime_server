@@ -1,7 +1,9 @@
 # __init__.py
 # Michael Kirk 2013
-# 
+#
 #
 
-from fpWebAdmin import app
+from flask import Flask
+app = Flask(__name__)
+#from fpWebAdmin import app
 
