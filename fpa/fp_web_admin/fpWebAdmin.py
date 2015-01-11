@@ -37,8 +37,8 @@ import fp_common.util as util
 
 import websess
 
-from fp_web_admin import app
-#app = Flask(__name__)
+#from fp_web_admin import app
+app = Flask(__name__)
 try:
     app.config.from_object('fp_web_admin.fpAppConfig')
 except ImportError:
@@ -337,7 +337,8 @@ def htmlTrialData(sess, trial):
 class htmlChunkSet:
 #-----------------------------------------------------------------------
 # Class to manage a page made of separate "chunks", these can be
-# displayed either as tabs or as fieldsets.
+# displayed either as tabs or as fieldsets. Each chunk is a tuple of
+# id, title, and html content.
 #
     def __init__(self):
         self.chunks = []
@@ -941,29 +942,29 @@ def manageUsersHTML(sess, msg=None):
     # Check security:
     if not sess.adminRights():
         return ''
-
     cont = '<button onClick=fplib.userSaveChanges("{0}")>Save Changes</button>'.format(
                 url_for("urlUsersPost", projectName=sess.getProjectName()))
     cont += '<button onClick=fplib.userAdd()>Add User</button>'
-    # Get user list for this project:
-    users, errMsg = fpsys.getProjectUsers(sess.getProjectName())
-    if errMsg is not None:
-        return badJuju(sess, errMsg)
 
-    cont += '<script>$(fplib.fillUserTable("{0}"))</script>'.format(
-                url_for('urlUsersGet', projectName=sess.getProjectName()))  # javascript will fill the table
-    cont += '<table id=userTable><tr><th>Id</th><th>Name</th><th>Admin</th></tr>'
-#     for login, namePerms in sorted(users.items()):
-#         cont += '<tr>'
-#         cont += '<td>{0}</td><td>{1}</td>'.format(login, namePerms[0])
-#         cont += '<td name="a"><input type="checkbox" onClick="fplib.setDirty(this, 2)" {0}></td>'.format('checked="checked"' if websess.adminAccess(namePerms[1]) else '')
-#         cont += '</tr>'
-    cont += '</table>'
+    # NB We could get user list for this project, here, but we now rely on ajax call from the browser:
+    cont += '<script>$(fplib.fillUserTable)</script>'  # javascript will fill the table using ajax call
+    # NB store url for table data in attribute for javascript to access.
+    cont += '<table id=userTable data-url="{0}"></table>'.format(url_for("urlUsersPost", projectName=sess.getProjectName()))
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
-
     out = fpUtil.HtmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
+
+@app.route('/project/<projectName>/user/<ident>', methods=['DELETE'])
+@dec_check_session()
+def urlUserDelete(sess, projectName, ident):
+    if not sess.adminRights() or projectName != sess.getProjectName():
+        return badJuju(sess, 'No admin rights')
+    errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
+    if errmsg is not None:
+        return jsonify({"error":errmsg})
+    else:
+        return jsonify({"status":"good"})
 
 @app.route('/project/<projectName>/users', methods=['GET'])
 @dec_check_session()
@@ -975,7 +976,8 @@ def urlUsersGet(sess, projectName):
         return badJsonJuju(sess, errMsg)
     retjson = []
     for login, namePerms in sorted(users.items()):
-        retjson.append([login, namePerms[0], namePerms[1]])
+        retjson.append([url_for('urlUserDelete', projectName=projectName, ident=login),
+                        login, namePerms[0], namePerms[1]])
     print 'json dumps:'
     print json.dumps(retjson)
     return jsonify({'users':retjson})
@@ -1000,20 +1002,21 @@ def urlUsersPost(sess, projectName):
     # /project/<project>/user/<userid>. But for the moment we're doing it all here.
     # We will however use separate functions for what would be the individual
     # CRUD operations.
+    errMsgs = []
     newUsers = userData.get('create')
     if newUsers is not None:
         for user, perms in newUsers.iteritems():
             errmsg = fpsys.createUser(user, sess.getProjectName(), perms)
             if errmsg is not None:
-                return Response(json.dumps({"error":errmsg}), mimetype='application/json')
+                errMsgs.append(('create', user, errmsg))
     updateUsers = userData.get('update')
     if updateUsers is not None:
         for user, perms in updateUsers.iteritems():
             errmsg = fpsys.updateUser(user, sess.getProjectName(), perms)
             if errmsg is not None:
-                return Response(json.dumps({"error":errmsg}), mimetype='application/json')
+                errMsgs.append(('update', user, errmsg))
 
-    return jsonify({"status":"nok"})
+    return jsonify({"status":"ok", "errors":errMsgs})
 
 @app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()

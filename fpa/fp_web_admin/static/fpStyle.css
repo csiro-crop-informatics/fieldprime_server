@@ -57,7 +57,7 @@ table.fptable{
 /*
  * not_too_wide
  * Eg to limit length of text lines.
- 
+
 .not_too_wide {
     max-width: 500px;
 }
@@ -318,7 +318,7 @@ p a {
     /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
     min-height: 510px;
     /* width: 100%; */
-    margin: 0 auto;
+    margin: 0 auto;   /* This causes the div to be centered. */
     padding: 20px;
     list-style: none;
 }
@@ -331,7 +331,7 @@ p a {
                              * dataContent (when using tables for equal column heights)
                              */
     word-wrap: break-word;
-    /* background: #eeeeee; 
+    /* background: #eeeeee;
     padding-top: 20px;
     padding-bottom: 50px;*/
     /*float: left; an alternative to tables, but don't get equal column height*/
@@ -357,7 +357,7 @@ p a {
     width: auto;
     min-width: 200px;
     text-align: left;
-    margin-bottom: 10px; 
+    margin-bottom: 10px;
 }
 
 #dataLeftBar li:before{

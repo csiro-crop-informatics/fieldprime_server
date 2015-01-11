@@ -4,6 +4,6 @@
 #
 
 from flask import Flask
-app = Flask(__name__)
-#from fpWebAdmin import app
+#app = Flask(__name__)
+from fpWebAdmin import app
 

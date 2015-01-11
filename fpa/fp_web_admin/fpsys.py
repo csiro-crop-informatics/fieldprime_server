@@ -15,6 +15,21 @@ import ***REMOVED***
 def _getDbConnection():
     return mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
 
+def deleteUser(project, ident):
+    try:
+        con = _getDbConnection()
+        cur = con.cursor()
+        if 1 != cur.execute('select id from user where login = %s', (ident)):
+            return "User {0} not found".format(ident)
+        uid = cur.fetchone()[0]
+        if 1 != cur.execute('delete from userProject where project=%s and user_id=%s', (project, uid)):
+            return "Error deleting {0} from {1}".format(ident, project)
+        con.commit()
+        con.close()
+        return None
+    except mdb.Error, e:
+        return (None, 'Failed system login ' + str(e))
+
 def getProjectUsers(project):
 #-----------------------------------------------------------------------
 # Get (***REMOVED***) users associated with specified project.

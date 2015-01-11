@@ -67,7 +67,6 @@ fplib.initTabs = function (tabListId) {
         tabLink.style.color = selected ? selected_color : color;
         tabLink.style.backgroundColor = selected ? selected_background_color : background_color;
         tabLink.style.padding = selected ? '20px 10px 10px' : '10px';
-
         tabLink.style.minWidth = '120px';
         tabLink.style.display = 'block';
         tabLink.style.border = '1px solid #c9c3ba';
@@ -163,26 +162,8 @@ fplib.extrasSubmit = function(event) {
     return false;
 };
 
-
-/*
- * userAdd
- * Adds row to user table, with user to fill in the login and permissions.
- */
-fplib.userAdd = function () {
-    var root = document.getElementById('userTable');
-    var row = root.insertRow(1); // insert after header row
-    row.setAttribute("data-addedUser", "y");
-
-    // Add login id input field:
-    var logid = document.createElement("input");
-    logid.type = "text";
-    row.insertCell(-1).appendChild(logid);
-
-    // Name field:
-    row.insertCell(-1).innerHTML = "TBD";
-
-    // Admin checkbox:
-    row.insertCell(-1).innerHTML = '<input type="checkbox">';
+fplib.msg = function (msg) {
+    alert(msg);
 }
 
 /*
@@ -194,7 +175,17 @@ fplib.setDirty = function (el, goUp) {
         el = el.parentNode;
     }
     el.setAttribute("data-dirty", "y");
-}
+};
+
+/*
+ * userAdd
+ * Adds row to user table, with user to fill in the login and permissions.
+ */
+fplib.userAdd = function () {
+    var utab = document.getElementById('userTable');
+    fplib.addUserTableRow(utab, true);
+};
+
 
 /*
  * userSaveChanges
@@ -210,11 +201,18 @@ fplib.userSaveChanges = function (destUrl) {
     // get the users and encode them in json
     var table = document.getElementById("userTable");
 
+    var sfunc = function(data) {
+        fplib.msg(JSON.stringify(data.errors));
+        fplib.fillUserTable(destUrl)();
+    };
+
     for (var i = 1, row; row = table.rows[i]; i++) {
        if (row.hasAttribute("data-addedUser")) {
            var loginId = row.cells[0].children[0].value;
-           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
-           newUsers[loginId] = admin;
+           if (loginId.length > 0 && loginId.length < 16) {
+               var admin = row.cells[2].getElementsByTagName('input')[0].checked;
+               newUsers[loginId] = admin;
+           }
        } else if (row.hasAttribute("data-dirty")) {
            var login = row.cells[0];
            var loginId = login.innerHTML;
@@ -229,33 +227,86 @@ fplib.userSaveChanges = function (destUrl) {
         dataType:"json",
         contentType: "application/json",
         type:"POST",
-        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc:"+textStatus);},
-        success:function (data, textStatus, jqXHR){alert("successFunc:"+textStatus + JSON.stringify(jqXHR.responseJSON));
-        }
+        //error:function (jqXHR, textStatus, errorThrown){fplib.msg("errorFunc:"+textStatus);},
+        error:function (jqXHR, textStatus, errorThrown){fplib.msg("errorFunc:"+jqXHR.responseText);},
+        success:sfunc
     });
-}
+};
 
+/*
+ * userDelete()
+ *
+ * NB URL is present as data attribute on row (from the server, see fillUserTable).
+ */
+fplib.userDelete = function(row) {
+    var sfunc = function (data, textStatus, jqXHR) {
+        var utab = document.getElementById('userTable');
+        fplib.fillUserTable(utab.getAttribute("data-url"))();
+    };
+    var url = row.getAttribute("data-url");
+    if (!url) {
+        var utab = row.parentNode.parentNode;
+        utab.deleteRow(row.rowIndex);
+        return;
+    }
+    $.ajax({
+        url:url,
+        dataType:"json",
+        contentType: "application/json",
+        type:"DELETE",
+        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc:"+textStatus);},
+        success:sfunc
+    });
+};
+
+/*
+ * addUserTableRow()
+ * Add row to user table. Note there are 2 kinds of rows, locally added
+ * (user trying to add a new user) and from the server. These rows are
+ * different, but thought best to have both done in a single func since
+ * a change in one may entail a change in the other.
+ */
+fplib.addUserTableRow = function(utab, local, url, id, name, admin) {
+    var row = utab.insertRow(1); // insert after header row
+    if (local) {
+        row.setAttribute("data-addedUser", "y"); // flag as local
+
+        // Add login id input field:
+        var logid = document.createElement("input");
+        logid.type = "text";
+        row.insertCell(-1).appendChild(logid);
+        row.insertCell(-1).innerHTML = "TBD";  // Name field cannot be set by user.
+        row.insertCell(-1).innerHTML = '<input type="checkbox">';  // Admin checkbox initially unchecked
+    } else {
+        row.setAttribute("data-url", url);
+        row.insertCell(-1).innerHTML = id;  // id
+        row.insertCell(-1).innerHTML = name;  // name
+
+        // Admin checkbox:
+        row.insertCell(-1).innerHTML = '<input type="checkbox" onClick="fplib.setDirty(this, 2)"' +
+                (admin ? ' checked' : '') + '>';
+    }
+    // Delete button:
+    var delText = local ? 'Remove' : 'Delete';
+    row.insertCell(-1).innerHTML = '<button onClick="fplib.userDelete(this.parentNode.parentNode)">Remove</button>';
+};
 
 /*
  * fillUserTable()
  */
-fplib.fillUserTable = function (url) {
-    return function() {
-        sfunc = function(data) {
-            users = data['users']
-            var root = document.getElementById('userTable');
-            for (var i=0; i<users.length; ++i) {
-                var row = root.insertRow(1); // insert after header row
-                row.insertCell(-1).innerHTML = users[i][0];  // id
-                row.insertCell(-1).innerHTML = users[i][1];  // name
-
-                // Admin checkbox:
-                var perms = users[i][2];
-                var chkd = (perms & 1) ? 'checked' : ''; // shouldn't pass bitmasks
-                row.insertCell(-1).innerHTML = '<input type="checkbox" onClick="fplib.setDirty(this, 2)"' + chkd + '>';
-            }
-        };
-    // error handling?
-        $.getJSON(url, sfunc);
-    }
+fplib.fillUserTable = function () {
+    var utab = document.getElementById('userTable');
+    var url = utab.getAttribute("data-url");
+    var sfunc = function(data) {
+        var users = data.users;
+        var utab = document.getElementById('userTable');
+        utab.innerHTML = "";  // delete any current content
+        utab.insertRow(-1).innerHTML = '<th>Id</th><th>Name</th><th>Admin</th>'; // headers
+        for (var i=0; i<users.length; ++i) {
+            var admin = users[i][3] & 1;
+            fplib.addUserTableRow(utab, false, users[i][0], users[i][1], users[i][2], admin);
+        }
+    };
+// error handling?
+    $.getJSON(url, sfunc);
 }
