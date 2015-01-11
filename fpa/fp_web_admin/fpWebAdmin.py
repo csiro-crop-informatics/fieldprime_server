@@ -424,17 +424,18 @@ def dataNavigationContent(sess, trialId):
             return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
 
         # MFK do we really want a form here?
+        hackedProjUrl = url_for('urlProject', project='')[:-1]
         projectSelectorHtml = '''
         <script>
-        function submitProjSelection(frm) {
+        function submitProjSelection(frm) {{
             var e = document.getElementById("project");
             var proj = e.options[e.selectedIndex].value;
-            frm.action = "/FieldPrime/project/" + proj
+            frm.action = "{0}" + proj
             frm.submit()
-        }
+        }}
         </script>
         <form  method="GET" style='display:inline;'>
-        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''
+        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''.format(hackedProjUrl)
         for proj in projList:
             projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
                     proj, 'selected="selected"' if proj == sess.getProjectName() else '')
