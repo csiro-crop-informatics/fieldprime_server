@@ -202,8 +202,10 @@ fplib.userSaveChanges = function (destUrl) {
     var table = document.getElementById("userTable");
 
     var sfunc = function(data) {
-        fplib.msg(JSON.stringify(data.errors));
-        fplib.fillUserTable(destUrl)();
+        var errs = data.errors;
+        if (errs && errs.length > 0)
+            fplib.msg("errors found:" + JSON.stringify(errs));
+        fplib.fillUserTable();
     };
 
     for (var i = 1, row; row = table.rows[i]; i++) {
@@ -240,8 +242,7 @@ fplib.userSaveChanges = function (destUrl) {
  */
 fplib.userDelete = function(row) {
     var sfunc = function (data, textStatus, jqXHR) {
-        var utab = document.getElementById('userTable');
-        fplib.fillUserTable(utab.getAttribute("data-url"))();
+        fplib.fillUserTable();
     };
     var url = row.getAttribute("data-url");
     if (!url) {
