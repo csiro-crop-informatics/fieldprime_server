@@ -298,3 +298,37 @@ insert into trialUnitAttribute (trial_id, name) values (16, 'grandFamily')
 insert into attributeValue
   select 78, trialUnit_id, substring(value,1,6)
   from attributeValue where trialUnitAttribute_id = 76;
+
+### Get Data in db like format:
+# For Scott trials 4,6
+select * from nodeAttribute where trial_id = 4;  (26,27,28)
+select * from nodeAttribute where trial_id = 6;  (30,31,32)
+
+select trl.name as "trial", n.row, n.col, av1.value as 'replicate', av2.value as 'genotype', av3.value as 'pedigree',
+  t.caption, t.description, d.*, ti.*
+  from datum d
+  join traitInstance ti on d.traitInstance_id = ti.id
+  join trait t on ti.trait_id = t.id
+  join node n on d.node_id = n.id
+  join trial trl on trl.id = ti.trial_id
+  left join attributeValue av1 on av1.node_id = n.id and av1.nodeAttribute_id = 26
+  left join attributeValue av2 on av2.node_id = n.id and av2.nodeAttribute_id =27
+  left join attributeValue av3 on av3.node_id = n.id and av3.nodeAttribute_id =28
+  where trl.id = 4
+  limit 4;
+
+select trl.name as "trial", n.row, n.col, av1.value as 'acronym', av2.value as 'genotype', av3.value as 'name',
+  t.caption, t.description, d.*, ti.*
+  from datum d
+  join traitInstance ti on d.traitInstance_id = ti.id
+  join trait t on ti.trait_id = t.id
+  join node n on d.node_id = n.id
+  join trial trl on trl.id = ti.trial_id
+  left join attributeValue av1 on av1.node_id = n.id and av1.nodeAttribute_id = 30
+  left join attributeValue av2 on av2.node_id = n.id and av2.nodeAttribute_id =31
+  left join attributeValue av3 on av3.node_id = n.id and av3.nodeAttribute_id =32
+  where trl.id = 6
+  limit 4;
+
+
+
