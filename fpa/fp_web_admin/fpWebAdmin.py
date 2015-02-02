@@ -247,10 +247,11 @@ def htmlTrialNameDetails(sess, trial):
     });
     </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
 
-    # Add DELETE button: ------------------------------------------------
-    r += '<p>'
-    r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
-    r += '<p>'
+    # Add DELETE button if admin: ------------------------------------------------
+    if sess.adminRights():
+        r += '<p>'
+        r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
+        r += '<p>'
     return r
 
 def htmlTrialTraits(sess, trial):
@@ -836,13 +837,14 @@ def urlDeleteTrial(sess, trialId):
 # Page for trial deletion. Display trial stats and request confirmation
 # of delete.
 #
+# MFK - replace the post part of this with a DELETE?
     trl = models.GetTrial(sess.DB(), trialId)
     def getHtml(msg=''):
         out = '<div style="color:red">{0}</div><p>'.format(msg);  # should be red style="color:red"
         out += 'Trial {0} contains:<br>'.format(trl.name)
         out += '{0} Score Sets<br>'.format(trl.numScoreSets())
         out += '{0} Scores<br>'.format(trl.numScores())
-        out += '<p>Password required: <input type=password name="password">'
+        out += '<p>Admin Password required: <input type=password name="password">'
         out += '<p>Do you really want to delete this trial?'
         out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
@@ -856,13 +858,12 @@ def urlDeleteTrial(sess, trialId):
         if request.form.get('yesDelete'):
             if not request.form.get('password'):
                  return getHtml('You must provide a password')
-            #
-            # Require admin password for delete, even if logged in via ***REMOVED***.
-            # Need to allow admin level ***REMOVED*** users..
-            if not systemPasswordCheck(sess.getProjectName(), request.form.get('password')):
+            # Check session password is still correct:
+            if not passwordCheck(sess, request.form.get('password')):
                 return getHtml('Password is incorrect')
-#             if not passwordCheck(sess, request.form.get('password')):
-#                 return getHtml('Password is incorrect')
+            # Require admin permissions for delete:
+            if not sess.adminRights():
+                return getHtml('Insufficient permissions to delete trial')
             else:
                 # Delete the trial:
                 fpTrial.deleteTrial(sess, trialId)
