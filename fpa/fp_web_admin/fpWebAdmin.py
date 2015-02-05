@@ -1020,7 +1020,7 @@ def urlUsersPost(sess, projectName):
 
     return jsonify({"status":"ok", "errors":errMsgs})
 
-@app.route('/user/<projectName>/details/', methods=['GET', 'POST'])
+@app.route('/project/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlUserDetails(sess, projectName):
     if projectName != sess.getProjectName():
