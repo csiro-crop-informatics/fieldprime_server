@@ -12,6 +12,7 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024             # Limit the size of file uploa
 # Our app config params:
 PHOTO_UPLOAD_FOLDER = '***REMOVED***/photos/'
 DATA_ACCESS_MODULE = 'fp_common.models'      # Name of the py file providing the data access layer.
+CRASH_REPORT_UPLOAD_FOLDER = '***REMOVED***/crashReports/'
 
 # DEBUG = True
 

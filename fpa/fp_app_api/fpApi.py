@@ -475,6 +475,30 @@ def upload_photo(username, trial, dbc, traitid, token):
     else:
         return serverErrorResponse('Failed photo upload : bad file')
 
+@app.route('/crashReport', methods=['POST'])
+def upload_crash_report():
+#-------------------------------------------------------------------------------------------------
+# check file size?
+# Handle a crash report upload from the app.
+    util.flog('uploaded crash report')
+    cfile = request.files.get('uploadedfile')
+    util.flog('upload_photo: filename {0}'.format(cfile.filename))
+    if cfile and allowed_file(cfile.filename):
+        sentFilename = secure_filename(cfile.filename)
+        saveName = sentFilename
+        try:
+            # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
+            fullPath = app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName
+            cfile.save(fullPath)
+            return Response('success')
+        except Exception, e:
+            util.flog('failed save {0}'.format(app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName))
+            util.flog(e.__doc__)
+            util.flog(e.message)
+            return serverErrorResponse('Failed crash report upload : can''t save')
+
+    else:
+        return serverErrorResponse('Failed crash report upload')
 
 #
 # upload_trial_data()
@@ -639,6 +663,7 @@ if __name__ == '__main__':
     from os.path import expanduser
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
+    app.config['CRASH_REPORT_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/crashReports/'
 
     # Setup logging:
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
