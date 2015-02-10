@@ -354,7 +354,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
         aData = None
 
     # Log upload, but don't output json.dumps(jti), as it can be big:
-    util.flog("upload_trait_data from {0}: dc:{1}, seq:{2}, samp:{3}\n".format(
+    util.flog("upload_trait_data from {0}: dc:{1}, seq:{2}, samp:{3}".format(
                         token, dayCreated, seqNum, sampleNum, "None" if aData is None else len(aData)))
 
     # MFK: A problem here in that ideally we don't want to create empty scoresets.
