@@ -338,7 +338,6 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     jti = request.json
     if not jti:
         return Response('Bad or missing JSON')
-    util.flog("upload_trait_data:\n" + json.dumps(jti))
 
     # Return None on success, else error string.
     # Separate func as used in two places (but one of these places now obsolete, as we now upload individual tis)
@@ -353,6 +352,10 @@ def upload_trait_data(username, trial, dbc, traitid, token):
         aData = jti["data"]
     except Exception, e:
         aData = None
+
+    # Log upload, but don't output json.dumps(jti), as it can be big:
+    util.flog("upload_trait_data from {0}: dc:{1}, seq:{2}, samp:{3}\n".format(
+                        token, dayCreated, seqNum, sampleNum, "None" if aData is None else len(aData)))
 
     # MFK: A problem here in that ideally we don't want to create empty scoresets.
     # The photo upload code, relies on being able to create an empty scoreset on the
