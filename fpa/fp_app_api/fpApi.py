@@ -483,9 +483,8 @@ def upload_crash_report():
 #-------------------------------------------------------------------------------------------------
 # check file size?
 # Handle a crash report upload from the app.
-    util.flog('uploaded crash report')
     cfile = request.files.get('uploadedfile')
-    util.flog('upload_photo: filename {0}'.format(cfile.filename))
+    util.flog('upload_crash_report: filename {0}'.format(cfile.filename))
     if cfile and allowed_file(cfile.filename):
         sentFilename = secure_filename(cfile.filename)
         saveName = sentFilename
