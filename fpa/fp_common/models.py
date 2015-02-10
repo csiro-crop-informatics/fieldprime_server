@@ -589,11 +589,6 @@ def DbConnectAndAuthenticate(username, password):
         return None, 'Error - may be invalid project name'
     # Note if there is a db problem, eg username incorrect we will have an unhandled exception.
     # Which is probably what we want since we'll get a backtrace in the log.
-#     except Exception as ex:
-#         template = "An exception of type {0} occured. Arguments:\n{1!r}"
-#         message = template.format(type(ex).__name__, ex.args)
-#         return None, message
-
 
     if sysPwRec.value == password:
         return dbc, None
