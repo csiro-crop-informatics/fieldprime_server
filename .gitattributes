@@ -68,6 +68,7 @@ fpa/fp_web_admin/static/scss/_spinning.scss -text
 fpa/fp_web_admin/static/scss/_stacked.scss -text
 fpa/fp_web_admin/static/scss/_variables.scss -text
 fpa/fp_web_admin/static/scss/font-awesome.scss -text
+fpa/fp_web_admin/stats.py -text
 fpa/fp_web_admin/templates/about.html -text
 fpa/fp_web_admin/templates/base.html -text
 fpa/fp_web_admin/templates/contact.html -text

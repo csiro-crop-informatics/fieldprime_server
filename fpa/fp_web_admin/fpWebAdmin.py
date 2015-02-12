@@ -29,6 +29,7 @@ import fpUtil
 import fpsys
 import trialProperties
 import ***REMOVED***
+import stats
 
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
@@ -175,8 +176,9 @@ def htmlTrialScoreSets(sess, trialId):
                 htm += tdPattern.format(util.formatJapDate(oti.dayCreated) if first else "")
                 htm += tdPattern.format(oti.getDeviceId() if first else "")
                 htm += tdPattern.format(oti.seqNum if first else "")
-                htm += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores</a></td>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData()))
+                htm += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a></td>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        oti.numScoredNodes()))
                 #htm += tdPattern.format(oti.numData())
                 htm += "</tr>\n"
                 first = False
@@ -1185,6 +1187,8 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     numValues = numScoredNodes - numNA
     if isNumeric and numValues > 0:
         r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
+        r += '<br>Boxplot:<br>'
+        r += stats.htmlBoxplot(data)
 
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 

@@ -196,6 +196,10 @@ class TraitInstance(DeclarativeBase):
         session = Session.object_session(self)
         count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
         return count
+    def numScoredNodes(self):
+        session = Session.object_session(self)
+        count = session.query(func.count(Datum.node_id.distinct())).filter(Datum.traitInstance_id == self.id).scalar()
+        return count
     def stats(self):
         # MFK - this not used attow, but see stats obtained in fpWebAdmin:urlScoreSetTraitInstance()
         # That could be here, but the trouble is we don't want to get data from the db twice, once to
@@ -207,7 +211,8 @@ class TraitInstance(DeclarativeBase):
         return sts
     def getData(self, latestOnly=False):
         #--------------------------------------------------------------------------------
-        # Sort by node id asc, then timestamp desc.
+        # Returns a list of Datum for this instance.
+        # Sorted by node id asc, then timestamp desc.
         # Note this is returning all the data for each node, not just the latest.
         session = Session.object_session(self)
         allResults = session.query(Datum) \
