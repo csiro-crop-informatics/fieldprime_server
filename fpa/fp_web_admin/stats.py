@@ -1,11 +1,23 @@
 # stats.py
 # Michael Kirk 2015
 #
+# NB Environment var MPLCONFIGDIR must be set before importing this module.
+# It gives a folder for matplotlib stuff, must be writeable by web server.
+#
 
 import urllib
+import StringIO
+import flask
+
+import os
+#os.environ['MPLCONFIGDIR'] = '***REMOVED***/matplotlib/'
+#os.environ['MPLCONFIGDIR'] = flask.current_app.config['MPLCONFIGDIR']
+#import os
+#import tempfile
+#os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
-import StringIO
+
 
 def htmlBoxplot(data):
 #-------------------------------------------------------------------------------

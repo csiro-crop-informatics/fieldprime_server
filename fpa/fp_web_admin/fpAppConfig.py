@@ -17,5 +17,10 @@ CATEGORY_IMAGE_FOLDER = '***REMOVED***/htdocs/fpt/categoryImages/'
 CATEGORY_IMAGE_URL_BASE = 'https://***REMOVED***/fpt/categoryImages/'
 # DEBUG = True
 
+# MPLCONFIGDIR needed for use of matplotlib. In not set, this defaults to .matplotlib
+# in current users home directory. This doesn't work when the user is webserver (which
+# may not have a usable home dir).
+MPLCONFIGDIR = '***REMOVED***/matplotlib/'
+
 # Log file to write to:
 FPLOG_FILE = '***REMOVED***/fplog/fp.log'

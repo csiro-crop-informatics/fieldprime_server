@@ -29,7 +29,6 @@ import fpUtil
 import fpsys
 import trialProperties
 import ***REMOVED***
-import stats
 
 from fp_common.const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
@@ -38,7 +37,6 @@ import fp_common.util as util
 
 import websess
 
-#from fp_web_admin import app
 app = Flask(__name__)
 try:
     app.config.from_object('fp_web_admin.fpAppConfig')
@@ -48,6 +46,11 @@ except ImportError:
 
 # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
 app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
+
+# Import stats module, but note we need set env var first, we get value from app.config:
+import os
+os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
+import stats
 
 # Load the Data Access Layer Module (must be named in the config)
 import importlib
