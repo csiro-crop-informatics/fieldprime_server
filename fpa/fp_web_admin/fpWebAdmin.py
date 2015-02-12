@@ -39,17 +39,17 @@ import websess
 
 app = Flask(__name__)
 
-# Import stats module, but note we need set env var first, we get value from app.config.
-# NB this fails if in local mode, in which case we don't need to set the env var.
-if __name__ != '__main__':
-    os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
-import stats
-
 try:
     app.config.from_object('fp_common.config')
 except ImportError:
     print 'no fpAppConfig found'
     pass
+
+# Import stats module, but note we need set env var first, we get value from app.config.
+# NB this fails if in local mode, in which case we don't need to set the env var.
+if __name__ != '__main__':
+    os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
+import stats
 
 # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
 app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
