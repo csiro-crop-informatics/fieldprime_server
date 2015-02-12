@@ -5,12 +5,7 @@
 import urllib
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
-# from matplotlib.dates import DateFormatter
-
-# not used?
-# import datetime
-# import StringIO
-# import random
+import StringIO
 
 def htmlBoxplot(data):
 #-------------------------------------------------------------------------------
