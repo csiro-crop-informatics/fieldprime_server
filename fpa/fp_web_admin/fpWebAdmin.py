@@ -38,19 +38,21 @@ import fp_common.util as util
 import websess
 
 app = Flask(__name__)
+
+# Import stats module, but note we need set env var first, we get value from app.config.
+# NB this fails if in local mode, in which case we don't need to set the env var.
+if __name__ != '__main__':
+    os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
+import stats
+
 try:
-    app.config.from_object('fp_web_admin.fpAppConfig')
+    app.config.from_object('fp_common.config')
 except ImportError:
     print 'no fpAppConfig found'
     pass
 
 # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
 app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
-
-# Import stats module, but note we need set env var first, we get value from app.config:
-import os
-os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
-import stats
 
 # Load the Data Access Layer Module (must be named in the config)
 import importlib
@@ -1190,8 +1192,6 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     numValues = numScoredNodes - numNA
     if isNumeric and numValues > 0:
         r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
-        r += '<br>Boxplot:<br>'
-        r += stats.htmlBoxplot(data)
 
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
@@ -1262,6 +1262,11 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                      value if not overWritten else ('<del>' + str(value) + '</del>'),
                      d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
     r += fpUtil.htmlDatatableByRow(hdrs, rows)
+
+    # Boxplot after table:
+    if isNumeric and numValues > 0:
+        r += '<br>Boxplot:<br>'
+        r += stats.htmlBoxplot(data)
 
     return dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
