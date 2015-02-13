@@ -30,6 +30,12 @@ def formatJapDate(jdate):
     day = jdate % 100
     return '{0}/{1}/{2}'.format(day, month, year)
 
+def formatJapDateSortFormat(jdate):
+    year = jdate / 10000
+    month = (jdate % 10000) / 100
+    day = jdate % 100
+    return '{0}-{1}-{2}'.format(year, str(month).zfill(2), str(day).zfill(2))
+
 
 ###  Logging: ##################################################################
 # We want a logging system that can be turned on or off by use of a flag file:

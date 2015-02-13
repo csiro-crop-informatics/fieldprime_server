@@ -3,6 +3,9 @@
 #
 #
 
+#
+# Standard or third party imports:
+#
 import os, sys, re, traceback
 import zipfile, ntpath
 import MySQLdb as mdb
@@ -12,6 +15,10 @@ from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 from functools import wraps
 from time import strftime
+
+#
+# Local imports:
+#
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
@@ -29,21 +36,36 @@ import fpUtil
 import fpsys
 import trialProperties
 import ***REMOVED***
-
 from fp_common.const import *
+from const import *
 from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
 import fp_common.util as util
-
+import datapage as dp
 import websess
 
 app = Flask(__name__)
 
+#
+# Load flask config:
+# Note this is contained in a dedicated module in a separate package.
+# When it was in a module in the same package as this file, the call ended
+# up importing this file, which cause some problems when try to run this
+# file a main. I believe this is because to import a module in a package
+# seems require running the __init__ of the package. And the __init__ for
+# this package imports app from this file, hence the re running of this file.
+# That problem may go away, but it probably makes sense to have the config
+# common between the fp_app_api and fp_web_admin packages anyway (which they
+# are not currently).
+#
 try:
     app.config.from_object('fp_common.config')
 except ImportError:
     print 'no fpAppConfig found'
     pass
+
+# If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
+app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 
 # Import stats module, but note we need set env var first, we get value from app.config.
 # NB this fails if in local mode, in which case we don't need to set the env var.
@@ -51,19 +73,14 @@ if __name__ != '__main__':
     os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
 import stats
 
-# If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
-app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
-
-# Load the Data Access Layer Module (must be named in the config)
+# Load the Data Access Layer Module (which must be named in the config):
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
-LOGIN_TIMEOUT = 1500          # Idle time before requiring web user to login again
-LOGIN_TYPE_SYSTEM = 1
-LOGIN_TYPE_***REMOVED*** = 2
 
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
+#############################################################################################
 
 @app.errorhandler(500)
 def internalError(e):
@@ -130,7 +147,7 @@ def FrontPage(sess, msg=''):
     sess.resetLastUseTime()    # This should perhaps be in dataPage, assuming it will only run immediately
                                # after login has been checked (i.e. can't click on link on page that's been
                                # been sitting around for a long time and have it prevent the timeout).
-    return dataPage(sess, content=msg, title="FieldPrime")
+    return dp.dataPage(sess, content=msg, title="FieldPrime")
 
 
 #####################################################################################################
@@ -159,36 +176,65 @@ def htmlTrialTraitTable(trial):
 def htmlTrialScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for list of trial score sets.
+# MFK - is there security issues showing user values in table - might they inject html scripts?
+# Should protect in the datatables functions..
+# See cgi.escape - but can't do automatically in htmlDatatable as we may want html in the
+# table (eg links). Can either escape here as necessary (eg for values for text scores),
+# or have htmlDatatables do it, but have parameters specifying columns to be excused.
+#
+# Maybe escape in the functions that get data for text traits?  Hopefully this is in one place only..
+#
     trl = dbUtil.GetTrial(sess, trialId)
     scoreSets = trl.getScoreSets()
     if len(scoreSets) < 1:
         return "No trait score sets yet"
-    htm = ('\n<table style="border:1px solid #ccc;border-collapse: collapse;">' +
-            '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
-            '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
+
+    # Datatables version:
+    hdrs = ["Trait", "Date Created", "Device Id", "seqNum", "Score Data"]
+    rows = []
+    #tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
+    tdPattern = "{0}"
     for ss in scoreSets:
         tis = ss.getInstances()
-        htm += "  <tbody style='border:1px solid #000;border-collapse: separate;border-spacing: 4px;'>\n"
-        if False and len(ss) == 1:
-            htm += "<b>{1}:{2}&nbsp;&nbsp;</b><a href={0}>Single sample</a><p>".format(
-                url_for('urlScoreSetTraitInstance', traitInstanceId=tis[0].id), tis[0].trait.caption, ss.seqNum)
-        else:
-            first = True
-            tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
-            for oti in tis:
-                htm += "<tr>"
-                htm += tdPattern.format(oti.trait.caption if first else "")
-                htm += tdPattern.format(util.formatJapDate(oti.dayCreated) if first else "")
-                htm += tdPattern.format(oti.getDeviceId() if first else "")
-                htm += tdPattern.format(oti.seqNum if first else "")
-                htm += tdPattern.format("<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a></td>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-                        oti.numScoredNodes()))
-                #htm += tdPattern.format(oti.numData())
-                htm += "</tr>\n"
-                first = False
-        htm += '  </tbody>\n'
-    htm +=  "\n</table>\n"
+        firstTi = tis[0]   # check for none?
+        row = []
+        row.append(firstTi.trait.caption)
+        row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
+        row.append(firstTi.getDeviceId())
+        row.append(firstTi.seqNum)
+        samps = ''   # We show all the separate samples in a single cell
+        for oti in tis:
+            samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
+                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                    oti.numScoredNodes())
+        row.append(samps)
+        rows.append(row)
+
+    htm = fpUtil.htmlDatatableByRow(hdrs, rows)
+
+#     htm = ('\n<table style="border:1px solid #ccc;">' +
+#             '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
+#             '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
+#     for ss in scoreSets:
+#         tis = ss.getInstances()
+#         firstTi = tis[0]   # check for none?
+#         htm += "<tr>"
+#         #tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
+#         tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
+#         htm += tdPattern.format(firstTi.trait.caption)
+#         htm += tdPattern.format(util.formatJapDate(firstTi.dayCreated))
+#         htm += tdPattern.format(firstTi.getDeviceId())
+#         htm += tdPattern.format(firstTi.seqNum)
+#         samps = ''   # We show all the separate samples in a single cell
+#         for oti in tis:
+#             samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
+#                     url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+#                     oti.numScoredNodes())
+#         htm += tdPattern.format(samps)
+#         htm += "</tr>\n"
+#
+#     htm +=  "\n</table>\n"
+
     return htm
 
 def htmlNodeAttributes(sess, trialId):
@@ -398,111 +444,8 @@ def trialPage(sess, trialId):
     trialh = TrialHtml(sess, trialId)
     if trialh is None:
         trialh = "No such trial"
-    return dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
+    return dp.dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
-
-def dataNavigationContent(sess, trialId):
-#----------------------------------------------------------------------------
-# Return html content for navigation bar on a data page
-#
-    ### User and user specific buttons:
-
-    # Show current user:
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
-
-    # Show non project specific buttons:
-    nc += '<div style="float:right; margin-top:10px">'
-    nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
-    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
-    nc += '</div><div style="clear:both"></div>'
-
-    ### Project and project specific buttons:
-
-    # There are currently 2 types of login, ***REMOVED***, and the project login.
-    # ***REMOVED*** users may have access rights to multiple project so they get
-    # a dropdown project selection. Project logins have access to a single
-    # project only, so they don't get a drop down. Set projectSelectorHtml
-    # accordingly:
-    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-        # Make select of user's projects.
-        # Note we need to construct the URL for retrieving the project page in javascript,
-        # and hence cannot use url_for.
-        projList, errMsg = fpsys.getProjects(sess.getUser())
-        if errMsg or not projList:
-            return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
-
-        # MFK do we really want a form here?
-        hackedProjUrl = url_for('urlProject', project='')[:-1]
-        projectSelectorHtml = '''
-        <script>
-        function submitProjSelection(frm) {{
-            var e = document.getElementById("project");
-            var proj = e.options[e.selectedIndex].value;
-            frm.action = "{0}" + proj
-            frm.submit()
-        }}
-        </script>
-        <form  method="GET" style='display:inline;'>
-        <select name="project" id="project" onchange="submitProjSelection(this.form)">'''.format(hackedProjUrl)
-        for proj in projList:
-            projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
-                    proj, 'selected="selected"' if proj == sess.getProjectName() else '')
-        projectSelectorHtml += '</select></form>'
-    else:
-        projectSelectorHtml = sess.getProjectName()
-
-    # Show current project:
-    nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
-
-    # Show non project specific buttons:
-    nc += '<div style="float:right; margin-top:10px">'
-    if sess.adminRights():
-        nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
-    nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
-    nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
-    nc += '</div><div style="clear:both"></div>'
-
-
-    trials = GetTrials(sess)
-    trialListHtml = None if len(trials) < 1 else ""
-    for t in trials:
-        if "{}".format(t.id) == "{}".format(trialId):
-            trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-        else:
-            trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-
-    if trialListHtml:
-        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-        nc += "<h2>Trials:</h2><ul class='fa-ul'>"
-        nc += trialListHtml
-        nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
-    return nc
-
-
-def dataPage(sess, title, content, trialId=None):
-#----------------------------------------------------------------------------
-# Return page for user data with given content and title.
-# The point of this function is to add the navigation content.
-#
-    nc = dataNavigationContent(sess, trialId)
-    return render_template('dataPage.html', navContent=nc, content=content, title=title)
-
-def dataTemplatePage(sess, template, **kwargs):
-#----------------------------------------------------------------------------
-# Return page for user data with given template, kwargs are passed through
-# to the template. The point of this function is to add the navigation content.
-#
-    if 'trialId' in kwargs:
-        nc = dataNavigationContent(sess, trialId=kwargs['trialId'])
-    else:
-        nc = dataNavigationContent(sess, trialId="-1")
-    # nc = dataNavigationContent(sess) # Generate content for navigation bar:
-    return render_template(template, navContent=nc, **kwargs)
-
-def dataErrorPage(sess, errMsg):
-#----------------------------------------------------------------------------
-# Show error message in user data page.
-    return dataPage(sess, content=errMsg, title='Error')
 
 @app.route('/trial/<trialId>', methods=["GET"])
 @dec_check_session()
@@ -532,8 +475,6 @@ def AddSysTrialTrait(sess, trialId, traitId):
     return None
 
 
-
-
 @app.route('/downloadApp/', methods=['GET'])
 @dec_check_session()
 def downloadApp(sess):
@@ -548,7 +489,7 @@ def downloadApp(sess):
     for fname in l:
         if fnmatch(fname, '*.apk'):
             apkListHtml += '<p><a href="{0}">{1}</a>'.format(url_for('static', filename = 'apk/'+fname), fname)
-    return dataPage(sess, content=apkListHtml, title='Download App')
+    return dp.dataPage(sess, content=apkListHtml, title='Download App')
 
 
 @app.route('/newTrial/', methods=["GET", "POST"])
@@ -563,14 +504,14 @@ def newTrial(sess):
     for tae in trialProperties.gTrialAttributes:
         extras += tae.htmlElement()
     if request.method == 'GET':
-        return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
+        return dp.dataTemplatePage(sess, 'newTrial.html', title='Create Trial', extraElements=extras)
     if request.method == 'POST':
         uploadFile = request.files['file']
         trl, errMsg = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
                                       request.form.get('year'), request.form.get('acronym'))
         # Handle error (trl will be string error message):
         if trl is None:
-            return dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = errMsg, extraElements=extras)
+            return dp.dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = errMsg, extraElements=extras)
         #
         # All good. Trial created. Set extra trial attributes.
         # MFK in general we will need insert or update (merge)
@@ -655,7 +596,7 @@ def urlBrowseTrialAttributes(sess, trialId):
 # Page for display of trial data.
 #
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
-    return dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse')
+    return dp.dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse')
 
 
 def getDataColumns(sess, trialId, tiList):
@@ -834,7 +775,7 @@ def urlTrialDataBrowse(sess, trialId):
     showAttributes = request.args.get("attributes")
     r = fpUtil.htmlDataTableMagic('trialData')
     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
-    return dataPage(sess, content=r, title='Browse', trialId=trialId)
+    return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
@@ -855,7 +796,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<p>Do you really want to delete this trial?'
         out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
-        return dataPage(sess, title='Delete Trial',
+        return dp.dataPage(sess, title='Delete Trial',
                         content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
                                                           'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
@@ -874,7 +815,7 @@ def urlDeleteTrial(sess, trialId):
             else:
                 # Delete the trial:
                 fpTrial.deleteTrial(sess, trialId)
-                return dataPage(sess, '', 'Trial Deleted', trialId=trialId)
+                return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
             return FrontPage(sess)
@@ -888,12 +829,12 @@ def urlNewTrait(sess, trialId):
     if request.method == 'GET':
         # NB, could be a new sys trait, or trait for a trial. Indicated by trialId which will be
         # either 'sys' or the trial id respectively.
-        return dataTemplatePage(sess, 'newTrait.html', trialId=trialId, traitTypes=TRAIT_TYPE_TYPE_IDS, title='New Trait')
+        return dp.dataTemplatePage(sess, 'newTrait.html', trialId=trialId, traitTypes=TRAIT_TYPE_TYPE_IDS, title='New Trait')
 
     if request.method == 'POST':
-        errMsg = fpTrait.CreateNewTrait(sess, trialId, request)
+        errMsg = fpTrait.createNewTrait(sess, trialId, request)
         if errMsg:
-            return dataErrorPage(sess, errMsg)
+            return dp.dataErrorPage(sess, errMsg)
         if trialId == 'sys':
             return FrontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
@@ -911,13 +852,13 @@ def urlTraitDetails(sess, trialId, traitId):
 @dec_check_session()
 def urlAttributeUpload(sess, trialId):
     if request.method == 'GET':
-        return dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes')
+        return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes')
 
     if request.method == 'POST':
         uploadFile = request.files['file']
         res = fpTrial.updateTrialFile(sess, uploadFile, dbUtil.GetTrial(sess, trialId))
         if res is not None and 'error' in res:
-            return dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
+            return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
         else:
             return trialPage(sess, trialId) #FrontPage(sess)
 
@@ -933,7 +874,7 @@ def urlAttributeDisplay(sess, trialId, attId):
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
     r += "</table>"
-    return dataPage(sess, content=r, title='Attribute', trialId=trialId)
+    return dp.dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
 #######################################################################################################
 ### USERS STUFF: ######################################################################################
@@ -1038,9 +979,9 @@ def urlUserDetails(sess, projectName):
     def theFormAgain(op=None, msg=None):
         cname = dbUtil.getSystemValue(sess, 'contactName') or ''
         cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
-        return dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail, title="Admin",
-                                op=op, errMsg=msg,
-                                usersHTML=manageUsersHTML(sess, msg if op is 'manageUser' else None))
+        return dp.dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail,
+                    title="Admin", op=op, errMsg=msg,
+                    usersHTML=manageUsersHTML(sess, msg if op is 'manageUser' else None))
 
     title = "Profile"
     if request.method == 'GET':
@@ -1052,12 +993,12 @@ def urlUserDetails(sess, projectName):
             contactName = form.get('contactName')
             contactEmail = form.get('contactEmail')
             if not (contactName and contactEmail):
-                return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
             else:
                 dbUtil.setSystemValue(sess, 'contactName', contactName)
                 dbUtil.setSystemValue(sess, 'contactEmail', contactEmail)
-                return dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
-                                        errMsg="Contact details saved", title=title)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
+                           errMsg="Contact details saved", title=title)
 
         elif op == 'newpw' or op == 'setAppPassword':
             # Changing admin or app password:
@@ -1072,7 +1013,7 @@ def urlUserDetails(sess, projectName):
             if not (oldPassword and newpassword1 and newpassword2):
                 return theFormAgain(op=op, msg="Please fill out all fields")
             if newpassword1 != newpassword2:
-                return dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
 
             # OK, all good, change their password:
             try:
@@ -1118,11 +1059,11 @@ def urlSystemTraits(sess, projectName):
     if request.method == 'GET':
         # System Traits:
         sysTraits = GetSysTraits(sess)
-        sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.TraitListHtmlTable(sysTraits)
+        sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = HtmlFieldset(
             HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
-        return dataPage(sess, title='System Traits', content=r)
+        return dp.dataPage(sess, title='System Traits', content=r)
 
 
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
@@ -1132,7 +1073,7 @@ def urlAddSysTrait2Trial(sess, trialId):
 #
     errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
     if errMsg:
-        return dataErrorPage(sess, errMsg)
+        return dp.dataErrorPage(sess, errMsg)
     # If all is well, display the trial page:
     return trialPage(sess, trialId)
 
@@ -1268,7 +1209,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
         r += '<br>Boxplot:<br>'
         r += stats.htmlBoxplot(data)
 
-    return dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
+    return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
@@ -1307,7 +1248,7 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
     archFname = photoArchiveZipFileName(sess, traitInstanceId)
     errMsg = makeZipArchive(sess, traitInstanceId, archFname)
     if errMsg is not None:
-        return dataErrorPage(sess, errMsg)
+        return dp.dataErrorPage(sess, errMsg)
     resp = make_response(open(archFname).read())
     resp.content_type = "image/jpeg"
     os.remove(archFname)    # delete the file
@@ -1324,7 +1265,7 @@ def urlPhoto(sess, filename):
 # a static URL. I'm not sure whether the performance hit is significant.
     fullpath = app.config['PHOTO_UPLOAD_FOLDER'] + filename
     if not os.path.isfile(fullpath):
-        return dataErrorPage(sess, "Can't find file {0}".format(fullpath))
+        return dp.dataErrorPage(sess, "Can't find file {0}".format(fullpath))
     resp = make_response(open(fullpath).read())
     resp.content_type = "image/jpeg"
     return resp

@@ -8,32 +8,19 @@ from werkzeug import secure_filename
 import flask
 from flask import Flask, request, url_for, redirect
 
-from fp_common.models import SYSTYPE_TRIAL, SYSTYPE_SYSTEM, SYSTYPE_ADHOC, TRAIT_TYPE_NAMES, TRAIT_TYPE_TYPE_IDS
 import fp_common.models as models
-import dbUtil
 from fp_common.const import *
+import dbUtil
 import fp_common.util as util
-import fpWebAdmin
+import datapage as dp
 import fpUtil
 
-#app = Flask(__name__)
+
 app = flask.current_app
-
-#-- CONSTANTS: ---------------------------------------------------------------------
-
-# Trait type values:
-TRAIT_NONE = -1
-TRAIT_INTEGER = 0
-TRAIT_DECIMAL = 1
-TRAIT_STRING = 2
-TRAIT_CATEGORICAL = 3
-TRAIT_DATE = 4
-TRAIT_PHOTO = 5
-
 
 #-- FUNCTIONS: ---------------------------------------------------------------------
 
-def TraitListHtmlTable(traitList):
+def traitListHtmlTable(traitList):
 #-----------------------------------------------------------------------
 # Returns html table of traitList
 #
@@ -48,7 +35,7 @@ def TraitListHtmlTable(traitList):
     return out
 
 
-def CreateNewTrait(sess,  trialId, request):
+def createNewTrait(sess,  trialId, request):
 #-----------------------------------------------------------------------
 # Create trait in db, from data from html form.
 # trialId is id of trial if a local trait, else it is 'sys'.
@@ -97,7 +84,7 @@ def CreateNewTrait(sess,  trialId, request):
 
     # Trait type specific processing:
     if int(ntrt.type) == T_CATEGORICAL:
-        NewTraitCategorical(sess, request, ntrt)
+        _newTraitCategorical(sess, request, ntrt)
     elif int(ntrt.type) == T_INTEGER:
         pass
 
@@ -116,7 +103,7 @@ def allowed_file(filename):  # MFK cloned code warning
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-def NewTraitCategorical(sess, request, trt):
+def _newTraitCategorical(sess, request, trt):
     capKeys = [key for key in request.form.keys() if key.startswith("caption_")]
     for key in capKeys:
         caption = request.form.get(key)
@@ -139,7 +126,7 @@ def NewTraitCategorical(sess, request, trt):
                     imageURLFile.save(subpath +  "/" + newFilename)
                     imageURL = app.config['CATEGORY_IMAGE_URL_BASE'] + "/" + sess.getProject() + "/" + str(trt.id) + "/" + newFilename
                 else:
-                    util.flog("NewTraitCategorical bad file name")
+                    util.flog("_newTraitCategorical bad file name")
         except Exception, e:
             util.flog("Exception: {0}".format(str(e)))
 
@@ -363,7 +350,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         formh += ('\n<p><input type="button" style="color:red" value="Cancel"' +
             ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
         formh += '\n<input type="submit" style="color:red" value="Submit">'
-        return fpWebAdmin.dataPage(sess,
+        return dp.dataPage(sess,
                     content=preform + fpUtil.HtmlForm(formh, post=True, onsubmit=onsubmit, multipart=True),
                     title='Trait Validation')
 
@@ -384,7 +371,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         # Trait type specific stuff:
         #
         if trt.type == T_CATEGORICAL:
-            NewTraitCategorical(sess, request, trt)
+            _newTraitCategorical(sess, request, trt)
         elif trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
             op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
             if not re.match('[0-4]', op):

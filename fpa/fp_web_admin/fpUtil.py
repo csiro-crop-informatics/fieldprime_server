@@ -142,8 +142,12 @@ def htmlDataTableMagic(tableId):
     return r
 
 def htmlDatatable(headers, cols):
-#
-# Data table:
+#-----------------------------------------------------------------------------
+# HTML for Data table with the specified headers and cols.
+# The length of these lists should be the same, col[i] being the
+# data values for the column with header headers[i]. Each element
+# in cols should be a list, and these, ideally, would all be of
+# the same length.
 #
     numCols = len(headers)
     if numCols <= 0 or numCols != len(cols):
@@ -167,8 +171,9 @@ def htmlDatatable(headers, cols):
     return r
 
 def htmlDatatableByRow(headers, rows):
-#
-# Data table:
+# HTML for Data table with the specified headers and rows.
+# headers is list of column headers, rows a list of lists,
+# each sublist should be same length as headers.
 #
     out = htmlDataTableMagic('trialData')
     out += '<p><table id="trialData" class="display fptable"  cellspacing="0" width="100%"  >'
