@@ -15,6 +15,8 @@ from sqlalchemy import *
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
+import cgi
+
 from const import *
 import util
 from functools import wraps
@@ -108,11 +110,12 @@ class Datum(DeclarativeBase):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.
     # NB if the database value is null, then "NA" is returned.
+    # NB - for text values, cgi.escape is applied first (to disable any html).
         type = self.traitInstance.trait.type
         value = '?'
         if type == T_INTEGER: value = self.numValue
         elif type == T_DECIMAL: value = self.numValue
-        elif type == T_STRING: value = self.txtValue
+        elif type == T_STRING: value = cgi.escape(self.txtValue)
         elif type == T_CATEGORICAL:
             value = self.numValue
             # Need to look up the text for the value:

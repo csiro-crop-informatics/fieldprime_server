@@ -1143,42 +1143,6 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
-#     #
-#     # Data table:
-#     #
-#     hdrs = ('Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
-#     cRow = []
-#     cCol = []
-#     cVal = []
-#     cUse = []
-#     cTim = []
-#     cLat = []
-#     cLon = []
-#     for idx, d in enumerate(data):
-#         # Is this an overwritten datum?
-#         overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
-#
-#         # Special case for photos. Display a link to show the photo.
-#         # Perhaps this should be done in Datum.getValue, but we don't have all info.
-#         if typ == T_PHOTO:
-#             if d.isNA():
-#                 value = 'NA'
-#             else:
-# #               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
-#                 fname = hackyPhotoFileName(sess, ti, d)
-#                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
-#         else:
-#             value = d.getValue()
-#
-#         cRow.append(d.node.row)
-#         cCol.append(d.node.col)
-#         cVal.append(value if not overWritten else ('<del>' + str(value) + '</del>'))
-#         cUse.append(d.userid)
-#         cTim.append(util.epoch2dateTime(d.timestamp))
-#         cLat.append(d.gps_lat)
-#         cLon.append(d.gps_long)
-#     r += fpUtil.htmlDatatable(hdrs, [cRow, cCol, cVal, cUse, cTim, cLat, cLon])
-
     #
     # Data table:
     #
