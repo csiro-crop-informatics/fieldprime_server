@@ -132,7 +132,7 @@ class Datum(DeclarativeBase):
 #             nodeId = self.node.id
 #             trialId = self.node.trial_id
 #             value = photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum, fileExtension):
-            value = self.txtValue
+            value = cgi.escape(self.txtValue)
 
             #MFK return link to photo.
         #if type ==     T_LOCATION: value = d.txtValue
