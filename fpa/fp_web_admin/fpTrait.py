@@ -10,7 +10,6 @@ from flask import Flask, request, url_for, redirect
 
 import fp_common.models as models
 from fp_common.const import *
-import dbUtil
 import fp_common.util as util
 import datapage as dp
 import fpUtil
@@ -53,21 +52,21 @@ def createNewTrait(sess,  trialId, request):
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
     # can wait til the adding stage.
-    dbsess = sess.DB()
+    dbsess = sess.db()
     ntrt = models.Trait()
     ntrt.caption = caption
     ntrt.description = description
 
     # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
     if not sysTrait: # If local, check there's no other trait local to the trial with the same caption:
-        trial = dbUtil.GetTrialFromDBsess(sess, trialId)
+        trial = models.getTrial(sess.db(), trialId)
         for x in trial.traits:
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
         ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
         ntrt.sysType = SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
-        sysTraits = dbUtil.GetSysTraits(sess)
+        sysTraits = models.getSysTraits(sess.db())
         for x in sysTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
@@ -136,7 +135,7 @@ def _newTraitCategorical(sess, request, trt):
         # MFK here we should determine if this is an existing category - in which we may need
         # to update fields or a new one. Trait categories are identified by the value (within
         # a trait).
-        tcat = dbUtil.getTraitCategory(sess, trt.id, value)
+        tcat = trt.getCategory(value)
         newCat = tcat is None
         if newCat:
             # Add new trait category:
@@ -145,7 +144,7 @@ def _newTraitCategorical(sess, request, trt):
             tcat.caption = caption
             tcat.trait_id = trt.id
             tcat.imageURL = imageURL
-            sess.DB().add(tcat)
+            sess.db().add(tcat)
 
         else:
             util.flog("Existing category: cap:{0} value:{1}".format(caption, value))
@@ -163,9 +162,9 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
 #
 # MFK Note overlap with code from trait creation.
 #
-    trt = dbUtil.GetTrait(sess, traitId)
-    trlTrt = dbUtil.getTrialTrait(sess, trialId, traitId)
-    trial = dbUtil.GetTrial(sess, trialId)
+    trt = models.getTrait(sess.db(), traitId)
+    trlTrt = models.getTrialTrait(sess.db(), trialId, traitId)
+    trial = models.getTrial(sess.db(), trialId)
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
     comparatorCodes = [
         ["gt", "Greater Than", 1],
@@ -189,7 +188,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         # Note it doesn't matter if a sysTrait, since the barcode is stored in trialTrait
         attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
         attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
-        atts = dbUtil.getNodeAttributes(sess, trialId)
+        atts = trial.nodeAttributes
         for att in atts:
             attSelector += '<option value="{0}" {2}>{1}</option>'.format(
                 att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
@@ -242,7 +241,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             # Make this a separate function to generate html form, so can be used from
             # trait creation page.
             #
-            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
+            ttn = models.GetTrialTraitNumericDetails(sess.db(), traitId, trialId)
 
             # Min and Max:
             # need to get decimal version if decimal. Maybe make ttn type have getMin/getMax func and use for both types
@@ -343,7 +342,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             preform = script
             onsubmit ='return validateTraitDetails()'
         elif trt.type == T_STRING:
-            tts = models.getTraitString(sess.DB(), traitId, trialId)
+            tts = models.getTraitString(sess.db(), traitId, trialId)
             patText = "value='{0}'".format(tts.pattern) if tts is not None else ""
             formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
 
@@ -387,7 +386,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 vmax = None
 
             # Get existing trialTraitNumeric, or create new one if none:
-            ttn = models.GetTrialTraitNumericDetails(sess.DB(), traitId, trialId)
+            ttn = models.GetTrialTraitNumericDetails(sess.db(), traitId, trialId)
             newTTN = ttn is None
             if newTTN:
                 ttn = models.TrialTraitNumeric()
@@ -398,24 +397,24 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             if int(op) > 0 and int(at) > 0:
                 ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
             if newTTN:
-                sess.DB().add(ttn)
+                sess.db().add(ttn)
         elif trt.type == T_STRING:
             newPat = request.form.get('pattern')
-            tts = models.getTraitString(sess.DB(), traitId, trialId)
+            tts = models.getTraitString(sess.db(), traitId, trialId)
             if len(newPat) == 0:
                 newPat = None
             # delete tts if not needed:
             if not newPat:
                 if tts:
-                    sess.DB().delete(tts)
+                    sess.db().delete(tts)
             else:
                 if tts:
                     tts.pattern = newPat
                 else:
                     tts = models.TraitString(trait_id=traitId, trial_id=trialId, pattern=newPat)
-                    sess.DB().add(tts)
+                    sess.db().add(tts)
 
-        sess.DB().commit()
+        sess.db().commit()
 
         return redirect(url_for("urlTrial", trialId=trialId))
 

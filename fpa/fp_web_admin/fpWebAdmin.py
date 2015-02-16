@@ -27,7 +27,6 @@ if __name__ == '__main__':
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir)
 
-import dbUtil
 import fpTrait
 import fp_common.models as models
 import fp_common.util as util
@@ -38,7 +37,6 @@ import trialProperties
 import ***REMOVED***
 from fp_common.const import *
 from const import *
-from dbUtil import GetTrial, GetTrials, GetSysTraits
 from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
 import fp_common.util as util
 import datapage as dp
@@ -184,7 +182,7 @@ def htmlTrialScoreSets(sess, trialId):
 #
 # Maybe escape in the functions that get data for text traits?  Hopefully this is in one place only..
 #
-    trl = dbUtil.GetTrial(sess, trialId)
+    trl = dal.getTrial(sess.db(), trialId)
     scoreSets = trl.getScoreSets()
     if len(scoreSets) < 1:
         return "No trait score sets yet"
@@ -241,7 +239,7 @@ def htmlNodeAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
 # MFK - improve this, showing type and number of values, also delete button? modify?
-    attList = dbUtil.getNodeAttributes(sess, trialId)
+    attList = dal.getTrial(sess.db(), trialId).nodeAttributes
     out = ''
     if len(attList) < 1:
         out += "No attributes found"
@@ -313,7 +311,7 @@ def htmlTrialTraits(sess, trial):
     createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
-    sysTraits = dbUtil.GetSysTraits(sess)
+    sysTraits = dal.getSysTraits(sess.db())
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
             if trt.id == st.id:
@@ -426,7 +424,7 @@ def TrialHtml(sess, trialId):
 # Returns the HTML for a top level page to display/manage a given trial.
 # Or None if no trial with given id.
 #
-    trial = dbUtil.GetTrial(sess, trialId)
+    trial = dal.getTrial(sess.db(), trialId)
     if trial is None: return None
     hts = htmlChunkSet()
     hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
@@ -458,7 +456,8 @@ def urlTrial(sess, trialId):
 def AddSysTrialTrait(sess, trialId, traitId):
 #-----------------------------------------------------------------------
 # Return error string, None for success
-# MFK perhaps this would be better done with sqlalchemy?
+# MFK perhaps this would be better done with sqlalchemy? It should in any case
+# be in models.py, not here.
 #
     if traitId == "0":
         return "Select a system trait to add"
@@ -572,7 +571,8 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
 
     if not fixedOnly:
         # And add the other attributes:
-        attList = dbUtil.getNodeAttributes(sess, trialId)
+        trl = dal.getTrial(sess.db(), trialId)
+        attList = trl.nodeAttributes
         qry = """
             select a.value from node n left join attributeValue a
             on n.id = a.node_id and a.nodeAttribute_id = %s
@@ -628,7 +628,7 @@ def getDataColumns(sess, trialId, tiList):
         # converted into names (via the traitCategory table), retrieve the map for the
         # trait first:
         if ti.trait.type == T_CATEGORICAL:
-            catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.DB(), ti.trait_id)
+            catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
         else:
             catMap = None
 
@@ -665,8 +665,10 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
 # datatables browse could show/hide columns and export current selection to tsv.
 #
     # Get Trait Instances:
-    tiList = dbUtil.GetTraitInstancesForTrial(sess, trialId)  # get Trait Instances
+    tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
+
+    trl = dal.getTrial(sess.db(), trialId)
 
     # Work out number of columns for each trait instance:
     numColsPerValue = 1
@@ -692,12 +694,11 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
 
     # Headers:
     r += HROWSTART
-    r += "Row" + HSEP + "Column"
+    r += 'fpNodeId' + HSEP + "Row" + HSEP + "Column"
     # xxx need to show row col even if attributes not shown?
     if showAttributes:
-        trl = dbUtil.GetTrial(sess, trialId)
-        attValList = getAttributeColumns(sess, trialId, trl.tuAttributes)  # Get all the att vals in advance
-        for tua in trl.tuAttributes:
+        attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
+        for tua in trl.nodeAttributes:
             r += HSEP + tua.name
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
@@ -713,16 +714,16 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     r += HROWEND
 
     # Data:
-    nodeList = dbUtil.getNodes(sess, trialId)
+    nodeList = trl.getNodesSortedRowCol()
     for nodeIndex, node in enumerate(nodeList):
         r += ROWSTART
 
         # Row and Col:
-        r += "{0}{2}{1}".format(node.row, node.col, SEP)
+        r += "{0}{3}{1}{3}{2}".format(node.id, node.row, node.col, SEP)
 
         # Attribute Columns:
         if showAttributes:
-            for ind, tua in enumerate(trl.tuAttributes):
+            for ind, tua in enumerate(trl.nodeAttributes):
                 r += SEP
                 r += attValList[ind][nodeIndex]
 
@@ -742,7 +743,7 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
         # Notes, as list separated by pipe symbols:
         if showNotes:
             r += SEP + '"'
-            tuNotes = dbUtil.GetNodeNotes(sess, node.id)
+            tuNotes = node.getNotes()
             for note in tuNotes:
                 r += '{0}|'.format(note.note)
             r += '"'
@@ -786,7 +787,7 @@ def urlDeleteTrial(sess, trialId):
 # of delete.
 #
 # MFK - replace the post part of this with a DELETE?
-    trl = models.GetTrial(sess.DB(), trialId)
+    trl = dal.getTrial(sess.db(), trialId)
     def getHtml(msg=''):
         out = '<div style="color:red">{0}</div><p>'.format(msg);  # should be red style="color:red"
         out += 'Trial {0} contains:<br>'.format(trl.name)
@@ -814,7 +815,7 @@ def urlDeleteTrial(sess, trialId):
                 return getHtml('Insufficient permissions to delete trial')
             else:
                 # Delete the trial:
-                fpTrial.deleteTrial(sess, trialId)
+                dal.Trial.delete(sess.db(), trialId)
                 return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
@@ -856,7 +857,7 @@ def urlAttributeUpload(sess, trialId):
 
     if request.method == 'POST':
         uploadFile = request.files['file']
-        res = fpTrial.updateTrialFile(sess, uploadFile, dbUtil.GetTrial(sess, trialId))
+        res = fpTrial.updateTrialFile(sess, uploadFile, dal.getTrial(sess.db(), trialId))
         if res is not None and 'error' in res:
             return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
         else:
@@ -865,14 +866,14 @@ def urlAttributeUpload(sess, trialId):
 @app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
 def urlAttributeDisplay(sess, trialId, attId):
-    tua = dbUtil.GetAttribute(sess, attId)
+    tua = dal.getAttribute(sess.db(), attId)
     r = "Attribute {0}".format(tua.name)
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
     r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
-    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Row", "Column", "Value")
-    aVals = dbUtil.GetAttributeValues(sess, attId)
+    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format("fpNodeId", "Row", "Column", "Value")
+    aVals = tua.getValues()
     for av in aVals:
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(av.node.row, av.node.col, av.value)
+        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(av.node.id, av.node.row, av.node.col, av.value)
     r += "</table>"
     return dp.dataPage(sess, content=r, title='Attribute', trialId=trialId)
 
@@ -977,8 +978,8 @@ def urlUserDetails(sess, projectName):
         return badJuju(sess, 'No admin rights')
 
     def theFormAgain(op=None, msg=None):
-        cname = dbUtil.getSystemValue(sess, 'contactName') or ''
-        cemail = dbUtil.getSystemValue(sess, 'contactEmail') or ''
+        cname = dal.getSystemValue(sess.db(), 'contactName') or ''
+        cemail = dal.getSystemValue(sess.db(), 'contactEmail') or ''
         return dp.dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail,
                     title="Admin", op=op, errMsg=msg,
                     usersHTML=manageUsersHTML(sess, msg if op is 'manageUser' else None))
@@ -995,8 +996,8 @@ def urlUserDetails(sess, projectName):
             if not (contactName and contactEmail):
                 return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
             else:
-                dbUtil.setSystemValue(sess, 'contactName', contactName)
-                dbUtil.setSystemValue(sess, 'contactEmail', contactEmail)
+                dal.setSystemValue(sess.db(), 'contactName', contactName)
+                dal.setSystemValue(sess.db(), 'contactEmail', contactEmail)
                 return dp.dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
                            errMsg="Contact details saved", title=title)
 
@@ -1058,7 +1059,7 @@ def urlSystemTraits(sess, projectName):
 #
     if request.method == 'GET':
         # System Traits:
-        sysTraits = GetSysTraits(sess)
+        sysTraits = dal.getSysTraits(sess.db())
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = HtmlFieldset(
             HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
@@ -1105,7 +1106,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 # NB deleted data are shown (crossed out), not just the latest for each node.
 # MFK this should probably display RepSets, not individual TIs
 #
-    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
     typ = ti.trait.type
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
@@ -1146,7 +1147,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     #
     # Data table:
     #
-    hdrs = ('Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
     rows = []
     for idx, d in enumerate(data):
         # Is this an overwritten datum?
@@ -1163,7 +1164,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                 value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
         else:
             value = d.getValue()
-        rows.append([d.node.row, d.node.col,
+        rows.append([d.node.id, d.node.row, d.node.col,
                      value if not overWritten else ('<del>' + str(value) + '</del>'),
                      d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
     r += fpUtil.htmlDatatableByRow(hdrs, rows)
@@ -1178,7 +1179,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
 # Create zip archive of all the photos for the given traitInstance.
-    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
     if ti.trait.type != T_PHOTO:
         return 'Not a photo trait'
     data = ti.getData(True)
@@ -1190,7 +1191,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
 
                 #print 'upload folder ' + app.config['PHOTO_UPLOAD_FOLDER'] + fname
                 # Generate a name for the photo to have in the zip file. This needs to show row and col.
-                node = dbUtil.getNode(sess, d.node_id)
+                node = dal.getNode(sess.db(), d.node_id)
                 # MFK - we should allow for alternate file extensions, not assume ".jpg"
                 archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
                 myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
@@ -1201,7 +1202,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
 def photoArchiveZipFileName(sess, traitInstanceId):
 #-----------------------------------------------------------
 # Generate file name for zip of photos in traitInstance.
-    ti = dbUtil.getTraitInstance(sess, traitInstanceId)
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
     return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.getProjectName(), ti.trial.name, traitInstanceId)
 
 @app.route("/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])

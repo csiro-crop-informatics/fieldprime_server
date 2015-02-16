@@ -125,7 +125,7 @@ def trialPropertyTable(sess, trial, create=True):
         value = None
         if not create:
             # get value
-            value = models.TrialProperty.getPropertyValue(sess.DB(), trial.id, tae.dbName)
+            value = models.TrialProperty.getPropertyValue(sess.db(), trial.id, tae.dbName)
         out += tae.htmlElement(value)
 
     if create:
@@ -147,8 +147,8 @@ def processPropertiesForm(sess, trialId, form):
     for tae in gTrialAttributes:
         # trying to insert or update
         newProp = models.TrialProperty(trialId, tae.dbName, form.get(tae.ename))
-        newProp = sess.DB().merge(newProp)
-    sess.DB().commit()
+        newProp = sess.db().merge(newProp)
+    sess.db().commit()
 
 
 

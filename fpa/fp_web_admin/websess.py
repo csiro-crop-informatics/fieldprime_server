@@ -116,7 +116,7 @@ class WebSess(object):
     # Does this session have admin rights for its current project?
         return self.getProjectAccess() & PROJECT_ACCESS_ADMIN
 
-    def DB(self):
+    def db(self):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):

@@ -3,7 +3,7 @@ import os.path
 import sys
 
 def photoCheck(dbc, photodir):
-    trials = md.GetTrialList(dbc)
+    trials = md.getTrialList(dbc)
     for tr in trials:
         tis = tr.getTraitInstances()
         for ti in tis:

@@ -2,15 +2,15 @@
 # Michael Kirk 2013
 #
 # Code for creation of new trials
+# Note we want to remove direct use of sqlalchemy in here, it should all
+# be in models.py
 #
 
 
 import sys, os, traceback
 import sqlalchemy
-from flask import render_template
-import fpUtil
-import dbUtil
-from fp_common.models import Trial, Node, NodeAttribute, AttributeValue, Trait
+from fp_common.models import  NodeAttribute, AttributeValue
+import fp_common.models as models
 
 #
 # Special column headers.
@@ -99,36 +99,19 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 # Handle submitted create trial form.
 # Return Trial object, None on success, else None, string error message.
 #
-    db = sess.DB()
-    # Create trial:
+    dbc = sess.db()
     try:
-        ntrial = Trial()
-        ntrial.name = tname
-        ntrial.site = tsite
-        ntrial.year = tyear
-        ntrial.acronym = tacro
-        db.add(ntrial)
-        db.commit()
-    except sqlalchemy.exc.SQLAlchemyError as e:
-        print 'uploadTrialFile e2'
-        deleteTrial(sess, ntrial.id)
+        ntrial = models.Trial.new(dbc, tname, tsite, tyear, tacro)
+    except models.DalError as e:
         return (None, "Database error ({0})".format(e.__str__()))
 
     # Add trial details from csv:
     res = updateTrialFile(sess, f, ntrial)
     if res is not None and 'error' in res:
-        deleteTrial(sess, ntrial.id)   # delete the new trial if some error
+        models.Trial.delete(dbc, ntrial.id)   # delete the new trial if some error
         return (None, res['error'])
     return ntrial, None
 
-def deleteTrial(sess, trialId):
-#-----------------------------------------------------------------------
-# Delete this trial from the DB - I'm not sure where this leaves the in memory
-# objects..
-    db = sess.DB()
-    db.query(Trial).filter(Trial.id == trialId).delete()
-    db.commit()
-    return None
 
 def updateTrialFile(sess, trialCsv, trl):
 #-----------------------------------------------------------------------
@@ -165,10 +148,10 @@ def updateTrialFile(sess, trialCsv, trl):
     fixIndex = tuFileInfo['fixIndex']
     attIndex = tuFileInfo['attIndex']
 
-    dbSess = sess.DB()
+    dbSess = sess.db()
     # Add (new) node attributes, create/fill attExists, nodeAtts:
     try:
-        currAtts = dbUtil.getNodeAttributes(sess, trl.id)
+        currAtts = trl.nodeAttributes
         nodeAtts = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
         for at in attIndex.keys():
@@ -216,7 +199,7 @@ def updateTrialFile(sess, trialCsv, trl):
 
                 # Get existing attributeValue if it exists.
                 # If it does and newValue is empty then delete it.
-                av = dbUtil.getAttributeValue(sess, node.id, nodeAtt.id)
+                av = node.getAttributeValue(nodeAtt.id)
                 if av is not None and not newValue:
                     # If there is existing record, but new value is empty, then delete existing record:
                     dbSess.delete(av)

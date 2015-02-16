@@ -21,6 +21,25 @@ from const import *
 import util
 from functools import wraps
 
+def oneException2None(func):
+#--------------------------------------------------------------------
+# Decorator used for sqlalchemy one() queries, which throw exceptions if
+# there isn't exactly one result. This function traps the exceptions, it
+# returns the result if exactly one is found, else None.
+#
+    @wraps(func)
+    def with_traps(*args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        except sqlalchemy.orm.exc.NoResultFound:
+            return None
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            return None
+        return ret
+    return with_traps
+
+
+
 ### sqlalchemy CONSTANTS: ######################################################################
 
 DeclarativeBase = declarative_base()
@@ -157,6 +176,12 @@ class Trait(DeclarativeBase):
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trial_id==Trial.id')
     categories = relation('TraitCategory')    # NB, only relevant for Categorical type
 
+    @oneException2None
+    def getCategory(self, value):
+        dbc = Session.object_session(self)
+        return dbc.query(TraitCategory).filter(
+            and_(TraitCategory.trait_id == self.id, TraitCategory.value == value)).one()
+
 
 class TraitCategory(DeclarativeBase):
     __tablename__ = 'traitCategory'
@@ -284,9 +309,27 @@ class Trial(DeclarativeBase):
 
     #relation definitions:
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
-    tuAttributes = relationship('NodeAttribute')
+    nodeAttributes = relationship('NodeAttribute')
     nodes = relationship('Node')
     trialProperties = relationship('TrialProperty')
+
+    @staticmethod
+    def new(dbc, tname, tsite, tyear, tacro):
+    # NB may throw exceptions, not handled here.
+        try:
+            ntrial = Trial()
+            ntrial.name = tname
+            ntrial.site = tsite
+            ntrial.year = tyear
+            ntrial.acronym = tacro
+            dbc.add(ntrial)
+            dbc.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            # Delete trial and raise exception on error:
+            Trial.delete(dbc, ntrial.id)
+            raise DalError("Database error ({0})".format(e.__str__()))
+
+        return ntrial
 
     def addOrGetNode(self, row, col):
         try:
@@ -358,22 +401,29 @@ class Trial(DeclarativeBase):
             lastDayCreated = dayCreated
         return scoreSets
 
-def oneException2None(func):
-#--------------------------------------------------------------------
-# Decorator used for sqlalchemy one() queries, which throw exceptions if
-# there isn't exactly one result. This function traps the exceptions, it
-# returns the result if exactly one is found, else None.
-#
-    @wraps(func)
-    def with_traps(*args, **kwargs):
-        try:
-            ret = func(*args, **kwargs)
-        except sqlalchemy.orm.exc.NoResultFound:
-            return None
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            return None
-        return ret
-    return with_traps
+    def getNodesSortedRowCol(self):
+        # Return nodes for the specified trial, sorted by row/col
+        dbc = Session.object_session(self)
+        return dbc.query(Node).filter(Node.trial_id==self.id).order_by(Node.row, Node.col).all()
+
+
+    @staticmethod
+    def getTraitInstancesForTrial(dbc, trialID):
+    #-----------------------------------------------------------------------
+    # Return all the traitInstances for the specified trial,
+    # ordered by trait, token, seqnum, samplenum.
+        return dbc.query(TraitInstance).filter(
+            TraitInstance.trial_id == trialID).order_by(
+            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
+
+    @staticmethod
+    def delete(dbc, trialId):
+    #-----------------------------------------------------------------------
+    # Delete specified trial from the DB - I'm not sure where this leaves the in memory
+    # objects..
+        dbc.query(Trial).filter(Trial.id == trialId).delete()
+        dbc.commit()
+        return None
 
 
 #
@@ -406,6 +456,7 @@ class TrialProperty(DeclarativeBase):
         self.trial_id = tid
         self.name = name
         self.value = value
+        super(TrialProperty, self).__init__()
 
     @staticmethod
     @oneException2None
@@ -438,6 +489,20 @@ class Node(DeclarativeBase):
     traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum, secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
+    @oneException2None
+    def getAttributeValue(self, nodeAttributeId):
+        dbc = Session.object_session(self)
+        return dbc.query(AttributeValue).filter(
+            and_(
+                AttributeValue.node_id == self.id,
+                AttributeValue.nodeAttribute_id == nodeAttributeId)
+            ).one()
+
+    def getNotes(self):
+        dbc = Session.object_session(self)
+        return dbc.query(NodeNote).filter(NodeNote.node_id == self.id).all()
+
+
 class NodeAttribute(DeclarativeBase):
     __tablename__ = 'nodeAttribute'
     __table_args__ = {}
@@ -453,6 +518,10 @@ class NodeAttribute(DeclarativeBase):
     trial = relation('Trial', primaryjoin='NodeAttribute.trial_id==Trial.id')
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id', secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
 
+    def getValues(self):
+        return dbc(self).query(AttributeValue).filter(AttributeValue.nodeAttribute_id == self.id).all()
+
+
 class System(DeclarativeBase):
     __tablename__ = 'system'
     __table_args__ = {}
@@ -461,6 +530,7 @@ class System(DeclarativeBase):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+        super(System, self).__init__()
 
 class NodeNote(DeclarativeBase):
     __tablename__ = 'nodeNote'
@@ -491,6 +561,7 @@ class Token(DeclarativeBase):
     def __init__(self, token, trialId):
         self.token = token
         self.trial_id = trialId
+        super(Token, self).__init__()
 
     @staticmethod
     def getTokenId(dbc, token, trialId):
@@ -522,6 +593,7 @@ class TokenNode(DeclarativeBase):
         self.token_id = tokenId
         self.localId = localId
         self.node_id = nodeId
+        super(TokenNode, self).__init__()
 
     @staticmethod
     def getOrCreateClientNode(dbc, tokenId, localId, trialId):
@@ -557,6 +629,15 @@ class TokenNode(DeclarativeBase):
 
 gdbg = True
 
+class DalError(Exception):
+    pass
+
+def dbc(obj):
+#------------------------------------------------------------------------
+# Return database connection from given object (should be sqlalchemy class instance).
+#
+    return Session.object_session(obj)
+
 def dbName4Project(project):
 #-----------------------------------------------------------------------
 # Map project name to the database name.
@@ -578,7 +659,7 @@ def getSysUserEngine(targetUser):
 
 
 # This should use alchemy and return connection
-def DbConnectAndAuthenticate(username, password):
+def dbConnectAndAuthenticate(username, password):
 #-------------------------------------------------------------------------------------------------
     dbc = getSysUserEngine(username)    # not sure how this returns error, test..
     if dbc is None:
@@ -603,13 +684,19 @@ def DbConnectAndAuthenticate(username, password):
     return None, 'Invalid password'
 
 
-def GetTrial(dbc, trialid):
-#-------------------------------------------------------------------------------------------------
-    try:
-        trl = dbc.query(Trial).filter(Trial.id == trialid).one()
-    except sqlalchemy.exc.SQLAlchemyError, e:
-        return None
-    return trl
+@oneException2None
+def getTrial(dbc, trialID):
+#-----------------------------------------------------------------------
+# Returns trial object with given id if found, else None.
+    return dbc.query(Trial).filter(Trial.id == trialID).one()
+
+
+@oneException2None
+def getTraitInstance(dbc, traitInstance_id):
+#-----------------------------------------------------------------------
+# Returns traitInstance object with given id if found, else None.
+    return dbc.query(TraitInstance).filter(TraitInstance.id == traitInstance_id).one()
+
 
 def getTrait(dbc, traitId):
 #-------------------------------------------------------------------------------------------------
@@ -619,13 +706,20 @@ def getTrait(dbc, traitId):
         return None
     return trt
 
+@oneException2None
+def getNode(dbc, nodeId):
+#-----------------------------------------------------------------------
+# Return node with the given id.
+    return dbc.query(Node).filter(Node.id==nodeId).one()
+
+
 def getTrialTrait(dbc, trialId, traitId):
 #-------------------------------------------------------------------------------------------------
     return dbc.query(TrialTrait).filter(
         and_(TrialTrait.trait_id == traitId, TrialTrait.trial_id == trialId)).one()
 
 
-def GetTrialList(dbc):
+def getTrialList(dbc):
 #-------------------------------------------------------------------------------------------------
     try:
         trlList = dbc.query(Trial).all()
@@ -665,6 +759,9 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
         return None
     return dbTi
 
+@oneException2None
+def getAttribute(dbc, attId):
+    return dbc.query(NodeAttribute).filter(NodeAttribute.id == attId).one()
 
 def AddTraitInstanceData(dbc, tiID, trtType, aData):
 #-------------------------------------------------------------------------------------------------
@@ -732,6 +829,18 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
         util.flog(e.__doc__)
         util.flog(e.message)
         return "An error occurred"
+
+@oneException2None
+def getSystemValue(dbc, name):
+    return dbc.query(System).filter(System.name == name).one().value
+
+def setSystemValue(dbc, name, value):
+#-----------------------------------------------------------------------
+# Insert or update new system value.
+    sysItem = System(name, value)
+    sysItem = dbc.merge(sysItem)
+    dbc.commit()
+
 
 def AddNodeNotes(dbc, token, notes):
 #-------------------------------------------------------------------------------------------------
@@ -836,4 +945,8 @@ def getTraitString(dbc, trait_id, trial_id):
 def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
+
+
+def getSysTraits(dbc):
+    return dbc.query(Trait).filter(Trait.sysType == SYSTYPE_SYSTEM).all()
 

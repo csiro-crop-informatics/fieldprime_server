@@ -6,7 +6,6 @@
 
 import sys
 import time
-import dbUtil
 from flask import url_for
 
 #-----------------------------------------------------------------------

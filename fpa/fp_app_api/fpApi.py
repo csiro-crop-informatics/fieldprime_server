@@ -63,7 +63,7 @@ def internalError(e):
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
 # Decorator, for app.route functions with username and trialid parameters.
-# It is assumed there is a request var in context. and this contains a password URL parameter "pw".
+# It is assumed there is a "request" variable in context. and this contains a password URL parameter "pw".
 # "pw" - Scoring Devices password configured on the client.
 # "ver" - client software version.
 # "andid" - android id of the client device.
@@ -79,14 +79,14 @@ def dec_get_trial(jsonReturn):
                 request.args.get('ver', '0'), username, request.args.get('andid', '')))
 
             password = request.args.get('pw', '')
-            dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
+            dbc, errMsg = dal.dbConnectAndAuthenticate(username, password)
             if dbc is None:
                 if jsonReturn:
                     return JsonErrorResponse(errMsg)
                 else:
                     return Response("error:" + errMsg)
 
-            trl = dal.GetTrial(dbc, trialid)
+            trl = dal.getTrial(dbc, trialid)
             if trl is None:
                 errStr = "trial not found"
                 if jsonReturn:
@@ -114,12 +114,12 @@ def trial_list(username):
 # the URLs for further interactions with the server.
 #
     password = request.args.get('pw', '')
-    dbc, errMsg = dal.DbConnectAndAuthenticate(username, password)
+    dbc, errMsg = dal.dbConnectAndAuthenticate(username, password)
     if dbc is None:
         return JsonErrorResponse(errMsg)
 
     # Get the trial list as json:
-    trials = dal.GetTrialList(dbc)
+    trials = dal.getTrialList(dbc)
 
     trialList = []
     for t in trials:
@@ -189,7 +189,7 @@ def get_trial(username, trl, dbc, token=None):
     # Node Attribute descriptors:
     #util.flog('get_trial: pre attributes')
     attDefs = []
-    for att in trl.tuAttributes:
+    for att in trl.nodeAttributes:
         tua = {}
         tua['id'] = att.id
         tua['name'] = att.name
