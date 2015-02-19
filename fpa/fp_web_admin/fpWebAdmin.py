@@ -187,51 +187,53 @@ def htmlTrialScoreSets(sess, trialId):
     if len(scoreSets) < 1:
         return "No trait score sets yet"
 
-    # Datatables version:
-    hdrs = ["Trait", "Date Created", "Device Id", "seqNum", "Score Data"]
-    rows = []
-    #tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
-    tdPattern = "{0}"
-    for ss in scoreSets:
-        tis = ss.getInstances()
-        firstTi = tis[0]   # check for none?
-        row = []
-        row.append(firstTi.trait.caption)
-        row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
-        row.append(firstTi.getDeviceId())
-        row.append(firstTi.seqNum)
-        samps = ''   # We show all the separate samples in a single cell
-        for oti in tis:
-            samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-                    oti.numScoredNodes())
-        row.append(samps)
-        rows.append(row)
+    if True:
+        # Datatables version:
+        hdrs = ["Trait", "Date Created", "Device Id", "seqNum", "Score Data"]
+        rows = []
+        #tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
+        tdPattern = "{0}"
+        for ss in scoreSets:
+            tis = ss.getInstances()
+            firstTi = tis[0]   # check for none?
+            row = []
+            row.append(firstTi.trait.caption)
+            row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
+            row.append(firstTi.getDeviceId())
+            row.append(firstTi.seqNum)
+            samps = ''   # We show all the separate samples in a single cell
+            for oti in tis:
+                samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        oti.numScoredNodes())
+            row.append(samps)
+            rows.append(row)
 
-    htm = fpUtil.htmlDatatableByRow(hdrs, rows)
+        htm = fpUtil.htmlDatatableByRow(hdrs, rows)
+    else:
+        # Non datatables version:
+        htm = ('\n<table style="border:1px solid #ccc;">' +
+                '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
+                '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
+        for ss in scoreSets:
+            tis = ss.getInstances()
+            firstTi = tis[0]   # check for none?
+            htm += "<tr>"
+            #tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
+            tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
+            htm += tdPattern.format(firstTi.trait.caption)
+            htm += tdPattern.format(util.formatJapDate(firstTi.dayCreated))
+            htm += tdPattern.format(firstTi.getDeviceId())
+            htm += tdPattern.format(firstTi.seqNum)
+            samps = ''   # We show all the separate samples in a single cell
+            for oti in tis:
+                samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        oti.numScoredNodes())
+            htm += tdPattern.format(samps)
+            htm += "</tr>\n"
 
-#     htm = ('\n<table style="border:1px solid #ccc;">' +
-#             '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
-#             '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
-#     for ss in scoreSets:
-#         tis = ss.getInstances()
-#         firstTi = tis[0]   # check for none?
-#         htm += "<tr>"
-#         #tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
-#         tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
-#         htm += tdPattern.format(firstTi.trait.caption)
-#         htm += tdPattern.format(util.formatJapDate(firstTi.dayCreated))
-#         htm += tdPattern.format(firstTi.getDeviceId())
-#         htm += tdPattern.format(firstTi.seqNum)
-#         samps = ''   # We show all the separate samples in a single cell
-#         for oti in tis:
-#             samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-#                     url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-#                     oti.numScoredNodes())
-#         htm += tdPattern.format(samps)
-#         htm += "</tr>\n"
-#
-#     htm +=  "\n</table>\n"
+        htm +=  "\n</table>\n"
 
     return htm
 
