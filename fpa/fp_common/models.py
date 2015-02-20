@@ -10,11 +10,11 @@
 __all__ = ['Trial', 'Node', 'Attribute', 'AttributeValue', 'Datum', 'Trait']
 
 
-#import sqlalchemy
-from sqlalchemy import *
 import sqlalchemy
+from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import cgi
 
 from const import *
@@ -31,9 +31,9 @@ def oneException2None(func):
     def with_traps(*args, **kwargs):
         try:
             ret = func(*args, **kwargs)
-        except sqlalchemy.orm.exc.NoResultFound:
+        except NoResultFound:
             return None
-        except sqlalchemy.orm.exc.MultipleResultsFound:
+        except MultipleResultsFound:
             return None
         return ret
     return with_traps
@@ -336,14 +336,14 @@ class Trial(DeclarativeBase):
             session = Session.object_session(self)
             tu = session.query(Node).filter(and_(Node.trial_id == self.id, Node.row == row,
                                                       Node.col == col)).one()
-        except sqlalchemy.orm.exc.NoResultFound:
+        except NoResultFound:
             tu = Node()
             tu.row = row
             tu.col = col
             tu.trial_id = self.id
             session.add(tu)
             session.commit()
-        except sqlalchemy.orm.exc.MultipleResultsFound:
+        except MultipleResultsFound:
             return None
 
         return tu
@@ -568,7 +568,7 @@ class Token(DeclarativeBase):
     # Returns token id for token, creating new record if necessary.
         try:
             return dbc.query(Token).filter(Token.token == token).one().id
-        except sqlalchemy.orm.exc.NoResultFound:
+        except NoResultFound:
             # Make new token
             nt = Token(token, trialId)
             dbc.add(nt)
@@ -604,7 +604,7 @@ class TokenNode(DeclarativeBase):
             tokNode =  dbc.query(TokenNode).filter(
                 and_(TokenNode.token_id == tokenId, TokenNode.localId == localId)).one()
             return tokNode.node_id
-        except sqlalchemy.orm.exc.NoResultFound:
+        except NoResultFound:
             # Make new node
             newNode = Node()
             newNode.trial_id = trialId
@@ -668,10 +668,10 @@ def dbConnectAndAuthenticate(username, password):
     # Check login:
     try:
         sysPwRec = dbc.query(System).filter(System.name == 'appPassword').one()
-    except sqlalchemy.orm.exc.NoResultFound:
+    except NoResultFound:
         # No password means OK to use:
         return dbc, None
-    except sqlalchemy.orm.exc.MultipleResultsFound:
+    except MultipleResultsFound:
         # Shouldn't happen:
         return None, 'DB error, multiple passwords'
     except sqlalchemy.exc.OperationalError:
@@ -734,6 +734,9 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 # In either case, we need the id.
 # Note how trait instances from different devices are handled
 # Trait instances are uniquely identified by trial/trait/seqNum/sampleNum and token.
+# That is, using this data from the client. We need to be able to identify when a traitInstance
+# sent from the client is one we have already seen.
+#
     util.flog("GetOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum, dayCreated, token))
     tiSet = dbc.query(TraitInstance).filter(and_(
             TraitInstance.trait_id == traitID,
