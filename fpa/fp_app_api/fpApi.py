@@ -136,7 +136,7 @@ def newServerToken(dbc, androidId, trialId):
 # Create new server token. Store it in the database.
 #
     token = androidId + "." + str(int(time.time()))
-    dal.Token.getTokenId(dbc, token, trialId)
+    dal.Token.getOrCreateTokenId(dbc, token, trialId)
     return token
 
 @app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
@@ -178,7 +178,6 @@ def get_trial(username, trl, dbc, token=None):
                                     # and the notes upload should switch to using that.
 
     jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
-    # jtrl['uploadURL'] = url_for('upload_trial_old_version', username=username, trialid=trl.id, _external=True)
     jtrl['uploadURL'] = url_for('upload_trial_data', username=username, trialid=trl.id, token=servToken, _external=True)
     # Add trial attributes from database:
     jprops = {}
@@ -436,7 +435,6 @@ def upload_photo(username, trial, dbc, traitid, token):
         #select count(*) from trait t join traitInstance i on i.trait_id = t.id join datum d on d.traitInstance_id = i.id where t.type = 5;
         #(nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
         util.flog('upload_photo: 2')
-        #saveName = dal.photoFileName(username, trial.id, traitid, int(nodeIdStr), token, seqNum, sampNum)
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeId), token, seqNum, sampNum)
         util.flog('upload_photo: 3')
         try:
@@ -537,9 +535,9 @@ def upload_trial_old_version(username, trial, dbc):
         return Response('Missing field: ' + e.args[0])
 
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.AddNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
+        err = dal.addNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
-            util.flog('AddNodeNotes fail:{0}'.format(err))
+            util.flog('addNodeNotes fail:{0}'.format(err))
             return Response(err)
 
     # All done, return success indicator:
@@ -562,9 +560,9 @@ def upload_trial_data(username, trial, dbc, token):
     # Old clients may just send 'notes', we process that here in the manner they expect:
     # MFK - so what do new clients do different? Nothing attow.
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.AddNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
+        err = dal.addNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
         if err is not None:
-            util.flog('AddNodeNotes fail:{0}'.format(err))
+            util.flog('addNodeNotes fail:{0}'.format(err))
             return Response(err)
 
         # All done, return success indicator:
@@ -584,11 +582,11 @@ def upload_trial_data(username, trial, dbc, token):
         serverIds = []
         # We have to return array of server ids to replace the passed in local ids.
         # We need to record the local ids so as to be idempotent.
-        tokenId = dal.Token.getTokenId(dbc, token, trial.id)
+        tokenId = dal.Token.getOrCreateTokenId(dbc, token, trial.id)
         if tokenId is None:
             # This should only happen if new client is using trial from old server, hopefully unlikely..
             # Perhaps we should just add it if missing - but then, it might be a forgery.
-            # now creating it in dal.Token.getTokenId, so this dead code..
+            # now creating it in dal.Token.getOrCreateTokenId, so this dead code..
             return JsonErrorResponse("token unexpectedly not found")
         for newid in clientLocalIds:
             #print 'new id: {0}'.format(newid)

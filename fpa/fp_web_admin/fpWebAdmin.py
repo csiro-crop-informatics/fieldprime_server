@@ -189,7 +189,7 @@ def htmlTrialScoreSets(sess, trialId):
 
     if False:
         # Datatables version:
-        hdrs = ["Trait", "Date Created", "Device Id", "seqNum", "Score Data"]
+        hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
         rows = []
         #tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
         tdPattern = "{0}"
@@ -1094,7 +1094,7 @@ def hackyPhotoFileName(sess, ti, d):
                                      ti.trial_id,
                                      ti.trait_id,
                                      d.node.id,
-                                     ti.token,
+                                     ti.token.token,
                                      ti.seqNum,
                                      ti.sampleNum)
     return fname
