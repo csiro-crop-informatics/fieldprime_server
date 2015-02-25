@@ -1094,7 +1094,7 @@ def hackyPhotoFileName(sess, ti, d):
                                      ti.trial_id,
                                      ti.trait_id,
                                      d.node.id,
-                                     ti.token.token,
+                                     ti.token.tokenString(),
                                      ti.seqNum,
                                      ti.sampleNum)
     return fname

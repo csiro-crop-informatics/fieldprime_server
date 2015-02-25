@@ -131,14 +131,6 @@ def trial_list(username):
     dic = {'trials':trialList}
     return Response(json.dumps(dic), mimetype='application/json')
 
-def newServerToken(dbc, androidId, trialId):
-#-------------------------------------------------------------------------------------------------
-# Create new server token. Store it in the database.
-#
-    token = androidId + "." + str(int(time.time()))
-    dal.Token.getOrCreateTokenId(dbc, token, trialId)
-    return token
-
 @app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
 @app.route('/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
 @dec_get_trial(True)
@@ -155,30 +147,28 @@ def get_trial(username, trl, dbc, token=None):
 # upload is POST only, and this one is GET only. A better solution perhaps would be to provide
 # an updateURL with the trial. Would have to add support on the client to use this.
 #
-#
-    #util.flog('get_trial: start')
+
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
 
-    # Server Token:
-    # Use the android device ID postfixed with the current time in seconds as the serverTrialId.
-    # This should ensure different tokens for the same trial being downloaded multiple times on
-    # a single device (with delete in between), as long as they are not created within the same
-    # second (and this is not an expected use case):
-    # MFK And why do we need such tokens? They are currently used in the traitInstance and nodeNote table.
+    # Create new token if this is a new trial download:
     if token is None:
-        servToken = newServerToken(dbc, androidId, trl.id)
+        token = dal.Token.createNewToken(dbc, androidId, trl.id).tokenString()
     else:
-        servToken = token
+        # The token should be in the database, let's check:
+        try:
+            dal.Token.getTokenId(dbc, token)
+        except:
+            util.alertFieldPrimeAdmin(app, 'token ({0}) not found in database'.format(token))
 
     # Trial json object members:
     jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
-    jtrl['serverToken'] = servToken # MFK This could and should be removed, once client doesn't need it anymore.
-                                    # Currently used in upload of notes, but now we embed it in the uploadURL,
-                                    # and the notes upload should switch to using that.
+    jtrl['serverToken'] = token # MFK This could and should be removed, once client doesn't need it anymore.
+                                # Currently used in upload of notes, but now we embed it in the uploadURL,
+                                # and the notes upload should switch to using that.
 
     jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
-    jtrl['uploadURL'] = url_for('upload_trial_data', username=username, trialid=trl.id, token=servToken, _external=True)
+    jtrl['uploadURL'] = url_for('upload_trial_data', username=username, trialid=trl.id, token=token, _external=True)
     # Add trial attributes from database:
     jprops = {}
     for tp in trl.trialProperties:
@@ -186,7 +176,6 @@ def get_trial(username, trl, dbc, token=None):
     jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Node Attribute descriptors:
-    #util.flog('get_trial: pre attributes')
     attDefs = []
     for att in trl.nodeAttributes:
         tua = {}
@@ -207,7 +196,6 @@ def get_trial(username, trl, dbc, token=None):
     jtrl['nodeAttributes'] = attDefs
 
     # Nodes:
-    #util.flog('get_trial: pre nodes')
     tuList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
     for ctu in trl.nodes:
@@ -242,7 +230,6 @@ def get_trial(username, trl, dbc, token=None):
     jtrl['trialUnits'] = tuList   # MFK change this to Nodes - when enough clients support this.
 
     # Traits:
-    #util.flog('get_trial: pre traits')
     traitList = []
     traitFieldNames = ['id', 'sysType', 'caption', 'description', 'type']
     for trt in trl.traits:
@@ -258,7 +245,7 @@ def get_trial(username, trl, dbc, token=None):
 
         # Add the uploadURL:
         jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
-                                      token=servToken, _external=True)
+                                      token=token, _external=True)
 
         #
         # Barcode - NB we rely on the fact that there are (now) no sys traits on the client.
@@ -285,7 +272,7 @@ def get_trial(username, trl, dbc, token=None):
         # Photo traits:
         elif trt.type == T_PHOTO:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
-                                               traitid=trt.id, token=servToken, _external=True)
+                                               traitid=trt.id, token=token, _external=True)
 
         # Numeric traits (integer and decimal):
         # Historical comment: Note hacked special case for 'min' and 'max'. These currently sql decimal types,
@@ -365,7 +352,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     if (aData is None or len(aData) <= 0) and dal.getTrait(dbc, traitid).type != T_PHOTO:
         return Response('success')
     # Get/Create trait instance:
-    dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
+    dbTi = dal.getOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
     if dbTi is None:
         return Response('Unexpected error retrieving or creating trait instance')
 
@@ -377,11 +364,10 @@ def upload_trait_data(username, trial, dbc, traitid, token):
 
     return (Response('success') if errMsg is None else Response(errMsg))
 
-#
-# upload_photo()
-# Trait instances are uniquely identified by trial/trait/token/seqNum/sampleNum.
-#
+
 def allowed_file(filename):
+#--------------------------------------------------------------------------
+# Return whether filename has allowed extension.
     ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -461,7 +447,7 @@ def upload_photo(username, trial, dbc, traitid, token):
         # MFK note this outer if below is to support old versions of the app, to allow them to
         # upload their photos in the old way. It should be removed eventually..
         if nodeId is not None and len(nodeId) > 0:
-            dbTi = dal.GetOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, dayCreated, token)
+            dbTi = dal.getOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, dayCreated, token)
             if dbTi is None:
                 return serverErrorResponse('Failed photo upload : no trait instance')
             res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp,
@@ -582,16 +568,11 @@ def upload_trial_data(username, trial, dbc, token):
         serverIds = []
         # We have to return array of server ids to replace the passed in local ids.
         # We need to record the local ids so as to be idempotent.
-        tokenId = dal.Token.getOrCreateTokenId(dbc, token, trial.id)
-        if tokenId is None:
-            # This should only happen if new client is using trial from old server, hopefully unlikely..
-            # Perhaps we should just add it if missing - but then, it might be a forgery.
-            # now creating it in dal.Token.getOrCreateTokenId, so this dead code..
-            return JsonErrorResponse("token unexpectedly not found")
+        tokenObj = dal.Token.getOrCreateToken(dbc, token, trial.id)
         for newid in clientLocalIds:
             #print 'new id: {0}'.format(newid)
             # Create node, or get it if it already exists:
-            nodeId = dal.TokenNode.getOrCreateClientNode(dbc, tokenId, newid, trial.id)
+            nodeId = dal.TokenNode.getOrCreateClientNode(dbc, tokenObj.id, newid, trial.id)
             serverIds.append(nodeId)
         returnObj = {'nodeIds':serverIds}
         return Response(json.dumps(returnObj), mimetype='application/json')  # prob need ob

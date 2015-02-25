@@ -16,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import cgi
+import time
 
 from const import *
 import util
@@ -200,7 +201,7 @@ class TraitInstance(DeclarativeBase):
         Column(u'dayCreated', INTEGER(), nullable=False),
         Column(u'seqNum', INTEGER(), nullable=False),
         Column(u'sampleNum', INTEGER(), nullable=False),
-        Column(u'token_id', INTEGER(), nullable=False),
+        Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
     )
 
     #relation definitions
@@ -278,16 +279,16 @@ class TraitString(DeclarativeBase):
 # make up a scoreSet
 #
 class ScoreSet(DeclarativeBase):
-    __tablename__ = 'scoreSet'
-    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
-    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
-    trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), nullable=False)
-    dayCreated = Column(u'dayCreated', INTEGER(), nullable=False)
-    seqNum = Column(u'seqNum', INTEGER(), nullable=False)
-    token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
-
-    # Relations:
-    token = relation('Token', primaryjoin='ScoreSet.token_id==Token.id')
+#     __tablename__ = 'scoreSet'
+#     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+#     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+#     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), nullable=False)
+#     dayCreated = Column(u'dayCreated', INTEGER(), nullable=False)
+#     seqNum = Column(u'seqNum', INTEGER(), nullable=False)
+#     token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
+#
+#     # Relations:
+#     token = relation('Token', primaryjoin='ScoreSet.token_id==Token.id')
 
     def __init__(self, trait_id, seqNum, tokenId):
     # Perhaps we need to create db record here now?
@@ -548,7 +549,7 @@ class NodeNote(DeclarativeBase):
     node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
     timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False)
     userid = Column(u'userid', TEXT())
-    token_id = Column(u'token_id', INTEGER(), nullable=False),
+    token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
     note = Column(u'note', TEXT())
 
     #relation definitions:
@@ -577,17 +578,45 @@ class Token(DeclarativeBase):
     def getDownloadTime(self):
         return self.token.split('.')[1]
 
+    def tokenString(self):
+        return self.token
+
     @staticmethod
-    def getOrCreateTokenId(dbc, token, trialId):
+    def createNewToken(dbc, androidId, trialId):
+    #-------------------------------------------------------------------------------------------------
+    # Create new server token. Store it in the database.
+    # Use the android device ID postfixed with the current time in seconds as the token string.
+    # This should ensure different tokens for the same trial being downloaded multiple times on
+    # a single device (with delete in between), as long as they are not created within the same
+    # second (and this is not an expected use case):
+    # Alternatively, perhaps we should use the token id as the token string, thus ensuring
+    # uniqueness.
+    #
+        tokenStr = androidId + "." + str(int(time.time()))
+        nt = Token(tokenStr, trialId)
+        dbc.add(nt)
+        dbc.commit()
+        return nt
+
+    @staticmethod
+    def getOrCreateToken(dbc, tokenStr, trialId):
     # Returns token id for token, creating new record if necessary.
+    # NB this only really needed because we introduced the token table
+    # after system had been in use. So there may be trial out there with
+    # tokens that are not in the table, so we need to create them if they
+    # are missing. When we are confident that all tokens still to be uploaded
+    # will be in the token table, then we should remove this functionality,
+    # so that if a token that should be in the table is not, we throw an
+    # error (I'm writing this on 24/2/2015, and the token table has already
+    # been in place for a couple of weeks at least).
         try:
-            return dbc.query(Token).filter(Token.token == token).one().id
+            return dbc.query(Token).filter(Token.token == tokenStr).one()
         except NoResultFound:
             # Make new token
-            nt = Token(token, trialId)
+            nt = Token(tokenStr, trialId)
             dbc.add(nt)
             dbc.commit()
-            return nt.id
+            return nt
 
     @staticmethod
     def getTokenId(dbc, token):
@@ -751,7 +780,7 @@ def getTrialList(dbc):
     return trlList
 
 
-def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreated, tokenStr):
+def getOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreated, tokenStr):
 #-------------------------------------------------------------------------------------------------
 # Get the trait instance, if it exists, else make a new one,
 # In either case, we need the id.
@@ -760,7 +789,7 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 # That is, using this data from the client. We need to be able to identify when a traitInstance
 # sent from the client is one we have already seen.
 #
-    util.flog("GetOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum,
+    util.flog("getOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum,
         dayCreated, tokenStr))
 
     # Get the token id:
