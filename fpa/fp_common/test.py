@@ -17,7 +17,7 @@ def photoCheck(dbc, photodir):
                                          ti.trial_id,
                                          ti.trait_id,
                                          dat.node.id,
-                                         ti.token,
+                                         ti.token.tokenString(),
                                          ti.seqNum,
                                          ti.sampleNum)
                         # Check if file exists:

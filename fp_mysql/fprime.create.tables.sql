@@ -91,13 +91,14 @@ create table nodeAttribute(
 --
 create table nodeNote(
   id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-  node_id  INTEGER,
+  node_id       INTEGER,
   timestamp     BIGINT NOT NULL,
   userid        text,
-  token         VARCHAR(31) NOT NULL,
+  token_id      INTEGER NOT NULL,
   note          text,
-  UNIQUE (node_id, timestamp, note(100)),
-  FOREIGN KEY(node_id) REFERENCES node(id) ON DELETE CASCADE
+  unique (node_id, timestamp, note(100)),
+  foreign key(node_id) references node(id) on delete CASCADE
+  foreign key(token_id) references token(id)
 );
 
 --
@@ -218,12 +219,26 @@ create table traitInstance(
   dayCreated  INT NOT NULL,
   seqNum      INT NOT NULL,
   sampleNum   INT NOT NULL,
-  token       VARCHAR(31) NOT NULL,
-  UNIQUE(trial_id, trait_id, seqNum, sampleNum, token),
+  token_id    INTEGER NOT NULL,
+  UNIQUE KEY ttsst (trial_id, trait_id, seqNum, sampleNum, token_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id),
-  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+  FOREIGN KEY fk_trial (trial_id) REFERENCES trial(id) ON DELETE CASCADE
+  foreign key(token_id) references token(id)
 );
 
+
+-- create table scoreSet(
+--   id	      INT PRIMARY KEY AUTO_INCREMENT,
+--   trial_id    INT NOT NULL,
+--   trait_id    INT NOT NULL,
+--   dayCreated  INT NOT NULL,
+--   seqNum      INT NOT NULL,
+--   token_id    INT NOT NULL,
+--   UNIQUE(trial_id, trait_id, seqNum, token_id),
+--   FOREIGN KEY(trait_id) REFERENCES trait(id),
+--   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
+--   FOREIGN KEY(token_id) REFERENCES token(id)
+-- );
 
 --
 -- token
@@ -232,6 +247,10 @@ create table traitInstance(
 -- the trial was downloaded to it. We may want in the future to have
 -- a separate table for android id, and then this table would have
 -- an id of a androidId table record, and the timestamp field.
+-- NB - the unique constraint should probably be on (token, trial_id)
+-- not just token. Also, perhaps the token sent to the client could
+-- now be androidId.id rather than androidId.timestamp, or perhaps just
+-- id would suffice (although then easier to guess).
 --
 create table token(
   id          INT PRIMARY KEY AUTO_INCREMENT,

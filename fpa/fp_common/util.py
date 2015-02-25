@@ -36,6 +36,26 @@ def formatJapDateSortFormat(jdate):
     day = jdate % 100
     return '{0}-{1}-{2}'.format(year, str(month).zfill(2), str(day).zfill(2))
 
+def alertFieldPrimeAdmin(app, msg):
+#---------------------------------------------------------------
+# Bring msg to the attention of the configured FieldPrime admin.
+#
+
+# Ideally send an email, might take a bit to get this to work though..
+#     import smtplib
+#     from email.mime.text import MIMEText
+#     sender = 'fieldprime_noreply@csiro.au'
+#     recipient = app.config['FP_ADMIN_EMAIL']
+#     emsg = MIMEText(msg)
+#     emsg['Subject'] = 'FieldPrime Alert'
+#     emsg['From'] = sender
+#     emsg['To'] = recipient
+#
+#     # Send the message via our own SMTP server, but don't include the envelope header.
+#     s = smtplib.SMTP('localhost')
+#     s.sendmail(sender, [recipient], emsg.as_string())
+#     s.quit()
+    flog('ADMINALERT:' + msg)
 
 ###  Logging: ##################################################################
 # We want a logging system that can be turned on or off by use of a flag file:

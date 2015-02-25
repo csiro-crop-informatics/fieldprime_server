@@ -16,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import cgi
+import time
 
 from const import *
 import util
@@ -61,16 +62,6 @@ datum = Table(u'datum', metadata,
     #Column(u'notes', TEXT()),
     Column(u'numValue', DECIMAL(precision=11, scale=3)),
     Column(u'txtValue', TEXT()),
-)
-
-traitInstance = Table(u'traitInstance', metadata,
-    Column(u'id', INTEGER(), primary_key=True, nullable=False),
-    Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False),
-    Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), nullable=False),
-    Column(u'dayCreated', INTEGER(), nullable=False),
-    Column(u'seqNum', INTEGER(), nullable=False),
-    Column(u'sampleNum', INTEGER(), nullable=False),
-    Column(u'token', VARCHAR(length=31), nullable=False),
 )
 
 trialTrait = Table(u'trialTrait', metadata,
@@ -130,12 +121,12 @@ class Datum(DeclarativeBase):
     # Return a value, how the value is stored/represented is type specific.
     # NB if the database value is null, then "NA" is returned.
     # NB - for text values, cgi.escape is applied first (to disable any html).
-        type = self.traitInstance.trait.type
+        dtype = self.traitInstance.trait.type
         value = '?'
-        if type == T_INTEGER: value = self.numValue
-        elif type == T_DECIMAL: value = self.numValue
-        elif type == T_STRING: value = cgi.escape(self.txtValue)
-        elif type == T_CATEGORICAL:
+        if dtype == T_INTEGER: value = self.numValue
+        elif dtype == T_DECIMAL: value = self.numValue
+        elif dtype == T_STRING: value = cgi.escape(self.txtValue)
+        elif dtype == T_CATEGORICAL:
             value = self.numValue
             # Need to look up the text for the value:
             if value is not None:
@@ -144,17 +135,11 @@ class Datum(DeclarativeBase):
                 trtCat = session.query(TraitCategory).filter(
                     and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
                 value = trtCat.caption
-        elif type == T_DATE: value = self.numValue
-        elif type == T_PHOTO:
-#             session = Session.object_session(self)
-#             traitId = self.traitInstance.trait.id
-#             nodeId = self.node.id
-#             trialId = self.node.trial_id
-#             value = photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum, fileExtension):
+        elif dtype == T_DATE: value = self.numValue
+        elif dtype == T_PHOTO:
             value = cgi.escape(self.txtValue)
 
-            #MFK return link to photo.
-        #if type ==     T_LOCATION: value = d.txtValue
+        #if dtype ==     T_LOCATION: value = d.txtValue
 
         # Convert None to "NA"
         if value is None:
@@ -173,7 +158,8 @@ class Trait(DeclarativeBase):
     type = Column(u'type', INTEGER(), nullable=False)
 
     #relation definitions
-    trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trial_id==Trial.id')
+    trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait,
+        secondaryjoin='trialTrait.c.trial_id==Trial.id')
     categories = relation('TraitCategory')    # NB, only relevant for Categorical type
 
     @oneException2None
@@ -207,19 +193,27 @@ class TraitCategory(DeclarativeBase):
             retMap[cat.value] = cat.caption
         return retMap
 
-
 class TraitInstance(DeclarativeBase):
-    __table__ = traitInstance
+    __table__ = Table(u'traitInstance', metadata,
+        Column(u'id', INTEGER(), primary_key=True, nullable=False),
+        Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False),
+        Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), nullable=False),
+        Column(u'dayCreated', INTEGER(), nullable=False),
+        Column(u'seqNum', INTEGER(), nullable=False),
+        Column(u'sampleNum', INTEGER(), nullable=False),
+        Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
+    )
 
     #relation definitions
     trait = relation('Trait', primaryjoin='TraitInstance.trait_id==Trait.id')
     trial = relation('Trial', primaryjoin='TraitInstance.trial_id==Trial.id')
-    nodes = relation('Node', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datum, secondaryjoin='Datum.node_id==Node.id')
+    nodes = relation('Node', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datum,
+                     secondaryjoin='Datum.node_id==Node.id')
+    token = relation('Token', primaryjoin='TraitInstance.token_id==Token.id')
 
     def getDeviceId(self):
-        return self.token.split('.')[0]
-    def getDownloadTime(self):
-        return self.token.split('.')[1]
+        return self.token.getDeviceId()
+
     def numData(self):
         session = Session.object_session(self)
         count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
@@ -284,11 +278,23 @@ class TraitString(DeclarativeBase):
 # NOT a database class, but a container for a set of traitInstances that
 # make up a scoreSet
 #
-class ScoreSet:
-    def __init__(self, trait_id, seqNum, token):
+class ScoreSet(DeclarativeBase):
+#     __tablename__ = 'scoreSet'
+#     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+#     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
+#     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), nullable=False)
+#     dayCreated = Column(u'dayCreated', INTEGER(), nullable=False)
+#     seqNum = Column(u'seqNum', INTEGER(), nullable=False)
+#     token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
+#
+#     # Relations:
+#     token = relation('Token', primaryjoin='ScoreSet.token_id==Token.id')
+
+    def __init__(self, trait_id, seqNum, tokenId):
+    # Perhaps we need to create db record here now?
         self.trait_id = trait_id
         self.seqNum = seqNum
-        self.token = token
+        self.token_id = tokenId
         self.instances = []
     def addInstance(self, ti):
         self.instances.append(ti)
@@ -368,7 +374,7 @@ class Trial(DeclarativeBase):
         session = Session.object_session(self)
         return session.query(TraitInstance).filter(
             TraitInstance.trial_id == self.id).order_by(
-            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum,
+            TraitInstance.trait_id, TraitInstance.token_id, TraitInstance.seqNum,
             TraitInstance.dayCreated, TraitInstance.sampleNum).all()
 
     def getScoreSets(self):
@@ -383,21 +389,21 @@ class Trial(DeclarativeBase):
         tiList = self.getTraitInstances()
         lastSeqNum = -1
         lastTraitId = -1
-        lastToken = 'x'
+        lastTokenId = -1
         lastDayCreated = -1
         for ti in tiList:   # Note we have assumptions about ordering in tiList here
             traitId = ti.trait_id
             seqNum = ti.seqNum
-            token = ti.token
+            tokenId = ti.token_id
             dayCreated = ti.dayCreated
-            if seqNum != lastSeqNum or traitId != lastTraitId or token != lastToken or dayCreated != lastDayCreated:
+            if seqNum != lastSeqNum or traitId != lastTraitId or tokenId != lastTokenId or dayCreated != lastDayCreated:
                 # First ti in a new scoreSet, create and add the ScoreSet:
-                nss = ScoreSet(traitId, seqNum, token)
+                nss = ScoreSet(traitId, seqNum, tokenId)
                 scoreSets.append(nss)
             nss.addInstance(ti)
             lastSeqNum = seqNum
             lastTraitId = traitId
-            lastToken = token
+            lastTokenId = tokenId
             lastDayCreated = dayCreated
         return scoreSets
 
@@ -414,7 +420,7 @@ class Trial(DeclarativeBase):
     # ordered by trait, token, seqnum, samplenum.
         return dbc.query(TraitInstance).filter(
             TraitInstance.trial_id == trialID).order_by(
-            TraitInstance.trait_id, TraitInstance.token, TraitInstance.seqNum, TraitInstance.sampleNum).all()
+            TraitInstance.trait_id, TraitInstance.token_id, TraitInstance.seqNum, TraitInstance.sampleNum).all()
 
     @staticmethod
     def delete(dbc, trialId):
@@ -485,8 +491,9 @@ class Node(DeclarativeBase):
     #relation definitions
     trial = relation('Trial', primaryjoin='Node.trial_id==Trial.id')
     nodeAttributes = relation('NodeAttribute', primaryjoin='Node.id==AttributeValue.node_id',
-                                   secondary=attributeValue, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
-    traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum, secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
+        secondary=attributeValue, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
+    traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum,
+        secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
     @oneException2None
@@ -516,7 +523,8 @@ class NodeAttribute(DeclarativeBase):
 
     #relation definitions
     trial = relation('Trial', primaryjoin='NodeAttribute.trial_id==Trial.id')
-    nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id', secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
+    nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
+        secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
 
     def getValues(self):
         return dbc(self).query(AttributeValue).filter(AttributeValue.nodeAttribute_id == self.id).all()
@@ -541,16 +549,17 @@ class NodeNote(DeclarativeBase):
     node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
     timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False)
     userid = Column(u'userid', TEXT())
+    token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
     note = Column(u'note', TEXT())
-    token = Column(u'token', VARCHAR(length=31), nullable=False)
 
     #relation definitions:
     node = relation('Node', primaryjoin='NodeNote.node_id==Node.id')
+    token = relation('Token', primaryjoin='NodeNote.token_id==Token.id')
 
 #
 # class Token
 # Used to record server tokens.
-#
+# It would be nice to rename token field to tokenStr..
 class Token(DeclarativeBase):
     __tablename__ = 'token'
     __table_args__ = {}
@@ -563,17 +572,60 @@ class Token(DeclarativeBase):
         self.trial_id = trialId
         super(Token, self).__init__()
 
+    def getDeviceId(self):
+        return self.token.split('.')[0]
+
+    def getDownloadTime(self):
+        return self.token.split('.')[1]
+
+    def tokenString(self):
+        return self.token
+
     @staticmethod
-    def getTokenId(dbc, token, trialId):
+    def createNewToken(dbc, androidId, trialId):
+    #-------------------------------------------------------------------------------------------------
+    # Create new server token. Store it in the database.
+    # Use the android device ID postfixed with the current time in seconds as the token string.
+    # This should ensure different tokens for the same trial being downloaded multiple times on
+    # a single device (with delete in between), as long as they are not created within the same
+    # second (and this is not an expected use case):
+    # Alternatively, perhaps we should use the token id as the token string, thus ensuring
+    # uniqueness.
+    #
+        tokenStr = androidId + "." + str(int(time.time()))
+        nt = Token(tokenStr, trialId)
+        dbc.add(nt)
+        dbc.commit()
+        return nt
+
+    @staticmethod
+    def getOrCreateToken(dbc, tokenStr, trialId):
     # Returns token id for token, creating new record if necessary.
+    # NB this only really needed because we introduced the token table
+    # after system had been in use. So there may be trial out there with
+    # tokens that are not in the table, so we need to create them if they
+    # are missing. When we are confident that all tokens still to be uploaded
+    # will be in the token table, then we should remove this functionality,
+    # so that if a token that should be in the table is not, we throw an
+    # error (I'm writing this on 24/2/2015, and the token table has already
+    # been in place for a couple of weeks at least).
+        try:
+            return dbc.query(Token).filter(Token.token == tokenStr).one()
+        except NoResultFound:
+            # Make new token
+            nt = Token(tokenStr, trialId)
+            dbc.add(nt)
+            dbc.commit()
+            return nt
+
+    @staticmethod
+    def getTokenId(dbc, token):
+    # Returns token id for token, creating new record if necessary.
+    # Throws exception if token not found.
         try:
             return dbc.query(Token).filter(Token.token == token).one().id
         except NoResultFound:
-            # Make new token
-            nt = Token(token, trialId)
-            dbc.add(nt)
-            dbc.commit()
-            return nt.id
+            raise DalError("Token not found")
 
 #
 # class TokenNode
@@ -728,7 +780,7 @@ def getTrialList(dbc):
     return trlList
 
 
-def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreated, token):
+def getOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreated, tokenStr):
 #-------------------------------------------------------------------------------------------------
 # Get the trait instance, if it exists, else make a new one,
 # In either case, we need the id.
@@ -737,25 +789,32 @@ def GetOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 # That is, using this data from the client. We need to be able to identify when a traitInstance
 # sent from the client is one we have already seen.
 #
-    util.flog("GetOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum, dayCreated, token))
+    util.flog("getOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum,
+        dayCreated, tokenStr))
+
+    # Get the token id:
+    tokenId = Token.getTokenId(dbc, tokenStr)
+
     tiSet = dbc.query(TraitInstance).filter(and_(
             TraitInstance.trait_id == traitID,
             TraitInstance.trial_id == trialID,
             TraitInstance.seqNum == seqNum,
             TraitInstance.sampleNum == sampleNum,
-            TraitInstance.token == token,
+            TraitInstance.token_id == tokenId,
             TraitInstance.dayCreated == dayCreated
             )).all()
     if len(tiSet) == 1:
+        # Already exists:
         dbTi = tiSet[0]
     elif len(tiSet) == 0:
+        # Doesn't exist: create it, and if needs a scoreSet:
         dbTi = TraitInstance()
         dbTi.trial_id = trialID
         dbTi.trait_id = traitID
         dbTi.dayCreated = dayCreated
         dbTi.seqNum = seqNum
         dbTi.sampleNum = sampleNum
-        dbTi.token = token
+        dbTi.token_id = tokenId
         dbc.add(dbTi)
         dbc.commit()
     else:
@@ -845,25 +904,32 @@ def setSystemValue(dbc, name, value):
     dbc.commit()
 
 
-def AddNodeNotes(dbc, token, notes):
+def addNodeNotes(dbc, tokenStr, notes):
 #-------------------------------------------------------------------------------------------------
 # Return None for success, else an error message.
 #
+    # Convert tokenStr to its token id. The token should exist in the token table,
+    # otherwise something fishy may be going on.
+    try:
+        tokenId = Token.getTokenId(dbc, tokenStr)
+    except Exception, e:
+        return "Token not found ({0})".format(e.__str__())
+
     qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}) values '.format(
-        'nodeNote', 'node_id', 'timestamp', 'userid', 'token', 'note')
+        'nodeNote', 'node_id', 'timestamp', 'userid', 'token_id', 'note')
     if len(notes) <= 0:
         return None
     for n in notes:
         try:
             nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')
-            qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
+            qry += '({0}, {1}, "{2}", {3}, "{4}"),'.format(
                 nodeId, n[jNotesUpload['timestamp']],
-                n[jNotesUpload['userid']], token, n[jNotesUpload['note']])
+                n[jNotesUpload['userid']], tokenId, n[jNotesUpload['note']])
             # Should be this, but have to cope with 'trialUnit_id' coming
             # from clients for a while..
-            # qry += '({0}, {1}, "{2}", "{3}", "{4}"),'.format(
+            # qry += '({0}, {1}, "{2}", {3}, "{4}"),'.format(
             #     n[jNotesUpload['node_id']], n[jNotesUpload['timestamp']],
-            #     n[jNotesUpload['userid']], token, n[jNotesUpload['note']])
+            #     n[jNotesUpload['userid']], tokenId, n[jNotesUpload['note']])
         except Exception, e:
             return 'Error parsing note ' + e.args[0]
 
@@ -945,9 +1011,9 @@ def getTraitString(dbc, trait_id, trial_id):
     return None
 
 
-def photoFileName(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum):
+def photoFileName(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
-    return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, token, seqNum, sampNum)
+    return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum)
 
 
 def getSysTraits(dbc):

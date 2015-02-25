@@ -15,6 +15,8 @@ PHOTO_UPLOAD_FOLDER = '***REMOVED***/photos/'
 DATA_ACCESS_MODULE = 'fp_common.models'      # Name of the py file providing the data access layer.
 CATEGORY_IMAGE_FOLDER = '***REMOVED***/htdocs/fpt/categoryImages/'
 CATEGORY_IMAGE_URL_BASE = 'https://***REMOVED***/fpt/categoryImages/'
+FP_ADMIN_EMAIL = '***REMOVED***'
+
 # DEBUG = True
 
 # MPLCONFIGDIR needed for use of matplotlib. In not set, this defaults to .matplotlib
