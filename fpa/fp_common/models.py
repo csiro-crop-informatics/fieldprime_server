@@ -278,7 +278,8 @@ class TraitString(DeclarativeBase):
 # NOT a database class, but a container for a set of traitInstances that
 # make up a scoreSet
 #
-class ScoreSet(DeclarativeBase):
+class ScoreSet():
+#class ScoreSet(DeclarativeBase):
 #     __tablename__ = 'scoreSet'
 #     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
 #     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
