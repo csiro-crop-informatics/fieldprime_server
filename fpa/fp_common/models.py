@@ -789,6 +789,10 @@ def getOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 # Trait instances are uniquely identified by trial/trait/seqNum/sampleNum and token.
 # That is, using this data from the client. We need to be able to identify when a traitInstance
 # sent from the client is one we have already seen.
+# NB, ATTOW the seqnum sent from the client is, effectively, a (client local) scoreSet ID, consequently
+# traitId, trialId and dayCreated should not be necessary to uniquely identify it. We could use something
+# like the tokenNode table to store the map between that id and a scoreSet table (or with sampleNum to
+# a traitInstance).
 #
     util.flog("getOrCreateTraitInstance: {0} {1} {2} {3} {4} {5}".format(traitID, trialID, seqNum, sampleNum,
         dayCreated, tokenStr))

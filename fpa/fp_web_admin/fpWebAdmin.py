@@ -1178,6 +1178,103 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
+@app.route('/scoreSet2/<traitInstanceId>/', methods=['GET'])
+@dec_check_session()
+def urlScoreSet2TraitInstance(sess, traitInstanceId):
+#-------------------------------------------------------------------------------
+# Try client graphics.
+# Include table data as JSON
+# Display the data for specified trait instance.
+# NB deleted data are shown (crossed out), not just the latest for each node.
+# MFK this should probably display RepSets, not individual TIs
+#
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
+    typ = ti.trait.type
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
+    data = ti.getData()
+
+    # Show name and some stats:
+    r = ''
+    r += "<h2>Score Set: {0}</h2>".format(name)
+    numDeleted = 0
+    numNA = 0
+    numScoredNodes = 0
+    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
+    numSum = 0
+    for idx, d in enumerate(data):
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+        if overWritten:
+            numDeleted += 1
+        else:
+            numScoredNodes += 1
+            if d.isNA():
+                numNA += 1
+            elif isNumeric:
+                numSum += d.getValue()
+    r += '<br>Number of scored nodes: {0} (including {1} NAs)'.format(numScoredNodes, numNA)
+    r += '<br>Number of overwritten scores: {0}'.format(numDeleted)
+    numValues = numScoredNodes - numNA
+    if isNumeric and numValues > 0:
+        r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
+
+    #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+
+    # For photo score sets add button to download photos as zip file:
+    if typ == T_PHOTO:
+        r += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
+                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
+         + "<button>Download Photos as Zip file</button></a>"
+         + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
+
+    #
+    # Data table:
+    #
+    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    rows = []
+    for idx, d in enumerate(data):
+        # Is this an overwritten datum?
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+
+        # Special case for photos. Display a link to show the photo.
+        # Perhaps this should be done in Datum.getValue, but we don't have all info.
+        if typ == T_PHOTO:
+            if d.isNA():
+                value = 'NA'
+            else:
+#               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
+                fname = hackyPhotoFileName(sess, ti, d)
+                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+        else:
+            value = d.getValue()
+        rows.append([d.node.id, d.node.row, d.node.col,
+                     value if not overWritten else ('<del>' + str(value) + '</del>'),
+                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
+
+    # new bit:
+    jtable = {"headers":hdrs, "rows":rows}
+    r += '''<script type="application/json" id="ssdata">
+    {0}
+    </script>'''.format(json.dumps(jtable))
+    r += '<div id="demo"></div>'
+    r += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    r +=  '''<script>
+        $(document).ready(function() {
+            var data = JSON.parse(document.getElementById("ssdata").text);
+            stab = fplib.makeDataTable(data, 'sstable');
+            //$('sstable').dataTable();
+        });
+    </script>'''
+
+    #r += fpUtil.htmlDatatableByRow(hdrs, rows)
+
+    # Boxplot after table:
+    if isNumeric and numValues > 0:
+        r += '<br>Boxplot:<br>'
+        r += stats.htmlBoxplot(data)
+
+    return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
+
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
 # Create zip archive of all the photos for the given traitInstance.

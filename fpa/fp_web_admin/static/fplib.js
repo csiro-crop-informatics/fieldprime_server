@@ -6,6 +6,60 @@
 var fplib = {};
 
 
+fplib.makeTable = function(tdata, tname) {
+    var hdrs = tdata.headers;
+    var rows = tdata.rows;
+    var table  = document.createElement('table');
+    table.id = tname;
+    var i, j;
+    var ncols = hdrs.length;
+    var nrows = rows.length;
+
+    // Headers:
+    var hrow = table.createTHead().insertRow(0);
+    for (i=0; i<ncols; ++i) {
+        hrow.insertCell(-1).innerHTML = hdrs[i];
+    }
+
+    // Add the rows:
+    for (i=0; i<nrows; ++i) {
+        var tr = table.insertRow(-1);
+        var row = rows[i];
+        for (j=0; j<ncols; ++j) {
+            tr.insertCell(-1).innerHTML = row[j];
+        }
+    }
+
+    table.style.width  = '100px';
+    table.style.border = "1px solid black";
+
+    document.getElementsByClassName("dataContent")[0].appendChild(table);
+};
+
+fplib.makeDataTable = function(tdata, tname) {
+
+    var hdrs = tdata.headers;
+    var rows = tdata.rows;
+
+    // Headers:
+    var i, j;
+    var ncols = hdrs.length;
+    var mycols = [];
+    for (i=0; i<ncols; ++i) {
+        mycols.push({"title":hdrs[i]});
+    }
+
+
+    $(document).ready(function() {
+    // Can we add a table dynamically with out the "demo" div?
+        $('#demo').html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="example"></table>' );
+        $('#example').dataTable( {
+            "data": rows,
+            "columns": mycols
+        } );
+    } );
+};
+
 /*
  * initTabs()
  * parameter tabListId should be the id of a UL element containing links

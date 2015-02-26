@@ -263,6 +263,13 @@ create table token(
 -- tokenNode
 -- Used to record nodes created from devices, so as to avoid creating multiple copies.
 -- Note localId is not called local_id because it is not a foreign key, it is from the client.
+-- Perhaps we should generalize this, it's basically a way to map from an id unique on the 
+-- client within a given trial download to a unique id in the server db:  token_id+localId -> serverId
+-- This pattern could be useful for more things than just locally created nodes. For example
+-- I'm thinking it could be used to identify score sets from the client. We might have to
+-- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
+-- something generic, like serverId. The type field would identify the table that serverId 
+-- was for.
 --
 create table tokenNode(
   token_id   INT NOT NULL,
