@@ -37,7 +37,7 @@ import trialProperties
 import ***REMOVED***
 from fp_common.const import *
 from const import *
-from fpUtil import HtmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
+from fpUtil import htmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
 import fp_common.util as util
 import datapage as dp
 import websess
@@ -90,7 +90,7 @@ def internalError(e):
     util.flog('internal error:')
     util.flog(e)
     util.flog(traceback.format_exc())
-    return 'FieldPrime: Internal Server Error <br />{}::{}'.format(app.config['SESS_FILE_DIR'], traceback.format_exc())
+    return 'FieldPrime: An error has occurred'
 
 
 def getMYSQLDBConnection(sess):
@@ -228,7 +228,7 @@ def htmlTrialScoreSets(sess, trialId):
             samps = ''   # We show all the separate samples in a single cell
             for oti in tis:
                 samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        url_for('urlScoreSet2TraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
                         oti.numScoredNodes())
             htm += tdPattern.format(samps)
             htm += "</tr>\n"
@@ -291,7 +291,7 @@ def htmlTrialNameDetails(sess, trial):
     # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
-    r += HtmlFieldset(HtmlForm(extrasForm, id='extras'))
+    r += htmlFieldset(HtmlForm(extrasForm, id='extras'))
     # JavaScript for AJAX form submission:
     r += '''
     <script>
@@ -403,7 +403,7 @@ class htmlChunkSet:
     def htmlFieldSets(self):
         h = ''
         for c in self.chunks:
-            h += HtmlFieldset(c[2], c[1] + ':')
+            h += htmlFieldset(c[2], c[1] + ':')
             h += '\n'
         return h
 
@@ -905,7 +905,7 @@ def manageUsersHTML(sess, msg=None):
     cont += '<table id=userTable data-url="{0}"></table>'.format(url_for("urlUsersPost", projectName=sess.getProjectName()))
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
-    out = fpUtil.HtmlFieldset(cont, 'Manage ***REMOVED*** Users')
+    out = fpUtil.htmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
 
 @app.route('/project/<projectName>/user/<ident>', methods=['DELETE'])
@@ -1063,7 +1063,7 @@ def urlSystemTraits(sess, projectName):
         # System Traits:
         sysTraits = dal.getSysTraits(sess.db())
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
-        r = HtmlFieldset(
+        r = htmlFieldset(
             HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
         return dp.dataPage(sess, title='System Traits', content=r)
@@ -1192,43 +1192,20 @@ def urlScoreSet2TraitInstance(sess, traitInstanceId):
     typ = ti.trait.type
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
+    out = ''
 
-    # Show name and some stats:
-    r = ''
-    r += "<h2>Score Set: {0}</h2>".format(name)
-    numDeleted = 0
-    numNA = 0
-    numScoredNodes = 0
-    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
-    numSum = 0
-    for idx, d in enumerate(data):
-        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
-        if overWritten:
-            numDeleted += 1
-        else:
-            numScoredNodes += 1
-            if d.isNA():
-                numNA += 1
-            elif isNumeric:
-                numSum += d.getValue()
-    r += '<br>Number of scored nodes: {0} (including {1} NAs)'.format(numScoredNodes, numNA)
-    r += '<br>Number of overwritten scores: {0}'.format(numDeleted)
-    numValues = numScoredNodes - numNA
-    if isNumeric and numValues > 0:
-        r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
-
+    # Name:
+    out += "<h2>Score Set: {0}</h2>".format(name)
     #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
 
     # For photo score sets add button to download photos as zip file:
     if typ == T_PHOTO:
-        r += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
+        out += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
                                                  url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
-    #
-    # Data table:
-    #
+    # Get data:
     hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
     rows = []
     for idx, d in enumerate(data):
@@ -1250,30 +1227,53 @@ def urlScoreSet2TraitInstance(sess, traitInstanceId):
                      value if not overWritten else ('<del>' + str(value) + '</del>'),
                      d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
 
-    # new bit:
+    # Client table display:
     jtable = {"headers":hdrs, "rows":rows}
-    r += '''<script type="application/json" id="ssdata">
+    dtab = '''<script type="application/json" id="ssdata">
     {0}
     </script>'''.format(json.dumps(jtable))
-    r += '<div id="demo"></div>'
-    r += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r +=  '''<script>
+    dtab += '<div id="demo"></div>'
+    dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    dtab +=  '''<script>
         $(document).ready(function() {
             var data = JSON.parse(document.getElementById("ssdata").text);
             stab = fplib.makeDataTable(data, 'sstable');
-            //$('sstable').dataTable();
         });
     </script>'''
+    out += fpUtil.htmlFieldset(dtab, 'Data:')
+    #out += fpUtil.htmlDatatableByRow(hdrs, rows)
 
-    #r += fpUtil.htmlDatatableByRow(hdrs, rows)
+    # Stats:
+    numDeleted = 0
+    numNA = 0
+    numScoredNodes = 0
+    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
+    numSum = 0
+    oStats = ''
+    for idx, d in enumerate(data):
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+        if overWritten:
+            numDeleted += 1
+        else:
+            numScoredNodes += 1
+            if d.isNA():
+                numNA += 1
+            elif isNumeric:
+                numSum += d.getValue()
+    oStats += 'Number of scored nodes: {0} (including {1} NAs)<br>'.format(numScoredNodes, numNA)
+    oStats += 'Number of overwritten scores: {0}<br>'.format(numDeleted)
+    numValues = numScoredNodes - numNA
+    if isNumeric and numValues > 0:
+        oStats += 'Mean value: {0:.2f}<br>'.format(numSum / numValues)
 
     # Boxplot after table:
     if isNumeric and numValues > 0:
-        r += '<br>Boxplot:<br>'
-        r += stats.htmlBoxplot(data)
+        oStats += '<br>Boxplot:<br>'
+        oStats += stats.htmlBoxplot(data)
 
-    return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
+    out += htmlFieldset(oStats, 'Statistics:')
+    return dp.dataPage(sess, content=out, title='Score Set Data', trialId=ti.trial_id)
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------

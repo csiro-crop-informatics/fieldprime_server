@@ -10,7 +10,6 @@ from flask import url_for
 
 #-----------------------------------------------------------------------
 
-
 def GetString(x):
 #-----------------------------------------------------------------------
 # For when x is a string, or a function returning string
@@ -32,7 +31,7 @@ def HtmlForm(content, id=None, post=False, onsubmit='', multipart=False):
     return "<form {0} {1} {2} {3}>\n{4}</form>".format(methodPart, submitPart, enctypePart, idPart, contentPart)
 
 
-def HtmlFieldset(content, legend=None):
+def htmlFieldset(content, legend=None):
 #-----------------------------------------------------------------------
 # Returns html for a fieldset, with the given content and legend.
 # NB content can be either a string, or a function returning one.
@@ -99,19 +98,12 @@ def htmlDataTableMagic(tableId):
     # cache rather than the network.
     #
     # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
-    # by the dataTable function.
+    # by the dataTable function (orovided the table has id 'trialData').
 
     r += """
     <script>
     function setTrialDataWrapperWidth() {
-        var w = window;
-        var c = Math.round($(".header").width() - 40);
-        // var leftBarWidth = $("#dataLeftBar").width();
-        var leftBarWidth = 0;
-        // var setWidthTo = w.innerWidth - leftBarWidth - 60;
-        var setWidthTo = c;
-        console.log("inner new: "+setWidthTo);
-        //alert('w.width ' + w.innerWidth + ' ' + c + ' ' + setWidthTo);
+        var setWidthTo = Math.round($(".header").width() - 40);
         document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
     }
     $(document).ready(

@@ -318,7 +318,7 @@ p a {
     /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
     min-height: 510px;
     /* width: 100%; */
-    margin: 0 auto;   /* This causes the div to be centered. */
+    /*margin: 0 auto;   /* This causes the div to be centered. */
     padding: 20px;
     list-style: none;
 }
@@ -392,6 +392,10 @@ p a {
 #trialData_wrapper label{
     width: auto;
 }
+
+
+/* Make the username and password inputs line up nicely on the login page: */
+#loginout label { display: inline-block; width: 140px; }
 
 .dataContent {
     /* display: table-cell; */

@@ -5,6 +5,7 @@
 #
 
 import time, sys
+import cgi
 
 def isInt(x):
     try:
@@ -56,6 +57,13 @@ def alertFieldPrimeAdmin(app, msg):
 #     s.sendmail(sender, [recipient], emsg.as_string())
 #     s.quit()
     flog('ADMINALERT:' + msg)
+
+
+def escapeHtml(html):
+#-----------------------------------------------------------------------
+# Make html safe, hopefully, currently just using cgi.escape.
+    return None if html is None else cgi.escape(html)
+
 
 ###  Logging: ##################################################################
 # We want a logging system that can be turned on or off by use of a flag file:

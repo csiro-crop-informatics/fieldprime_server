@@ -5,6 +5,11 @@
  */
 var fplib = {};
 
+// this not used
+fplib.setWrapperWidth = function (elementId) {
+    var setWidthTo = Math.round($(".header").width() - 40);
+    document.getElementById(elementId + '_wrapper').style.width = setWidthTo + 'px';
+};
 
 fplib.makeTable = function(tdata, tname) {
     var hdrs = tdata.headers;
@@ -53,10 +58,28 @@ fplib.makeDataTable = function(tdata, tname) {
     $(document).ready(function() {
     // Can we add a table dynamically with out the "demo" div?
         $('#demo').html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="example"></table>' );
-        $('#example').dataTable( {
+        $('#example').dataTable({
+            // this not working for some reason
+            "scrollX": true,
+            /*"fnPreDrawCallback":function(){
+                $("#example").hide();
+            },
+            "fnDrawCallback":function(){
+                $("#example").show();
+            },
+            "fnInitComplete": function(oSettings, json) {$("#example").show();},*/
+
             "data": rows,
             "columns": mycols
-        } );
+        });
+
+        /* this not working for some reason
+        fplib.setWrapperWidth('example');
+        window.addEventListener('resize', function () {
+            "use strict";
+            window.location.reload();
+        });*/
+
     } );
 };
 

@@ -15,7 +15,6 @@ from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
-import cgi
 import time
 
 from const import *
@@ -120,12 +119,12 @@ class Datum(DeclarativeBase):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.
     # NB if the database value is null, then "NA" is returned.
-    # NB - for text values, cgi.escape is applied first (to disable any html).
+    # NB - for text values, escapeHtml is applied first (to disable any html).
         dtype = self.traitInstance.trait.type
         value = '?'
         if dtype == T_INTEGER: value = self.numValue
         elif dtype == T_DECIMAL: value = self.numValue
-        elif dtype == T_STRING: value = cgi.escape(self.txtValue)
+        elif dtype == T_STRING: value = util.escapeHtml(self.txtValue)
         elif dtype == T_CATEGORICAL:
             value = self.numValue
             # Need to look up the text for the value:
@@ -137,7 +136,7 @@ class Datum(DeclarativeBase):
                 value = trtCat.caption
         elif dtype == T_DATE: value = self.numValue
         elif dtype == T_PHOTO:
-            value = cgi.escape(self.txtValue)
+            value = util.escapeHtml(self.txtValue)
 
         #if dtype ==     T_LOCATION: value = d.txtValue
 
