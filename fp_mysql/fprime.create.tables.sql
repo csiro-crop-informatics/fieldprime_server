@@ -27,6 +27,44 @@ create table trial(
   acronym  text
 );
 
+--
+-- token
+-- Represents server token used to identify client trial downloads.
+-- The token is a composite of the android device id, and the time
+-- the trial was downloaded to it. We may want in the future to have
+-- a separate table for android id, and then this table would have
+-- an id of a androidId table record, and the timestamp field.
+-- NB - the unique constraint should probably be on (token, trial_id)
+-- not just token. Also, perhaps the token sent to the client could
+-- now be androidId.id rather than androidId.timestamp, or perhaps just
+-- id would suffice (although then easier to guess).
+--
+create table token(
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  token       VARCHAR(31) NOT NULL UNIQUE,
+  trial_id    INT,
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+);
+
+--
+-- tokenNode
+-- Used to record nodes created from devices, so as to avoid creating multiple copies.
+-- Note localId is not called local_id because it is not a foreign key, it is from the client.
+-- Perhaps we should generalize this, it's basically a way to map from an id unique on the 
+-- client within a given trial download to a unique id in the server db:  token_id+localId -> serverId
+-- This pattern could be useful for more things than just locally created nodes. For example
+-- I'm thinking it could be used to identify score sets from the client. We might have to
+-- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
+-- something generic, like serverId. The type field would identify the table that serverId 
+-- was for.
+--
+create table tokenNode(
+  token_id   INT NOT NULL,
+  localId    INT NOT NULL,
+  node_id    INT NOT NULL,
+  PRIMARY KEY(token_id, localId),
+  FOREIGN KEY(token_id) REFERENCES token(id)
+);
 
 --
 -- trialAtt
@@ -222,7 +260,7 @@ create table traitInstance(
   token_id    INTEGER NOT NULL,
   UNIQUE KEY ttsst (trial_id, trait_id, seqNum, sampleNum, token_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id),
-  FOREIGN KEY fk_trial (trial_id) REFERENCES trial(id) ON DELETE CASCADE
+  FOREIGN KEY fk_trial (trial_id) REFERENCES trial(id) ON DELETE CASCADE,
   foreign key(token_id) references token(id)
 );
 
@@ -240,44 +278,6 @@ create table traitInstance(
 --   FOREIGN KEY(token_id) REFERENCES token(id)
 -- );
 
---
--- token
--- Represents server token used to identify client trial downloads.
--- The token is a composite of the android device id, and the time
--- the trial was downloaded to it. We may want in the future to have
--- a separate table for android id, and then this table would have
--- an id of a androidId table record, and the timestamp field.
--- NB - the unique constraint should probably be on (token, trial_id)
--- not just token. Also, perhaps the token sent to the client could
--- now be androidId.id rather than androidId.timestamp, or perhaps just
--- id would suffice (although then easier to guess).
---
-create table token(
-  id          INT PRIMARY KEY AUTO_INCREMENT,
-  token       VARCHAR(31) NOT NULL UNIQUE,
-  trial_id    INT,
-  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
-);
-
---
--- tokenNode
--- Used to record nodes created from devices, so as to avoid creating multiple copies.
--- Note localId is not called local_id because it is not a foreign key, it is from the client.
--- Perhaps we should generalize this, it's basically a way to map from an id unique on the 
--- client within a given trial download to a unique id in the server db:  token_id+localId -> serverId
--- This pattern could be useful for more things than just locally created nodes. For example
--- I'm thinking it could be used to identify score sets from the client. We might have to
--- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
--- something generic, like serverId. The type field would identify the table that serverId 
--- was for.
---
-create table tokenNode(
-  token_id   INT NOT NULL,
-  localId    INT NOT NULL,
-  node_id    INT NOT NULL,
-  PRIMARY KEY(token_id, localId),
-  FOREIGN KEY(token_id) REFERENCES token(id)
-);
 
 --
 -- datum
