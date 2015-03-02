@@ -97,7 +97,7 @@ create table nodeNote(
   token_id      INTEGER NOT NULL,
   note          text,
   unique (node_id, timestamp, note(100)),
-  foreign key(node_id) references node(id) on delete CASCADE
+  foreign key(node_id) references node(id) on delete CASCADE,
   foreign key(token_id) references token(id)
 );
 
