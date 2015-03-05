@@ -98,7 +98,7 @@ def htmlDataTableMagic(tableId):
     # cache rather than the network.
     #
     # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
-    # by the dataTable function (orovided the table has id 'trialData').
+    # by the dataTable function (provided the table has id 'trialData').
 
     r += """
     <script>
