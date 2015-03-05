@@ -1,6 +1,7 @@
 import models as md
 import os.path
 import sys
+import glob
 
 def photoCheck(dbc, photodir):
     trials = md.getTrialList(dbc)
@@ -22,7 +23,15 @@ def photoCheck(dbc, photodir):
                                          ti.sampleNum)
                         # Check if file exists:
                         fullPath = photodir + '/' + fname
-                        print '{0} -> {1}: {2}'.format(tval, fullPath, 'Exists' if os.path.isfile(fullPath) else 'Missing')
+                        if os.path.isfile(fullPath):
+                            # Check if any _c* files present:
+                            pat = fullPath[0:len(fullPath)-4] + '_c*.jpg'
+                            matches = glob.glob(pat)
+                            
+                            print '{0} -> {1}: {2} {3} cs'.format(tval, fullPath, 'Exists', len(matches))
+                        else:
+                            #
+                            print '{0} -> {1}: {2}'.format(tval, fullPath, 'Missing')
                     else:
                         # File is named, check file exists:
                         fullPath = photodir + '/' + tval
@@ -31,6 +40,7 @@ def photoCheck(dbc, photodir):
 
 
 ### Main: ###################################################
+#print len(sys.argv)
 if len(sys.argv) > 1:
     project = sys.argv[1]
 else:
@@ -38,7 +48,7 @@ else:
 if len(sys.argv) > 2:
     photodir = sys.argv[2]
 else:
-    '/proj/fpserver/photos/'
+    photodir = '/home/***REMOVED***/web/photos/'
 dbc = md.getSysUserEngine(project)
 photoCheck(dbc, photodir)
 
