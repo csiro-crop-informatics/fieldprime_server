@@ -228,7 +228,7 @@ def htmlTrialScoreSets(sess, trialId):
             samps = ''   # We show all the separate samples in a single cell
             for oti in tis:
                 samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        url_for('urlScoreSet2TraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
                         oti.numScoredNodes())
             htm += tdPattern.format(samps)
             htm += "</tr>\n"
@@ -1178,6 +1178,258 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
+
+def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
+#--------------------------------------------------------------------------
+# Return some html stats/charts for numeric data, which is assumed to have
+# at least one non-NA value. In JS context we are assuming the data is available
+# in global var fplib.tmpScoredata. This function just for neatness, really
+# just part of urlScoreSet2TraitInstance.
+#
+    oStats = ''
+    oStats += '''
+    <script>
+    $(document).ready(function() {
+        // Get array of the non-NA values, and get some stats.
+        var values = [];
+        var rows = fplib.tmpScoredata.rows;
+        var min, max;
+        for (var i = 0; i<rows.length; ++i) {
+            var val = rows[i][3];
+            if (typeof val === 'number') {
+                values.push(val);
+                if (min === undefined || val < min) min = val;
+                if (max === undefined || val > max) max = val
+            }
+        }
+        fplib.tmpScoredata.values = values;
+        fplib.tmpScoredata.min = min;
+        fplib.tmpScoredata.max = max;
+    });
+    </script>
+    '''
+
+    oStats += 'Mean value: {0:.2f}<br>'.format(numSum / numValues)
+
+    # Boxplot after table:
+    oStats += '<br>Boxplot:<br>'
+    oStats += stats.htmlBoxplot(data)
+
+    # Histogram(s):
+    width = 900
+    height = 500
+
+    if False:
+        # googleHistogram:
+        googleHistogram = ''
+        googleHistogram += '''
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script type="text/javascript">
+            google.load('visualization', '1.0', {'packages':['corechart']});
+            function drawGHistogram() {
+              var md = [];
+              var rows = fplib.tmpScoredata.rows;
+              for (var i = 0; i<rows.length; ++i) {
+                  var val = rows[i][3];
+                  if (typeof val === 'number')
+                      md.push([rows[i][3]]);
+              }
+              var vdata = google.visualization.arrayToDataTable(md, true);
+              //var vdata = google.visualization.arrayToDataTable(fplib.tmpScoredata.values, true);
+              var options = {title: 'Histogram', legend: { position: 'none' }, enableInteractivity:false};
+              var chart = new google.visualization.Histogram(document.getElementById('ghist_div'));
+              chart.draw(vdata, options);
+            }
+            $(document).ready(function() {
+                drawGHistogram();
+            });
+        </script>
+        <div id="ghist_div" style="width: %dpx; height: %dpx;"></div>
+        ''' % (width, height)
+        oStats += googleHistogram
+    else:
+        # D3 histogram MFK - store d3 statically, or find suitable CDN. Also scope the style?
+        d3hist = '''
+        <style>
+            #hist_div { font: 10px sans-serif; }
+            .bar rect {
+              fill: steelblue;
+              shape-rendering: crispEdges;
+            }
+            .bar text { fill: #fff; }
+            .axis path, .axis line {
+              fill: none;
+              stroke: #000;
+              shape-rendering: crispEdges;
+            }
+        </style>
+
+        <script src="http://d3js.org/d3.v3.min.js"></script><h3>Histogram:</h3>
+        <div id="hist_div" style="width: %dpx; height: %dpx;"></div>
+        <script>
+            function drawHistogram() {
+                //values = d3.range(1000).map(d3.random.bates(10));
+                values = fplib.tmpScoredata.values;
+
+                // A formatter for counts.
+                var formatCount = d3.format(",.0f");
+
+                var margin = {top: 10, right: 30, bottom: 30, left: 30},
+                    width = 960 - margin.left - margin.right,
+                    height = 500 - margin.top - margin.bottom;
+
+                var x = d3.scale.linear()
+                    .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+                    .range([0, width]);
+
+                // Generate a histogram using twenty uniformly-spaced bins.
+                var data = d3.layout.histogram()
+                    .bins(x.ticks(20))
+                    (values);
+
+                var y = d3.scale.linear()
+                    .domain([0, d3.max(data, function(d) { return d.y; })])
+                    .range([height, 0]);
+
+                var xAxis = d3.svg.axis()
+                    .scale(x)
+                    .orient("bottom");
+
+                var svg = d3.select("#hist_div").append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                  .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                var bar = svg.selectAll(".bar")
+                    .data(data)
+                  .enter().append("g")
+                    .attr("class", "bar")
+                    .attr("transform", function(d) { return "translate(" + x(d.x) + "," + y(d.y) + ")"; });
+
+                bar.append("rect")
+                    .attr("x", 1)
+                    .attr("width", x(data[0].dx) - 1)
+                    .attr("height", function(d) { return height - y(d.y); });
+
+                bar.append("text")
+                    .attr("dy", ".75em")
+                    .attr("y", 6)
+                    .attr("x", x(data[0].dx) / 2)
+                    .attr("text-anchor", "middle")
+                    .text(function(d) { return formatCount(d.y); });
+
+                svg.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(xAxis);
+            }
+            $(document).ready(function() {
+                drawHistogram();
+            });
+        </script>
+        ''' % (width, height)
+        oStats += d3hist
+
+    return oStats
+
+@app.route('/scoreSet2/<traitInstanceId>/', methods=['GET'])
+@dec_check_session()
+def urlScoreSet2TraitInstance(sess, traitInstanceId):
+#-------------------------------------------------------------------------------
+# Try client graphics.
+# Include table data as JSON
+# Display the data for specified trait instance.
+# NB deleted data are shown (crossed out), not just the latest for each node.
+# MFK this should probably display RepSets, not individual TIs
+#
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
+    typ = ti.trait.type
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
+    data = ti.getData()
+    out = ''
+
+    # Name:
+    out += "<h2>Score Set: {0}</h2>".format(name)
+    #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+
+    # For photo score sets add button to download photos as zip file:
+    if typ == T_PHOTO:
+        out += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
+                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
+         + "<button>Download Photos as Zip file</button></a>"
+         + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
+
+    # Get data:
+    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    rows = []
+    for idx, d in enumerate(data):
+        # Is this an overwritten datum?
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+
+        # Special case for photos. Display a link to show the photo.
+        # Perhaps this should be done in Datum.getValue, but we don't have all info.
+        if typ == T_PHOTO:
+            if d.isNA():
+                value = 'NA'
+            else:
+#               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
+                fname = hackyPhotoFileName(sess, ti, d)
+                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+        else:
+            value = d.getValue()
+        rows.append([d.node.id, d.node.row, d.node.col,
+                     value if not overWritten else ('<del>' + str(value) + '</del>'),
+                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
+
+    # Embed the data as JSON in the page (with id "ssdata"):
+    jtable = {"headers":hdrs, "rows":rows}
+    dtab = '''<script type="application/json" id="ssdata">
+    {0}
+    </script>'''.format(json.dumps(jtable))
+
+    # Script to create DataTable of the data:
+    dtab += '<div id="demo"></div>'
+    dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    dtab +=  '''<script>
+        $(document).ready(function() {
+            fplib.tmpScoredata = JSON.parse(document.getElementById("ssdata").text); // use global var as needed elsewhere
+            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable');
+        });
+    </script>'''
+    out += fpUtil.htmlFieldset(dtab, 'Data:')
+
+    # Stats:
+    numDeleted = 0
+    numNA = 0
+    numScoredNodes = 0
+    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
+    numSum = 0
+    oStats = ''
+    for idx, d in enumerate(data):
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+        if overWritten:
+            numDeleted += 1
+        else:
+            numScoredNodes += 1
+            if d.isNA():
+                numNA += 1
+            elif isNumeric:
+                numSum += d.getValue()
+    numValues = numScoredNodes - numNA
+    oStats += 'Number of scored nodes: {0} (including {1} NAs)<br>'.format(numScoredNodes, numNA)
+    oStats += 'Number of nodes with non-NA scores: {0}<br>'.format(numValues)
+    oStats += 'Number of overwritten scores: {0}<br>'.format(numDeleted)
+
+    if isNumeric and numValues > 0:
+        oStats += htmlNumericScoreSetStats(isNumeric, numSum, numValues, data)
+
+    #
+    out += htmlFieldset(oStats, 'Statistics:')
+    return dp.dataPage(sess, content=out, title='Score Set Data', trialId=ti.trial_id)
+
+
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
 # Create zip archive of all the photos for the given traitInstance.
@@ -1440,6 +1692,58 @@ def urlMain():
     # Request method is 'GET':
     return urlInfoPage('fieldprime')
 
+@app.route('/XXXX', methods=["GET", "POST"])
+def urlMain2():
+    out = 'hallo sailor <div id="svg"></div> goodbye sailor'
+#     out += '''
+# <svg width="720" height="120">
+#   <circle cx="40" cy="60" r="10"></circle>
+#   <circle cx="80" cy="60" r="10"></circle>
+#   <circle cx="120" cy="60" r="10"></circle>
+# </svg>
+# '''
+    out += '''
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+(function (data) {
+    var sw = 800, sh = 200;
+    var svgSpace = d3.select("#svg").append("svg")
+                                    .attr("width", sw).attr("height", sh)
+    svgSpace.append("rect").attr("x", 10).attr("y", 10).attr("width", sw-10).attr("height", sh-10)
+                           .attr("fill", "none").attr("stroke", "#000");
+
+    /*
+    for (var i=0; i<3; ++i)
+        svgSpace.append("circle").attr("cx", (i+1)*70).attr("cy", 60).attr("r", 10);
+    var circle = d3.selectAll("circle");
+    circle.style("fill", "steelblue");
+    circle.attr("r", 30);
+    */
+
+    var ndata = data.length;
+    if (ndata <= 0) {
+        svgSpace.append("text")
+            .attr("x", 20)
+            .attr("y", 60)
+            .text("No Data");
+        return;
+    }
+
+    var min = data[0];
+    var max = min;
+    var q1, q3, med;
+    for (var i=0; i<ndata; ++i) {
+        var d = data[i];
+        if (d < min) min = d;
+        if (d > max) max = d;
+    }
+    alert(min);
+    alert(max);
+})([3,9,23,5,24,14,6,18,43,9]);
+
+</script>
+    '''
+    return out
 
 ##############################################################################################################
 
