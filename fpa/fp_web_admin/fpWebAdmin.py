@@ -1269,13 +1269,13 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
         <script>
             function drawHistogram() {
                 //values = d3.range(1000).map(d3.random.bates(10));
-                values = fplib.tmpScoredata.values;
+                var values = fplib.tmpScoredata.values;
 
                 // A formatter for counts.
                 var formatCount = d3.format(",.0f");
 
                 var margin = {top: 10, right: 30, bottom: 30, left: 30},
-                    width = 960 - margin.left - margin.right,
+                    width = 950 - margin.left - margin.right,
                     height = 500 - margin.top - margin.bottom;
 
                 var x = d3.scale.linear()
@@ -1328,7 +1328,7 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                 drawHistogram();
             });
         </script>
-        ''' % (width, height)
+        ''' % (width, height)#, width, height)
         oStats += d3hist
 
     return oStats
