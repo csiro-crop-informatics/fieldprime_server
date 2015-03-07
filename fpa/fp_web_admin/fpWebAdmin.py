@@ -1275,8 +1275,8 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                 var formatCount = d3.format(",.0f");
 
                 var margin = {top: 10, right: 30, bottom: 30, left: 30},
-                    width = 950 - margin.left - margin.right,
-                    height = 500 - margin.top - margin.bottom;
+                    width = %d - margin.left - margin.right,
+                    height = %d - margin.top - margin.bottom;
 
                 var x = d3.scale.linear()
                     .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
@@ -1309,7 +1309,7 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
 
                 bar.append("rect")
                     .attr("x", 1)
-                    .attr("width", x(data[0].dx) - 1)
+                    .attr("width", x(data[0].x + data[0].dx) - 1)
                     .attr("height", function(d) { return height - y(d.y); });
 
                 bar.append("text")
@@ -1328,7 +1328,7 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                 drawHistogram();
             });
         </script>
-        ''' % (width, height)#, width, height)
+        ''' % (width, height, width, height)
         oStats += d3hist
 
     return oStats
