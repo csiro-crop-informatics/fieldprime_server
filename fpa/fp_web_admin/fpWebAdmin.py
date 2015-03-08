@@ -228,7 +228,7 @@ def htmlTrialScoreSets(sess, trialId):
             samps = ''   # We show all the separate samples in a single cell
             for oti in tis:
                 samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-                        url_for('urlScoreSet2TraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
                         oti.numScoredNodes())
             htm += tdPattern.format(samps)
             htm += "</tr>\n"
@@ -1100,9 +1100,9 @@ def hackyPhotoFileName(sess, ti, d):
     return fname
 
 
-@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+@app.route('/OLDscoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
-def urlScoreSetTraitInstance(sess, traitInstanceId):
+def urlOLDScoreSetTraitInstance(sess, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Display the data for specified trait instance.
 # NB deleted data are shown (crossed out), not just the latest for each node.
@@ -1184,7 +1184,7 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
 # Return some html stats/charts for numeric data, which is assumed to have
 # at least one non-NA value. In JS context we are assuming the data is available
 # in global var fplib.tmpScoredata. This function just for neatness, really
-# just part of urlScoreSet2TraitInstance.
+# just part of urlScoreSetTraitInstance.
 #
     oStats = ''
     oStats += '''
@@ -1268,16 +1268,10 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
         <div id="hist_div" style="width: %dpx; height: %dpx;"></div>
         <script>
             function drawHistogram() {
-                //values = d3.range(1000).map(d3.random.bates(10));
                 var values = fplib.tmpScoredata.values;
-
-                // A formatter for counts.
-                var formatCount = d3.format(",.0f");
-
                 var margin = {top: 10, right: 30, bottom: 30, left: 30},
                     width = %d - margin.left - margin.right,
                     height = %d - margin.top - margin.bottom;
-
                 var x = d3.scale.linear()
                     .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
                     .range([0, width]);
@@ -1312,13 +1306,13 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                     .attr("width", x(data[0].x + data[0].dx) - 1)
                     .attr("height", function(d) { return height - y(d.y); });
 
+                var formatCount = d3.format(",.0f"); // counts format function
                 bar.append("text")
                     .attr("dy", ".75em")
                     .attr("y", 6)
-                    .attr("x", x(data[0].dx) / 2)
+                    .attr("x", x(data[0].x + data[0].dx) / 2)
                     .attr("text-anchor", "middle")
                     .text(function(d) { return formatCount(d.y); });
-
                 svg.append("g")
                     .attr("class", "x axis")
                     .attr("transform", "translate(0," + height + ")")
@@ -1333,9 +1327,9 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
 
     return oStats
 
-@app.route('/scoreSet2/<traitInstanceId>/', methods=['GET'])
+@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
-def urlScoreSet2TraitInstance(sess, traitInstanceId):
+def urlScoreSetTraitInstance(sess, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Try client graphics.
 # Include table data as JSON
