@@ -10,7 +10,8 @@ import os, sys, re, traceback
 import zipfile, ntpath
 import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
-from flask import json, jsonify
+from flask import jsonify
+import simplejson as json
 from werkzeug import secure_filename
 from jinja2 import Environment, FileSystemLoader
 from functools import wraps
@@ -1259,8 +1260,10 @@ def htmlNumericScoreSetStats(data):
         oStats += googleHistogram
     else:
         # D3 histogram MFK - store d3 statically, or find suitable CDN. Also scope the style?
+        #<script src="https://d3js.org/d3.v3.min.js"></script><h3>Histogram:</h3>
         d3hist = '''
-        <script src="http://d3js.org/d3.v3.min.js"></script><h3>Histogram:</h3>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+        <h3>Histogram:</h3>
         <div id="hist_div" style="width: %dpx; height: %dpx;"></div>
         <script>
             $(document).ready(function() {
