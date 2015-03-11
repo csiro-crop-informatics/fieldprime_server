@@ -10,7 +10,7 @@ from flask import url_for
 
 #-----------------------------------------------------------------------
 
-def GetString(x):
+def getString(x):
 #-----------------------------------------------------------------------
 # For when x is a string, or a function returning string
 #
@@ -18,7 +18,7 @@ def GetString(x):
     return x()
 
 
-def HtmlForm(content, id=None, post=False, onsubmit='', multipart=False):
+def htmlForm(content, id=None, post=False, onsubmit='', multipart=False):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.
 # NB content can be either a string, or a function returning one.
@@ -40,6 +40,15 @@ def htmlFieldset(content, legend=None):
     leg = '<legend><h3>{0}</h3></legend>'.format(legend) if legend is not None else ''
     return '<fieldset>{0}{1}</fieldset>'.format(leg, cont)
 
+def htmlDiv(content, divId=None):
+#-----------------------------------------------------------------------
+# Returns html for a div, with the given content and id.
+# NB content can be either a string, or a function returning one.
+#
+    cont = content if isinstance(content, str) else content()
+    id = ' id="{0}"'.format(divId) if divId is not None else ''
+    return '<div{0}>{1}</div>'.format(id, cont)
+
 def htmlHeaderFieldset(content, legend):
 #-----------------------------------------------------------------------
 # Returns html to show legend as a header2 and then the content in a fieldset.
@@ -47,7 +56,7 @@ def htmlHeaderFieldset(content, legend):
     return "<h2>{0}</h2><fieldset>{1}</fieldset>".format(legend, content)
 
 
-def Exit(sess=None):
+def exit(sess=None):
 #-----------------------------------------------------------------------
 # Exits script, after closing sess if present
 #
@@ -56,12 +65,12 @@ def Exit(sess=None):
     sys.exit()
 
 
-def HtmlButtonLink(label, click):
+def htmlButtonLink(label, click):
 #-----------------------------------------------------------------------
     return "<button style=\"color: red\" onClick=\"window.location='{0}'\">{1}</button>".format(click, label)
 
 
-def HtmlButtonLink2(label, click):
+def htmlButtonLink2(label, click):
 #-----------------------------------------------------------------------
 # This version has the button inside a form, sometimes (eg when within
 # a table cell), this seems to be necessary.

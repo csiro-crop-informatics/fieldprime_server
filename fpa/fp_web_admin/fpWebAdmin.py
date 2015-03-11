@@ -37,7 +37,7 @@ import trialProperties
 import ***REMOVED***
 from fp_common.const import *
 from const import *
-from fpUtil import htmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
+import fpUtil
 import fp_common.util as util
 import datapage as dp
 import websess
@@ -165,7 +165,7 @@ def htmlTrialTraitTable(trial):
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         # Add "Detail" button:
         url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
-        validateButton = HtmlButtonLink2("Details", url)
+        validateButton = fpUtil.htmlButtonLink2("Details", url)
         out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     return out
@@ -250,17 +250,17 @@ def htmlNodeAttributes(sess, trialId):
         out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format(
             "Name", "Datatype", "Values")
         for att in attList:
-            valuesButton = HtmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
             out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
                    att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton)
         out += "</table>"
 
     # Add BROWSE button:
     out += '<p>'
-    out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
+    out += fpUtil.htmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.HtmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.htmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -291,7 +291,7 @@ def htmlTrialNameDetails(sess, trial):
     # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
-    r += htmlFieldset(HtmlForm(extrasForm, id='extras'))
+    r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, id='extras'))
     # JavaScript for AJAX form submission:
     r += '''
     <script>
@@ -303,14 +303,14 @@ def htmlTrialNameDetails(sess, trial):
     # Add DELETE button if admin: ------------------------------------------------
     if sess.adminRights():
         r += '<p>'
-        r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
+        r += fpUtil.htmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
         r += '<p>'
     return r
 
 def htmlTrialTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
-    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
+    createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dal.getSysTraits(sess.db())
@@ -323,7 +323,7 @@ def htmlTrialTraits(sess, trial):
     addSysTraitForm += '</select> &nbsp; '
     addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
     addSysTraitForm += '</form>'
-    return HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
+    return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
 def htmlTrialData(sess, trial):
 #--------------------------------------------------------------------
@@ -403,7 +403,7 @@ class htmlChunkSet:
     def htmlFieldSets(self):
         h = ''
         for c in self.chunks:
-            h += htmlFieldset(c[2], c[1] + ':')
+            h += fpUtil.htmlFieldset(c[2], c[1] + ':')
             h += '\n'
         return h
 
@@ -800,7 +800,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
         return dp.dataPage(sess, title='Delete Trial',
-                        content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
+                        content=fpUtil.htmlHeaderFieldset(fpUtil.htmlForm(out, post=True),
                                                           'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
         return getHtml()
@@ -1063,8 +1063,9 @@ def urlSystemTraits(sess, projectName):
         # System Traits:
         sysTraits = dal.getSysTraits(sess.db())
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
-        r = htmlFieldset(
-            HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
+        r = fpUtil.htmlFieldset(
+            fpUtil.htmlForm(sysTraitListHtml) +
+            fpUtil.htmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
         return dp.dataPage(sess, title='System Traits', content=r)
 
@@ -1179,7 +1180,7 @@ def urlOLDScoreSetTraitInstance(sess, traitInstanceId):
     return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
 
 
-def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
+def htmlNumericScoreSetStats(data):
 #--------------------------------------------------------------------------
 # Return some html stats/charts for numeric data, which is assumed to have
 # at least one non-NA value. In JS context we are assuming the data is available
@@ -1194,22 +1195,31 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
         var values = [];
         var rows = fplib.tmpScoredata.rows;
         var min, max;
+        var count=0, sum=0;
         for (var i = 0; i<rows.length; ++i) {
             var val = rows[i][3];
             if (typeof val === 'number') {
                 values.push(val);
                 if (min === undefined || val < min) min = val;
-                if (max === undefined || val > max) max = val
+                if (max === undefined || val > max) max = val;
+                sum += val;
+                ++count;
             }
         }
         fplib.tmpScoredata.values = values;
         fplib.tmpScoredata.min = min;
         fplib.tmpScoredata.max = max;
+
+        var statsDiv = document.getElementById("statsText");
+        statsDiv.appendChild(document.createTextNode("Mean value is " + parseFloat(sum/count).toFixed(2)));
+        statsDiv.appendChild(document.createElement("br"));
+        statsDiv.appendChild(document.createTextNode("Min value: " + min));
+        statsDiv.appendChild(document.createElement("br"));
+        statsDiv.appendChild(document.createTextNode("Mean value: " + parseFloat(max).toFixed(2)));
+
     });
     </script>
     '''
-
-    oStats += 'Mean value: {0:.2f}<br>'.format(numSum / numValues)
 
     # Boxplot after table:
     oStats += '<br>Boxplot:<br>'
@@ -1272,21 +1282,28 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                 var margin = {top: 10, right: 30, bottom: 30, left: 30},
                     width = %d - margin.left - margin.right,
                     height = %d - margin.top - margin.bottom;
-                var x = d3.scale.linear()
+
+                // temp scale to get the recommended ticks:
+                var binTicks = d3.scale.linear()
                     .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+                    .range([0, width])
+                  .ticks(20);
+
+                var xsc = d3.scale.linear()
+                    .domain([binTicks[0], binTicks[binTicks.length-1]])
                     .range([0, width]);
 
                 // Generate a histogram using twenty uniformly-spaced bins.
                 var data = d3.layout.histogram()
-                    .bins(x.ticks(20))
+                    .bins(binTicks)
                     (values);
 
-                var y = d3.scale.linear()
+                var ysc = d3.scale.linear()
                     .domain([0, d3.max(data, function(d) { return d.y; })])
                     .range([height, 0]);
 
                 var xAxis = d3.svg.axis()
-                    .scale(x)
+                    .scale(xsc)
                     .orient("bottom");
 
                 var svg = d3.select("#hist_div").append("svg")
@@ -1299,18 +1316,18 @@ def htmlNumericScoreSetStats(isNumeric, numSum, numValues, data):
                     .data(data)
                   .enter().append("g")
                     .attr("class", "bar")
-                    .attr("transform", function(d) { return "translate(" + x(d.x) + "," + y(d.y) + ")"; });
+                    .attr("transform", function(d) { return "translate(" + xsc(d.x) + "," + ysc(d.y) + ")"; });
 
                 bar.append("rect")
                     .attr("x", 1)
-                    .attr("width", x(data[0].x + data[0].dx) - 1)
-                    .attr("height", function(d) { return height - y(d.y); });
+                    .attr("width", xsc(data[0].x + data[0].dx) - 1)
+                    .attr("height", function(d) { return height - ysc(d.y); });
 
                 var formatCount = d3.format(",.0f"); // counts format function
                 bar.append("text")
                     .attr("dy", ".75em")
                     .attr("y", 6)
-                    .attr("x", x(data[0].x + data[0].dx) / 2)
+                    .attr("x", xsc(data[0].x + data[0].dx) / 2)
                     .attr("text-anchor", "middle")
                     .text(function(d) { return formatCount(d.y); });
                 svg.append("g")
@@ -1400,7 +1417,6 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     numScoredNodes = 0
     isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
     numSum = 0
-    oStats = ''
     for idx, d in enumerate(data):
         overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
         if overWritten:
@@ -1412,15 +1428,16 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             elif isNumeric:
                 numSum += d.getValue()
     numValues = numScoredNodes - numNA
-    oStats += 'Number of scored nodes: {0} (including {1} NAs)<br>'.format(numScoredNodes, numNA)
-    oStats += 'Number of nodes with non-NA scores: {0}<br>'.format(numValues)
-    oStats += 'Number of overwritten scores: {0}<br>'.format(numDeleted)
+    statsText = 'Number of scored nodes: {0} (including {1} NAs)<br>'.format(numScoredNodes, numNA)
+    statsText += 'Number of nodes with non-NA scores: {0}<br>'.format(numValues)
+    statsText += 'Number of overwritten scores: {0}<br>'.format(numDeleted)
+    oStats = fpUtil.htmlDiv(statsText, 'statsText')
 
     if isNumeric and numValues > 0:
-        oStats += htmlNumericScoreSetStats(isNumeric, numSum, numValues, data)
+        oStats += htmlNumericScoreSetStats(data)
 
     #
-    out += htmlFieldset(oStats, 'Statistics:')
+    out += fpUtil.htmlFieldset(fpUtil.htmlDiv(oStats, "statsDiv"), 'Statistics:')
     return dp.dataPage(sess, content=out, title='Score Set Data', trialId=ti.trial_id)
 
 
