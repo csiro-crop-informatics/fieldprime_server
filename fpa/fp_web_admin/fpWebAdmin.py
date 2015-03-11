@@ -37,7 +37,7 @@ import trialProperties
 import ***REMOVED***
 from fp_common.const import *
 from const import *
-from fpUtil import htmlFieldset, HtmlForm, HtmlButtonLink, HtmlButtonLink2
+import fpUtil
 import fp_common.util as util
 import datapage as dp
 import websess
@@ -165,7 +165,7 @@ def htmlTrialTraitTable(trial):
             trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
         # Add "Detail" button:
         url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
-        validateButton = HtmlButtonLink2("Details", url)
+        validateButton = fpUtil.htmlButtonLink2("Details", url)
         out += "<td>" + validateButton  + "</td>"
     out += "</table>"
     return out
@@ -250,17 +250,17 @@ def htmlNodeAttributes(sess, trialId):
         out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format(
             "Name", "Datatype", "Values")
         for att in attList:
-            valuesButton = HtmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
             out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
                    att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton)
         out += "</table>"
 
     # Add BROWSE button:
     out += '<p>'
-    out += fpUtil.HtmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
+    out += fpUtil.htmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.HtmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.htmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -291,7 +291,7 @@ def htmlTrialNameDetails(sess, trial):
     # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
-    r += htmlFieldset(HtmlForm(extrasForm, id='extras'))
+    r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, id='extras'))
     # JavaScript for AJAX form submission:
     r += '''
     <script>
@@ -303,14 +303,14 @@ def htmlTrialNameDetails(sess, trial):
     # Add DELETE button if admin: ------------------------------------------------
     if sess.adminRights():
         r += '<p>'
-        r += fpUtil.HtmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
+        r += fpUtil.htmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
         r += '<p>'
     return r
 
 def htmlTrialTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
-    createTraitButton = '<p>' + fpUtil.HtmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
+    createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
     sysTraits = dal.getSysTraits(sess.db())
@@ -323,7 +323,7 @@ def htmlTrialTraits(sess, trial):
     addSysTraitForm += '</select> &nbsp; '
     addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
     addSysTraitForm += '</form>'
-    return HtmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
+    return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
 def htmlTrialData(sess, trial):
 #--------------------------------------------------------------------
@@ -403,7 +403,7 @@ class htmlChunkSet:
     def htmlFieldSets(self):
         h = ''
         for c in self.chunks:
-            h += htmlFieldset(c[2], c[1] + ':')
+            h += fpUtil.htmlFieldset(c[2], c[1] + ':')
             h += '\n'
         return h
 
@@ -800,7 +800,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
         return dp.dataPage(sess, title='Delete Trial',
-                        content=fpUtil.htmlHeaderFieldset(fpUtil.HtmlForm(out, post=True),
+                        content=fpUtil.htmlHeaderFieldset(fpUtil.htmlForm(out, post=True),
                                                           'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
         return getHtml()
@@ -1063,8 +1063,9 @@ def urlSystemTraits(sess, projectName):
         # System Traits:
         sysTraits = dal.getSysTraits(sess.db())
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
-        r = htmlFieldset(
-            HtmlForm(sysTraitListHtml) + HtmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
+        r = fpUtil.htmlFieldset(
+            fpUtil.htmlForm(sysTraitListHtml) +
+            fpUtil.htmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
         return dp.dataPage(sess, title='System Traits', content=r)
 
@@ -1100,9 +1101,9 @@ def hackyPhotoFileName(sess, ti, d):
     return fname
 
 
-@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+@app.route('/OLDscoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
-def urlScoreSetTraitInstance(sess, traitInstanceId):
+def urlOLDScoreSetTraitInstance(sess, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Display the data for specified trait instance.
 # NB deleted data are shown (crossed out), not just the latest for each node.
@@ -1177,6 +1178,257 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
         r += stats.htmlBoxplot(data)
 
     return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
+
+
+def htmlNumericScoreSetStats(data):
+#--------------------------------------------------------------------------
+# Return some html stats/charts for numeric data, which is assumed to have
+# at least one non-NA value. In JS context we are assuming the data is available
+# in global var fplib.tmpScoredata. This function just for neatness, really
+# just part of urlScoreSetTraitInstance.
+#
+    oStats = ''
+    oStats += '''
+    <script>
+    $(document).ready(function() {
+        // Get array of the non-NA values, and get some stats.
+        var values = [];
+        var rows = fplib.tmpScoredata.rows;
+        var min, max;
+        var count=0, sum=0;
+        for (var i = 0; i<rows.length; ++i) {
+            var val = rows[i][3];
+            if (typeof val === 'number') {
+                values.push(val);
+                if (min === undefined || val < min) min = val;
+                if (max === undefined || val > max) max = val;
+                sum += val;
+                ++count;
+            }
+        }
+        fplib.tmpScoredata.values = values;
+        fplib.tmpScoredata.min = min;
+        fplib.tmpScoredata.max = max;
+
+        var statsDiv = document.getElementById("statsText");
+        statsDiv.appendChild(document.createTextNode("Mean value is " + parseFloat(sum/count).toFixed(2)));
+        statsDiv.appendChild(document.createElement("br"));
+        statsDiv.appendChild(document.createTextNode("Min value: " + min));
+        statsDiv.appendChild(document.createElement("br"));
+        statsDiv.appendChild(document.createTextNode("Mean value: " + parseFloat(max).toFixed(2)));
+
+    });
+    </script>
+    '''
+
+    # Boxplot after table:
+    oStats += '<br>Boxplot:<br>'
+    oStats += stats.htmlBoxplot(data)
+
+    # Histogram(s):
+    width = 900
+    height = 500
+
+    if False:
+        # googleHistogram:
+        googleHistogram = ''
+        googleHistogram += '''
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script type="text/javascript">
+            google.load('visualization', '1.0', {'packages':['corechart']});
+            function drawGHistogram() {
+              var md = [];
+              var rows = fplib.tmpScoredata.rows;
+              for (var i = 0; i<rows.length; ++i) {
+                  var val = rows[i][3];
+                  if (typeof val === 'number')
+                      md.push([rows[i][3]]);
+              }
+              var vdata = google.visualization.arrayToDataTable(md, true);
+              //var vdata = google.visualization.arrayToDataTable(fplib.tmpScoredata.values, true);
+              var options = {title: 'Histogram', legend: { position: 'none' }, enableInteractivity:false};
+              var chart = new google.visualization.Histogram(document.getElementById('ghist_div'));
+              chart.draw(vdata, options);
+            }
+            $(document).ready(function() {
+                drawGHistogram();
+            });
+        </script>
+        <div id="ghist_div" style="width: %dpx; height: %dpx;"></div>
+        ''' % (width, height)
+        oStats += googleHistogram
+    else:
+        # D3 histogram MFK - store d3 statically, or find suitable CDN. Also scope the style?
+        d3hist = '''
+        <script src="http://d3js.org/d3.v3.min.js"></script><h3>Histogram:</h3>
+        <div id="hist_div" style="width: %dpx; height: %dpx;"></div>
+        <script>
+            $(document).ready(function() {
+                fplib.drawHistogram(fplib.tmpScoredata.values, "hist_div", %d, %d);
+            });
+        </script>
+        ''' % (width, height, width, height)
+        oStats += d3hist
+
+    return oStats
+
+safe = '''
+            function drawHistogram() {
+                var values = fplib.tmpScoredata.values;
+                var margin = {top: 10, right: 30, bottom: 30, left: 30},
+                    width = %d - margin.left - margin.right,
+                    height = %d - margin.top - margin.bottom;
+
+                // temp scale to get the recommended ticks:
+                var binTicks = d3.scale.linear()
+                    .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+                    .range([0, width])
+                  .ticks(20);
+
+                var xsc = d3.scale.linear()
+                    .domain([binTicks[0], binTicks[binTicks.length-1]])
+                    .range([0, width]);
+
+                // Generate a histogram using twenty uniformly-spaced bins.
+                var data = d3.layout.histogram()
+                    .bins(binTicks)
+                    (values);
+
+                var ysc = d3.scale.linear()
+                    .domain([0, d3.max(data, function(d) { return d.y; })])
+                    .range([height, 0]);
+
+                var xAxis = d3.svg.axis()
+                    .scale(xsc)
+                    .orient("bottom");
+
+                var svg = d3.select("#hist_div").append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                  .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                var bar = svg.selectAll(".bar")
+                    .data(data)
+                  .enter().append("g")
+                    .attr("class", "bar")
+                    .attr("transform", function(d) { return "translate(" + xsc(d.x) + "," + ysc(d.y) + ")"; });
+
+                bar.append("rect")
+                    .attr("x", 1)
+                    .attr("width", xsc(data[0].x + data[0].dx) - 1)
+                    .attr("height", function(d) { return height - ysc(d.y); });
+
+                var formatCount = d3.format(",.0f"); // counts format function
+                bar.append("text")
+                    .attr("dy", ".75em")
+                    .attr("y", 6)
+                    .attr("x", xsc(data[0].x + data[0].dx) / 2)
+                    .attr("text-anchor", "middle")
+                    .text(function(d) { return formatCount(d.y); });
+                svg.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(xAxis);
+            }
+'''
+
+@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+@dec_check_session()
+def urlScoreSetTraitInstance(sess, traitInstanceId):
+#-------------------------------------------------------------------------------
+# Try client graphics.
+# Include table data as JSON
+# Display the data for specified trait instance.
+# NB deleted data are shown (crossed out), not just the latest for each node.
+# MFK this should probably display RepSets, not individual TIs
+#
+    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
+    typ = ti.trait.type
+    name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
+    data = ti.getData()
+    out = ''
+
+    # Name:
+    out += "<h2>Score Set: {0}</h2>".format(name)
+    #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
+
+    # For photo score sets add button to download photos as zip file:
+    if typ == T_PHOTO:
+        out += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
+                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
+         + "<button>Download Photos as Zip file</button></a>"
+         + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
+
+    # Get data:
+    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    rows = []
+    for idx, d in enumerate(data):
+        # Is this an overwritten datum?
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+
+        # Special case for photos. Display a link to show the photo.
+        # Perhaps this should be done in Datum.getValue, but we don't have all info.
+        if typ == T_PHOTO:
+            if d.isNA():
+                value = 'NA'
+            else:
+#               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
+                fname = hackyPhotoFileName(sess, ti, d)
+                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+        else:
+            value = d.getValue()
+        rows.append([d.node.id, d.node.row, d.node.col,
+                     value if not overWritten else ('<del>' + str(value) + '</del>'),
+                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
+
+    # Embed the data as JSON in the page (with id "ssdata"):
+    jtable = {"headers":hdrs, "rows":rows}
+    dtab = '''<script type="application/json" id="ssdata">
+    {0}
+    </script>'''.format(json.dumps(jtable))
+
+    # Script to create DataTable of the data:
+    dtab += '<div id="demo"></div>'
+    dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    dtab +=  '''<script>
+        $(document).ready(function() {
+            fplib.tmpScoredata = JSON.parse(document.getElementById("ssdata").text); // use global var as needed elsewhere
+            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable');
+        });
+    </script>'''
+    out += fpUtil.htmlFieldset(dtab, 'Data:')
+
+    # Stats:
+    numDeleted = 0
+    numNA = 0
+    numScoredNodes = 0
+    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
+    numSum = 0
+    for idx, d in enumerate(data):
+        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
+        if overWritten:
+            numDeleted += 1
+        else:
+            numScoredNodes += 1
+            if d.isNA():
+                numNA += 1
+            elif isNumeric:
+                numSum += d.getValue()
+    numValues = numScoredNodes - numNA
+    statsText = 'Number of scored nodes: {0} (including {1} NAs)<br>'.format(numScoredNodes, numNA)
+    statsText += 'Number of nodes with non-NA scores: {0}<br>'.format(numValues)
+    statsText += 'Number of overwritten scores: {0}<br>'.format(numDeleted)
+    oStats = fpUtil.htmlDiv(statsText, 'statsText')
+
+    if isNumeric and numValues > 0:
+        oStats += htmlNumericScoreSetStats(data)
+
+    #
+    out += fpUtil.htmlFieldset(fpUtil.htmlDiv(oStats, "statsDiv"), 'Statistics:')
+    return dp.dataPage(sess, content=out, title='Score Set Data', trialId=ti.trial_id)
+
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
@@ -1440,6 +1692,58 @@ def urlMain():
     # Request method is 'GET':
     return urlInfoPage('fieldprime')
 
+@app.route('/XXXX', methods=["GET", "POST"])
+def urlMain2():
+    out = 'hallo sailor <div id="svg"></div> goodbye sailor'
+#     out += '''
+# <svg width="720" height="120">
+#   <circle cx="40" cy="60" r="10"></circle>
+#   <circle cx="80" cy="60" r="10"></circle>
+#   <circle cx="120" cy="60" r="10"></circle>
+# </svg>
+# '''
+    out += '''
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+(function (data) {
+    var sw = 800, sh = 200;
+    var svgSpace = d3.select("#svg").append("svg")
+                                    .attr("width", sw).attr("height", sh)
+    svgSpace.append("rect").attr("x", 10).attr("y", 10).attr("width", sw-10).attr("height", sh-10)
+                           .attr("fill", "none").attr("stroke", "#000");
+
+    /*
+    for (var i=0; i<3; ++i)
+        svgSpace.append("circle").attr("cx", (i+1)*70).attr("cy", 60).attr("r", 10);
+    var circle = d3.selectAll("circle");
+    circle.style("fill", "steelblue");
+    circle.attr("r", 30);
+    */
+
+    var ndata = data.length;
+    if (ndata <= 0) {
+        svgSpace.append("text")
+            .attr("x", 20)
+            .attr("y", 60)
+            .text("No Data");
+        return;
+    }
+
+    var min = data[0];
+    var max = min;
+    var q1, q3, med;
+    for (var i=0; i<ndata; ++i) {
+        var d = data[i];
+        if (d < min) min = d;
+        if (d > max) max = d;
+    }
+    alert(min);
+    alert(max);
+})([3,9,23,5,24,14,6,18,43,9]);
+
+</script>
+    '''
+    return out
 
 ##############################################################################################################
 
