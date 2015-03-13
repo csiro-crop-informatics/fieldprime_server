@@ -1104,85 +1104,6 @@ def hackyPhotoFileName(sess, ti, d):
     return fname
 
 
-@app.route('/OLDscoreSet/<traitInstanceId>/', methods=['GET'])
-@dec_check_session()
-def urlOLDScoreSetTraitInstance(sess, traitInstanceId):
-#-------------------------------------------------------------------------------
-# Display the data for specified trait instance.
-# NB deleted data are shown (crossed out), not just the latest for each node.
-# MFK this should probably display RepSets, not individual TIs
-#
-    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    typ = ti.trait.type
-    name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
-    data = ti.getData()
-
-    # Show name and some stats:
-    r = ''
-    r += "<h2>Score Set: {0}</h2>".format(name)
-    numDeleted = 0
-    numNA = 0
-    numScoredNodes = 0
-    isNumeric = (typ == T_INTEGER or typ == T_DECIMAL)
-    numSum = 0
-    for idx, d in enumerate(data):
-        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
-        if overWritten:
-            numDeleted += 1
-        else:
-            numScoredNodes += 1
-            if d.isNA():
-                numNA += 1
-            elif isNumeric:
-                numSum += d.getValue()
-    r += '<br>Number of scored nodes: {0} (including {1} NAs)'.format(numScoredNodes, numNA)
-    r += '<br>Number of overwritten scores: {0}'.format(numDeleted)
-    numValues = numScoredNodes - numNA
-    if isNumeric and numValues > 0:
-        r += '<br>Mean value: {0:.2f}'.format(numSum / numValues)
-
-    #r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
-
-    # For photo score sets add button to download photos as zip file:
-    if typ == T_PHOTO:
-        r += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
-                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
-         + "<button>Download Photos as Zip file</button></a>"
-         + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
-
-    #
-    # Data table:
-    #
-    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
-    rows = []
-    for idx, d in enumerate(data):
-        # Is this an overwritten datum?
-        overWritten = idx > 0 and data[idx-1].node_id == data[idx].node_id
-
-        # Special case for photos. Display a link to show the photo.
-        # Perhaps this should be done in Datum.getValue, but we don't have all info.
-        if typ == T_PHOTO:
-            if d.isNA():
-                value = 'NA'
-            else:
-#               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
-                fname = hackyPhotoFileName(sess, ti, d)
-                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
-        else:
-            value = d.getValue()
-        rows.append([d.node.id, d.node.row, d.node.col,
-                     value if not overWritten else ('<del>' + str(value) + '</del>'),
-                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
-    r += fpUtil.htmlDatatableByRow(hdrs, rows)
-
-    # Boxplot after table:
-    if isNumeric and numValues > 0:
-        r += '<h3>Boxplot:</h3>'
-        r += stats.htmlBoxplot(data)
-
-    return dp.dataPage(sess, content=r, title='Score Set Data', trialId=ti.trial_id)
-
-
 def htmlNumericScoreSetStats(data):
 #--------------------------------------------------------------------------
 # Return some html stats/charts for numeric data, which is assumed to have
@@ -1190,7 +1111,7 @@ def htmlNumericScoreSetStats(data):
 # in global var fplib.tmpScoredata. This function just for neatness, really
 # just part of urlScoreSetTraitInstance.
 #
-    oStats = ''
+    oStats = '' #<button type="button" onclick=fplib.stuff()>Click me</button>'
     oStats += '''
     <script>
     $(document).ready(function() {
@@ -1273,6 +1194,34 @@ def htmlNumericScoreSetStats(data):
     </script>
     ''' % (width, height, width, height)
     oStats += d3hist
+
+    scatters = '''
+    <h3>Scatter Plots:</h3>
+    <div id="scatter_div" style="width: %dpx; height: %dpx;"></div>
+    <script>
+    function scatterPlot () {
+        var url = this.value;
+        // go get the data:
+        fplib.goGetSomeData(url);
+    };
+    $(document).ready(function() {
+        var sdiv = document.getElementById("scatter_div");
+        var atts = fplib.tmpScoredata.atts;
+        var attSelect = document.createElement("select");
+        attSelect.onchange = scatterPlot;
+        sdiv.appendChild(attSelect);
+        for (var i=0; i<atts.length; ++i) {
+            if (atts[i].datatype === 0 || atts[i].datatype === 1) { // restrict to numeric
+                var option = document.createElement("option");
+                option.text = atts[i].name;
+                option.value = atts[i].url;
+                attSelect.appendChild(option);
+            }
+        }
+    });
+    </script>
+    '''
+    oStats += scatters
     return oStats
 
 
@@ -1325,8 +1274,16 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                      value if not overWritten else ('<del>' + str(value) + '</del>'),
                      d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
 
+    # Make list of urls for trial attributes:  MFK we should put urls for traitInstances as well
+    nodeAtts = []
+    for nat in ti.trial.nodeAttributes:
+        nodeAtts.append(
+            {"name":nat.name,
+             "url":url_for('webRest.urlAttributeData', projectName=sess.getProjectName(), attId=nat.id),
+             "datatype":nat.datatype})
+
     # Embed the data as JSON in the page (with id "ssdata"):
-    jtable = {"headers":hdrs, "rows":rows}
+    jtable = {"headers":hdrs, "rows":rows, "atts":nodeAtts}
     dtab = '''<script type="application/json" id="ssdata">
     {0}
     </script>'''.format(json.dumps(jtable))

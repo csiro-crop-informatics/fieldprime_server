@@ -5,6 +5,21 @@
  */
 var fplib = {};
 
+fplib.goGetSomeData = function (url, sfunc) {
+    if (sfunc === undefined)
+        sfunc = function(data) {
+            fplib.msg("success:" + JSON.stringify(data));
+        };
+
+    $.ajax({
+        url:url,
+        dataType:"json",
+        method:"GET",
+        error:function (jqXHR, textStatus, errorThrown){fplib.msg("error:"+jqXHR.responseText);},
+        success:sfunc
+    });
+};
+
 // this not used
 fplib.setWrapperWidth = function (elementId) {
     var setWidthTo = Math.round($(".header").width() - 40);
@@ -325,7 +340,7 @@ fplib.extrasSubmit = function(event) {
 
 fplib.msg = function (msg) {
     alert(msg);
-}
+};
 
 /*
  * setDirty()
