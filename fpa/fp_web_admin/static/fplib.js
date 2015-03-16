@@ -5,19 +5,151 @@
  */
 var fplib = {};
 
-fplib.goGetSomeData = function (url, sfunc) {
+
+/*
+ * getUrlData
+ *
+ */
+fplib.getUrlData = function (url, sfunc) {
+    var cacheDataName = 'tmp_url_' + url;
+    var inCache = fplib.hasOwnProperty(cacheDataName);
+
     if (sfunc === undefined)
         sfunc = function(data) {
             fplib.msg("success:" + JSON.stringify(data));
         };
 
-    $.ajax({
-        url:url,
-        dataType:"json",
-        method:"GET",
-        error:function (jqXHR, textStatus, errorThrown){fplib.msg("error:"+jqXHR.responseText);},
-        success:sfunc
-    });
+    // See if data is already got:
+    if (fplib.hasOwnProperty(cacheDataName)) {
+        fplib.msg('got already');
+        sfunc(fplib[cacheDataName]);
+    }
+    else {
+        fplib.msg('will have to get');
+        $.ajax({
+            url:url,
+            dataType:"json",
+            method:"GET",
+            error:function (jqXHR, textStatus, errorThrown) {
+                fplib.msg("error:"+jqXHR.responseText);
+            },
+            success:function (data, textStatus, jqXHR) {
+                fplib[cacheDataName] = data;
+                sfunc(data);
+            }
+        });
+    }
+};
+
+/*
+ * drawScatterPlot()
+ * xdata and ydata are arrays of 2 element arrays - [<nodeId>, <value>];
+ * These are assumed to both be sorted by <nodeId>.
+ */
+fplib.drawScatterPlot = function(xdata, ydata, divId, divWidth, divHeight) {
+    fplib.msg(JSON.stringify(xdata));
+    fplib.msg(JSON.stringify(ydata));
+
+    /*
+     * Style the div - should this be scoped?:
+     */
+    var style = document.createElement("style");
+    var styleText = document.createTextNode(
+        '#' + divId + ' { font: 10px sans-serif; }' +
+        '.bar rect {fill: steelblue; shape-rendering: crispEdges;}' +
+        '.bar text { fill: #fff; }' +
+        '.axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }'
+    );
+    style.appendChild(styleText);
+    document.getElementById(divId).appendChild(style);
+
+    // Construct list of pairs to show. I.e. pairs with both and x and y value for given nodeId:
+    var points = [];
+    var done = false;
+    var xindex = 0;
+    var yindex = 0; // what if empty?
+    var xlen = xdata.length;
+    var ylen = ydata.length;
+    while (not done) {
+        var xnode = xdata[xindex][0];
+        var ynode = ydata[yindex][0];
+
+        if (xnode == ynode) {
+            points.append([xdata[xindex][1] === ydata[yindex][1]]);
+            ++xindex;  // but what if there's multiple with same node id?
+            hey
+            ++yindex;
+        } else if (xnode < ynode) {
+            ++xindex;
+        } else {
+            ++yindex;
+        }
+        if (yindex === ylen || xindex === xlen)
+            break;
+    }
+    if (points.length <= 0)
+        return;  // No points to draw
+
+    /*
+     * Make the hist:
+     */
+    var values = fplib.tmpScoredata.values;
+    var margin = {top: 10, right: 30, bottom: 30, left: 30},
+        width = divWidth - margin.left - margin.right,
+        height = divHeight - margin.top - margin.bottom;
+
+    // temp scale to get the recommended ticks:
+    var binTicks = d3.scale.linear()
+        .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+        .range([0, width])
+      .ticks(20);
+
+    var xsc = d3.scale.linear()
+        .domain([binTicks[0], binTicks[binTicks.length-1]])
+        .range([0, width]);
+
+    // Generate a histogram using twenty uniformly-spaced bins.
+    var data = d3.layout.histogram()
+        .bins(binTicks)
+        (values);
+
+    var ysc = d3.scale.linear()
+        .domain([0, d3.max(data, function(d) { return d.y; })])
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(xsc)
+        .orient("bottom");
+
+    var svg = d3.select("#" + divId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var bar = svg.selectAll(".bar")
+        .data(data)
+      .enter().append("g")
+        .attr("class", "bar")
+        .attr("transform", function(d) { return "translate(" + xsc(d.x) + "," + ysc(d.y) + ")"; });
+
+    bar.append("rect")
+        .attr("x", 1)
+        .attr("width", xsc(data[0].x + data[0].dx) - 1)
+        .attr("height", function(d) { return height - ysc(d.y); });
+
+    var formatCount = d3.format(",.0f"); // counts format function
+    bar.append("text")
+        .attr("dy", ".75em")
+        .attr("y", 6)
+        .attr("x", xsc(data[0].x + data[0].dx) / 2)
+        .attr("text-anchor", "middle")
+        .text(function(d) { return formatCount(d.y); });
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
 };
 
 // this not used
@@ -111,14 +243,13 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
      */
     var style = document.createElement("style");
     var styleText = document.createTextNode(
-        '#hist_div { font: 10px sans-serif; }' +
+        '#' + divId + ' { font: 10px sans-serif; }' +
         '.bar rect {fill: steelblue; shape-rendering: crispEdges;}' +
         '.bar text { fill: #fff; }' +
         '.axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }'
     );
     style.appendChild(styleText);
-    var histDiv = document.getElementById(divId);
-    histDiv.appendChild(style);
+    document.getElementById(divId).appendChild(style);
 
     /*
      * Make the hist:

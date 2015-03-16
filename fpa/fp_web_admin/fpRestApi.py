@@ -45,8 +45,9 @@ def urlDataSlice(sess, projectName, trialId, tiId):
 def urlAttributeData(sess, projectName, attId):
 #---------------------------------------------------------------------------------
 # Return nodeId:attValue pairs
+# These are sorted by node_id.
     natt = models.getAttribute(sess.db(), attId)
-    vals = natt.getValues()
+    vals = natt.getAttributeValues()
     data = []
     for av in vals:
         data.append([av.node_id, av.value])

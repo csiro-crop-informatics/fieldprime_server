@@ -526,8 +526,13 @@ class NodeAttribute(DeclarativeBase):
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
 
-    def getValues(self):
-        return dbc(self).query(AttributeValue).filter(AttributeValue.nodeAttribute_id == self.id).all()
+    def getAttributeValues(self):
+    #----------------------------------------------------
+    # Return the AttributeValues, sorted by node Id
+        return dbc(self).query(AttributeValue) \
+            .filter(AttributeValue.nodeAttribute_id == self.id) \
+            .order_by(AttributeValue.node_id.asc()) \
+            .all()
 
 
 class System(DeclarativeBase):

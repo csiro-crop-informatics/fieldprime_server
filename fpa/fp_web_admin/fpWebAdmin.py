@@ -876,7 +876,7 @@ def urlAttributeDisplay(sess, trialId, attId):
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
     r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
     r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format("fpNodeId", "Row", "Column", "Value")
-    aVals = tua.getValues()
+    aVals = tua.getAttributeValues()
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(av.node.id, av.node.row, av.node.col, av.value)
     r += "</table>"
@@ -1117,6 +1117,7 @@ def htmlNumericScoreSetStats(data):
     $(document).ready(function() {
         // Get array of the non-NA values, and get some stats.
         var values = [];
+        var valsWithNodeIds = []; // store vals with node ids, some redundancy with values array.
         var rows = fplib.tmpScoredata.rows;
         var min, max;
         var count=0, sum=0;
@@ -1124,6 +1125,7 @@ def htmlNumericScoreSetStats(data):
             var val = rows[i][3];
             if (typeof val === 'number') {
                 values.push(val);
+                valsWithNodeIds.push([rows[i][0], val]);
                 if (min === undefined || val < min) min = val;
                 if (max === undefined || val > max) max = val;
                 sum += val;
@@ -1131,6 +1133,7 @@ def htmlNumericScoreSetStats(data):
             }
         }
         fplib.tmpScoredata.values = values;
+        fplib.tmpScoredata.valsWithNodeIds = valsWithNodeIds;
         fplib.tmpScoredata.min = min;
         fplib.tmpScoredata.max = max;
 
@@ -1153,35 +1156,6 @@ def htmlNumericScoreSetStats(data):
     width = 900
     height = 500
 
-    if False:
-        # googleHistogram:
-        googleHistogram = ''
-        googleHistogram += '''
-        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-        <script type="text/javascript">
-            google.load('visualization', '1.0', {'packages':['corechart']});
-            function drawGHistogram() {
-              var md = [];
-              var rows = fplib.tmpScoredata.rows;
-              for (var i = 0; i<rows.length; ++i) {
-                  var val = rows[i][3];
-                  if (typeof val === 'number')
-                      md.push([rows[i][3]]);
-              }
-              var vdata = google.visualization.arrayToDataTable(md, true);
-              //var vdata = google.visualization.arrayToDataTable(fplib.tmpScoredata.values, true);
-              var options = {title: 'Histogram', legend: { position: 'none' }, enableInteractivity:false};
-              var chart = new google.visualization.Histogram(document.getElementById('ghist_div'));
-              chart.draw(vdata, options);
-            }
-            $(document).ready(function() {
-                drawGHistogram();
-            });
-        </script>
-        <div id="ghist_div" style="width: %dpx; height: %dpx;"></div>
-        ''' % (width, height)
-        oStats += googleHistogram
-
     # D3 histogram MFK - note use of non standard CDN - could store library locally instead.
     d3hist = '''
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
@@ -1202,7 +1176,9 @@ def htmlNumericScoreSetStats(data):
     function scatterPlot () {
         var url = this.value;
         // go get the data:
-        fplib.goGetSomeData(url);
+        fplib.getUrlData(url, function (data) {
+            fplib.drawScatterPlot(fplib.tmpScoredata.valsWithNodeIds, data, 'scatter_div', %d, %d);
+        });
     };
     $(document).ready(function() {
         var sdiv = document.getElementById("scatter_div");
@@ -1220,7 +1196,7 @@ def htmlNumericScoreSetStats(data):
         }
     });
     </script>
-    '''
+    ''' % (width, height, width, height)
     oStats += scatters
     return oStats
 
