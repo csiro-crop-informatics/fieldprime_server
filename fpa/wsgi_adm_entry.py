@@ -25,6 +25,9 @@ if fpdown:
         start_response(status, response_headers)
         return [output]
 else:
+    if False:    # For testing at a different location to the main one (WSGIPythonPath) configured in apache.
+        import sys
+        sys.path.insert(0, '***REMOVED***/fptest/fpa')
     from fp_web_admin import app as application
     from fp_common import util
     application.config['SESS_FILE_DIR'] =  '***REMOVED***/fpa/wsessions'
