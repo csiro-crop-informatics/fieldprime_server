@@ -1104,7 +1104,7 @@ def hackyPhotoFileName(sess, ti, d):
     return fname
 
 
-def htmlNumericScoreSetStats(data):
+def htmlNumericScoreSetStats(data, name):
 #--------------------------------------------------------------------------
 # Return some html stats/charts for numeric data, which is assumed to have
 # at least one non-NA value. In JS context we are assuming the data is available
@@ -1142,7 +1142,7 @@ def htmlNumericScoreSetStats(data):
         statsDiv.appendChild(document.createElement("br"));
         statsDiv.appendChild(document.createTextNode("Min value: " + min));
         statsDiv.appendChild(document.createElement("br"));
-        statsDiv.appendChild(document.createTextNode("Mean value: " + parseFloat(max).toFixed(2)));
+        statsDiv.appendChild(document.createTextNode("Max value: " + parseFloat(max).toFixed(2)));
 
     });
     </script>
@@ -1170,18 +1170,23 @@ def htmlNumericScoreSetStats(data):
     oStats += d3hist
 
     scatters = '''
-    <h3>Scatter Plots:</h3>
-    <div id="scatter_div" style="width: %dpx; height: %dpx;"></div>
+    <div id=scatterPlotWrapper>
+    <h3>Scatter Plot:</h3>
+    ''' + '''<div id="scatter_div" style="width: %dpx; height: %dpx;"></div>''' % (width, height+20) + '''
     <script>
     function scatterPlot () {
         var url = this.value;
+        var yname = this.options[this.selectedIndex].text;
         // go get the data:
         fplib.getUrlData(url, function (data) {
-            fplib.drawScatterPlot(fplib.tmpScoredata.valsWithNodeIds, data, 'scatter_div', %d, %d);
+            fplib.drawScatterPlot(fplib.tmpScoredata.valsWithNodeIds, '%s', data, yname, 'scatter_div', %d, %d);
         });
-    };
+    };''' % (name, width, height) + '''
     $(document).ready(function() {
         var sdiv = document.getElementById("scatter_div");
+        ''' + "sdiv.appendChild(document.createTextNode('X Axis:\u00a0' + '%s'));" % (name) + '''
+        sdiv.appendChild(document.createElement('br'));
+        sdiv.appendChild(document.createTextNode("Y Axis:\u00a0"));
         var atts = fplib.tmpScoredata.atts;
         var attSelect = document.createElement("select");
         attSelect.onchange = scatterPlot;
@@ -1196,7 +1201,8 @@ def htmlNumericScoreSetStats(data):
         }
     });
     </script>
-    ''' % (width, height, width, height)
+    </div>
+    '''
     oStats += scatters
     return oStats
 
@@ -1299,7 +1305,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     oStats = fpUtil.htmlDiv(statsText, 'statsText')
 
     if isNumeric and numValues > 0:
-        oStats += htmlNumericScoreSetStats(data)
+        oStats += htmlNumericScoreSetStats(data, name)
 
     #
     out += fpUtil.htmlFieldset(fpUtil.htmlDiv(oStats, "statsDiv"), 'Statistics:')

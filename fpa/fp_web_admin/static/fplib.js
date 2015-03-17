@@ -21,11 +21,9 @@ fplib.getUrlData = function (url, sfunc) {
 
     // See if data is already got:
     if (fplib.hasOwnProperty(cacheDataName)) {
-        fplib.msg('got already');
         sfunc(fplib[cacheDataName]);
     }
     else {
-        fplib.msg('will have to get');
         $.ajax({
             url:url,
             dataType:"json",
@@ -43,41 +41,53 @@ fplib.getUrlData = function (url, sfunc) {
 
 /*
  * drawScatterPlot()
- * xdata and ydata are arrays of 2 element arrays - [<nodeId>, <value>];
- * These are assumed to both be sorted by <nodeId>.
+ * xdata and ydata are arrays of 2 element arrays - [<nodeId>, <value>],
+ * with names xname and yname. These are assumed to both be sorted by <nodeId>.
+ * divId, divWidth, divHeight specified the id and dimensions of a div
+ * to draw the plot in.
  */
-fplib.drawScatterPlot = function(xdata, ydata, divId, divWidth, divHeight) {
-    fplib.msg(JSON.stringify(xdata));
-    fplib.msg(JSON.stringify(ydata));
+fplib.drawScatterPlot = function(xdata, xname, ydata, yname, divId, divWidth, divHeight) {
+    // Clear the svg element from the div, since we want to replace it:
+    var theDiv = document.getElementById(divId);
+    var svgChild = theDiv.querySelector('svg');
+    if (svgChild !== null)
+        theDiv.removeChild(svgChild);
 
     /*
      * Style the div - should this be scoped?:
      */
     var style = document.createElement("style");
     var styleText = document.createTextNode(
-        '#' + divId + ' { font: 10px sans-serif; }' +
-        '.bar rect {fill: steelblue; shape-rendering: crispEdges;}' +
+        //'#' + divId + ' { font: 10px sans-serif; }' +
+        '#splotSvgId' + ' { font: 10px sans-serif; }' +
         '.bar text { fill: #fff; }' +
-        '.axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }'
+        '.axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }' +
+        '.dot { stroke:#000; }' +
+        '.tooltip {position:absolute;  width: 200px;  height: 28px;  pointer-events: none;}'
     );
     style.appendChild(styleText);
-    document.getElementById(divId).appendChild(style);
+    theDiv.appendChild(style);
 
-    // Construct list of pairs to show. I.e. pairs with both and x and y value for given nodeId:
+    /*
+     * Construct list of points to show. I.e. pairs with both and x and y value for given nodeId.
+     * Array point has object element with nodeId, x, and y properties.
+     */
     var points = [];
-    var done = false;
     var xindex = 0;
     var yindex = 0; // what if empty?
     var xlen = xdata.length;
     var ylen = ydata.length;
-    while (not done) {
+    while (true) {
         var xnode = xdata[xindex][0];
         var ynode = ydata[yindex][0];
-
         if (xnode == ynode) {
-            points.append([xdata[xindex][1] === ydata[yindex][1]]);
-            ++xindex;  // but what if there's multiple with same node id?
-            hey
+            points.push({"nodeId":xnode, "x":+xdata[xindex][1], "y":+ydata[yindex][1]});
+            // Move on:
+            // but what if there's multiple with same node id? take first, hope ordered?
+            // Or do cross product?
+            // With this code there will be min(x,y) points created for x xdata and y ydata
+            // point for a given node.
+            ++xindex;
             ++yindex;
         } else if (xnode < ynode) {
             ++xindex;
@@ -91,65 +101,95 @@ fplib.drawScatterPlot = function(xdata, ydata, divId, divWidth, divHeight) {
         return;  // No points to draw
 
     /*
-     * Make the hist:
+     * Make the scatterplot:
      */
-    var values = fplib.tmpScoredata.values;
-    var margin = {top: 10, right: 30, bottom: 30, left: 30},
+    var margin = {top: 20, right: 20, bottom: 30, left: 40},
         width = divWidth - margin.left - margin.right,
         height = divHeight - margin.top - margin.bottom;
 
-    // temp scale to get the recommended ticks:
-    var binTicks = d3.scale.linear()
-        .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
-        .range([0, width])
-      .ticks(20);
+    var nodeIdFromPoint = function(d){ return d.nodeId; };
 
-    var xsc = d3.scale.linear()
-        .domain([binTicks[0], binTicks[binTicks.length-1]])
+    // x stuff:
+    var xValue = function(d){ return d.x; };
+    var xScale = d3.scale.linear()
+        .domain([d3.min(points, xValue)-1, d3.max(points, xValue)+1])
         .range([0, width]);
+    var xMap = function(d) { return xScale(xValue(d));};
+    var xAxis = d3.svg.axis().scale(xScale).orient('bottom');
 
-    // Generate a histogram using twenty uniformly-spaced bins.
-    var data = d3.layout.histogram()
-        .bins(binTicks)
-        (values);
-
-    var ysc = d3.scale.linear()
-        .domain([0, d3.max(data, function(d) { return d.y; })])
+    // y stuff:
+    var yValue = function(d){ return d.y; };
+    var yScale = d3.scale.linear()
+        .domain([d3.min(points, yValue)-1, d3.max(points, yValue)+1])
         .range([height, 0]);
+    var yMap = function(d) { return yScale(yValue(d));};
+    var yAxis = d3.svg.axis().scale(yScale).orient('left');
 
-    var xAxis = d3.svg.axis()
-        .scale(xsc)
-        .orient("bottom");
-
+    // Add svn canvas to div:
     var svg = d3.select("#" + divId).append("svg")
+        .attr("id", "splotSvgId")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
       .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    var bar = svg.selectAll(".bar")
-        .data(data)
-      .enter().append("g")
-        .attr("class", "bar")
-        .attr("transform", function(d) { return "translate(" + xsc(d.x) + "," + ysc(d.y) + ")"; });
+    // add the tooltip area to the webpage
+    var tooltip = d3.select("#" + divId).append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
-    bar.append("rect")
-        .attr("x", 1)
-        .attr("width", xsc(data[0].x + data[0].dx) - 1)
-        .attr("height", function(d) { return height - ysc(d.y); });
-
-    var formatCount = d3.format(",.0f"); // counts format function
-    bar.append("text")
-        .attr("dy", ".75em")
-        .attr("y", 6)
-        .attr("x", xsc(data[0].x + data[0].dx) / 2)
-        .attr("text-anchor", "middle")
-        .text(function(d) { return formatCount(d.y); });
+    // x-axis
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
-        .call(xAxis);
+        .call(xAxis)
+      .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", -6)
+        .style("text-anchor", "end")
+        .text(xname);
 
+    // y-axis
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("class", "label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text(yname);
+
+  // draw dots
+  svg.selectAll(".dot")
+      .data(points)
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("r", 3.5)
+      .attr("cx", xMap)
+      .attr("cy", yMap)
+      .style("fill", "purple")
+
+      //.style("fill", function(d) { return color(cValue(d));})
+
+      .on("mouseover", function(d) {
+          tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html("NodeId:" + nodeIdFromPoint(d) + "<br/> (" + xValue(d)
+            + ", " + yValue(d) + ")")
+               .style("left", (d3.event.pageX + 5) + "px")
+               .style("top", (d3.event.pageY - 28) + "px");
+      })
+      .on("mouseout", function(d) {
+          tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+      })
+
+      ;
 };
 
 // this not used
