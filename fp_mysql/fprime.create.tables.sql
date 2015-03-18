@@ -172,7 +172,7 @@ create table attributeValue(
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)
---
+-- MFK - add project_id?
 create table trait(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   caption     VARCHAR(63) NOT NULL,
