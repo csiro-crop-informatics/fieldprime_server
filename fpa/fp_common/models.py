@@ -526,6 +526,10 @@ class NodeAttribute(DeclarativeBase):
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
 
+    def __init__(self, name, trial_id):
+        self.name = name
+        self.trial_id = id
+
     def getAttributeValues(self):
     #----------------------------------------------------
     # Return the AttributeValues, sorted by node Id

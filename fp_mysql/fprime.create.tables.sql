@@ -37,7 +37,7 @@ create table trial(
   site     text,
   year     text,
   acronym  text
-  foreign key(project_id) references project(id)
+  foreign key(project_id) references project(id) on delete cascade
 );
 
 --
@@ -172,18 +172,15 @@ create table attributeValue(
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)
--- MFK - add project_id?
+--
 create table trait(
   id          INT PRIMARY KEY AUTO_INCREMENT,
+  project_id  int
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
   type        INT NOT NULL,
-  sysType     INT NOT NULL
--- The following are no longer used, I think:
---  tid         text,
---  unit        text,
---  min         decimal,
---  max         decimal,
+  sysType     INT NOT NULL,
+  foreign key(project_id) references project(id) on delete cascade
 );
 
 

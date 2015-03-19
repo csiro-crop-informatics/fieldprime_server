@@ -9,7 +9,6 @@
 
 import sys, os, traceback
 import sqlalchemy
-from fp_common.models import  NodeAttribute, AttributeValue
 import fp_common.models as models
 
 #
@@ -154,18 +153,16 @@ def updateTrialFile(sess, trialCsv, trl):
         currAtts = trl.nodeAttributes
         nodeAtts = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
-        for at in attIndex.keys():
+        for attName in attIndex.keys():
             # Does this attribute already exist?
             nodeAtt = None
             for cat in currAtts:
-                if cat.name.upper() == at.upper():
+                if cat.name.upper() == attName.upper():
                     nodeAtt = cat
                     break
             attExists.append(nodeAtt is not None)
             if nodeAtt is None:
-                nodeAtt = NodeAttribute()
-                nodeAtt.trial_id = trl.id
-                nodeAtt.name = at
+                nodeAtt = models.NodeAttribute(attName, trl.id)
                 dbSess.add(nodeAtt)
             nodeAtts.append(nodeAtt)
     except sqlalchemy.exc.SQLAlchemyError as e:
@@ -211,7 +208,7 @@ def updateTrialFile(sess, trialCsv, trl):
                 # Create new attributeValue if necessary:
                 if av is None:
                     # Set up new attribute value:
-                    av = AttributeValue()
+                    av = models.AttributeValue()
                     av.nodeAttribute = nodeAtt
                     av.node = node
                     dbSess.add(av)
