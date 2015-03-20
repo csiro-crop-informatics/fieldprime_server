@@ -21,9 +21,11 @@ create table system(
 --
 create table project(
   id           int primary key auto_increment,
+  up_id        int,
   name         varchar(63) unique not null,
   contactName  text,
-  contactEmail text
+  contactEmail text,
+  foreign key (up_id) references project(id)
 );
 
 
@@ -34,9 +36,9 @@ create table trial(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   name        VARCHAR(63) UNIQUE NOT NULL,
   project_id  int,
-  site     text,
-  year     text,
-  acronym  text
+  site        text,
+  year        text,
+  acronym     text
   foreign key(project_id) references project(id) on delete cascade
 );
 

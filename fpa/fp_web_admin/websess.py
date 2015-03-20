@@ -75,14 +75,21 @@ class WebSess(object):
     #------------------------------------------------------------------
         return float(time.time() - float(self.data.get('lastvisit')))
 
-    def setProject(self, project, access):
+    def setProject(self, project, dbname, access):
     #------------------------------------------------------------------
         self.data['projectName'] = project
+        self.data['dbname'] = dbname
         self.data['projectAccess'] = access
+        if hasattr(self, 'mDBsess'):
+            del(self.mDBsess)
 
     def getProjectName(self):
     #------------------------------------------------------------------
         return self.data.get('projectName')
+
+    def getDbName(self):
+    #------------------------------------------------------------------
+        return self.data.get('dbname')
 
     def getProjectAccess(self):
     #------------------------------------------------------------------
@@ -120,6 +127,6 @@ class WebSess(object):
     #------------------------------------------------------------------
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
         if not hasattr(self, 'mDBsess'):
-            self.mDBsess = models.getSysUserEngine(self.getProjectName())
+            self.mDBsess = models.getDbConnection(self.getDbName())
         return self.mDBsess
 

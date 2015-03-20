@@ -718,6 +718,15 @@ def getSysUserEngine(targetUser):
     dbsess = Session()
     return dbsess
 
+def getDbConnection(dbname):
+#-----------------------------------------------------------------------
+# This should be called once only and the result stored,
+# currently done in session module.
+#
+    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
+    Session = sessionmaker(bind=engine)
+    dbsess = Session()
+    return dbsess
 
 # This should use alchemy and return connection
 def dbConnectAndAuthenticate(username, password):

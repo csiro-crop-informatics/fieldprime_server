@@ -962,7 +962,7 @@ def urlUsersPost(sess, projectName):
     newUsers = userData.get('create')
     if newUsers is not None:
         for user, perms in newUsers.iteritems():
-            errmsg = fpsys.createUser(user, sess.getProjectName(), perms)
+            errmsg = fpsys.addUserToProject(user, sess.getProjectName(), perms)
             if errmsg is not None:
                 errMsgs.append(('create', user, errmsg))
     updateUsers = userData.get('update')
@@ -1396,12 +1396,14 @@ def urlProject(sess, project):
         elif not projList:
             return badJuju(sess, 'Unexpected project')
         else:
-            if project in projList:
-                # All checks passed, set the project as specified:
-                sess.setProject(project, projList[project])
-            else:
-                return badJuju(sess, 'no access to project')
-    return FrontPage(sess)
+            for prj in projList:
+                if prj.projectName == project:
+                    # All checks passed, set the project as specified:
+                    sess.setProject(prj.projectName, prj.dbname, prj.access)
+                    return FrontPage(sess)
+            # No access to this project - bad user!
+            return badJuju(sess, 'no access to project')
+
 
 @app.route('/logout', methods=["GET"])
 @dec_check_session()
@@ -1532,10 +1534,12 @@ def urlMain():
             #
             project = None    # For either login type we need to set a project
             access = None
+            dbname = None
             loginType = None
             if systemPasswordCheck(username, password):
                 project = username
                 access = websess.PROJECT_ACCESS_ALL
+                dbname = models.dbName4Project(project)
                 loginType = LOGIN_TYPE_SYSTEM
             elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
                 # For ***REMOVED*** check, we should perhaps first check in a system database
@@ -1549,8 +1553,9 @@ def urlMain():
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
                 else:
-                    project = projList.keys()[0]  # Select any project
-                    access = projList[project]
+                    project = projList[0].projectName  # Select any project
+                    access = projList[0].access
+                    dbname = projList[0].dbname
             else:
                 util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
@@ -1560,7 +1565,7 @@ def urlMain():
                 util.fpLog(app, 'Login from user {0}'.format(username))
                 sess.resetLastUseTime()
                 sess.setUser(username)
-                sess.setProject(project, access)
+                sess.setProject(project, dbname, access)
                 sess.setLoginType(loginType)
                 g.userName = username
                 g.projectName = project
