@@ -87,6 +87,11 @@ class WebSess(object):
     #------------------------------------------------------------------
         return self.data.get('projectName')
 
+    def getProject(self):
+    #------------------------------------------------------------------
+    # Return project object, or None.
+        return models.getProjectByName(self.data.get('projectName'))
+
     def getDbName(self):
     #------------------------------------------------------------------
         return self.data.get('dbname')

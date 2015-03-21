@@ -72,7 +72,8 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '</div><div style="clear:both"></div>'
 
-    trials = models.getTrialList(sess.db())
+    trials = sess.getProject().trials
+    #trials = models.getTrialList(sess.db())
     trialListHtml = None if len(trials) < 1 else ""
     for t in trials:
         if "{}".format(t.id) == "{}".format(trialId):
@@ -86,7 +87,6 @@ def dataNavigationContent(sess, trialId):
         nc += trialListHtml
         nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
     return nc
-
 
 
 def dataPage(sess, title, content, trialId=None):

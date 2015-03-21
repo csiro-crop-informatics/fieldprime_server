@@ -302,6 +302,21 @@ class ScoreSet():
         return self.instances
 
 
+class Project(DeclarativeBase):
+    __tablename__ = 'project'
+    __table_args__ = {}
+
+    #column definitions:
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    up_id = Column('up_id', INTEGER(), ForeignKey('project.id'))
+    name = Column(u'name', VARCHAR(length=63), nullable=False)
+    contactName = Column(u'contactName', TEXT())
+    contactEmail = Column(u'contactEmail', TEXT())
+
+    #relation definitions:
+    trials = relationship('Trial')
+
+
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
     __table_args__ = {}
@@ -309,6 +324,7 @@ class Trial(DeclarativeBase):
     #column definitions:
     acronym = Column(u'acronym', TEXT())
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
     name = Column(u'name', VARCHAR(length=63), nullable=False)
     site = Column(u'site', TEXT())
     year = Column(u'year', TEXT())
@@ -318,6 +334,7 @@ class Trial(DeclarativeBase):
     nodeAttributes = relationship('NodeAttribute')
     nodes = relationship('Node')
     trialProperties = relationship('TrialProperty')
+    project = relation('Project', primaryjoin='Trial.project_id==Project.id')
 
     @staticmethod
     def new(dbc, tname, tsite, tyear, tacro):
@@ -760,6 +777,18 @@ def getTrial(dbc, trialID):
 # Returns trial object with given id if found, else None.
     return dbc.query(Trial).filter(Trial.id == trialID).one()
 
+
+@oneException2None
+def getProject(dbc, projectId):
+#-----------------------------------------------------------------------
+# Returns project object with given id if found, else None.
+    return dbc.query(Project).filter(Project.id == projectId).one()
+
+@oneException2None
+def getProjectByName(dbc, projectName):
+#-----------------------------------------------------------------------
+# Returns project object with given name if found, else None.
+    return dbc.query(Project).filter(Project.name == projectName).one()
 
 @oneException2None
 def getTraitInstance(dbc, traitInstance_id):
