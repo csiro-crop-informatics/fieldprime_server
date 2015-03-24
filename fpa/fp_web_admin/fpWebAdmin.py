@@ -162,10 +162,10 @@ def htmlTrialTraitTable(trial):
         return "No traits configured"
     out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
     out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
-        "Caption", "Description", "Type", "Details")
+        "Caption", "Description", "DataType", "Details")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype])
         # Add "Detail" button:
         url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
         validateButton = fpUtil.htmlButtonLink2("Details", url)
@@ -316,7 +316,7 @@ def htmlTrialTraits(sess, trial):
     createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
-    sysTraits = dal.getSysTraits(sess.db())
+    sysTraits = sess.getProject().getSysTraits()
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
             if trt.id == st.id:
@@ -632,7 +632,7 @@ def getDataColumns(sess, trialId, tiList):
         # If trait type is categorical then the values will be numbers which should be
         # converted into names (via the traitCategory table), retrieve the map for the
         # trait first:
-        if ti.trait.type == T_CATEGORICAL:
+        if ti.trait.datatype == T_CATEGORICAL:
             catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
         else:
             catMap = None
@@ -640,7 +640,7 @@ def getDataColumns(sess, trialId, tiList):
         valList = []
         outList.append
         cur = con.cursor()
-        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.type)), (ti.id, trialId, ti.id))
+        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.datatype)), (ti.id, trialId, ti.id))
         for row in cur.fetchall():
             timestamp = row[1]
             if timestamp is None:          # no datum record case
@@ -1064,7 +1064,7 @@ def urlSystemTraits(sess, projectName):
 #
     if request.method == 'GET':
         # System Traits:
-        sysTraits = dal.getSysTraits(sess.db())
+        sysTraits = sess.getProject().getSysTraits()
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = fpUtil.htmlFieldset(
             fpUtil.htmlForm(sysTraitListHtml) +
@@ -1218,7 +1218,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 # MFK this should probably display RepSets, not individual TIs
 #
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    typ = ti.trait.type
+    typ = ti.trait.datatype
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
     out = ''
@@ -1316,7 +1316,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
 # Create zip archive of all the photos for the given traitInstance.
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    if ti.trait.type != T_PHOTO:
+    if ti.trait.datatype != T_PHOTO:
         return 'Not a photo trait'
     data = ti.getData(True)
     try:

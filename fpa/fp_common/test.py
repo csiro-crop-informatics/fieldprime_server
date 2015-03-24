@@ -8,8 +8,8 @@ def photoCheck(dbc, photodir):
     for tr in trials:
         tis = tr.getTraitInstances()
         for ti in tis:
-            if ti.trait.type == 5:
-                # print ti.trait.caption + ' type: ' + str(ti.trait.type)
+            if ti.trait.datatype == 5:
+                # print ti.trait.caption + ' type: ' + str(ti.trait.datatype)
                 data = ti.getData()
                 for dat in data:
                     tval = dat.txtValue
@@ -27,7 +27,7 @@ def photoCheck(dbc, photodir):
                             # Check if any _c* files present:
                             pat = fullPath[0:len(fullPath)-4] + '_c*.jpg'
                             matches = glob.glob(pat)
-                            
+
                             print '{0} -> {1}: {2} {3} cs'.format(tval, fullPath, 'Exists', len(matches))
                         else:
                             #

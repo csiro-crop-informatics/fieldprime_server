@@ -12,7 +12,7 @@ SYSTYPE_TRIAL = 0
 SYSTYPE_SYSTEM = 1;
 SYSTYPE_ADHOC = 2;
 
-# Names and values for trait type field:
+# Names and values for trait datatype field:
 T_INTEGER = 0
 T_DECIMAL = 1
 T_STRING = 2

@@ -29,7 +29,7 @@ def traitListHtmlTable(traitList):
     out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Caption", "Description", "Type")
     for trt in traitList:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype])
     out += "</table>"
     return out
 
@@ -66,13 +66,14 @@ def createNewTrait(sess,  trialId, request):
         ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
         ntrt.sysType = SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
-        sysTraits = models.getSysTraits(sess.db())
+        sysTraits = sess.getProject().getSysTraits()
+
         for x in sysTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
         ntrt.sysType = SYSTYPE_SYSTEM
 
-    ntrt.type = type
+    ntrt.datatype = type
     if min:
         ntrt.min = min
     if max:
@@ -82,9 +83,9 @@ def createNewTrait(sess,  trialId, request):
     dbsess.commit()   # Add the trait to the db (before trait specific stuff which may need id).
 
     # Trait type specific processing:
-    if int(ntrt.type) == T_CATEGORICAL:
+    if int(ntrt.datatype) == T_CATEGORICAL:
         _newTraitCategorical(sess, request, ntrt)
-    elif int(ntrt.type) == T_INTEGER:
+    elif int(ntrt.datatype) == T_INTEGER:
         pass
 
     dbsess.add(ntrt)
@@ -179,7 +180,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         ###
         formh = 'Trial: ' + trial.name
         formh += '<br>Trait: ' + trt.caption
-        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
+        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.datatype]
 
         formh += '<br><label>Description</label>' + \
             '<input type="text" size=96 name="description" value="{0}">'.format(trt.description)
@@ -198,7 +199,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         # Vars that may be set by trait specifics, to be included in output:
         preform = ''
         onsubmit = ''
-        if trt.type == T_CATEGORICAL:
+        if trt.datatype == T_CATEGORICAL:
             # Note the intended policy: Users may modify the caption or image of an existing
             # category, but not change the numeric value. They may add new categories.
             # The reasoning is that they should remove existing categories (as identified
@@ -235,7 +236,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 }} else alert('no SetTraitFormElements');
             }});</script>""".format(jsRecDec)
             formh += div + scrpt1 + scrpt2
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:
+        elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             # Make this a separate function to generate html form, so can be used from
@@ -341,7 +342,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             formh += '<br>Trait value should be ' + valOp + attListHtml
             preform = script
             onsubmit ='return validateTraitDetails()'
-        elif trt.type == T_STRING:
+        elif trt.datatype == T_STRING:
             tts = models.getTraitString(sess.db(), traitId, trialId)
             patText = "value='{0}'".format(tts.pattern) if tts is not None else ""
             formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
@@ -369,9 +370,9 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         #
         # Trait type specific stuff:
         #
-        if trt.type == T_CATEGORICAL:
+        if trt.datatype == T_CATEGORICAL:
             _newTraitCategorical(sess, request, trt)
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
+        elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL: # clone of above remove above when integer works with numeric
             op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
             if not re.match('[0-4]', op):
                 return "Invalid operation {0}".format(op) # should be some function to show error page..
@@ -398,7 +399,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
             if newTTN:
                 sess.db().add(ttn)
-        elif trt.type == T_STRING:
+        elif trt.datatype == T_STRING:
             newPat = request.form.get('pattern')
             tts = models.getTraitString(sess.db(), traitId, trialId)
             if len(newPat) == 0:

@@ -231,16 +231,13 @@ def get_trial(username, trl, dbc, token=None):
 
     # Traits:
     traitList = []
-    traitFieldNames = ['id', 'sysType', 'caption', 'description', 'type']
     for trt in trl.traits:
         jtrait = {}
         # Fields common to all traits:
-        # MFK : systype may no longer be relevant to client.
-        for fieldName in traitFieldNames:
-            val = getattr(trt, fieldName)
-            if val is not None:
-                jtrait[fieldName] = val
-
+        jtrait['id'] = trt.id
+        jtrait['caption'] = trt.caption
+        jtrait['description'] = trt.description
+        jtrait['type'] = trt.datatype     # MFK 'datatype' would be better
         jtrait['sysType'] = 0    # Hack forcing all traits on client to local (else problem with common upload url)
 
         # Add the uploadURL:
@@ -260,7 +257,7 @@ def get_trial(username, trl, dbc, token=None):
         #
 
         # Categorical traits:
-        if trt.type == T_CATEGORICAL:
+        if trt.datatype == T_CATEGORICAL:
             cats = []
             for cat in trt.categories:
                 oneCat = {}
@@ -270,14 +267,14 @@ def get_trial(username, trl, dbc, token=None):
             jtrait['categories'] = cats
 
         # Photo traits:
-        elif trt.type == T_PHOTO:
+        elif trt.datatype == T_PHOTO:
             jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
                                                traitid=trt.id, token=token, _external=True)
 
         # Numeric traits (integer and decimal):
         # Historical comment: Note hacked special case for 'min' and 'max'. These currently sql decimal types,
         # and they cause failure when converting to json for some reason, unless cast to float.
-        elif trt.type == T_DECIMAL or trt.type == T_INTEGER:
+        elif trt.datatype == T_DECIMAL or trt.datatype == T_INTEGER:
             # get the trialTraitNumeric object, and send the contents
             ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
             if ttn is not None:
@@ -298,7 +295,7 @@ def get_trial(username, trl, dbc, token=None):
                     jtrait['validation'] = val
 
         # Text (string) traits:
-        elif trt.type == T_STRING:
+        elif trt.datatype == T_STRING:
             tts = dal.getTraitString(dbc, trt.id, trl.id)
             if tts is not None:
                 val = {}
@@ -349,7 +346,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     # there may be versions of the app out there for a while that do require an empty
     # set to be created. So for the moment, we'll limit this to photo traits only,
     # and then remove that when we're confident all apps are updated:
-    if (aData is None or len(aData) <= 0) and dal.getTrait(dbc, traitid).type != T_PHOTO:
+    if (aData is None or len(aData) <= 0) and dal.getTrait(dbc, traitid).datatype != T_PHOTO:
         return Response('success')
     # Get/Create trait instance:
     dbTi = dal.getOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
@@ -360,7 +357,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     if aData is None or len(aData) <= 0:
         errMsg = None
     else:
-        errMsg = dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.type, aData)
+        errMsg = dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.datatype, aData)
 
     return (Response('success') if errMsg is None else Response(errMsg))
 
@@ -418,7 +415,7 @@ def upload_photo(username, trial, dbc, traitid, token):
         util.flog('upload_photo: 1')
         sentFilename = secure_filename(file.filename)
         # Old method, file name contains information, now not used, delete..
-        #select count(*) from trait t join traitInstance i on i.trait_id = t.id join datum d on d.traitInstance_id = i.id where t.type = 5;
+        #select count(*) from trait t join traitInstance i on i.trait_id = t.id join datum d on d.traitInstance_id = i.id where t.datatype = 5;
         #(nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
         util.flog('upload_photo: 2')
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeId), token, seqNum, sampNum)
@@ -450,7 +447,7 @@ def upload_photo(username, trial, dbc, traitid, token):
             dbTi = dal.getOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampNum, dayCreated, token)
             if dbTi is None:
                 return serverErrorResponse('Failed photo upload : no trait instance')
-            res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.type, nodeId, timestamp,
+            res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.datatype, nodeId, timestamp,
                                             userid, gpslat, gpslong, os.path.basename(fullPath))
             if res is None:
                 return Response('success')

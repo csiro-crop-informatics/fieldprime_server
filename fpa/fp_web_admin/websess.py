@@ -90,7 +90,11 @@ class WebSess(object):
     def getProject(self):
     #------------------------------------------------------------------
     # Return project object, or None.
-        return models.getProjectByName(self.data.get('projectName'))
+    # This is a handy function, but it may hide, in the calling code,
+    # a reference to the db (in that there is a reference in here,
+    # and this is not the models module. But it really is quite neat.
+    #
+        return models.getProjectByName(self.db(), self.data.get('projectName'))
 
     def getDbName(self):
     #------------------------------------------------------------------

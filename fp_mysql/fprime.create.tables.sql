@@ -169,20 +169,30 @@ create table attributeValue(
 --
 -- trait
 --
+-- Exactly one of project_id and trial_id must be non-null. Each trait
+-- belongs to either a trial or a project. Or perhaps, in the future,
+-- we could allow both project_id and trial_id to be null to indicate
+-- system wide traits that do not belong to any project.
+--
+--
+--
 -- future:
 -- change "type" to "datatype"
+-- These following perhaps more appropriate in trialTraitiew
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)
---
+-- sysType     INT NOT NULL,
 create table trait(
   id          INT PRIMARY KEY AUTO_INCREMENT,
-  project_id  int
+  project_id  int,
+  trial_id    int,
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
-  type        INT NOT NULL,
-  sysType     INT NOT NULL,
-  foreign key(project_id) references project(id) on delete cascade
+  datatype    INT NOT NULL,
+  foreign key(project_id) references project(id) on delete cascade,
+  foreign key(trial_id) references trial(id) on delete cascade,
+  unique (project_id, trial_id, caption)
 );
 
 

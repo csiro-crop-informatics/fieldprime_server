@@ -13,5 +13,11 @@ update project set contactName = (select value from system where name = 'contact
 update project set contactEmail = (select value from system where name = 'contactEmail');
 alter table trial add column project_id int;
 alter table trial add constraint foreign key (project_id) references project(id);
-update trial set project_id = 1;
+update trial set project_id = 2;
 
+alter table trait add column project_id int;
+alter table trait add constraint foreign key (project_id) references project(id);
+update trait set project_id = 2 where sysType = 1;
+
+
+alter table trait change type datatype int

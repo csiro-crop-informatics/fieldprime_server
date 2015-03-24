@@ -120,7 +120,7 @@ class Datum(DeclarativeBase):
     # Return a value, how the value is stored/represented is type specific.
     # NB if the database value is null, then "NA" is returned.
     # NB - for text values, escapeHtml is applied first (to disable any html).
-        dtype = self.traitInstance.trait.type
+        dtype = self.traitInstance.trait.datatype
         value = '?'
         if dtype == T_INTEGER: value = self.numValue
         elif dtype == T_DECIMAL: value = self.numValue
@@ -153,8 +153,9 @@ class Trait(DeclarativeBase):
     caption = Column(u'caption', VARCHAR(length=63), nullable=False)
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
-    sysType = Column(u'sysType', INTEGER(), nullable=False)
-    type = Column(u'type', INTEGER(), nullable=False)
+    #sysType = Column(u'sysType', INTEGER(), nullable=False)
+    datatype = Column(u'datatype', INTEGER(), nullable=False)
+    project_id = Column(u'project_id', INTEGER(), ForeignKey('traitInstance.id'))
 
     #relation definitions
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait,
@@ -315,6 +316,11 @@ class Project(DeclarativeBase):
 
     #relation definitions:
     trials = relationship('Trial')
+
+    def getSysTraits(self):
+        session = Session.object_session(self)
+        return session.query(Trait).filter(Trait.project_id == self.id).all()
+
 
 
 class Trial(DeclarativeBase):
@@ -1028,7 +1034,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     else:
         return (None, "Invalid sysType")
 
-    ntrt.type = vtype
+    ntrt.datatype = vtype
     if vmin:
         ntrt.min = vmin
     if vmax:
@@ -1065,8 +1071,4 @@ def getTraitString(dbc, trait_id, trial_id):
 def photoFileName(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum)
-
-
-def getSysTraits(dbc):
-    return dbc.query(Trait).filter(Trait.sysType == SYSTYPE_SYSTEM).all()
 
