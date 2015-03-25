@@ -153,14 +153,25 @@ class Trait(DeclarativeBase):
     caption = Column(u'caption', VARCHAR(length=63), nullable=False)
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
-    #sysType = Column(u'sysType', INTEGER(), nullable=False)
     datatype = Column(u'datatype', INTEGER(), nullable=False)
-    project_id = Column(u'project_id', INTEGER(), ForeignKey('traitInstance.id'))
+    project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'))
 
     #relation definitions
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait,
         secondaryjoin='trialTrait.c.trial_id==Trial.id')
     categories = relation('TraitCategory')    # NB, only relevant for Categorical type
+
+    def __init__(self, caption, description, datatype, isProjectTrait, trialOrProjectId):
+        self.caption = caption
+        self.description = description
+        self.datatype = datatype
+        if isProjectTrait:
+            self.trial_id = None
+            self.project_id = trialOrProjectId
+        else:
+            self.project_id = None
+            self.trial_id = trialOrProjectId
 
     @oneException2None
     def getCategory(self, value):
@@ -317,10 +328,22 @@ class Project(DeclarativeBase):
     #relation definitions:
     trials = relationship('Trial')
 
-    def getSysTraits(self):
+    def getTraits(self):
         session = Session.object_session(self)
         return session.query(Trait).filter(Trait.project_id == self.id).all()
 
+    def newTrial(self, name, site, year, acro):
+    # NB may throw exceptions, not handled here.
+        session = Session.object_session(self)
+        try:
+            ntrial = Trial(self.id, name, site, year, acro)
+            session.add(ntrial)
+            session.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            # Delete trial and raise exception on error:
+            Trial.delete(session, ntrial.id)
+            raise DalError("Database error ({0})".format(e.__str__()))
+        return ntrial
 
 
 class Trial(DeclarativeBase):
@@ -342,9 +365,18 @@ class Trial(DeclarativeBase):
     trialProperties = relationship('TrialProperty')
     project = relation('Project', primaryjoin='Trial.project_id==Project.id')
 
+    def __init__(self, projectId, name, site, year, acro):
+        self.project_id = projectId
+        self.name = name
+        self.site = site
+        self.year = year
+        self.acronym = acro
+        super(Trial, self).__init__()
+
     @staticmethod
     def new(dbc, tname, tsite, tyear, tacro):
     # NB may throw exceptions, not handled here.
+    # MFK ############ Should be redundant now
         try:
             ntrial = Trial()
             ntrial.name = tname
@@ -357,7 +389,6 @@ class Trial(DeclarativeBase):
             # Delete trial and raise exception on error:
             Trial.delete(dbc, ntrial.id)
             raise DalError("Database error ({0})".format(e.__str__()))
-
         return ntrial
 
     def addOrGetNode(self, row, col):
@@ -551,7 +582,7 @@ class NodeAttribute(DeclarativeBase):
 
     def __init__(self, name, trial_id):
         self.name = name
-        self.trial_id = id
+        self.trial_id = trial_id
 
     def getAttributeValues(self):
     #----------------------------------------------------
@@ -1006,7 +1037,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
     # can wait til the adding stage.
-    ntrt = Trait()
+    ntrt = Trait(caption, description, vtype, False, None)  # MFK - won't work, not used attow.
     ntrt.caption = caption
     ntrt.description = description
     ntrt.sysType = sysType
@@ -1034,11 +1065,11 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     else:
         return (None, "Invalid sysType")
 
-    ntrt.datatype = vtype
-    if vmin:
-        ntrt.min = vmin
-    if vmax:
-        ntrt.max = vmax
+    # MFK min and max now in separate table, but since this function currently never used, I won't fix now.
+#     if vmin:
+#         ntrt.min = vmin
+#     if vmax:
+#         ntrt.max = vmax
     dbc.add(ntrt)
     dbc.commit()
     return ntrt, None

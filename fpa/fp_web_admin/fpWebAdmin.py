@@ -316,7 +316,7 @@ def htmlTrialTraits(sess, trial):
     createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
-    sysTraits = sess.getProject().getSysTraits()
+    sysTraits = sess.getProject().getTraits()
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
             if trt.id == st.id:
@@ -1064,7 +1064,7 @@ def urlSystemTraits(sess, projectName):
 #
     if request.method == 'GET':
         # System Traits:
-        sysTraits = sess.getProject().getSysTraits()
+        sysTraits = sess.getProject().getTraits()
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = fpUtil.htmlFieldset(
             fpUtil.htmlForm(sysTraitListHtml) +

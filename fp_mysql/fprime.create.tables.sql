@@ -35,7 +35,7 @@ create table project(
 create table trial(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   name        VARCHAR(63) UNIQUE NOT NULL,
-  project_id  int,
+  project_id  int default NULL,
   site        text,
   year        text,
   acronym     text
@@ -182,11 +182,11 @@ create table attributeValue(
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)
--- sysType     INT NOT NULL,
+--
 create table trait(
   id          INT PRIMARY KEY AUTO_INCREMENT,
-  project_id  int,
-  trial_id    int,
+  project_id  int default NULL,
+  trial_id    int default NULL,
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
   datatype    INT NOT NULL,

@@ -100,7 +100,8 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
 #
     dbc = sess.db()
     try:
-        ntrial = models.Trial.new(dbc, tname, tsite, tyear, tacro)
+        #ntrial = models.Trial.new(dbc, tname, tsite, tyear, tacro)
+        ntrial = sess.getProject().newTrial(tname, tsite, tyear, tacro)
     except models.DalError as e:
         return (None, "Database error ({0})".format(e.__str__()))
 

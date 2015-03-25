@@ -43,51 +43,33 @@ def createNewTrait(sess,  trialId, request):
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
+    isProjectTrait = True if trialId == "sys" else False
 
-    # This should be trait type specific (but min, max fields are in trait table):
-    min = request.form.get("min")
-    max = request.form.get("max")
-
-    sysTrait = True if trialId == "sys" else False
+    dbsess = sess.db()
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
     # can wait til the adding stage.
-    dbsess = sess.db()
-    ntrt = models.Trait()
-    ntrt.caption = caption
-    ntrt.description = description
 
     # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
-    if not sysTrait: # If local, check there's no other trait local to the trial with the same caption:
+    if not isProjectTrait: # If local, check there's no other trait local to the trial with the same caption:
         trial = models.getTrial(sess.db(), trialId)
         for x in trial.traits:
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
-        ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
-        ntrt.sysType = SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
-        sysTraits = sess.getProject().getSysTraits()
-
-        for x in sysTraits:
+        projTraits = sess.getProject().getTraits()
+        for x in projTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
-        ntrt.sysType = SYSTYPE_SYSTEM
-
-    ntrt.datatype = type
-    if min:
-        ntrt.min = min
-    if max:
-        ntrt.max = max
-
+    ntrt = models.Trait(caption, description, type, isProjectTrait,
+                        sess.getProject().id if isProjectTrait else trialId)
+    if not isProjectTrait:
+        ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
     dbsess.add(ntrt)
     dbsess.commit()   # Add the trait to the db (before trait specific stuff which may need id).
-
     # Trait type specific processing:
     if int(ntrt.datatype) == T_CATEGORICAL:
         _newTraitCategorical(sess, request, ntrt)
-    elif int(ntrt.datatype) == T_INTEGER:
-        pass
-
     dbsess.add(ntrt)
     dbsess.commit()
     return None

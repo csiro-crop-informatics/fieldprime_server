@@ -238,7 +238,9 @@ def get_trial(username, trl, dbc, token=None):
         jtrait['caption'] = trt.caption
         jtrait['description'] = trt.description
         jtrait['type'] = trt.datatype     # MFK 'datatype' would be better
-        jtrait['sysType'] = 0    # Hack forcing all traits on client to local (else problem with common upload url)
+        # Hack forcing all traits on client to local (else problem with common upload url)
+        # Now deprecated 25/3/15 remove when no more too old clients
+        jtrait['sysType'] = 0
 
         # Add the uploadURL:
         jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
@@ -590,7 +592,7 @@ def create_adhoc(username, trl, dbc):
 
     caption = request.args.get('caption', '')
     description = request.args.get('description', '')
-    vtype = request.args.get('type', '')
+    vtype = request.args.get('datatype', '')
     #vmin = request.args.get('min', '')
     #vmax = request.args.get('max', '')
     vmin = -1000000
