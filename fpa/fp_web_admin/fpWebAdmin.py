@@ -458,25 +458,25 @@ def urlTrial(sess, trialId):
 #
     return trialPage(sess, trialId)
 
-def AddSysTrialTrait(sess, trialId, traitId):
-#-----------------------------------------------------------------------
-# Return error string, None for success
-# MFK perhaps this would be better done with sqlalchemy? It should in any case
-# be in models.py, not here.
-#
-    if traitId == "0":
-        return "Select a system trait to add"
-    try:
-        con = getMYSQLDBConnection(sess)
-        if con is None:
-            return "Error accessing database"
-        cur = con.cursor()
-        cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
-        cur.close()
-        con.commit()
-    except mdb.Error, e:
-        return "Error accessing database"
-    return None
+# def AddSysTrialTrait(sess, trialId, traitId):
+# #-----------------------------------------------------------------------
+# # Return error string, None for success
+# # MFK perhaps this would be better done with sqlalchemy? It should in any case
+# # be in models.py, not here.
+# #
+#     if traitId == "0":
+#         return "Select a system trait to add"
+#     try:
+#         con = getMYSQLDBConnection(sess)
+#         if con is None:
+#             return "Error accessing database"
+#         cur = con.cursor()
+#         cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
+#         cur.close()
+#         con.commit()
+#     except mdb.Error, e:
+#         return "Error accessing database"
+#     return None
 
 
 @app.route('/downloadApp/', methods=['GET'])
@@ -1076,9 +1076,9 @@ def urlSystemTraits(sess, projectName):
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def urlAddSysTrait2Trial(sess, trialId):
-# MFK here we should copy the system trait, not use it.
+#-------------------------------------------------------------------------------
 #
-    errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
+    errMsg = fpTrait.addTrait2Trial(sess, trialId, request.form['traitID'])
     if errMsg:
         return dp.dataErrorPage(sess, errMsg)
     # If all is well, display the trial page:

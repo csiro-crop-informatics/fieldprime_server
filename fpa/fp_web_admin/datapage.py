@@ -56,7 +56,7 @@ def dataNavigationContent(sess, trialId):
         <select name="project" id="project" onchange="submitProjSelection(this.form)">'''.format(hackedProjUrl)
         for proj in projList:
             projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
-                    proj, 'selected="selected"' if proj == sess.getProjectName() else '')
+                    proj.projectName, 'selected="selected"' if proj.projectName == sess.getProjectName() else '')
         projectSelectorHtml += '</select></form>'
     else:
         projectSelectorHtml = sess.getProjectName()
