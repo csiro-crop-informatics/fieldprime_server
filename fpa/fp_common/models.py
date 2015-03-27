@@ -761,12 +761,13 @@ def dbName4Project(project):
 
 APPUSR = 'fpwserver'
 APPPWD = 'fpws_g00d10ch'
-def getSysUserEngine(targetUser):
+import fpsys
+def getSysUserEngine(projectName):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    dbname = dbName4Project(targetUser)
+    dbname = fpsys.getProjectDBname(projectName)
     engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
@@ -783,9 +784,9 @@ def getDbConnection(dbname):
     return dbsess
 
 # This should use alchemy and return connection
-def dbConnectAndAuthenticate(username, password):
+def dbConnectAndAuthenticate(project, password):
 #-------------------------------------------------------------------------------------------------
-    dbc = getSysUserEngine(username)    # not sure how this returns error, test..
+    dbc = getSysUserEngine(project)    # not sure how this returns error, test..
     if dbc is None:
         return (None, 'Unknown user/database')
 
@@ -800,7 +801,7 @@ def dbConnectAndAuthenticate(username, password):
         return None, 'DB error, multiple passwords'
     except sqlalchemy.exc.OperationalError:
         return None, 'Error - may be invalid project name'
-    # Note if there is a db problem, eg username incorrect we will have an unhandled exception.
+    # Note if there is a db problem, eg project incorrect we will have an unhandled exception.
     # Which is probably what we want since we'll get a backtrace in the log.
 
     if sysPwRec.value == password:

@@ -33,9 +33,9 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
-import fpsys
+import fp_common.fpsys as fpsys
 import trialProperties
-import ***REMOVED***
+import fp_common.***REMOVED*** as ***REMOVED***
 from fp_common.const import *
 from const import *
 import fpUtil

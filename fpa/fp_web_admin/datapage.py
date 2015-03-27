@@ -6,7 +6,7 @@
 #
 
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
-import fpsys
+import fp_common.fpsys as fpsys
 import fp_common.models as models
 
 from const import *

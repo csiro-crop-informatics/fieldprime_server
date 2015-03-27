@@ -5,15 +5,18 @@
 # This db (attow) holds information about ***REMOVED*** users and which projects
 # they have access to.
 #
+# Since we are only doing a little with the fpsys database, we are just using
+# sql directly rather than sqlalchemy.
+#
 
 import MySQLdb as mdb
 
-import fp_common.models as models
+from fp_common.models import APPUSR, APPPWD          # circularity here, could move APP* to separate module
 import fp_common.util as util
 import ***REMOVED***
 
 def _getDbConnection():
-    return mdb.connect('localhost', models.APPUSR, models.APPPWD, 'fpsys')
+    return mdb.connect('localhost', APPUSR, APPPWD, 'fpsys')
 
 
 def _getProjectIdFromName(projName):
