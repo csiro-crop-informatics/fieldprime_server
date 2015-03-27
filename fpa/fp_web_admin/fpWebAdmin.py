@@ -1140,7 +1140,7 @@ def htmlNumericScoreSetStats(data, name):
         var statsDiv = document.getElementById("statsText");
         statsDiv.appendChild(document.createTextNode("Mean value is " + parseFloat(sum/count).toFixed(2)));
         statsDiv.appendChild(document.createElement("br"));
-        statsDiv.appendChild(document.createTextNode("Min value: " + min));
+        statsDiv.appendChild(document.createTextNode("Min value: " + parseFloat(min).toFixed(2)));
         statsDiv.appendChild(document.createElement("br"));
         statsDiv.appendChild(document.createTextNode("Max value: " + parseFloat(max).toFixed(2)));
 
@@ -1271,13 +1271,13 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     </script>'''.format(json.dumps(jtable))
 
     # Script to create DataTable of the data:
-    dtab += '<div id="demo"></div>'
+    dtab += '<div id="dtableDiv"></div>'
     dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
     dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
     dtab +=  '''<script>
         $(document).ready(function() {
             fplib.tmpScoredata = JSON.parse(document.getElementById("ssdata").text); // use global var as needed elsewhere
-            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable');
+            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable', 'dtableDiv');
         });
     </script>'''
     out += fpUtil.htmlFieldset(dtab, 'Data:')

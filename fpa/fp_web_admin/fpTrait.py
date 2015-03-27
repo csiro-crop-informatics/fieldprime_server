@@ -74,13 +74,14 @@ def createNewTrait(sess,  trialId, request):
     dbsess.commit()
     return None
 
-def _addTrait2Trial(trial, trait):
+def _addTrait2Trial(sess, trial, trait):
 #-----------------------------------------------------------------------
     # Check no trait with this caption already in trial:
     for trt in trial.traits:
         if trt.caption == trait.caption:
             return 'Error: Trial {0} already has trait with caption "{1}"'.format(trial.name, trait.caption)
-    trait.trials.push(trial);
+    trait.trials.append(trial);
+    sess.db().commit()
     return None
 
 def addTrait2Trial(sess, trialId, traitId):
@@ -88,7 +89,7 @@ def addTrait2Trial(sess, trialId, traitId):
 # Return error string, None for success
     trial = models.getTrial(sess.db(), trialId)
     trait = models.getTrait(sess.db(), traitId)
-    return _addTrait2Trial(trial, trait)
+    return _addTrait2Trial(sess, trial, trait)
 
 
 # Could put all trait type specific stuff in trait extension classes.
