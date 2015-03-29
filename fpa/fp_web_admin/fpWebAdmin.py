@@ -33,9 +33,9 @@ import fp_common.models as models
 import fp_common.util as util
 import fpTrial
 import fpUtil
-import fpsys
+import fp_common.fpsys as fpsys
 import trialProperties
-import ***REMOVED***
+import fp_common.***REMOVED*** as ***REMOVED***
 from fp_common.const import *
 from const import *
 import fpUtil
@@ -162,10 +162,10 @@ def htmlTrialTraitTable(trial):
         return "No traits configured"
     out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
     out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
-        "Caption", "Description", "Type", "Details")
+        "Caption", "Description", "DataType", "Details")
     for trt in trial.traits:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype])
         # Add "Detail" button:
         url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
         validateButton = fpUtil.htmlButtonLink2("Details", url)
@@ -316,7 +316,7 @@ def htmlTrialTraits(sess, trial):
     createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
-    sysTraits = dal.getSysTraits(sess.db())
+    sysTraits = sess.getProject().getTraits()
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
             if trt.id == st.id:
@@ -458,25 +458,25 @@ def urlTrial(sess, trialId):
 #
     return trialPage(sess, trialId)
 
-def AddSysTrialTrait(sess, trialId, traitId):
-#-----------------------------------------------------------------------
-# Return error string, None for success
-# MFK perhaps this would be better done with sqlalchemy? It should in any case
-# be in models.py, not here.
-#
-    if traitId == "0":
-        return "Select a system trait to add"
-    try:
-        con = getMYSQLDBConnection(sess)
-        if con is None:
-            return "Error accessing database"
-        cur = con.cursor()
-        cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
-        cur.close()
-        con.commit()
-    except mdb.Error, e:
-        return "Error accessing database"
-    return None
+# def AddSysTrialTrait(sess, trialId, traitId):
+# #-----------------------------------------------------------------------
+# # Return error string, None for success
+# # MFK perhaps this would be better done with sqlalchemy? It should in any case
+# # be in models.py, not here.
+# #
+#     if traitId == "0":
+#         return "Select a system trait to add"
+#     try:
+#         con = getMYSQLDBConnection(sess)
+#         if con is None:
+#             return "Error accessing database"
+#         cur = con.cursor()
+#         cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
+#         cur.close()
+#         con.commit()
+#     except mdb.Error, e:
+#         return "Error accessing database"
+#     return None
 
 
 @app.route('/downloadApp/', methods=['GET'])
@@ -632,7 +632,7 @@ def getDataColumns(sess, trialId, tiList):
         # If trait type is categorical then the values will be numbers which should be
         # converted into names (via the traitCategory table), retrieve the map for the
         # trait first:
-        if ti.trait.type == T_CATEGORICAL:
+        if ti.trait.datatype == T_CATEGORICAL:
             catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
         else:
             catMap = None
@@ -640,7 +640,7 @@ def getDataColumns(sess, trialId, tiList):
         valList = []
         outList.append
         cur = con.cursor()
-        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.type)), (ti.id, trialId, ti.id))
+        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.datatype)), (ti.id, trialId, ti.id))
         for row in cur.fetchall():
             timestamp = row[1]
             if timestamp is None:          # no datum record case
@@ -962,7 +962,7 @@ def urlUsersPost(sess, projectName):
     newUsers = userData.get('create')
     if newUsers is not None:
         for user, perms in newUsers.iteritems():
-            errmsg = fpsys.createUser(user, sess.getProjectName(), perms)
+            errmsg = fpsys.addUserToProject(user, sess.getProjectName(), perms)
             if errmsg is not None:
                 errMsgs.append(('create', user, errmsg))
     updateUsers = userData.get('update')
@@ -1064,7 +1064,7 @@ def urlSystemTraits(sess, projectName):
 #
     if request.method == 'GET':
         # System Traits:
-        sysTraits = dal.getSysTraits(sess.db())
+        sysTraits = sess.getProject().getTraits()
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = fpUtil.htmlFieldset(
             fpUtil.htmlForm(sysTraitListHtml) +
@@ -1076,9 +1076,9 @@ def urlSystemTraits(sess, projectName):
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def urlAddSysTrait2Trial(sess, trialId):
-# MFK here we should copy the system trait, not use it.
+#-------------------------------------------------------------------------------
 #
-    errMsg = AddSysTrialTrait(sess, trialId, request.form['traitID'])
+    errMsg = fpTrait.addTrait2Trial(sess, trialId, request.form['traitID'])
     if errMsg:
         return dp.dataErrorPage(sess, errMsg)
     # If all is well, display the trial page:
@@ -1140,7 +1140,7 @@ def htmlNumericScoreSetStats(data, name):
         var statsDiv = document.getElementById("statsText");
         statsDiv.appendChild(document.createTextNode("Mean value is " + parseFloat(sum/count).toFixed(2)));
         statsDiv.appendChild(document.createElement("br"));
-        statsDiv.appendChild(document.createTextNode("Min value: " + min));
+        statsDiv.appendChild(document.createTextNode("Min value: " + parseFloat(min).toFixed(2)));
         statsDiv.appendChild(document.createElement("br"));
         statsDiv.appendChild(document.createTextNode("Max value: " + parseFloat(max).toFixed(2)));
 
@@ -1218,7 +1218,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 # MFK this should probably display RepSets, not individual TIs
 #
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    typ = ti.trait.type
+    typ = ti.trait.datatype
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
     out = ''
@@ -1271,13 +1271,13 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     </script>'''.format(json.dumps(jtable))
 
     # Script to create DataTable of the data:
-    dtab += '<div id="demo"></div>'
+    dtab += '<div id="dtableDiv"></div>'
     dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
     dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
     dtab +=  '''<script>
         $(document).ready(function() {
             fplib.tmpScoredata = JSON.parse(document.getElementById("ssdata").text); // use global var as needed elsewhere
-            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable');
+            stab = fplib.makeDataTable(fplib.tmpScoredata, 'sstable', 'dtableDiv');
         });
     </script>'''
     out += fpUtil.htmlFieldset(dtab, 'Data:')
@@ -1316,7 +1316,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
 #-----------------------------------------------------------------------
 # Create zip archive of all the photos for the given traitInstance.
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    if ti.trait.type != T_PHOTO:
+    if ti.trait.datatype != T_PHOTO:
         return 'Not a photo trait'
     data = ti.getData(True)
     try:
@@ -1396,12 +1396,14 @@ def urlProject(sess, project):
         elif not projList:
             return badJuju(sess, 'Unexpected project')
         else:
-            if project in projList:
-                # All checks passed, set the project as specified:
-                sess.setProject(project, projList[project])
-            else:
-                return badJuju(sess, 'no access to project')
-    return FrontPage(sess)
+            for prj in projList:
+                if prj.projectName == project:
+                    # All checks passed, set the project as specified:
+                    sess.setProject(prj.projectName, prj.dbname, prj.access)
+                    return FrontPage(sess)
+            # No access to this project - bad user!
+            return badJuju(sess, 'no access to project')
+
 
 @app.route('/logout', methods=["GET"])
 @dec_check_session()
@@ -1532,10 +1534,12 @@ def urlMain():
             #
             project = None    # For either login type we need to set a project
             access = None
+            dbname = None
             loginType = None
             if systemPasswordCheck(username, password):
                 project = username
                 access = websess.PROJECT_ACCESS_ALL
+                dbname = models.dbName4Project(project)
                 loginType = LOGIN_TYPE_SYSTEM
             elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
                 # For ***REMOVED*** check, we should perhaps first check in a system database
@@ -1549,8 +1553,9 @@ def urlMain():
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
                 else:
-                    project = projList.keys()[0]  # Select any project
-                    access = projList[project]
+                    project = projList[0].projectName  # Select any project
+                    access = projList[0].access
+                    dbname = projList[0].dbname
             else:
                 util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
@@ -1560,7 +1565,7 @@ def urlMain():
                 util.fpLog(app, 'Login from user {0}'.format(username))
                 sess.resetLastUseTime()
                 sess.setUser(username)
-                sess.setProject(project, access)
+                sess.setProject(project, dbname, access)
                 sess.setLoginType(loginType)
                 g.userName = username
                 g.projectName = project

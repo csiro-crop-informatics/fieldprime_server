@@ -29,7 +29,7 @@ def traitListHtmlTable(traitList):
     out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format("Caption", "Description", "Type")
     for trt in traitList:
         out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.type])
+            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype])
     out += "</table>"
     return out
 
@@ -43,53 +43,54 @@ def createNewTrait(sess,  trialId, request):
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
+    isProjectTrait = True if trialId == "sys" else False
 
-    # This should be trait type specific (but min, max fields are in trait table):
-    min = request.form.get("min")
-    max = request.form.get("max")
-
-    sysTrait = True if trialId == "sys" else False
+    dbsess = sess.db()
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
     # can wait til the adding stage.
-    dbsess = sess.db()
-    ntrt = models.Trait()
-    ntrt.caption = caption
-    ntrt.description = description
 
     # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
-    if not sysTrait: # If local, check there's no other trait local to the trial with the same caption:
+    if not isProjectTrait: # If local, check there's no other trait local to the trial with the same caption:
         trial = models.getTrial(sess.db(), trialId)
         for x in trial.traits:
             if x.caption == caption:
                 return 'Error: A local trait with this caption already exists'
-        ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
-        ntrt.sysType = SYSTYPE_TRIAL
     else:  # If system trait, check there's no other system trait with same caption:
-        sysTraits = models.getSysTraits(sess.db())
-        for x in sysTraits:
+        projTraits = sess.getProject().getTraits()
+        for x in projTraits:
             if x.caption == caption:
                 return 'Error: A system trait with this caption already exists'
-        ntrt.sysType = SYSTYPE_SYSTEM
-
-    ntrt.type = type
-    if min:
-        ntrt.min = min
-    if max:
-        ntrt.max = max
-
+    ntrt = models.Trait(caption, description, type, isProjectTrait,
+                        sess.getProject().id if isProjectTrait else trialId)
+    if not isProjectTrait:
+        ntrt.trials = [trial]      # Add the trait to the trial (table trialTrait)
     dbsess.add(ntrt)
     dbsess.commit()   # Add the trait to the db (before trait specific stuff which may need id).
-
     # Trait type specific processing:
-    if int(ntrt.type) == T_CATEGORICAL:
+    if int(ntrt.datatype) == T_CATEGORICAL:
         _newTraitCategorical(sess, request, ntrt)
-    elif int(ntrt.type) == T_INTEGER:
-        pass
-
     dbsess.add(ntrt)
     dbsess.commit()
     return None
+
+def _addTrait2Trial(sess, trial, trait):
+#-----------------------------------------------------------------------
+    # Check no trait with this caption already in trial:
+    for trt in trial.traits:
+        if trt.caption == trait.caption:
+            return 'Error: Trial {0} already has trait with caption "{1}"'.format(trial.name, trait.caption)
+    trait.trials.append(trial);
+    sess.db().commit()
+    return None
+
+def addTrait2Trial(sess, trialId, traitId):
+#-----------------------------------------------------------------------
+# Return error string, None for success
+    trial = models.getTrial(sess.db(), trialId)
+    trait = models.getTrait(sess.db(), traitId)
+    return _addTrait2Trial(sess, trial, trait)
+
 
 # Could put all trait type specific stuff in trait extension classes.
 # Aiming for this file to not contain any type specific code.
@@ -179,7 +180,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         ###
         formh = 'Trial: ' + trial.name
         formh += '<br>Trait: ' + trt.caption
-        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.type]
+        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.datatype]
 
         formh += '<br><label>Description</label>' + \
             '<input type="text" size=96 name="description" value="{0}">'.format(trt.description)
@@ -198,7 +199,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         # Vars that may be set by trait specifics, to be included in output:
         preform = ''
         onsubmit = ''
-        if trt.type == T_CATEGORICAL:
+        if trt.datatype == T_CATEGORICAL:
             # Note the intended policy: Users may modify the caption or image of an existing
             # category, but not change the numeric value. They may add new categories.
             # The reasoning is that they should remove existing categories (as identified
@@ -235,7 +236,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 }} else alert('no SetTraitFormElements');
             }});</script>""".format(jsRecDec)
             formh += div + scrpt1 + scrpt2
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL:
+        elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             # Make this a separate function to generate html form, so can be used from
@@ -341,7 +342,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             formh += '<br>Trait value should be ' + valOp + attListHtml
             preform = script
             onsubmit ='return validateTraitDetails()'
-        elif trt.type == T_STRING:
+        elif trt.datatype == T_STRING:
             tts = models.getTraitString(sess.db(), traitId, trialId)
             patText = "value='{0}'".format(tts.pattern) if tts is not None else ""
             formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
@@ -369,9 +370,9 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         #
         # Trait type specific stuff:
         #
-        if trt.type == T_CATEGORICAL:
+        if trt.datatype == T_CATEGORICAL:
             _newTraitCategorical(sess, request, trt)
-        elif trt.type == T_INTEGER or trt.type == T_DECIMAL: # clone of above remove above when integer works with numeric
+        elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL: # clone of above remove above when integer works with numeric
             op = request.form.get('validationOp')  # value should be [1-4], see comparatorCodes
             if not re.match('[0-4]', op):
                 return "Invalid operation {0}".format(op) # should be some function to show error page..
@@ -398,7 +399,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 ttn.cond = ". " + comparatorCodes[int(op)-1][0] + ' att:' + at
             if newTTN:
                 sess.db().add(ttn)
-        elif trt.type == T_STRING:
+        elif trt.datatype == T_STRING:
             newPat = request.form.get('pattern')
             tts = models.getTraitString(sess.db(), traitId, trialId)
             if len(newPat) == 0:

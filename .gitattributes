@@ -10,7 +10,9 @@ fpa/fp_app_api/fpAppConfig.py -text
 fpa/fp_common/__init__.py -text
 fpa/fp_common/config.py -text
 fpa/fp_common/const.py -text
+fpa/fp_common/fpsys.py -text
 fpa/fp_common/models.py -text
+fpa/fp_common/***REMOVED***.py -text
 fpa/fp_common/test.py -text
 fpa/fp_common/util.py -text
 fpa/fp_web_admin/__init__.py -text
@@ -22,8 +24,6 @@ fpa/fp_web_admin/fpTrait.py -text
 fpa/fp_web_admin/fpTrial.py -text
 fpa/fp_web_admin/fpUtil.py -text
 fpa/fp_web_admin/fpWebAdmin.py -text
-fpa/fp_web_admin/fpsys.py -text
-fpa/fp_web_admin/***REMOVED***.py -text
 fpa/fp_web_admin/static/css/font-awesome.css -text
 fpa/fp_web_admin/static/css/font-awesome.min.css -text
 fpa/fp_web_admin/static/css/images/ajax-loader.gif -text

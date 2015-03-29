@@ -120,7 +120,7 @@ class Datum(DeclarativeBase):
     # Return a value, how the value is stored/represented is type specific.
     # NB if the database value is null, then "NA" is returned.
     # NB - for text values, escapeHtml is applied first (to disable any html).
-        dtype = self.traitInstance.trait.type
+        dtype = self.traitInstance.trait.datatype
         value = '?'
         if dtype == T_INTEGER: value = self.numValue
         elif dtype == T_DECIMAL: value = self.numValue
@@ -153,13 +153,25 @@ class Trait(DeclarativeBase):
     caption = Column(u'caption', VARCHAR(length=63), nullable=False)
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
-    sysType = Column(u'sysType', INTEGER(), nullable=False)
-    type = Column(u'type', INTEGER(), nullable=False)
+    datatype = Column(u'datatype', INTEGER(), nullable=False)
+    project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
+    trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'))
 
     #relation definitions
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait,
         secondaryjoin='trialTrait.c.trial_id==Trial.id')
     categories = relation('TraitCategory')    # NB, only relevant for Categorical type
+
+    def __init__(self, caption, description, datatype, isProjectTrait, trialOrProjectId):
+        self.caption = caption
+        self.description = description
+        self.datatype = datatype
+        if isProjectTrait:
+            self.trial_id = None
+            self.project_id = trialOrProjectId
+        else:
+            self.project_id = None
+            self.trial_id = trialOrProjectId
 
     @oneException2None
     def getCategory(self, value):
@@ -302,6 +314,38 @@ class ScoreSet():
         return self.instances
 
 
+class Project(DeclarativeBase):
+    __tablename__ = 'project'
+    __table_args__ = {}
+
+    #column definitions:
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    up_id = Column('up_id', INTEGER(), ForeignKey('project.id'))
+    name = Column(u'name', VARCHAR(length=63), nullable=False)
+    contactName = Column(u'contactName', TEXT())
+    contactEmail = Column(u'contactEmail', TEXT())
+
+    #relation definitions:
+    trials = relationship('Trial')
+
+    def getTraits(self):
+        session = Session.object_session(self)
+        return session.query(Trait).filter(Trait.project_id == self.id).all()
+
+    def newTrial(self, name, site, year, acro):
+    # NB may throw exceptions, not handled here.
+        session = Session.object_session(self)
+        try:
+            ntrial = Trial(self.id, name, site, year, acro)
+            session.add(ntrial)
+            session.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            # Delete trial and raise exception on error:
+            Trial.delete(session, ntrial.id)
+            raise DalError("Database error ({0})".format(e.__str__()))
+        return ntrial
+
+
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
     __table_args__ = {}
@@ -309,6 +353,7 @@ class Trial(DeclarativeBase):
     #column definitions:
     acronym = Column(u'acronym', TEXT())
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
     name = Column(u'name', VARCHAR(length=63), nullable=False)
     site = Column(u'site', TEXT())
     year = Column(u'year', TEXT())
@@ -318,10 +363,20 @@ class Trial(DeclarativeBase):
     nodeAttributes = relationship('NodeAttribute')
     nodes = relationship('Node')
     trialProperties = relationship('TrialProperty')
+    project = relation('Project', primaryjoin='Trial.project_id==Project.id')
+
+    def __init__(self, projectId, name, site, year, acro):
+        self.project_id = projectId
+        self.name = name
+        self.site = site
+        self.year = year
+        self.acronym = acro
+        super(Trial, self).__init__()
 
     @staticmethod
     def new(dbc, tname, tsite, tyear, tacro):
     # NB may throw exceptions, not handled here.
+    # MFK ############ Should be redundant now
         try:
             ntrial = Trial()
             ntrial.name = tname
@@ -334,7 +389,6 @@ class Trial(DeclarativeBase):
             # Delete trial and raise exception on error:
             Trial.delete(dbc, ntrial.id)
             raise DalError("Database error ({0})".format(e.__str__()))
-
         return ntrial
 
     def addOrGetNode(self, row, col):
@@ -526,6 +580,10 @@ class NodeAttribute(DeclarativeBase):
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
 
+    def __init__(self, name, trial_id):
+        self.name = name
+        self.trial_id = trial_id
+
     def getAttributeValues(self):
     #----------------------------------------------------
     # Return the AttributeValues, sorted by node Id
@@ -703,22 +761,32 @@ def dbName4Project(project):
 
 APPUSR = 'fpwserver'
 APPPWD = 'fpws_g00d10ch'
-def getSysUserEngine(targetUser):
+import fpsys
+def getSysUserEngine(projectName):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    dbname = dbName4Project(targetUser)
+    dbname = fpsys.getProjectDBname(projectName)
     engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
     return dbsess
 
+def getDbConnection(dbname):
+#-----------------------------------------------------------------------
+# This should be called once only and the result stored,
+# currently done in session module.
+#
+    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
+    Session = sessionmaker(bind=engine)
+    dbsess = Session()
+    return dbsess
 
 # This should use alchemy and return connection
-def dbConnectAndAuthenticate(username, password):
+def dbConnectAndAuthenticate(project, password):
 #-------------------------------------------------------------------------------------------------
-    dbc = getSysUserEngine(username)    # not sure how this returns error, test..
+    dbc = getSysUserEngine(project)    # not sure how this returns error, test..
     if dbc is None:
         return (None, 'Unknown user/database')
 
@@ -733,7 +801,7 @@ def dbConnectAndAuthenticate(username, password):
         return None, 'DB error, multiple passwords'
     except sqlalchemy.exc.OperationalError:
         return None, 'Error - may be invalid project name'
-    # Note if there is a db problem, eg username incorrect we will have an unhandled exception.
+    # Note if there is a db problem, eg project incorrect we will have an unhandled exception.
     # Which is probably what we want since we'll get a backtrace in the log.
 
     if sysPwRec.value == password:
@@ -747,6 +815,18 @@ def getTrial(dbc, trialID):
 # Returns trial object with given id if found, else None.
     return dbc.query(Trial).filter(Trial.id == trialID).one()
 
+
+@oneException2None
+def getProject(dbc, projectId):
+#-----------------------------------------------------------------------
+# Returns project object with given id if found, else None.
+    return dbc.query(Project).filter(Project.id == projectId).one()
+
+@oneException2None
+def getProjectByName(dbc, projectName):
+#-----------------------------------------------------------------------
+# Returns project object with given name if found, else None.
+    return dbc.query(Project).filter(Project.name == projectName).one()
 
 @oneException2None
 def getTraitInstance(dbc, traitInstance_id):
@@ -958,7 +1038,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
     # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
     # can wait til the adding stage.
-    ntrt = Trait()
+    ntrt = Trait(caption, description, vtype, False, None)  # MFK - won't work, not used attow.
     ntrt.caption = caption
     ntrt.description = description
     ntrt.sysType = sysType
@@ -986,11 +1066,11 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     else:
         return (None, "Invalid sysType")
 
-    ntrt.type = vtype
-    if vmin:
-        ntrt.min = vmin
-    if vmax:
-        ntrt.max = vmax
+    # MFK min and max now in separate table, but since this function currently never used, I won't fix now.
+#     if vmin:
+#         ntrt.min = vmin
+#     if vmax:
+#         ntrt.max = vmax
     dbc.add(ntrt)
     dbc.commit()
     return ntrt, None
@@ -1023,8 +1103,4 @@ def getTraitString(dbc, trait_id, trial_id):
 def photoFileName(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum)
-
-
-def getSysTraits(dbc):
-    return dbc.query(Trait).filter(Trait.sysType == SYSTYPE_SYSTEM).all()
 

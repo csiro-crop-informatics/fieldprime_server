@@ -228,7 +228,7 @@ fplib.makeTable = function(tdata, tname) {
     document.getElementsByClassName("dataContent")[0].appendChild(table);
 };
 
-fplib.makeDataTable = function(tdata, tname) {
+fplib.makeDataTable = function(tdata, tname, divName) {
 
     var hdrs = tdata.headers;
     var rows = tdata.rows;
@@ -243,8 +243,7 @@ fplib.makeDataTable = function(tdata, tname) {
 
 
     $(document).ready(function() {
-    // Can we add a table dynamically with out the "demo" div?
-        $('#demo').html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="example"></table>' );
+        $('#' + divName).html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="example"></table>' );
         $('#example').dataTable({
             // this not working for some reason
             "scrollX": true,
@@ -300,10 +299,16 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
         height = divHeight - margin.top - margin.bottom;
 
     // temp scale to get the recommended ticks:
-    var binTicks = d3.scale.linear()
-        .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
-        .range([0, width])
-      .ticks(20);
+    // Note conditional is hack to avoid misfunction when the min equals the max
+    // in which case d3.scale.linear would give an empty array of ticks
+    // There's probaby a nicer way to present this, but when there's only a single
+    // unique value, the histogram is not really of much use anyway..
+    var binTicks = fplib.tmpScoredata.min < fplib.tmpScoredata.max ?
+        d3.scale.linear()
+            .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+            .range([0, width])
+          .ticks(20)
+        : [fplib.tmpScoredata.min - 1, fplib.tmpScoredata.min + 1];
 
     var xsc = d3.scale.linear()
         .domain([binTicks[0], binTicks[binTicks.length-1]])
