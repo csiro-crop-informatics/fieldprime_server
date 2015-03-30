@@ -14,12 +14,19 @@ create table user(
 
 create table userProject(
   user_id      int,
-  project      VARCHAR(63) not null,
+  project_id   int,
   permissions  int default 0,
-  UNIQUE (user_id, project),
-  FOREIGN KEY(user_id) references user(id) on delete cascade
+  unique (user_id, project_id),
+  foreign key(user_id) references user(id) on delete cascade
+  foreign key(project_id) reference project(id) on delete cascade
 );
 
+create table project(
+  id     int primary key auto_increment,
+  name   varchar(255),
+  dbname varchar(63),
+  unique (name)
+);
 
 
 

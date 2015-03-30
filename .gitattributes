@@ -4,6 +4,8 @@ fp_mysql/forEachDb.sh -text
 fp_mysql/fprime.create.tables.sql -text
 fp_mysql/fpsys.sql -text
 fp_mysql/new_fprime_user.sh -text
+fp_mysql/projects.sql -text
+fp_mysql/update.sql -text
 fpa/fp_app_api/__init__.py -text
 fpa/fp_app_api/fpApi.py -text
 fpa/fp_app_api/fpAppConfig.py -text

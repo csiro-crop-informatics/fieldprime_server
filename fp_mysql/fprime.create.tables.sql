@@ -17,14 +17,29 @@ create table system(
 );
 
 --
+-- project
+--
+create table project(
+  id           int primary key auto_increment,
+  up_id        int,
+  name         varchar(63) unique not null,
+  contactName  text,
+  contactEmail text,
+  foreign key (up_id) references project(id)
+);
+
+
+--
 -- trial
 --
 create table trial(
-  id       INT PRIMARY KEY AUTO_INCREMENT,
-  name     VARCHAR(63) UNIQUE NOT NULL,
-  site     text,
-  year     text,
-  acronym  text
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  name        VARCHAR(63) UNIQUE NOT NULL,
+  project_id  int default NULL,
+  site        text,
+  year        text,
+  acronym     text
+  foreign key(project_id) references project(id) on delete cascade
 );
 
 --
@@ -50,12 +65,12 @@ create table token(
 -- tokenNode
 -- Used to record nodes created from devices, so as to avoid creating multiple copies.
 -- Note localId is not called local_id because it is not a foreign key, it is from the client.
--- Perhaps we should generalize this, it's basically a way to map from an id unique on the 
+-- Perhaps we should generalize this, it's basically a way to map from an id unique on the
 -- client within a given trial download to a unique id in the server db:  token_id+localId -> serverId
 -- This pattern could be useful for more things than just locally created nodes. For example
 -- I'm thinking it could be used to identify score sets from the client. We might have to
 -- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
--- something generic, like serverId. The type field would identify the table that serverId 
+-- something generic, like serverId. The type field would identify the table that serverId
 -- was for.
 --
 create table tokenNode(
@@ -154,23 +169,30 @@ create table attributeValue(
 --
 -- trait
 --
+-- Exactly one of project_id and trial_id must be non-null. Each trait
+-- belongs to either a trial or a project. Or perhaps, in the future,
+-- we could allow both project_id and trial_id to be null to indicate
+-- system wide traits that do not belong to any project.
+--
+--
+--
 -- future:
 -- change "type" to "datatype"
+-- These following perhaps more appropriate in trialTraitiew
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)
 --
 create table trait(
   id          INT PRIMARY KEY AUTO_INCREMENT,
+  project_id  int default NULL,
+  trial_id    int default NULL,
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
-  type        INT NOT NULL,
-  sysType     INT NOT NULL
--- The following are no longer used, I think:
---  tid         text,
---  unit        text,
---  min         decimal,
---  max         decimal,
+  datatype    INT NOT NULL,
+  foreign key(project_id) references project(id) on delete cascade,
+  foreign key(trial_id) references trial(id) on delete cascade,
+  unique (project_id, trial_id, caption)
 );
 
 
