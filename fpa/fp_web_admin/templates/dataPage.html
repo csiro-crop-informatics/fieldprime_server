@@ -10,25 +10,24 @@
 {% extends "base.html" %}
 {% block content %}
 <div id="dataWrapper">
-<div class="dataHeader">
+    <div class="dataHeader">
+      <div id="dataLeftBar">
+        {{navContent|safe}}
+      </div>
+    </div>
 
-  <div id="dataLeftBar">
-    {{navContent|safe}}
-  </div>
-  </div>
+    <div class="dataContent">
+        {% block dataContent %}
+        {{content|safe}}
+        {% endblock %}
+    </div>
 
-  <div class="dataContent">
-      {% block dataContent %}
-      {{content|safe}}
-      {% endblock %}
-  </div>
-
-  {% block dataHelpPane %}
-  {% endblock %}
-
+    {% block dataHelpPane %}
+    {% endblock %}
 </div>
 {% endblock %}
-{#
+
+{#  Old version, commented out --------------------------
 {% block content %}
 <div id="dataWrapper">
 

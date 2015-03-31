@@ -72,22 +72,87 @@ def dataNavigationContent(sess, trialId):
     nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
     nc += '</div><div style="clear:both"></div>'
 
-    trials = sess.getProject().trials
-    #trials = models.getTrialList(sess.db())
-    trialListHtml = None if len(trials) < 1 else ""
-    for t in trials:
-        if "{}".format(t.id) == "{}".format(trialId):
-            trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-        else:
-            trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-
-    if trialListHtml:
-        nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-        nc += "<h2>Trials:</h2><ul class='fa-ul'>"
-        nc += trialListHtml
-        nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
     return nc
+#     ##
+#     # Construct clickable list of trials:
+#     ##
+#     trials = sess.getProject().trials
+#
+#     if True:
+#         def trialDropDown():
+#             out = '<select name="project" id="tdd" onchange="location=this.options[this.selectedIndex].value;">'
+#             for t in trials:
+#                 out += '<option value="{0}" {1}>{2}</option>'.format(
+#                     url_for("urlTrial", trialId=t.id),
+#                     'selected="selected"' if (trialId is not None and t.id == int(trialId)) else '',
+#                     t.name)
+#             out += '</select>'
+#             return out
+#
+#         if len(trials) > 0:
+#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+#             #nc += '<h2 style="display:inline">Trials:</h2>'
+#             nc += '<h2>Trials:</h2>'
+#             nc += trialDropDown()
+#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+#         return nc
+#
+#     else:
+#         trialListHtml = None if len(trials) < 1 else ""
+#         for t in trials:
+#             if "{}".format(t.id) == "{}".format(trialId):
+#                 trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+#             else:
+#                 trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+#
+#         if trialListHtml:
+#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+#             nc += "<h2>Trials:</h2><ul class='fa-ul'>"
+#             nc += trialListHtml
+#             nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
+#         return nc
 
+def trialSelector(sess, trialId):
+    nc = ''
+
+    ##
+    # Construct clickable list of trials:
+    ##
+    trials = sess.getProject().trials
+
+    if True:
+        def trialDropDown():
+            out = '<select name="project" id="tdd" onchange="location=this.options[this.selectedIndex].value;">'
+            for t in trials:
+                out += '<option value="{0}" {1}>{2}</option>'.format(
+                    url_for("urlTrial", trialId=t.id),
+                    'selected="selected"' if (trialId is not None and t.id == int(trialId)) else '',
+                    t.name)
+            out += '</select>'
+            return out
+
+        if len(trials) > 0:
+            nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+            nc += '<h2 style="display:inline">Trial:</h2>'
+            #nc += '<h2>Trial:</h2>'
+            nc += trialDropDown()
+            nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+        return nc
+
+    else:
+        trialListHtml = None if len(trials) < 1 else ""
+        for t in trials:
+            if "{}".format(t.id) == "{}".format(trialId):
+                trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+            else:
+                trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
+
+        if trialListHtml:
+            nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
+            nc += "<h2>Trials:</h2><ul class='fa-ul'>"
+            nc += trialListHtml
+            nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
+        return nc
 
 def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------
@@ -95,7 +160,7 @@ def dataPage(sess, title, content, trialId=None):
 # The point of this function is to add the navigation content.
 #
     nc = dataNavigationContent(sess, trialId)
-    return render_template('dataPage.html', navContent=nc, content=content, title=title)
+    return render_template('dataPage.html', navContent=nc, content=trialSelector(sess, trialId) + content, title=title)
 
 def dataTemplatePage(sess, template, **kwargs):
 #----------------------------------------------------------------------------
