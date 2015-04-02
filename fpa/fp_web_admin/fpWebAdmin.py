@@ -437,7 +437,8 @@ def TrialHtml(sess, trialId):
     hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
     hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
     hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
-    return '<h2>Trial: {0}</h2>'.format(trial.name) + hts.htmlTabs()
+    #return '<h2>Trial: {0}</h2>'.format(trial.name) + hts.htmlTabs()
+    return hts.htmlTabs()
 
 
 def trialPage(sess, trialId):
@@ -446,7 +447,7 @@ def trialPage(sess, trialId):
 #
     trialh = TrialHtml(sess, trialId)
     if trialh is None:
-        trialh = "No such trial"
+        trialh = "No trial selected"
     return dp.dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
 
