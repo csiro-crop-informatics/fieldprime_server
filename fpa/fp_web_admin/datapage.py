@@ -98,10 +98,19 @@ def trialSelector(sess, trialId):
                 if (newLocation !== 0) location=newLocation;
             }
             </script>'''
+            out += '<div style="width: 100%; overflow: hidden;">'
+
+            #out += '<div style="width: 600px; float: left;">'
+            out += '<div style="display:inline-block;">'
             out += '<label for="tdd">Trial: &nbsp;</label>'
-            out += '<div style="width:200px">'
+            out += '</div>'
+
+            #out += '<div style="width:200>'
+
+            #out += '<div style="margin-left: 620px;"">'
+            out += '<div style="display:inline-block;min-width:400px">'
             #out = '<select name="project" id="tdd" onchange="location=this.options[this.selectedIndex].value;">'
-            out += '<select class="form-control" name="tdd" id="tdd" onchange="zirptl(this.options[this.selectedIndex].value);">'
+            out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl(this.options[this.selectedIndex].value);">'
             out += '<option value=0 {0}>..Select trial..</option>'.format(
                     'selected="selected"' if (trialId is None) else '')
             for t in trials:
@@ -111,6 +120,9 @@ def trialSelector(sess, trialId):
                     t.name)
             out += '</select>'
             out += '</div>'
+            out += '</div>'
+
+
             return out
 
         if len(trials) > 0:
