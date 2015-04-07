@@ -22,8 +22,8 @@ def dataNavigationContent(sess, trialId):
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
-    nc += '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
-    nc += '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
+    nc +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    nc +=   '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
     nc += '</div><div style="clear:both"></div>'
 
     ### Project and project specific buttons:
@@ -41,23 +41,25 @@ def dataNavigationContent(sess, trialId):
         if errMsg or not projList:
             return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
 
-        # MFK do we really want a form here?
-        hackedProjUrl = url_for('urlProject', project='')[:-1]
-        projectSelectorHtml = '''
-        <script>
-        function submitProjSelection(frm) {{
-            var e = document.getElementById("project");
-            var proj = e.options[e.selectedIndex].value;
-            frm.action = "{0}" + proj
-            frm.submit()
-        }}
-        </script>
-        <form  method="GET" style='display:inline;'>
-        <select class="form-control" class="form-control" name="project" id="project" onchange="submitProjSelection(this.form)">'''.format(hackedProjUrl)
-        for proj in projList:
-            projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
-                    proj.projectName, 'selected="selected"' if proj.projectName == sess.getProjectName() else '')
-        projectSelectorHtml += '</select></form>'
+        if False:
+            # MFK do we really want a form here?
+            hackedProjUrl = url_for('urlProject', project='')[:-1]
+            projectSelectorHtml = '''
+            <script>
+            function submitProjSelection(frm) {{
+                var e = document.getElementById("project");
+                var proj = e.options[e.selectedIndex].value;
+                frm.action = "{0}" + proj
+                frm.submit()
+            }}
+            </script>
+            <form  method="GET" style='display:inline;'>
+            <select class="form-control" class="form-control" name="project" id="project" onchange="submitProjSelection(this.form)">'''.format(hackedProjUrl)
+            for proj in projList:
+                projectSelectorHtml += '<option value="{0}" {1}><h1>{0}</h1></option>'.format(
+                        proj.projectName, 'selected="selected"' if proj.projectName == sess.getProjectName() else '')
+            projectSelectorHtml += '</select></form>'
+        else:
     else:
         projectSelectorHtml = sess.getProjectName()
 
@@ -100,26 +102,22 @@ def trialSelector(sess, trialId):
             </script>'''
             out += '<div style="width: 100%; overflow: hidden;">'
 
-            #out += '<div style="width: 600px; float: left;">'
-            out += '<div style="display:inline-block;">'
-            out += '<label for="tdd">Trial: &nbsp;</label>'
-            out += '</div>'
+            out +=   '<div style="display:inline-block;">'
+            out +=     '<label for="tdd">Trial: &nbsp;</label>'
+            out +=   '</div>'
 
-            #out += '<div style="width:200>'
-
-            #out += '<div style="margin-left: 620px;"">'
-            out += '<div style="display:inline-block;min-width:400px">'
+            out +=   '<div style="display:inline-block;min-width:400px">'
             #out = '<select name="project" id="tdd" onchange="location=this.options[this.selectedIndex].value;">'
-            out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl(this.options[this.selectedIndex].value);">'
-            out += '<option value=0 {0}>..Select trial..</option>'.format(
-                    'selected="selected"' if (trialId is None) else '')
+            out +=     '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl(this.options[this.selectedIndex].value);">'
+            out +=     '<option value=0 {0}>..Select trial..</option>'.format(
+                          'selected="selected"' if (trialId is None) else '')
             for t in trials:
                 out += '<option value="{0}" {1}>{2}</option>'.format(
                     url_for("urlTrial", trialId=t.id),
                     'selected="selected"' if (trialId is not None and t.id == int(trialId)) else '',
                     t.name)
-            out += '</select>'
-            out += '</div>'
+            out +=     '</select>'
+            out +=   '</div>'
             out += '</div>'
 
 
