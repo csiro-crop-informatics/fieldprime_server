@@ -1554,9 +1554,10 @@ def urlMain():
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
                 else:
-                    project = projList[0].projectName  # Select any project
-                    access = projList[0].access
-                    dbname = projList[0].dbname
+                    project = access = dbname = None
+#                     project = projList[0].projectName  # Select any project
+#                     access = projList[0].access
+#                     dbname = projList[0].dbname
             else:
                 util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'

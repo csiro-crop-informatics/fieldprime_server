@@ -8,7 +8,18 @@ import sys
 import time
 from flask import url_for
 
-#-----------------------------------------------------------------------
+###  Constants: ################################################################
+
+htmlBootstrapGumpf = '''
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+'''
+
+###  Functions: ################################################################
 
 def getString(x):
 #-----------------------------------------------------------------------
@@ -17,6 +28,8 @@ def getString(x):
     if isinstance(x, str): return x
     return x()
 
+def htmlHorizontalRule():
+    return '<hr style="margin:15px 0; border: 1px solid #aaa;">'
 
 def htmlForm(content, id=None, post=False, onsubmit='', multipart=False):
 #-----------------------------------------------------------------------
