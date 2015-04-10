@@ -26,6 +26,7 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 #
     out = ''
     out += '<div style="width: 100%; overflow: hidden; display:inline-block;">'
+    out += '<div style="overflow: hidden; display:inline-block;">'
     out += '''<script>
     function zirptl3(newLocation) {
         if (newLocation !== 0) location=newLocation;
@@ -183,6 +184,7 @@ def dataPage(sess, title, content, trialId=None):
             lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
             None if trialId is None else url_for('urlTrial', trialId=trialId))
     prefix += fpUtil.htmlHorizontalRule()
+    #return render_template('dataPage.html', navContent=nc+prefix, content=content, title=title)
     return render_template('dataPage.html', navContent=nc, content=prefix+content, title=title)
 
 
