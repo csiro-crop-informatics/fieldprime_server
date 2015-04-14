@@ -11,12 +11,14 @@ then
   exit $E_BADARGS
 fi
 
-DBNAME=fp_$1
-DBUSER=fp_$1
+PROJNAME=$1
+DBNAME=fp_$PROJNAME
+DBUSER=fp_$PROJNAME
 
 
 $MYSQL -uSuperadm -p <<EOF
 drop database $DBNAME;
 drop user '$DBUSER'@'localhost';
+delete from fpsys.project where name = '$PROJNAME'
 EOF
 
