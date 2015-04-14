@@ -38,7 +38,7 @@ create table trial(
   project_id  int default NULL,
   site        text,
   year        text,
-  acronym     text
+  acronym     text,
   foreign key(project_id) references project(id) on delete cascade
 );
 
