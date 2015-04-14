@@ -25,7 +25,6 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 # promptOptionString should be None).
 #
     out = ''
-    out += '<div style="width: 100%; overflow: hidden; display:inline-block;">'
     out += '<div style="overflow: hidden; display:inline-block;">'
     out += '''<script>
     function zirptl3(newLocation) {
@@ -54,7 +53,6 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
             'selected="selected"' if val ==  selectedThingValue else '',
             thingNameFunc(thing))
     out +=     '</select>'
-    #out += '</span>'   ############################################
     out +=   '</div>'
     out += '</div>'
     return out
@@ -111,66 +109,6 @@ def _dataNavigationContent(sess, trialId):
         nc += '</div><div style="clear:both"></div>'
     return nc
 
-# def trialSelector(sess, trialId):
-#     nc = ''
-#     ##
-#     # Construct clickable list of trials:
-#     ##
-#     trials = sess.getProject().trials
-#     if True:
-#         def trialDropDown():
-#             out = ''
-#             out += '''<script>
-#             function zirptl(newLocation) {
-#                 if (newLocation !== 0) location=newLocation;
-#             }
-#             </script>'''
-#             out += '<div style="width: 100%; overflow: hidden;">'
-#
-#             out +=   '<div style="display:inline-block;">'
-#             out +=     '<label for="tdd">Trial: &nbsp;</label>'
-#             out +=   '</div>'
-#
-#             out +=   '<div style="display:inline-block;min-width:400px">'
-#             #out = '<select name="project" id="tdd" onchange="location=this.options[this.selectedIndex].value;">'
-#             out +=     '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl(this.options[this.selectedIndex].value);">'
-#             out +=     '<option value=0 {0}>..Select trial..</option>'.format(
-#                           'selected="selected"' if (trialId is None) else '')
-#             for t in trials:
-#                 out += '<option value="{0}" {1}>{2}</option>'.format(
-#                     url_for("urlTrial", trialId=t.id),
-#                     'selected="selected"' if (trialId is not None and t.id == int(trialId)) else '',
-#                     t.name)
-#             out +=     '</select>'
-#             out +=   '</div>'
-#             out += '</div>'
-#
-#
-#             return out
-#
-#         if len(trials) > 0:
-#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-#             #nc += '<h2 style="display:inline">Trial:</h2>'
-#             #nc += '<h2>Trial:</h2>'
-#             nc += trialDropDown()
-#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-#         return nc
-#
-#     else:
-#         trialListHtml = None if len(trials) < 1 else ""
-#         for t in trials:
-#             if "{}".format(t.id) == "{}".format(trialId):
-#                 trialListHtml += "\n  <li class='fa-li fa selected'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-#             else:
-#                 trialListHtml += "\n  <li class='fa-li fa'><a href={0}>{1}</a></li>".format(url_for("urlTrial", trialId=t.id), t.name)
-#
-#         if trialListHtml:
-#             nc += '<hr style="margin:15px 0; border: 1px solid #aaa;">'
-#             nc += "<h2>Trials:</h2><ul class='fa-ul'>"
-#             nc += trialListHtml
-#             nc += '</ul><hr style="margin:15px 0; border: 1px solid #aaa;">'
-#         return nc
-
 
 def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------
@@ -178,14 +116,13 @@ def dataPage(sess, title, content, trialId=None):
 # The point of this function is to add the navigation content.
 #
     nc = _dataNavigationContent(sess, trialId)
-    prefix = ''
+    trialNav = ''
     if sess.getProjectName() is not None:
-        prefix = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
+        trialNav = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
             lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
             None if trialId is None else url_for('urlTrial', trialId=trialId))
-    prefix += fpUtil.htmlHorizontalRule()
-    #return render_template('dataPage.html', navContent=nc+prefix, content=content, title=title)
-    return render_template('dataPage.html', navContent=nc, content=prefix+content, title=title)
+    trialNav += fpUtil.htmlHorizontalRule()
+    return render_template('dataPage.html', navContent=nc+trialNav, content=content, title=title)
 
 
 def dataTemplatePage(sess, template, **kwargs):
