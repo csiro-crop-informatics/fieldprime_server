@@ -18,6 +18,82 @@
 {# Determine if anyone is logged in: #}
 {% set loggedIn = (g.userName and g.userName != 'unknown') %}
 
+{% if true %}
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
+  <script src="{{ url_for('static', filename='fplib.js') }}"></script>
+
+  <!-- Font Awesome for icons -->
+  <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
+
+  <title>{{ title }}</title>
+
+
+{#
+<script src="//code.jquery.com/jquery.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<meta charset="utf-8">
+<title>FieldPrime</title>
+#}
+</head>
+
+<body>
+<nav class="navbar navbar-inverse" role="navigation">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">
+                <!-- <div><img  src="/fieldprime/static/css/images/logo.png" style="height:58px; margin:0 auto;">FieldPrime Server</div> -->
+                <div><img  src="{{ url_for('static', filename='css/images/logo.png') }}" style="height:58px; margin:0 auto;">FieldPrime Server</div>
+            </a>
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav-collapse">
+             <span class="sr-only">Toggle navigation</span>
+             <span class="icon-bar"></span>
+             <span class="icon-bar"></span>
+             <span class="icon-bar"></span>
+            </button>
+        </div>
+
+        <div class="collapse navbar-collapse" id="nav-collapse">
+                <!-- Individual Navbar elements -->
+            <ul class="nav nav-justified nasti-nav">
+
+            {% if loggedIn %}
+    <li>
+        <a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
+      {% else %}
+      <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
+      {% endif %}
+
+
+
+                <li><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
+                <li><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
+                <li><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
+                <li>
+                  {% if loggedIn %}
+                    <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
+                  {% else %}
+                    <a href="{{url_for('urlMain')}}"><span class='fa fa-sign-in'></span> Log In</a>
+                  {% endif %}
+                </li>
+            </ul>
+        </div>
+    </div> <!-- Container fluid-->
+</nav>
+
+{% else %}
+
 <!doctype html>
 <html>
 <head>
@@ -73,6 +149,7 @@
     </div>
 </div>
   <!-- <hr> -->
+{% endif %}
 
 <!-- Content: ----------------------------------------------------------------------------- -->
 {% block content %}{% endblock %}

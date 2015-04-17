@@ -1482,6 +1482,19 @@ def passwordCheck(sess, password):
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
 
 
+# @app.route('/bootstrap', methods=["GET", "POST"])
+# def bootstrapTest():
+#     #return app.send_static_file('bootstrap.html')
+#     return '<a href={0}>bootstrap</a>'.format(url_for('static', 'bootstrap.html'))
+
+
+#@app.route('/', methods=["GET", "POST"])
+def bootstrapTest():
+    #return app.send_static_file('bootstrap.html')
+    out = '<a href={0}>bootstrap2</a><br>'.format(url_for('static', filename='bootstrap2.html'))
+    out += '<a href={0}>bootstrap</a>'.format(url_for('static', filename='bootstrap.html'))
+    return out
+
 
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
@@ -1633,6 +1646,7 @@ def urlMain2():
 </script>
     '''
     return out
+
 
 ##############################################################################################################
 
