@@ -34,56 +34,7 @@ h3{
 }
 
 /*------------------------- Header ------------------------*/
-/*
-.header{
-    background: #333 no-repeat center 90px;
-    width:100%;
-    margin:0 auto;
-    height:55px;
-    box-shadow: 0px 5px 10px black;
-}
-.header #headerNav {
-    width: 1024px;
-    padding:0;
-    margin: 0 auto;
-}
-.header a#logo{
-    display:block;
-    float:left;
-    outline:none;
-}
-.header a#logo img{
-    border:0;
-}
-.header .logo{
-    text-decoration: none;
-    font-size: 48px;
-    color: #348055
-}
-.header select {
-    margin-top: 7px;
-}
-.header ul{
-    margin-top: 10px;
-    list-style:none;
-    float:right;
-    vertical-align: middle;
-}
-.header ul li{
-    float:left;
-    margin-left: 30px;
-}
-.header ul li.selected a,.header ul li a:hover{
-    color:#f78117;
-}
-.header ul li a{
-    font-size:24px;
-    text-decoration:none;
-    color:#5e5e5e;
-    font-family: 'RokkittRegular';
-    outline:none;
-}
-*/
+
 
 /*
  * class dataHeader
@@ -92,7 +43,7 @@ h3{
 .dataHeader {
     width: 100%;
     min-width: 800px;  /* It looks a bit better with min width, but maybe not good for mobile. */
-    height: 80px;
+    /*height: 80px;*/
     background: white;
     z-index: 1000;
 }
