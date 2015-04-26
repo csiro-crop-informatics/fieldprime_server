@@ -599,7 +599,8 @@ table.fptable{
 	font-size: 30px;
 	margin-bottom: 6px;
 }
-/** main **/
+
+/** main  This all for news page alone it seems. sidebar not used **/
 .main {
 	float: left;
 	background: url(../images/divider.png) repeat-y right top;
