@@ -64,7 +64,7 @@ def _dataNavigationContent(sess, trialId):
     ### User and user specific buttons:
 
     # Show current user:
-    nc = fpUtil.htmlBootstrapGumpf
+    nc = '' #fpUtil.htmlBootstrapGumpf
     nc += "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
 
     # Show non project specific buttons:

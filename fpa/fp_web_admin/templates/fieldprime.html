@@ -10,8 +10,7 @@ class="active"
 
     {# Login fields, or name of logged in user and logout button: #}
       <div id="contents" class=infoText>
-
-		<div id="about">
+		<div class=fpInfoText>
 			<h1>Welcome to FieldPrime</h1>
           <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
                   <h2>FieldPrime Software</h2>
@@ -29,7 +28,7 @@ class="active"
                     <h1>Log in</h1>
                   <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
                     <label for='username'>User Name: </label><input type="text" name="username" id='username'><br />
-                    <label for='password'>Password: </label><input type=password name="password" id='password'> 
+                    <label for='password'>Password: </label><input type=password name="password" id='password'>
                     <input type="submit" value="Login"></p>
                   </FORM>
                   {% endif %}

@@ -1482,20 +1482,6 @@ def passwordCheck(sess, password):
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
 
 
-# @app.route('/bootstrap', methods=["GET", "POST"])
-# def bootstrapTest():
-#     #return app.send_static_file('bootstrap.html')
-#     return '<a href={0}>bootstrap</a>'.format(url_for('static', 'bootstrap.html'))
-
-
-#@app.route('/', methods=["GET", "POST"])
-def bootstrapTest():
-    #return app.send_static_file('bootstrap.html')
-    out = '<a href={0}>bootstrap2</a><br>'.format(url_for('static', filename='bootstrap2.html'))
-    out += '<a href={0}>bootstrap</a>'.format(url_for('static', filename='bootstrap.html'))
-    return out
-
-
 @app.route('/', methods=["GET", "POST"])
 def urlMain():
 #-----------------------------------------------------------------------
@@ -1568,9 +1554,6 @@ def urlMain():
                     error = 'No projects found for user {0}'.format(username)
                 else:
                     project = access = dbname = None
-#                     project = projList[0].projectName  # Select any project
-#                     access = projList[0].access
-#                     dbname = projList[0].dbname
             else:
                 util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
@@ -1594,58 +1577,7 @@ def urlMain():
     # Request method is 'GET':
     return urlInfoPage('fieldprime')
 
-@app.route('/XXXX', methods=["GET", "POST"])
-def urlMain2():
-    out = 'hallo sailor <div id="svg"></div> goodbye sailor'
-#     out += '''
-# <svg width="720" height="120">
-#   <circle cx="40" cy="60" r="10"></circle>
-#   <circle cx="80" cy="60" r="10"></circle>
-#   <circle cx="120" cy="60" r="10"></circle>
-# </svg>
-# '''
-    out += '''
-<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
-<script>
-(function (data) {
-    var sw = 800, sh = 200;
-    var svgSpace = d3.select("#svg").append("svg")
-                                    .attr("width", sw).attr("height", sh)
-    svgSpace.append("rect").attr("x", 10).attr("y", 10).attr("width", sw-10).attr("height", sh-10)
-                           .attr("fill", "none").attr("stroke", "#000");
 
-    /*
-    for (var i=0; i<3; ++i)
-        svgSpace.append("circle").attr("cx", (i+1)*70).attr("cy", 60).attr("r", 10);
-    var circle = d3.selectAll("circle");
-    circle.style("fill", "steelblue");
-    circle.attr("r", 30);
-    */
-
-    var ndata = data.length;
-    if (ndata <= 0) {
-        svgSpace.append("text")
-            .attr("x", 20)
-            .attr("y", 60)
-            .text("No Data");
-        return;
-    }
-
-    var min = data[0];
-    var max = min;
-    var q1, q3, med;
-    for (var i=0; i<ndata; ++i) {
-        var d = data[i];
-        if (d < min) min = d;
-        if (d > max) max = d;
-    }
-    alert(min);
-    alert(max);
-})([3,9,23,5,24,14,6,18,43,9]);
-
-</script>
-    '''
-    return out
 
 
 ##############################################################################################################
