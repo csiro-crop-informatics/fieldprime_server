@@ -7,6 +7,7 @@ body{
     font-family: Verdana, Geneva, sans-serif;
     font-size: 85%;
 }
+
 a{
     font-family: Verdana, Geneva, sans-serif;
     text-decoration: none;
@@ -144,116 +145,7 @@ li.mega-menu a:hover {
 This was causing bad behaviour for the search box on a datatable (scoreset browse)
 label { display: inline-block; width: 140px; text-align: left; }*/
 ​label { width: 140px; text-align: left; }
-/*------------------------- Body ------------------------*/
-#sidebar{
-    width: 220px;
-    border-right: 1px #eee solid;
-    float: left;
-}
-#welcomeuser {
-    margin: 10px;
-}
-#welcomeuser img {
-    margin-right: 3px;
-}
-#videosofstory {
-    margin: 10px;
-}
-#content {
-    margin-left: 220px;
-}
-#contentbody {
-    margin: 15px;
-    padding-right: 220px;
-/*    width: 630px; */
-}
-#videosofstory ul {
-    list-style-type: none;
-    margin-left: 0px;
-    padding-left: 10px;
-}
-#videosofstory li {
-    margin-bottom: 10px;
-}
 
-#videosofstory li.current a{
-    color: #01A9CE;
-}
-
-#videoContainer {
-    text-align: center;
-    padding: 10px;
-}
-.videoButtons {
-    padding: 10px;
-    height: 30px;
-}
-.videoButtons form {
-    float: left;
-    padding: 5px;
-}
-
-.relativeNotes{
-    margin:0 auto;
-    overflow:hidden;
-    color: #444;
-    border-radius: 5px;
-    width: 600px;
-    margin-left: 1px;
-}
-.relativeNotes li {
-    background-color: #EDEFF4;
-    border-bottom: 1px solid #D2D9E7;
-    margin-top: 1px;
-    padding: 5px 5px 4px;
-}
-
-.videos {
-    text-align: center;
-}
-.videoItem {
-    float: left;
-    padding: 20px;
-    height: 280px;
-    width: 300px;
-    font-size: 14px;
-}
-.videoItem img{
-    border-radius: 15px;
-    width: 300px;
-    height: 245px;
-
-}
-.videoComments {
-    margin-bottom: 0.5em;
-    border: 1px solid purple;
-    padding: 1px;
-    display: block;
-}
-.comment {
-    padding: 10px;
-}
-
-.videoToDrag{
-    float: left;
-    height:200px;
-    padding:10px;
-    max-width:300px;
-}
-.videoToDrag img, #welcomeuser img{
-    border-radius: 10px;
-}
-
-#bottomSearch {
-    position: fixed;
-    bottom: 45px;
-    padding: 15px;
-    background: #01A9CE;
-    border-top-right-radius: 5px;
-    height: 30px;
-    color: white;
-    left: 0px;
-}
 
 /*------------------------- Footer ------------------------*/
 #footer{
@@ -293,30 +185,9 @@ label { display: inline-block; width: 140px; text-align: left; }*/
 * html .box {
     position: absolute;
 }
-#FBNewsFeed {
-}
-
-#fbReco {
-    background: url("./fb.jpeg") no-repeat;
-    padding-left: 20px;
-    font-size: 14px;
-    /*height: 16px;*/
 
 
-}
-#fbRecoContainer {
-    margin-top: 10px;
-    margin-left: 2px;
-}
-.fbRecoHeader {
-    font-size: 14px;
-    vertical-align: middle;
-    height: 20px;
-}
-.fbPost {
-    margin-bottom: 5px;
-    font-size: 12px;
-}
+
 .name {
     color: #3B5998;
 }
@@ -330,10 +201,6 @@ label { display: inline-block; width: 140px; text-align: left; }*/
     margin-top: 1px;
     padding: 5px 5px 4px;
 
-}
-#fbNotes {
-    background: url("./fb.jpeg") no-repeat;
-    padding-left: 20px;
 }
 
 
@@ -905,63 +772,63 @@ fieldset{
 /*** user input forms: ******************************************/
 
 .userInputForm button{
-clear:both;
-margin-left:150px;
-width:125px;
-height:31px;
-background:#666666 url(img/button.png) no-repeat;
-text-align:center;
-line-height:31px;
-color:#FFFFFF;
-font-size:11px;
-font-weight:bold;
+    clear:both;
+    margin-left:150px;
+    width:125px;
+    height:31px;
+    background:#666666 url(img/button.png) no-repeat;
+    text-align:center;
+    line-height:31px;
+    color:#FFFFFF;
+    font-size:11px;
+    font-weight:bold;
 }
 
 .userInputForm td{
-vertical-align:top;
+    vertical-align:top;
 }
 
 .userInputForm label{
-display:block;
-/*font-weight:bold;*/
-text-align:right;
-vertical-align:top;
-width:140px;
-float:left;
+    display:block;
+    /*font-weight:bold;*/
+    text-align:right;
+    vertical-align:top;
+    width:140px;
+    float:left;
 }
 
 .userInputForm .small{
-color:#666666;
-display:block;
-font-size:11px;
-font-weight:normal;
-text-align:right;
-width:140px;
+    color:#666666;
+    display:block;
+    font-size:11px;
+    font-weight:normal;
+    text-align:right;
+    width:140px;
 }
 
 .userInputForm input:not(.nostyle),
 .userInputForm select
 .uifDiv
 {
-float:left;
-/*font-size:12px;
-padding:4px 2px;
-border:solid 1px #aacfe4;*/
-width:200px;
-margin-top:2px;
-margin-right:0;
-margin-bottom:20px;
-margin-left:10px;
+    float:left;
+    /*font-size:12px;
+    padding:4px 2px;
+    border:solid 1px #aacfe4;*/
+    width:200px;
+    margin-top:2px;
+    margin-right:0;
+    margin-bottom:20px;
+    margin-left:10px;
 }
 
 /* Problem here is that there may not be a single input element.
-radio buttons for example. We probably want some container class.
-*/
+ * radio buttons for example. We probably want some container class.
+ */
 .userInputForm input[type="radio"] {
-margin-top:2px;
-margin-right:3px;
-margin-bottom:20px;
-margin-left:10px;
+    margin-top:2px;
+    margin-right:3px;
+    margin-bottom:20px;
+    margin-left:10px;
 }
 
 
