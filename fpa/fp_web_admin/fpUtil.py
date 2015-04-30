@@ -125,7 +125,7 @@ def htmlDataTableMagic(tableId):
     r += """
     <script>
     function setTrialDataWrapperWidth() {
-        var setWidthTo = Math.round($(".header").width() - 40);
+        var setWidthTo = Math.round($(".fpHeader").width() - 40);
         document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
     }
     $(document).ready(

@@ -18,7 +18,6 @@
 {# Determine if anyone is logged in: #}
 {% set loggedIn = (g.userName and g.userName != 'unknown') %}
 
-{% if true %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -29,7 +28,7 @@
 
   <!-- Font Awesome for icons -->
   <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
-  <!-- <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}"> -->
+
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
 
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
@@ -37,19 +36,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>{{ title }}</title>
-
-
-{#
-<script src="//code.jquery.com/jquery.min.js"></script>
-<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
-<meta charset="utf-8">
-<title>FieldPrime</title>
-#}
 </head>
 
 <body>
-<nav class="navbar navbar-inverse header" role="navigation">
+<nav class="navbar navbar-inverse fpHeader" role="navigation">
     <div class="container-fluid">
         <div class="navbar-header">
             <a class="navbar-brand" href="#">
@@ -91,65 +81,6 @@
         </div>
     </div> <!-- Container fluid-->
 </nav>
-
-{% else %}
-
-<!doctype html>
-<html>
-<head>
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-  <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/themes/smoothness/jquery-ui.css" />
-  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
-  <script src="{{ url_for('static', filename='fplib.js') }}"></script>
-  <script>{% block javascript %}{% endblock %}</script>
-  <!-- Font Awesome for icons -->
-  <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
-  <title>{{ title }}</title>
-</head>
-<body>
-<div class="header">
-    <div class="banner">
-        <div class="banner-container">
-            <div class="brand">
-                <div class="logo">
-                    <h2>
-                        <a href="{{url_for('urlMain')}}" title="CSIRO Logo"></a>
-                    </h2>
-                </div>
-                <div class="title">FieldPrime Server</div>
-            </div>
-            <div class="fixed-menu">
-                <div class="menu">
-                    <ul>
-      {# Add UserData page if use is logged in: #}
-                        <li class="mega-menu"><a href="http://www.csiro.au" target="_blank"><span class='fa fa-copyright'></span> CSIRO.au</a></li>
-      {% if loggedIn %}
-    <li class="mega-menu {% if pagename is not defined %} active {% endif %}">
-        <a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
-      {% else %}
-      <li class="mega-menu" {% if pagename == 'fieldprime' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
-      {% endif %}
-                        <li class="mega-menu" {% if pagename == 'news' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
-                        <li class="mega-menu" {% if pagename == 'about' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
-                        <li class="mega-menu" {% if pagename == 'contact' %}class="active"{% endif %}><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
-                        <li class="mega-menu">
-                          {% if loggedIn %}
-                            <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
-                          {% else %}
-                            <a href="{{url_for('urlMain')}}"><span class='fa fa-sign-in'></span> Log In</a>
-                          {% endif %}
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div id="userPanel"></div>
-    </div>
-</div>
-  <!-- <hr> -->
-{% endif %}
 
 <!-- Content: ----------------------------------------------------------------------------- -->
 {% block content %}{% endblock %}

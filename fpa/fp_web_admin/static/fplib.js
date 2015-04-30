@@ -194,7 +194,7 @@ fplib.drawScatterPlot = function(xdata, xname, ydata, yname, divId, divWidth, di
 
 // this not used
 fplib.setWrapperWidth = function (elementId) {
-    var setWidthTo = Math.round($(".header").width() - 40);
+    var setWidthTo = Math.round($(".fpHeader").width() - 40);
     document.getElementById(elementId + '_wrapper').style.width = setWidthTo + 'px';
 };
 
