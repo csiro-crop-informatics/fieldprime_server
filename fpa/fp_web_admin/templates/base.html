@@ -21,6 +21,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- Jquery: -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
   <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
   <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
@@ -43,13 +44,29 @@
 
   <script src="{{ url_for('static', filename='fplib.js') }}"></script>
 
-  <!-- Font Awesome for icons -->
+  <!-- Font Awesome for icons: -->
   <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
 
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
 
-  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+  <!-- Bootstrap: -->
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+  <!-- Optional theme
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css"> -->
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+  <script>
+    if (typeof $.fn.modal === 'undefined') {
+        var script = document.createElement('script');
+        script.src = '{{ url_for('static', filename='lib/bootstrap.3.3.4.min.js') }}';
+        document.write(script.outerHTML);
+
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = '{{ url_for('static', filename='lib/bootstrap.3.3.4.min.css') }}';
+        document.write(css.outerHTML);
+    }
+  </script>
+
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStylePostBootstrap.css') }}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -103,7 +120,7 @@
 <!-- Content: ----------------------------------------------------------------------------- -->
 {% block content %}{% endblock %}
 <!-- Footer: ------------------------------------------------------------------------------ -->
-<div id="footer">
+<div class="fpFooter">
   <div class="banner-container">
   &copy; 2014 CSIRO
 </div>
