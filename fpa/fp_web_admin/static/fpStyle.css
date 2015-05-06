@@ -1,19 +1,31 @@
+/*
+ * fpStyle.css
+ * FieldPrime style file.
+ * NB, attow this is included prior to bootstrap files, which suggests that
+ * much styling of generic elements is likely to be overwritten.
+ *
+ * . It would be good to know if every page has the same inclusion order
+ *   (eg is an extension of the base template).
+ */
+
+
 /**** Including here what was css/style.css:  ***********************************/
 
-/* Website template by freewebsitetemplates.com */
-/*------------------------- Layout styles ------------------------*/
+/* Element styles: */
+
 body{
     margin:0;
     font-family: Verdana, Geneva, sans-serif;
     font-size: 85%;
 }
-
-a{
+/* Anchor, NB the font-family is having an effect, the rest overwritten by
+bootstrap I think*/
+a {
     font-family: Verdana, Geneva, sans-serif;
     text-decoration: none;
     color: #00313C;
 }
-
+/* */
 a:hover{
     text-decoration: underline;
     color: #000;
@@ -31,6 +43,14 @@ h3{
     color: #0F4A84;
 }
 
+/*
+This was causing bad behaviour for the search box on a datatable (scoreset browse)
+label { display: inline-block; width: 140px; text-align: left; }
+*/
+​label { width: 140px; text-align: left; }
+
+
+/**/
 /*------------------------- Header ------------------------*/
 
 /*
@@ -127,18 +147,6 @@ li.mega-menu {
 li.mega-menu a:hover {
     text-decoration: underline;
 }
-
-.navigation {
-    float: left;
-    height: 41px;
-    width: 100%;
-    background: url("images/grey-gradient.jpg") repeat-x 0 0;
-}
-
-/*
-This was causing bad behaviour for the search box on a datatable (scoreset browse)
-label { display: inline-block; width: 140px; text-align: left; }*/
-​label { width: 140px; text-align: left; }
 
 
 /*------------------------- Footer ------------------------*/

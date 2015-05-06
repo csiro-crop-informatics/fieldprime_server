@@ -47,10 +47,16 @@ fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/static/fpStylePostBootstrap.css -text
 fpa/fp_web_admin/static/fplib.js -text
 fpa/fp_web_admin/static/jquery.jeditable.css -text
+fpa/fp_web_admin/static/lib/bootstrap.3.3.4.css -text
+fpa/fp_web_admin/static/lib/bootstrap.3.3.4.js -text
+fpa/fp_web_admin/static/lib/bootstrap.3.3.4.min.css -text
+fpa/fp_web_admin/static/lib/bootstrap.3.3.4.min.js -text
 fpa/fp_web_admin/static/lib/jquery-1.11.2.js -text
 fpa/fp_web_admin/static/lib/jquery-1.11.2.min.js -text
 fpa/fp_web_admin/static/lib/jquery-ui.1.11.4.css -text
 fpa/fp_web_admin/static/lib/jquery-ui.1.11.4.min.js -text
+fpa/fp_web_admin/static/lib/jquery.dataTables.1.10.7.min.css -text
+fpa/fp_web_admin/static/lib/jquery.dataTables.1.10.7.min.js -text
 fpa/fp_web_admin/static/newTrait.js -text
 fpa/fp_web_admin/stats.py -text
 fpa/fp_web_admin/templates/about.html -text

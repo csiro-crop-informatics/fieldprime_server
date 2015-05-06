@@ -96,8 +96,11 @@ def htmlDataTableMagic(tableId):
 # Html required to have a datatable table work, pass in the dom id
 # See note below on trialData_wrapper
 #
-    r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    # CDN method: If we end up using datatables a lot, this should probably move to base.html
+#     r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+#     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    r = '<link rel="stylesheet" type="text/css" href="{0}">'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.css'))
+    r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.js'))
     r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
 
     # We need to initialize the jquery datatable, but also a bit of hacking
