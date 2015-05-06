@@ -8,10 +8,9 @@
  *   (eg is an extension of the base template).
  */
 
-
-/**** Including here what was css/style.css:  ***********************************/
-
-/* Element styles: */
+/*
+ * Element styles:
+ */
 
 body{
     margin:0;
@@ -25,21 +24,27 @@ a {
     text-decoration: none;
     color: #00313C;
 }
-/* */
+
 a:hover{
     text-decoration: underline;
     color: #000;
 }
 
-h1{
-    color: #022C38;
+h1 {
+    color: #3e3e3e;
+    font-size: 30px;
+    font-weight: normal;
+    line-height: 30px;
+    margin: 0 0 30px;
 }
-
-h2{
-    color: #022C38;
+h2 {
+    color: #2c2c2c;
+    font-size: 24px;
+    font-weight: normal;
+    line-height: 24px;
+    margin: 0 0 12px;
 }
-
-h3{
+h3 {
     color: #0F4A84;
 }
 
@@ -49,8 +54,11 @@ label { display: inline-block; width: 140px; text-align: left; }
 */
 ​label { width: 140px; text-align: left; }
 
+fieldset{
+    margin-bottom: 30px;
+    padding: 20px;
+}
 
-/**/
 /*------------------------- Header ------------------------*/
 
 /*
@@ -60,7 +68,6 @@ label { display: inline-block; width: 140px; text-align: left; }
 .dataHeader {
     width: 100%;
     min-width: 800px;  /* It looks a bit better with min width, but maybe not good for mobile. */
-    /*height: 80px;*/
     background: white;
     z-index: 1000;
 }
@@ -69,83 +76,16 @@ label { display: inline-block; width: 140px; text-align: left; }
     height: 80px;
     background: white;
     z-index: 1000;
+    border-left: 1px solid #023;
+    border-right: 1px solid #023;
 }
 
 .banner-container {
     width: 992px;
     margin: 0 auto;
 }
-
-.banner {
-    float: left;
+.banner-container{ /* MFK ? */
     width: 100%;
-    background: #ffffff url("images/dark-blue-banner.png") no-repeat 70% 0;
-}
-
-.brand {
-    float: left;
-    margin: 12px 0 0 20px;
-}
-
-.brand .logo {
-    float: left;
-    position: relative;
-    padding: 0;
-    margin: 0;
-}
-
-.brand h2 {
-    float: left;
-    width: 58px;
-    height: 58px;
-    padding: 0;
-    margin: 0;
-    background: url("images/logo.png") no-repeat;
-    background-size: 58px;
-}
-
-.brand .title {
-    float: right;
-    padding: 15px;
-    color: white;
-    font-size: large;
-}
-
-.fixed-menu a, .fixed-menu a:hover {
-    color: #ffffff;
-    text-decoration: none;
-}
-
-.fixed-menu .menu ul {
-    padding: 0px;
-}
-
-.fixed-menu .menu ul li {
-    float: left;
-    padding: 0px 0px 0px 20px;
-    margin: 0px;
-}
-
-.banner .fixed-menu .menu ul li.last {
-    background:none;
-}
-
-.fixed-menu {
-    float: right;
-    padding: 20px 20px 0px 0px;
-    margin: 0px -1px 0px 0px;
-}
-
-li.mega-menu {
-    float: none;
-    display: block;
-    padding: 0px;
-    margin: 8px 0px 8px 0px;
-    font-weight: normal;
-}
-
-li.mega-menu a:hover {
-    text-decoration: underline;
 }
 
 
@@ -158,51 +98,13 @@ li.mega-menu a:hover {
     position: fixed;
 }
 
-.footerContent {
-    width: 1024px;
-    height: 30px;
-    margin: 0 auto;
-    text-align: center;
-}
+/* Suspect these 2 not used */
 .left {
     float: left;
 }
-.clear {
-    clear: both;
-}
 
-.box {
-    position: fixed;
-    right: 10px;
-    width: 200px;
-    top: 100px;
-    bottom: 40px;
-    margin: 0px;
-    font-size: 10px;
-    overflow-y: scroll;
-    padding-left:10px;
-    border-left: 1px solid #eee;
-
-}
 * html .box {
     position: absolute;
-}
-
-
-
-.name {
-    color: #3B5998;
-}
-#addStory{
-    margin:0 auto;
-    overflow:hidden;
-    color: #444;
-    border-radius: 5px;
-    background-color: #EDEFF4;
-    border-bottom: 1px solid #D2D9E7;
-    margin-top: 1px;
-    padding: 5px 5px 4px;
-
 }
 
 
@@ -257,100 +159,20 @@ li.mega-menu a:hover {
     border: 2px dashed #000;
 }
 
-.keywords {
-    color: #ccc;
-    font-style: italic;
-    font-size: small;
-}
-
-/* zebra stripes */
-.zstripe {
-   background: #ececec;
-}
-
-/* fancy text input boxes */
-.fancy {
-    border: 2px solid #ccc;
-    -webkit-box-shadow:
-      inset 0 0 8px  rgba(0,0,0,0.1),
-            0 0 16px rgba(0,0,0,0.1);
-    -moz-box-shadow:
-      inset 0 0 8px  rgba(0,0,0,0.1),
-            0 0 16px rgba(0,0,0,0.1);
-    box-shadow:
-      inset 0 0 8px  rgba(0,0,0,0.1),
-            0 0 16px rgba(0,0,0,0.1);
-    padding: 2px;
-    background: rgba(255,255,255,0.5);
-    margin: 1px 0 1px 0;
-    width: 100%;
-}
-
-.prompttext {
-    text-align: right;
-}
-
-.warnings {
-    font-size: large;
-}
-
-.warningCode {
-    margin-top: 10px;
-    font-family: monospace;
-    font-size: small;
-}
-
-/* used in file uploader */
-
 .hidden{
     display: none !important;
     visibility: hidden !important;
 }
 
-#filesbox {
-    width: 100%;
-    margin: 20px auto;
-}
-
-#filesbox p {
-    margin: 10px;
-    font-size: 14px;
-}
-
-#file_uploader_box {
-    text-align: center;
-    border: 4px solid #01A9CE;
-    border-radius: 10px;
-    color: #01A9CE;
-    margin: 10px;
-}
-
-#file_uploader_box h4{
-    margin: 0;
-    padding: 10px;
-}
-
+/* this in bootstrap, not sure if this has effect */
 .panel-default {
     border-color: #dddddd;
 }
 
 /*** end of included css/style.css ******************************************************************/
 
-
-.banner{
-    background: #023;
-}
-
-.banner-container{
-    width: 100%;
-}
-
-.dataTables_scrollHeadInner{
+.dataTables_scrollHeadInner{ /* datatables class, but not used I think */
     padding: 0 ! important;
-}
-.fpHeader{
-    border-left: 1px solid #023;
-    border-right: 1px solid #023;
 }
 
 .dataTables_length{
@@ -395,55 +217,6 @@ table.fptable{
     max-width: 500px;
 }
 */
-/*** header: *********************************************************
- * Style for the header across the top of all pages.
- MFK Not sure this is used see class fpHeader
- */
-#header {
-	background-color: #eeeeee;
-	border-bottom: 1px solid #000000;
-	padding: 10px 0px;
-    height:100px;
-}
-
-#header img{
-    float: left;
-    height:100px;
-    width:100px;
-}
-
-/*-- HeaderMenu: ---------------------------------------*/
-/* MFK is any of this used now? */
-#headerMenu {
-    white-space: nowrap;
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-#headerMenu > li {
-    /* Note we want this menu horizontal, this can be achieved with "float:left",
-     * but then the menu will wrap if browser window is made too narrow. So instead
-     * we are using "display:inline-block", in conjunction with the "white-space:nowrap"
-     * in the parent. This works, except the menu items get an extra separation added between
-     * them, which is - to some extent - fixed by the negative right margin command.
-     * See http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping.
-     */
-	width: 100px;
-    display: inline-block;
-    margin: 0 -3px 0 0;
-}
-#headerMenu li a {
-	color: #818181;
-	/*font-size: 15px;*/
-	line-height: 30px;
-	text-decoration: none;
-}
-#headerMenu li a:hover {
-	color: #000000;
-}
-#headerMenu li.active a {
-	color: #f99600;
-}
 
 /*------------------------------ CONTENTS ------------------------------*/
 #contents {
@@ -540,22 +313,6 @@ table.fptable{
 
 
 /*******************************************/
-
-h1 {
-	color: #3e3e3e;
-	font-size: 30px;
-	font-weight: normal;
-	line-height: 30px;
-	margin: 0 0 30px;
-}
-h2 {
-	color: #2c2c2c;
-	font-size: 24px;
-	font-weight: normal;
-	line-height: 24px;
-	margin: 0 0 12px;
-}
-
 
 #contents .features {
 	width: 810px;
@@ -701,7 +458,6 @@ h2 {
     width: auto;
 }
 
-
 /* Make the username and password inputs line up nicely on the login page: */
 #loginout label { display: inline-block; width: 140px; }
 
@@ -728,13 +484,9 @@ h2 {
     opacity: 0.9;
 }
 
-fieldset{
-    margin-bottom: 30px;
-    padding: 20px;
-}
-
-/* This is a div containing the help button.
- * The button itself is styled as #helpButton below
+/* Help button/page stuff:
+ * This is a div containing the help button.
+ * The button itself is styled as fpHelpButton below
  */
 .dataContentHelpButton{
     vertical-align: top;
@@ -745,29 +497,14 @@ fieldset{
                    */
     min-width: 250px;
     padding-bottom: 20px;
-    /*
-    padding-top: 20px;
-    padding-left: 10px; */
 }
 
-#helpButton {
+#fpHelpButton {
     padding: 4px;  /* does nothing */
-    /*width: 230px;
-     width:100%
-    height:100%*/
     float:right;
     background: red;
 }
 
-.dataContentTop {
-    /*background-color:pink;*/
-}
-/*
-.dataContentTop button {
-    align:right;
-    background:#111111;
-}
-*/
 
 /*** user input forms: ******************************************/
 
@@ -811,9 +548,6 @@ fieldset{
 .uifDiv
 {
     float:left;
-    /*font-size:12px;
-    padding:4px 2px;
-    border:solid 1px #aacfe4;*/
     width:200px;
     margin-top:2px;
     margin-right:0;
@@ -843,38 +577,6 @@ ul#tabs li a:hover { background-color: #f1f0ee; }
 ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
 div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }
 div.tabContent.hide { display: none; }
-
-#headerMenu {
-    white-space: nowrap;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-#headerMenu > li {
-    /* Note we want this menu horizontal, this can be achieved with "float:left",
-     * but then the menu will wrap if browser window is made too narrow. So instead
-     * we are using "display:inline-block", in conjunction with the "white-space:nowrap"
-     * in the parent. This works, except the menu items get an extra separation added between
-     * them, which is - to some extent - fixed by the negative right margin command.
-     * See http://stackoverflow.com/questions/13092143/prevent-css-horizontal-drop-down-menu-from-wrapping.
-     /
-    width: 100px;
-    display: inline-block;
-    margin: 0 -3px 0 0;
-}
-#headerMenu li a {
-    color: #818181;
-    /*font-size: 15px;/
-    line-height: 30px;
-    text-decoration: none;
-}
-#headerMenu li a:hover {
-    color: #000000;
-}
-#headerMenu li.active a {
-    color: #f99600;
-}
-
 */
 /*
 ul#tabs {
@@ -921,11 +623,4 @@ div.tabContent.hide {
 }
 */
 /******************************************************************************/
-/*
-.navbar {
-min-height: 80px;
-}
-.navbar-inverse {
-min-height: 80px;
-}
-*/
+

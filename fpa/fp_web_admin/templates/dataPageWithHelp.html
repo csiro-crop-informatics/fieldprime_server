@@ -12,11 +12,11 @@
 {% extends "dataPage.html" %}
 
 {% block dataContent %}
-<div class=dataContentTop>
+<div>
   <div class=dataContent>
     {% block dataContentTop %}
     {% endblock %}
-    <button onclick='toggleHelp()' id='helpButton'>Show Help</button>
+    <button onclick='toggleHelp()' id='fpHelpButton'>Show Help</button>
   </div>
   <!-- div class=dataContentHelpButton>
     <button onclick='toggleHelp()' id='helpButton'>Show Help</button>
@@ -25,14 +25,14 @@
 
 {% block dataContentMain %}
 {% endblock %}
-  
+
 {% endblock %}
 
 {% block dataHelpPane %}
 <div id='helpText' class=dataContentHelp>
   <div class="description not_too_wide">
     <div class=dataContentHelpButton>
-      <button onclick='toggleHelp()' id='helpButton'>Hide Help</button>
+      <button onclick='toggleHelp()' id='fpHelpButton'>Hide Help</button>
     </div>
     {% block dataHelpText %}
     {% endblock %}
@@ -48,7 +48,7 @@ window.onload = function() {
 function toggleHelp() {
   var helpDiv, helpButton;
   helpDiv = document.getElementById('helpText');
-  helpButton = document.getElementById('helpButton');
+  helpButton = document.getElementById('fpHelpButton');
   if (helpVisible) {
     helpDiv.style.display = 'none';
     helpButton.textContent = "Show Help";
