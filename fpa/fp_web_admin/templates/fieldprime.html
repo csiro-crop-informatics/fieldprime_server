@@ -25,10 +25,12 @@ class="active"
 
                 <div id="loginout"  class="infoText" style="clear:both; padding-top:25px;">
                   {% if not loggedIn %} <!-- If there is NO user logged in: -->
-                    <h1>Log in</h1>
                   <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
-                    <label for='username'>User Name: </label><input type="text" name="username" id='username'><br />
-                    <label for='password'>Password: </label><input type=password name="password" id='password'>
+                    <h2>Please sign in</h2>
+                    <div class="form-group">
+                      <input type="text" class="form-control" name='username' placeholder="Enter User Name">
+                      <input type=password class="form-control" name='password' placeholder="Password">
+                    </div>
                     <input type="submit" value="Login"></p>
                   </FORM>
                   {% endif %}
