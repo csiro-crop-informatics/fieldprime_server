@@ -37,13 +37,13 @@ def traitListHtmlTable(traitList):
 def createNewTrait(sess,  trialId, request):
 #-----------------------------------------------------------------------
 # Create trait in db, from data from html form.
-# trialId is id of trial if a local trait, else it is 'sys'.
+# trialId is id of trial if a local trait, else it is -1.
 # Returns error message if there's a problem, else None.
 #
     caption = request.form.get("caption")
     description = request.form.get("description")
     type = request.form.get("type")
-    isProjectTrait = True if trialId == "sys" else False
+    isProjectTrait = True if trialId == -1 else False
 
     dbsess = sess.db()
     # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?

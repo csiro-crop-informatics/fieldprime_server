@@ -7,7 +7,7 @@
         onsubmit="return ValidateTraitForm()"
         method="post">
     <fieldset>
-      <legend><h3>Create New {% if trialId == 'sys' %}System{% else %}Trial{% endif %} Trait</h3></legend>
+      <legend><h3>Create New {% if trialId == -1 %}System{% else %}Trial{% endif %} Trait</h3></legend>
       <div class="userInputForm">
         <table>
           <tr>

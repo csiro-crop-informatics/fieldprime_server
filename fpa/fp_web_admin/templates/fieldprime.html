@@ -12,16 +12,15 @@ class="active"
       <div id="contents" class=infoText>
 		<div class=fpInfoText>
 			<h1>Welcome to FieldPrime</h1>
-          <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
-                  <h2>FieldPrime Software</h2>
+            <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
+            <h2>FieldPrime</h2>
             <p>
             FieldPrime is a software suite designed to ease the process of
-            manual collection and collation of data. Its original use
-            was to collect phenotype data for large field trials of
-            wheat varieties.
-            <p> The software consists of the FieldPrime Android app -
-            which is used for the data collection - and the FieldPrime
-            Server, which is used to store and manage the trial data.
+            manual collection and collation of data. For example the collection
+            of trait score data in agricultural trials.
+            <br>The software consists of the FieldPrime Android app -
+            used for the data collection. And the FieldPrime
+            Server - used to store and manage the trial data.
 
                 <div id="loginout"  class="infoText" style="clear:both; padding-top:25px;">
                   {% if not loggedIn %} <!-- If there is NO user logged in: -->

@@ -61,6 +61,14 @@ def _dataNavigationContent(sess, trialId):
 #----------------------------------------------------------------------------
 # Return html content for navigation bar on a data page
 #
+# trialId is only relevant if sess has a current project. If so then..
+# If trialId is >=0:
+#     The trial select dropdown is shown with the specified trial selected.
+# If trialId is None:
+#     The trial select dropdown is shown with no trial selected.
+# If trialId < 0:
+#     The trial select dropdown is not shown.
+#
     ### User and user specific buttons:
 
     # Show current user:
@@ -99,13 +107,19 @@ def _dataNavigationContent(sess, trialId):
 
     # Show project specific buttons:
     if sess.getProjectName() is not None:
-        #nc += '<div style="float:right; margin-top:10px">'
         nc += '<div style="float:right; display:inline-block; margin-top:10px">'
         if sess.adminRights():
             nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
         nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
         nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
         nc += '</div><div style="clear:both"></div>'
+
+        # Add trial selector:
+        if trialId is None or trialId >= 0:
+            nc += selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
+                lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
+                None if trialId is None else url_for('urlTrial', trialId=trialId))
+    nc += fpUtil.htmlHorizontalRule()
     return nc
 
 
@@ -114,30 +128,34 @@ def dataPage(sess, title, content, trialId=None):
 # Return page for user data with given content and title.
 # The point of this function is to add the navigation content.
 #
+#     nc = _dataNavigationContent(sess, trialId)
+#     trialNav = ''
+#     if sess.getProjectName() is not None:
+#         trialNav = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
+#             lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
+#             None if trialId is None else url_for('urlTrial', trialId=trialId))
+#     trialNav += fpUtil.htmlHorizontalRule()
+#     return render_template('dataPage.html', navContent=nc+trialNav, content=content, title=title)
+
     nc = _dataNavigationContent(sess, trialId)
-    trialNav = ''
-    if sess.getProjectName() is not None:
-        trialNav = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
-            lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
-            None if trialId is None else url_for('urlTrial', trialId=trialId))
-    trialNav += fpUtil.htmlHorizontalRule()
-    return render_template('dataPage.html', navContent=nc+trialNav, content=content, title=title)
+    return render_template('dataPage.html', navContent=nc, content=content, title=title)
 
 
 def dataTemplatePage(sess, template, **kwargs):
 #----------------------------------------------------------------------------
 # Return page for user data with given template, kwargs are passed through
 # to the template. The point of this function is to add the navigation content.
+# NB, if trialId is not specified in kwargs, then no trial dropdown is shown.
 #
     if 'trialId' in kwargs:
         nc = _dataNavigationContent(sess, trialId=kwargs['trialId'])
     else:
-        nc = _dataNavigationContent(sess, trialId="-1")
+        nc = _dataNavigationContent(sess, trialId=-1)
     return render_template(template, navContent=nc, **kwargs)
 
 
-def dataErrorPage(sess, errMsg):
+def dataErrorPage(sess, errMsg, trialId=None):
 #----------------------------------------------------------------------------
 # Show error message in user data page.
-    return dataPage(sess, content=errMsg, title='Error')
+    return dataPage(sess, content=errMsg, title='Error', trialId=trialId)
 

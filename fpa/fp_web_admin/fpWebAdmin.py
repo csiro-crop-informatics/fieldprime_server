@@ -9,7 +9,7 @@
 import os, sys, re, traceback
 import zipfile, ntpath
 import MySQLdb as mdb
-from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
+from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response, abort
 from flask import jsonify
 import simplejson as json
 from werkzeug import secure_filename
@@ -494,7 +494,7 @@ def downloadApp(sess):
     for fname in l:
         if fnmatch(fname, '*.apk'):
             apkListHtml += '<p><a href="{0}">{1}</a>'.format(url_for('static', filename = 'apk/'+fname), fname)
-    return dp.dataPage(sess, content=apkListHtml, title='Download App')
+    return dp.dataPage(sess, content=apkListHtml, title='Download App', trialId=-1)
 
 
 @app.route('/newTrial/', methods=["GET", "POST"])
@@ -602,7 +602,7 @@ def urlBrowseTrialAttributes(sess, trialId):
 # Page for display of trial data.
 #
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
-    return dp.dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse')
+    return dp.dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse', trialId=trialId)
 
 
 def getDataColumns(sess, trialId, tiList):
@@ -833,16 +833,19 @@ def urlNewTrait(sess, trialId):
 #===========================================================================
 # Page for trait creation.
 #
+    if trialId == 'sys':
+        trialId = -1
     if request.method == 'GET':
         # NB, could be a new sys trait, or trait for a trial. Indicated by trialId which will be
-        # either 'sys' or the trial id respectively.
+        # either -1 or the trial id respectively. NB dataTemplatePage doesn't check trialId,
+        # but looks in sess instead. NB newTrait.html does check trialId.
         return dp.dataTemplatePage(sess, 'newTrait.html', trialId=trialId, traitTypes=TRAIT_TYPE_TYPE_IDS, title='New Trait')
 
     if request.method == 'POST':
         errMsg = fpTrait.createNewTrait(sess, trialId, request)
         if errMsg:
-            return dp.dataErrorPage(sess, errMsg)
-        if trialId == 'sys':
+            return dp.dataErrorPage(sess, errMsg, trialId)
+        if trialId == -1:
             return FrontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
 
@@ -859,13 +862,13 @@ def urlTraitDetails(sess, trialId, traitId):
 @dec_check_session()
 def urlAttributeUpload(sess, trialId):
     if request.method == 'GET':
-        return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes')
+        return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', trialId=trialId)
 
     if request.method == 'POST':
         uploadFile = request.files['file']
         res = fpTrial.updateTrialFile(sess, uploadFile, dal.getTrial(sess.db(), trialId))
         if res is not None and 'error' in res:
-            return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'])
+            return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'], trialId=trialId)
         else:
             return trialPage(sess, trialId) #FrontPage(sess)
 
@@ -1071,17 +1074,27 @@ def urlSystemTraits(sess, projectName):
             fpUtil.htmlForm(sysTraitListHtml) +
             fpUtil.htmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
-        return dp.dataPage(sess, title='System Traits', content=r)
+        return dp.dataPage(sess, title='System Traits', content=r, trialId=-1)
 
 
 @app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def urlAddSysTrait2Trial(sess, trialId):
 #-------------------------------------------------------------------------------
+# MFK need check valid traitId and preferably trialId too (it could be hacked).
 #
-    errMsg = fpTrait.addTrait2Trial(sess, trialId, request.form['traitID'])
+    # Get and validate traitId:
+    traitId = 0
+    try:
+        traitId = int(request.form['traitID'])
+    except Exception:
+        return dp.dataErrorPage(sess, "Invalid system trait specified", trialId)
+    if traitId <= 0:
+        return dp.dataErrorPage(sess, "Invalid system trait specified", trialId)
+
+    errMsg = fpTrait.addTrait2Trial(sess, trialId, traitId)
     if errMsg:
-        return dp.dataErrorPage(sess, errMsg)
+        return dp.dataErrorPage(sess, errMsg, trialId)
     # If all is well, display the trial page:
     return trialPage(sess, trialId)
 
@@ -1250,7 +1263,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             else:
 #               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
                 fname = hackyPhotoFileName(sess, ti, d)
-                value = '<a href=' + url_for('urlPhoto', filename=fname) + '>view photo</a>'
+                value = '<a href=' + url_for('urlPhoto', filename=fname, trialId=ti.getTrialId()) + '>view photo</a>'
         else:
             value = d.getValue()
         rows.append([d.node.id, d.node.row, d.node.col,
@@ -1350,16 +1363,17 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
     archFname = photoArchiveZipFileName(sess, traitInstanceId)
     errMsg = makeZipArchive(sess, traitInstanceId, archFname)
     if errMsg is not None:
-        return dp.dataErrorPage(sess, errMsg)
+        ti = dal.getTraitInstance(sess.db(), traitInstanceId)
+        return dp.dataErrorPage(sess, errMsg, ti.getTrialId())  # MFK This doesnt work! response is saved as downloaded file
     resp = make_response(open(archFname).read())
     resp.content_type = "image/jpeg"
     os.remove(archFname)    # delete the file
     return resp
 
 
-@app.route("/photo/<filename>", methods=['GET'])
+@app.route("/trial/<trialId>/photo/<filename>", methods=['GET'])
 @dec_check_session()
-def urlPhoto(sess, filename):
+def urlPhoto(sess, trialId, filename):
 # This is a way to provide images to authenticated user only.
 # An alternative would be to put the image in a static folder,
 # but then (I think) they must be visible to everyone.
@@ -1367,7 +1381,7 @@ def urlPhoto(sess, filename):
 # a static URL. I'm not sure whether the performance hit is significant.
     fullpath = app.config['PHOTO_UPLOAD_FOLDER'] + filename
     if not os.path.isfile(fullpath):
-        return dp.dataErrorPage(sess, "Can't find file {0}".format(fullpath))
+        return dp.dataErrorPage(sess, "Can't find fat file {0}".format(fullpath), trialId)
     resp = make_response(open(fullpath).read())
     resp.content_type = "image/jpeg"
     return resp

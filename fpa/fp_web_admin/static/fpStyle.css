@@ -12,40 +12,9 @@
  * Element styles:
  */
 
-body{
-    margin:0;
-    font-family: Verdana, Geneva, sans-serif;
-    font-size: 85%;
-}
-/* Anchor, NB the font-family is having an effect, the rest overwritten by
-bootstrap I think*/
+/* The font-family is not overwritten by bootstrap I think */
 a {
     font-family: Verdana, Geneva, sans-serif;
-    text-decoration: none;
-    color: #00313C;
-}
-
-a:hover{
-    text-decoration: underline;
-    color: #000;
-}
-
-h1 {
-    color: #3e3e3e;
-    font-size: 30px;
-    font-weight: normal;
-    line-height: 30px;
-    margin: 0 0 30px;
-}
-h2 {
-    color: #2c2c2c;
-    font-size: 24px;
-    font-weight: normal;
-    line-height: 24px;
-    margin: 0 0 12px;
-}
-h3 {
-    color: #0F4A84;
 }
 
 /*

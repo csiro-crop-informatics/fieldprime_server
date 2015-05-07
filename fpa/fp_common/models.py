@@ -224,7 +224,8 @@ class TraitInstance(DeclarativeBase):
 
     def getDeviceId(self):
         return self.token.getDeviceId()
-
+    def getTrialId(self):
+        return self.trial_id
     def numData(self):
         session = Session.object_session(self)
         count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
