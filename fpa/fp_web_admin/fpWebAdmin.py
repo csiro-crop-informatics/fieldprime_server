@@ -190,7 +190,7 @@ def htmlTrialScoreSets(sess, trialId):
     if len(scoreSets) < 1:
         return "No trait score sets yet"
 
-    if False:
+    if True:
         # Datatables version:
         hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
         rows = []

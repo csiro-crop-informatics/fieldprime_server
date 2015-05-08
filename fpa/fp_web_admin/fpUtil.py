@@ -101,7 +101,12 @@ def htmlDataTableMagic(tableId):
 #     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
     r = '<link rel="stylesheet" type="text/css" href="{0}">'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.css'))
     r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.js'))
-    r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+    #r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+
+    r += '<link rel="stylesheet" type="text/css" href="{0}">'.format(
+        url_for('static', filename='lib/dataTables.bootstrap.1.10.7.css'))
+    r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
+        url_for('static', filename='lib/dataTables.bootstrap.1.10.7.js'))
 
     # We need to initialize the jquery datatable, but also a bit of hacking
     # to set the width of the page. We use the datatables scrollX init param
@@ -133,17 +138,19 @@ def htmlDataTableMagic(tableId):
     }
     $(document).ready(
         function() {
-            $("#%s").dataTable( {
+            var elId = "#%s"
+            $(elId).dataTable( {
                 "scrollX": true,
                 "fnPreDrawCallback":function(){
-                    $("#%s").hide();
+                    $(elId).hide();
                     //$("#loading").show();
                 },
                 "fnDrawCallback":function(){
-                    $("#%s").show();
+                    $(elId).show();
+                    $(elId).dataTable().fnAdjustColumnSizing( false );
                     //$("#loading").hide();
                 },
-                "fnInitComplete": function(oSettings, json) {$("#%s").show();}
+                "fnInitComplete": function(oSettings, json) {$(elId).show();}
             });
             setTrialDataWrapperWidth();
             //window.addEventListener('resize', setTrialDataWrapperWidth);
@@ -153,8 +160,14 @@ def htmlDataTableMagic(tableId):
             });
         }
     );
+    $(window).load( function () {
+        var elId = "#%s"
+        // None of this is working - it is an attempt to fix misaligned column headers in datatable on first display..
+        $(elId).dataTable().fnAdjustColumnSizing(false);
+        $(elId).dataTable().fnDraw();
+    } );
     </script>
-    """ % (tableId, tableId, tableId, tableId)
+    """ % (tableId, tableId)
     return r
 
 def htmlDatatable(headers, cols):
