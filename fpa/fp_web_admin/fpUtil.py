@@ -221,3 +221,12 @@ def htmlDatatableByRow(headers, rows):
     out += '</table>'
     return out
 
+
+def badJuju(sess, msg):
+#-----------------------------------------------------------------------
+# Close the session and return the message. Intended as a return for a HTTP request
+# after something bad (and possibly suspicious) has happened.
+    sess.close()
+    return "Something bad has happened: " + msg
+
+

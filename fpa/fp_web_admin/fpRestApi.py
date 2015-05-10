@@ -53,3 +53,13 @@ def urlAttributeData(sess, projectName, attId):
         data.append([av.node_id, av.value])
     return Response(json.dumps(data), mimetype='application/json')
 
+@webRest.route('/project/<projectName>/trait/<traitId>', methods=['DELETE'])
+@wr_check_session()
+def urlTraitDelete(sess, projectName, ident):
+    if not sess.adminRights() or projectName != sess.getProjectName():
+        return badJuju(sess, 'No admin rights')
+    errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
+    if errmsg is not None:
+        return jsonify({"error":errmsg})
+    else:
+        return jsonify({"status":"good"})

@@ -919,7 +919,7 @@ def manageUsersHTML(sess, msg=None):
 @dec_check_session()
 def urlUserDelete(sess, projectName, ident):
     if not sess.adminRights() or projectName != sess.getProjectName():
-        return badJuju(sess, 'No admin rights')
+        return fpUtil.badJuju(sess, 'No admin rights')
     errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
     if errmsg is not None:
         return jsonify({"error":errmsg})

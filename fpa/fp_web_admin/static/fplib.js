@@ -385,16 +385,12 @@ fplib.initTabs = function (tabListId) {
       // Also show the selected content div, and hide all others.
       for (var id in contentDivs) {
         if (id == tabId) {
-          //tabLinks[id].className = 'selected';
           contentDivs[id].style.display = "";
-
         } else {
-          //tabLinks[id].className = '';
           contentDivs[id].style.display = "none";
         }
         styleTabLink(tabLinks[id], id === tabId);
       }
-
     }
 
     function showTab() {
@@ -431,6 +427,8 @@ fplib.initTabs = function (tabListId) {
     //-- Code: ------------------------------------------------------
     var i;
     var id;
+    var firstId;  // The first tab is made visible by default.
+                  // NB if no tab is made visible datatables doesn't display properly
 
     // Get the tab list element and style it:
     var tabListElement = document.getElementById(tabListId);
@@ -440,7 +438,8 @@ fplib.initTabs = function (tabListId) {
     tabListElement.style.padding = '0';
 
     // Process the children:
-    var tabListItems = tabListElement.childNodes;
+    //var tabListItems = tabListElement.childNodes;
+    var tabListItems = tabListElement.children;
     for (i = 0; i < tabListItems.length; i++ ) {
       if (tabListItems[i].nodeName == "LI") {
         // style the li:
@@ -449,6 +448,12 @@ fplib.initTabs = function (tabListId) {
 
         var tabLink = getFirstChildWithTagName(tabListItems[i], 'A');
         id = getHash(tabLink.getAttribute('href'));
+
+        if (i === 0) {
+            // MFK HACK, attow first tab is only one with datatables,
+            // and this needs to be made visible to display properly.
+            firstId = id;
+        }
         tabLinks[id] = tabLink;
         styleTabLink(tabLink, false);
 
@@ -457,8 +462,7 @@ fplib.initTabs = function (tabListId) {
         contentDivs[id] = contChunk;
         contChunk.style.border = "1px solid #c9c3ba";
         contChunk.style.padding = "0.5em";
-
-      }
+      } else alert('node name: ' + tabListItems[i].nodeName);
     }
 
     // Assign onclick events to the tab links, and
@@ -470,7 +474,9 @@ fplib.initTabs = function (tabListId) {
 
     var currTab;
     if (window.sessionStorage) {
-      currTab=sessionStorage.getItem(STORAGE_TAG);
+      currTab = sessionStorage.getItem(STORAGE_TAG);
+      if (!currTab)
+          currTab = firstId;
       fplib.currTab = currTab;
     }
     setTab(currTab);
