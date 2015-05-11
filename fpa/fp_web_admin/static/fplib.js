@@ -386,6 +386,22 @@ fplib.initTabs = function (tabListId) {
       for (var id in contentDivs) {
         if (id == tabId) {
           contentDivs[id].style.display = "";
+          /*
+          if (id == 'scoresets') {
+            alert('showing scoresets');
+            //var x = $('trialData');
+            //var y = x.dataTable();
+            //var z = y.fnAdjustColumnSizing(false);
+            try {
+                $('trialData').dataTable().fnAdjustColumnSizing(false);
+            } catch(err) {
+                alert(err.message);
+            }
+          }
+          if (id == 'traits') {
+              alert('showing traits');
+          }
+          */
         } else {
           contentDivs[id].style.display = "none";
         }
@@ -438,7 +454,6 @@ fplib.initTabs = function (tabListId) {
     tabListElement.style.padding = '0';
 
     // Process the children:
-    //var tabListItems = tabListElement.childNodes;
     var tabListItems = tabListElement.children;
     for (i = 0; i < tabListItems.length; i++ ) {
       if (tabListItems[i].nodeName == "LI") {
@@ -462,7 +477,7 @@ fplib.initTabs = function (tabListId) {
         contentDivs[id] = contChunk;
         contChunk.style.border = "1px solid #c9c3ba";
         contChunk.style.padding = "0.5em";
-      } else alert('node name: ' + tabListItems[i].nodeName);
+      }
     }
 
     // Assign onclick events to the tab links, and
@@ -475,8 +490,9 @@ fplib.initTabs = function (tabListId) {
     var currTab;
     if (window.sessionStorage) {
       currTab = sessionStorage.getItem(STORAGE_TAG);
-      if (!currTab)
+      if (!currTab) {
           currTab = firstId;
+      }
       fplib.currTab = currTab;
     }
     setTab(currTab);

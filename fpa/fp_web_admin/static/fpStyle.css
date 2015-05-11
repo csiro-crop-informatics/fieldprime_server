@@ -419,13 +419,12 @@ table.fptable{
     clear:both;
 }
 
-#trialData_wrapper{
-    /* width:98%;*/
-}
 
+/*
 #trialData_wrapper label{
     width: auto;
 }
+*/
 
 /* Make the username and password inputs line up nicely on the login page: */
 #loginout label { display: inline-block; width: 140px; }
