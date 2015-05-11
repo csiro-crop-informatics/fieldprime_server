@@ -12,6 +12,7 @@ import simplejson as json
 import fp_common.models as models
 import websess
 from const import *
+import fpUtil
 
 webRest = Blueprint('webRest', __name__)
 
@@ -53,11 +54,18 @@ def urlAttributeData(sess, projectName, attId):
         data.append([av.node_id, av.value])
     return Response(json.dumps(data), mimetype='application/json')
 
-@webRest.route('/project/<projectName>/trait/<traitId>', methods=['DELETE'])
-@wr_check_session()
-def urlTraitDelete(sess, projectName, ident):
+@webRest.route('/trial/<trialId>/trait/<traitId>', methods=['DELETE'])
+@wr_check_session
+#---------------------------------------------------------------------------------
+# Return nodeId:attValue pairs
+# These are sorted by node_id.
+def urlTraitDelete(sess, trialId, traitId):
     if not sess.adminRights() or projectName != sess.getProjectName():
-        return badJuju(sess, 'No admin rights')
+        return fpUtil.badJuju(sess, 'No admin rights')
+    # Delete the trait:
+    dal.Trial.deleteTrait(sess.db(), trialId)
+    return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
+
     errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
     if errmsg is not None:
         return jsonify({"error":errmsg})

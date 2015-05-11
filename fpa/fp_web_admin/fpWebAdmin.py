@@ -155,7 +155,7 @@ def FrontPage(sess, msg=''):
 # Trial page functions:
 #
 
-def htmlTrialTraitTable(trial):
+def xhtmlTrialTraitTable(trial):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
@@ -174,6 +174,19 @@ def htmlTrialTraitTable(trial):
     return out
 
 
+def htmlTrialTraitTable(trial):
+#----------------------------------------------------------------------------------------------------
+# Returns HTML for table showing all the traits for trial.
+    if len(trial.traits) < 1:
+        return "No traits configured"
+    hdrs = ["Caption", "Description", "DataType", "Details"]
+    trows = []
+    for trt in trial.traits:
+        trows.append([trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype],
+                      fpUtil.htmlButtonLink2("Details", url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True))])
+    return fpUtil.htmlDatatableByRow(hdrs, trows, 'eyeOfNewt')
+
+
 def htmlTrialScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for list of trial score sets.
@@ -190,53 +203,29 @@ def htmlTrialScoreSets(sess, trialId):
     if len(scoreSets) < 1:
         return "No trait score sets yet"
 
-    if True:
-        # Datatables version:
-        hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
-        rows = []
-        #tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
-        tdPattern = "{0}"
-        for ss in scoreSets:
-            tis = ss.getInstances()
-            firstTi = tis[0]   # check for none?
-            row = []
-            row.append(firstTi.trait.caption)
-            row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
-            row.append(firstTi.getDeviceId())
-            row.append(firstTi.seqNum)
-            samps = ''   # We show all the separate samples in a single cell
-            for oti in tis:
-                samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-                        oti.numScoredNodes())
-            row.append(samps)
-            rows.append(row)
+    # Datatables version:
+    hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
+    rows = []
+    for ss in scoreSets:
+        tis = ss.getInstances()
+        firstTi = tis[0]   # check for none?
+        row = []
+        row.append(firstTi.trait.caption)
+        row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
+        row.append(firstTi.getDeviceId())
+        row.append(firstTi.seqNum)
+        samps = ''   # We show all the separate samples in a single cell
+        for oti in tis:
+            samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
+                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                    oti.numScoredNodes())
+        row.append(samps)
+        rows.append(row)
 
-        htm = fpUtil.htmlDatatableByRow(hdrs, rows)
-    else:
-        # Non datatables version:
-        htm = ('\n<table style="border:1px solid #ccc;">' +
-                '<thead><tr><th>Trait</th><th>Date Created</th><th>Device Id</th>' +
-                '<th>seqNum</th><th>Score Data</th></tr></thead>\n')
-        for ss in scoreSets:
-            tis = ss.getInstances()
-            firstTi = tis[0]   # check for none?
-            htm += "<tr>"
-            #tdPattern = "<td style='border-left:1px solid grey;'>{0}</td>"
-            tdPattern = "<td style='border-left:1px solid grey; border-top:1px solid grey;'>{0}</td>"
-            htm += tdPattern.format(firstTi.trait.caption)
-            htm += tdPattern.format(util.formatJapDate(firstTi.dayCreated))
-            htm += tdPattern.format(firstTi.getDeviceId())
-            htm += tdPattern.format(firstTi.seqNum)
-            samps = ''   # We show all the separate samples in a single cell
-            for oti in tis:
-                samps += "<a href={0}>&nbsp;Sample{1} : {2} scores (for {3} nodes)</a><br>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-                        oti.numScoredNodes())
-            htm += tdPattern.format(samps)
-            htm += "</tr>\n"
+    htm = fpUtil.htmlDatatableByRow(hdrs, rows)
 
-        htm +=  "\n</table>\n"
+    #htm +=  "<button style=\"color: red\" onClick=\"location.reload()\">Press Me</button>"
+
 
     return htm
 
@@ -411,10 +400,10 @@ class htmlChunkSet:
         return h
 
     def htmlTabs(self):
-        h = '<script>  $(document).ready(function(){fplib.initTabs("tabs");}) </script>\n'
+        h = '<script>  $(document).ready(function(){fplib.initTabs("fpMainTabs");}) </script>\n'
 
         # Tab headers:
-        h += '<ul id="tabs">\n'
+        h += '<ul id="fpMainTabs">\n'
         for c in self.chunks:
             h += '  <li><a href="#{0}">{1}</a></li>\n'.format(c[0], c[1])
         h += '</ul>\n'
@@ -695,7 +684,6 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     HROWSTART = '<thead><th>' if htable else ''
     HROWEND = '</th></thead>\n' if htable else '\n'
     # MFK unify with browseData (for attributes
-    #r = '\n<table id="trialData" class="display" cellspacing="0" width="100%" style="display:none">' if htable else ''
     r = '\n<table class="fptable" id="trialData" class="display" cellspacing="0" width="100%">' if htable else ''
 
     # Headers:

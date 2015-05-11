@@ -134,7 +134,7 @@ def htmlDataTableMagic(tableId):
     <script>
     function setTrialDataWrapperWidth() {
         var setWidthTo = Math.round($(".fpHeader").width() - 40);
-        document.getElementById('trialData_wrapper').style.width = setWidthTo + 'px';
+        document.getElementById('%s_wrapper').style.width = setWidthTo + 'px';
     }
     $(document).ready(
         function() {
@@ -147,7 +147,7 @@ def htmlDataTableMagic(tableId):
                 },
                 "fnDrawCallback":function(){
                     $(elId).show();
-                    $(elId).dataTable().fnAdjustColumnSizing( false );
+                    $(elId).dataTable().fnAdjustColumnSizing(false);
                     //$("#loading").hide();
                 },
                 "fnInitComplete": function(oSettings, json) {$(elId).show();}
@@ -167,7 +167,7 @@ def htmlDataTableMagic(tableId):
         $(elId).dataTable().fnDraw();
     } );
     </script>
-    """ % (tableId, tableId)
+    """ % (tableId, tableId, tableId)
     return r
 
 def htmlDatatable(headers, cols):
@@ -199,13 +199,13 @@ def htmlDatatable(headers, cols):
     r += '</table>'
     return r
 
-def htmlDatatableByRow(headers, rows):
+def htmlDatatableByRow(headers, rows, tableId='trialData'):
 # HTML for Data table with the specified headers and rows.
 # headers is list of column headers, rows a list of lists,
 # each sublist should be same length as headers.
 #
-    out = htmlDataTableMagic('trialData')
-    out += '<p><table id="trialData" class="display fptable"  cellspacing="0" width="100%"  >'
+    out = htmlDataTableMagic(tableId)
+    out += '<p><table id="{0}" class="display fptable"  cellspacing="0" width="100%"  >'.format(tableId)
     hdrs = ''
     for h in headers:
         hdrs += '<th>{0}</th>'.format(h)

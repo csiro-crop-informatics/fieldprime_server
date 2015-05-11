@@ -36,14 +36,8 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
         out +=   '<div style="display:inline-block;">'
         out +=     '<label for="tdd">{0}: &nbsp;</label>'.format(label)
         out +=   '</div>'
-
-    out +=   '<div style="display:inline-block;min-width:200px">'
-    #out += '<span>'
-#     if label is not None:
-# 		#out +='<label for="tdd">{0}: &nbsp;</label>'.format(label)
-# 		out += label
-
-    out +=     '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
+    out += '<div style="display:inline-block;min-width:200px">'
+    out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
     if promptOptionString is not None:
         out +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
     for thing in listOfThings:
@@ -72,7 +66,7 @@ def _dataNavigationContent(sess, trialId):
     ### User and user specific buttons:
 
     # Show current user:
-    nc = "<h1 style='float:left; padding-right:20px; margin:0'>User: {0}</h1>".format(sess.getUser())
+    nc = '<label>User: &nbsp;</label>' + sess.getUser()
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
@@ -85,8 +79,7 @@ def _dataNavigationContent(sess, trialId):
     # There are currently 2 types of login, ***REMOVED***, and the project login.
     # ***REMOVED*** users may have access rights to multiple project so they get
     # a dropdown project selection. Project logins have access to a single
-    # project only, so they don't get a drop down. Set projectSelectorHtml
-    # accordingly:
+    # project only, so they don't get a drop down.
     if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         # Make select of user's projects.
         # Note we need to construct the URL for retrieving the project page in javascript,
@@ -95,15 +88,14 @@ def _dataNavigationContent(sess, trialId):
         if errMsg or not projList:
             return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
         currProj = sess.getProjectName()
-        projectSelectorHtml = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
+        nc += selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
             lambda p: url_for('urlProject', project=p.projectName),
             lambda p: p.projectName,
             None if currProj is None else url_for('urlProject', project=currProj))
-        nc += projectSelectorHtml
     else:
-        projectSelectorHtml = sess.getProjectName()
         # Show current project:
-        nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
+        #nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
+        nc += '<label>Project: &nbsp;</label>' + sess.getProjectName()
 
     # Show project specific buttons:
     if sess.getProjectName() is not None:
