@@ -177,8 +177,7 @@ create table attributeValue(
 --
 --
 -- future:
--- change "type" to "datatype"
--- These following perhaps more appropriate in trialTraitiew
+-- These following perhaps more appropriate in trialTrait
 -- download  boolean  (can go to devices)
 -- readonly  boolean  (no modification/creation on the devices, only relevant if download)
 -- single    boolean  (only allow single traitInstance)

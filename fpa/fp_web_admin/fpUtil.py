@@ -31,6 +31,10 @@ def getString(x):
 def htmlHorizontalRule():
     return '<hr style="margin:15px 0; border: 1px solid #aaa;">'
 
+def htmlLabelValue(label, value):
+    return '<label>{0}: &nbsp;</label>{1}'.format(label, value)
+
+
 def htmlForm(content, id=None, post=False, onsubmit='', multipart=False):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.

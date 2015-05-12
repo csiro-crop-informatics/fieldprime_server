@@ -179,12 +179,14 @@ def htmlTrialTraitTable(trial):
 # Returns HTML for table showing all the traits for trial.
     if len(trial.traits) < 1:
         return "No traits configured"
-    hdrs = ["Caption", "Description", "DataType", "Details"]
+    hdrs = ["Caption", "Description", "DataType", "Num ScoreSets", "Details"]
     trows = []
     for trt in trial.traits:
         trows.append([trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype],
-                      fpUtil.htmlButtonLink2("Details", url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True))])
-    return fpUtil.htmlDatatableByRow(hdrs, trows, 'eyeOfNewt')
+             trt.getNumScoreSets(trial.id),
+             fpUtil.htmlButtonLink2("Details",
+                 url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
+    return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable')
 
 
 def htmlTrialScoreSets(sess, trialId):

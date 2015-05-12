@@ -178,23 +178,23 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         ###########################################################################
         # Form fields applicable to all traits:
         ###
-        formh = 'Trial: ' + trial.name
-        formh += '<br>Trait: ' + trt.caption
-        formh += '<br>Type: ' + TRAIT_TYPE_NAMES[trt.datatype]
+        formh = fpUtil.htmlLabelValue('Trait', trt.caption) + '<br>'
+        formh += fpUtil.htmlLabelValue('Type', TRAIT_TYPE_NAMES[trt.datatype])
+        formh += fpUtil.htmlHorizontalRule()
 
-        formh += '<br><label>Description</label>' + \
-            '<input type="text" size=96 name="description" value="{0}">'.format(trt.description)
+        formh += fpUtil.htmlLabelValue('Description',
+            '<input type="text" size=96 name="description" value="{0}">'.format(trt.description))
 
         # Trait barcode selection:
         # Note it doesn't matter if a sysTrait, since the barcode is stored in trialTrait
-        attSelector = '<p><label for=bcAttribute>Barcode for Scoring:</label><select name="bcAttribute" id="bcAttribute">'
+        attSelector = '<select name="bcAttribute" id="bcAttribute">'
         attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
         atts = trial.nodeAttributes
         for att in atts:
             attSelector += '<option value="{0}" {2}>{1}</option>'.format(
                 att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")
         attSelector += '</select>'
-        formh += attSelector
+        formh += '<br>' + fpUtil.htmlLabelValue('Barcode for Scoring', attSelector)
 
         # Vars that may be set by trait specifics, to be included in output:
         preform = ''
@@ -352,7 +352,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         formh += '\n<input type="submit" style="color:red" value="Submit">'
         return dp.dataPage(sess,
                     content=preform + fpUtil.htmlForm(formh, post=True, onsubmit=onsubmit, multipart=True),
-                    title='Trait Validation')
+                    title='Trait Validation', trialId=trialId)
 
     ##################################################################################################
     if request.method == 'POST':

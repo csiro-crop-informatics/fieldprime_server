@@ -28,26 +28,46 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
     out += '<div style="overflow: hidden; display:inline-block;">'
     out += '''<script>
     function zirptl3(newLocation) {
+    sessionStorage.removeItem("fpCurrTrialPageTab"); //MFK hard code test hack
         if (newLocation !== 0) location=newLocation;
     }
     </script>'''
 
-    if label is not None:
-        out +=   '<div style="display:inline-block;">'
-        out +=     '<label for="tdd">{0}: &nbsp;</label>'.format(label)
-        out +=   '</div>'
-    out += '<div style="display:inline-block;min-width:200px">'
-    out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
+#     if label is not None:
+#         out +=   '<div style="display:inline-block;">'
+#         out +=     '<label for="tdd">{0}: &nbsp;</label>'.format(label)
+#         out +=   '</div>'
+#     out += '<div style="display:inline-block;min-width:200px">'
+#     out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
+#     if promptOptionString is not None:
+#         out +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
+#     for thing in listOfThings:
+#         val = thingValueFunc(thing)
+#         out += '<option value="{0}" {1}>{2}</option>'.format(
+#             val,
+#             'selected="selected"' if val ==  selectedThingValue else '',
+#             thingNameFunc(thing))
+#     out +=     '</select>'
+#     out +=   '</div>'
+
+
+    sel = '<div style="display:inline-block;min-width:200px">'
+    sel += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
     if promptOptionString is not None:
-        out +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
+        sel +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
     for thing in listOfThings:
         val = thingValueFunc(thing)
-        out += '<option value="{0}" {1}>{2}</option>'.format(
+        sel += '<option value="{0}" {1}>{2}</option>'.format(
             val,
             'selected="selected"' if val ==  selectedThingValue else '',
             thingNameFunc(thing))
-    out +=     '</select>'
-    out +=   '</div>'
+    sel +=     '</select>'
+    sel +=   '</div>'
+
+    if label is not None:
+        out += fpUtil.htmlLabelValue(label, sel)
+    elseout = sel
+
     out += '</div>'
     return out
 
@@ -66,7 +86,8 @@ def _dataNavigationContent(sess, trialId):
     ### User and user specific buttons:
 
     # Show current user:
-    nc = '<label>User: &nbsp;</label>' + sess.getUser()
+    #nc = '<label>User: &nbsp;</label>' + sess.getUser()
+    nc = fpUtil.htmlLabelValue('User', sess.getUser())
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'
@@ -95,7 +116,8 @@ def _dataNavigationContent(sess, trialId):
     else:
         # Show current project:
         #nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
-        nc += '<label>Project: &nbsp;</label>' + sess.getProjectName()
+        #nc += '<label>Project: &nbsp;</label>' + sess.getProjectName()
+        nc += fpUtil.htmlLabelValue('Project', sess.getProjectName())
 
     # Show project specific buttons:
     if sess.getProjectName() is not None:
@@ -119,16 +141,8 @@ def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------
 # Return page for user data with given content and title.
 # The point of this function is to add the navigation content.
+# See comment on _dataNavigationContent for trialId semantics.
 #
-#     nc = _dataNavigationContent(sess, trialId)
-#     trialNav = ''
-#     if sess.getProjectName() is not None:
-#         trialNav = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
-#             lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
-#             None if trialId is None else url_for('urlTrial', trialId=trialId))
-#     trialNav += fpUtil.htmlHorizontalRule()
-#     return render_template('dataPage.html', navContent=nc+trialNav, content=content, title=title)
-
     nc = _dataNavigationContent(sess, trialId)
     return render_template('dataPage.html', navContent=nc, content=content, title=title)
 

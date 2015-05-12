@@ -179,6 +179,11 @@ class Trait(DeclarativeBase):
         return dbc.query(TraitCategory).filter(
             and_(TraitCategory.trait_id == self.id, TraitCategory.value == value)).one()
 
+    def getNumScoreSets(self, trialId):
+        dbc = Session.object_session(self)
+        return dbc.query(TraitInstance).filter(and_(TraitInstance.trait_id == self.id,
+                TraitInstance.trial_id == trialId)).group_by(
+                TraitInstance.seqNum, TraitInstance.token_id).count()
 
 class TraitCategory(DeclarativeBase):
     __tablename__ = 'traitCategory'
