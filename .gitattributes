@@ -46,6 +46,11 @@ fpa/fp_web_admin/static/fpIcon.png -text
 fpa/fp_web_admin/static/fpStyle.css -text
 fpa/fp_web_admin/static/fpStylePostBootstrap.css -text
 fpa/fp_web_admin/static/fplib.js -text
+fpa/fp_web_admin/static/images/sort_asc.png -text
+fpa/fp_web_admin/static/images/sort_asc_disabled.png -text
+fpa/fp_web_admin/static/images/sort_both.png -text
+fpa/fp_web_admin/static/images/sort_desc.png -text
+fpa/fp_web_admin/static/images/sort_desc_disabled.png -text
 fpa/fp_web_admin/static/jquery.jeditable.css -text
 fpa/fp_web_admin/static/lib/bootstrap.3.3.4.css -text
 fpa/fp_web_admin/static/lib/bootstrap.3.3.4.js -text
