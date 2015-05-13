@@ -5,11 +5,10 @@
 # Navigation Content here).
 #
 
-from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
+from flask import url_for, render_template
 import fp_common.fpsys as fpsys
 import fp_common.models as models
 import fpUtil
-
 from const import *
 
 
@@ -66,7 +65,8 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 
     if label is not None:
         out += fpUtil.htmlLabelValue(label, sel)
-    elseout = sel
+    else:
+        out = sel
 
     out += '</div>'
     return out
@@ -86,8 +86,8 @@ def _dataNavigationContent(sess, trialId):
     ### User and user specific buttons:
 
     # Show current user:
-    #nc = '<label>User: &nbsp;</label>' + sess.getUser()
-    nc = fpUtil.htmlLabelValue('User', sess.getUser())
+    nc = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
+    nc += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
 
     # Show non project specific buttons:
     nc += '<div style="float:right; margin-top:10px">'

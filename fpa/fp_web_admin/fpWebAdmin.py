@@ -155,25 +155,6 @@ def FrontPage(sess, msg=''):
 # Trial page functions:
 #
 
-def xhtmlTrialTraitTable(trial):
-#----------------------------------------------------------------------------------------------------
-# Returns HTML for table showing all the traits for trial.
-    if len(trial.traits) < 1:
-        return "No traits configured"
-    out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
-    out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
-        "Caption", "Description", "DataType", "Details")
-    for trt in trial.traits:
-        out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
-            trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype])
-        # Add "Detail" button:
-        url = url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id,  _external=True)
-        validateButton = fpUtil.htmlButtonLink2("Details", url)
-        out += "<td>" + validateButton  + "</td>"
-    out += "</table>"
-    return out
-
-
 def htmlTrialTraitTable(trial):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for table showing all the traits for trial.
