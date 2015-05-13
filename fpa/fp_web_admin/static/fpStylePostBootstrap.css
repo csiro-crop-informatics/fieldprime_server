@@ -2,3 +2,27 @@
  * fpStylePostBooststrap.css
  * For any styling that needs to go after the bootstrap css has loaded.
  */
+
+/*
+ * Footer that sits at bottom of page if no scrollbar, or at bottom of content
+ * if contents scrolls off page. NB, the setting of margin-bottom needs to
+ * be post bootstrap as bootstrap resets it.
+ */
+
+body {
+    margin-bottom: 30px;
+}
+
+html {
+    position:relative;
+    min-height:100%;
+}
+
+.fpFooter {
+    position: absolute;
+    bottom: 0;
+    width:100%;
+    height: 30px;
+    background:#222;  /* bootstrap navbar-inverse color, attow */
+    color: white;
+}

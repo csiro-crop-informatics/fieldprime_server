@@ -12,6 +12,7 @@
  * Element styles:
  */
 
+
 /* The font-family is not overwritten by bootstrap I think */
 a {
     font-family: Verdana, Geneva, sans-serif;
@@ -49,23 +50,6 @@ fieldset{
     border-right: 1px solid #023;
 }
 
-.banner-container {
-    width: 992px;
-    margin: 0 auto;
-}
-.banner-container{ /* MFK ? */
-    width: 100%;
-}
-
-
-/*------------------------- Footer ------------------------*/
-.fpFooter{
-    bottom: 0;
-    width:100%;
-    background: #023;
-    color: white;
-    position: fixed;
-}
 
 /* Suspect these 2 not used */
 .left {
