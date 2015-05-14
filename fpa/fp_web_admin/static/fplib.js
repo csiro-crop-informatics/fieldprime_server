@@ -369,9 +369,20 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
  */
 fplib.STORAGE_TAG = "fpCurrTrialPageTab";
 fplib.initTabs2 = function() {
-    var tabref = $(this).attr('href');
     $('a[data-toggle="tab"]').on('click', function(e) {
+        var tabref = $(this).attr('href');
         if (window.sessionStorage) sessionStorage.setItem(fplib.STORAGE_TAG, tabref);
+
+        var xx = "#traits";
+        if (tabref == xx) {
+            $(xx).show();
+            //$(xx).DataTable().fnAdjustColumnSizing(false);
+            var sod = $("fpTraitTable");
+            var Table = sod.DataTable();
+            var table = sod.dataTable();
+            table.fnAdjustColumnSizing(false);
+            Table.draw();
+        }
     });
 
     var currTab;

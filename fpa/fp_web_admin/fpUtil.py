@@ -103,14 +103,18 @@ def htmlDataTableMagic(tableId):
     # CDN method: If we end up using datatables a lot, this should probably move to base.html
 #     r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
 #     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-    r = '<link rel="stylesheet" type="text/css" href="{0}">'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.css'))
-    r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(url_for('static', filename='lib/jquery.dataTables.1.10.7.min.js'))
-    #r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
 
-    r += '<link rel="stylesheet" type="text/css" href="{0}">'.format(
-        url_for('static', filename='lib/dataTables.bootstrap.1.10.7.css'))
-    r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
-        url_for('static', filename='lib/dataTables.bootstrap.1.10.7.js'))
+# This in base.html now
+#     r = '<link rel="stylesheet" type="text/css" href="{0}">'.format(
+#         url_for('static', filename='lib/jquery.dataTables.1.10.7.min.css'))
+#     r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
+#         url_for('static', filename='lib/jquery.dataTables.1.10.7.min.js'))
+#     #r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
+#
+#     r += '<link rel="stylesheet" type="text/css" href="{0}">'.format(
+#         url_for('static', filename='lib/dataTables.bootstrap.1.10.7.css'))
+#     r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
+#         url_for('static', filename='lib/dataTables.bootstrap.1.10.7.js'))
 
     # We need to initialize the jquery datatable, but also a bit of hacking
     # to set the width of the page. We use the datatables scrollX init param
@@ -134,14 +138,16 @@ def htmlDataTableMagic(tableId):
     # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
     # by the dataTable function (provided the table has id 'trialData').
 
-    r += """
+    r = """
     <script>
-    function setTrialDataWrapperWidth() {
-        var setWidthTo = Math.round($(".fpHeader").width() - 40);
-        document.getElementById('%s_wrapper').style.width = setWidthTo + 'px';
-    }
     $(document).ready(
         function() {
+            function setTrialDataWrapperWidth() {
+                var setWidthTo = Math.round($(".fpHeader").width() - 40);
+                document.getElementById('%s_wrapper').style.width = setWidthTo + 'px';
+            }
+
+
             var elId = "#%s"
             $(elId).dataTable( {
                 "scrollX": true,
