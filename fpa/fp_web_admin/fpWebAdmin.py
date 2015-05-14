@@ -382,7 +382,7 @@ class htmlChunkSet:
             h += '\n'
         return h
 
-    def htmlTabs(self):
+    def OLDhtmlTabs(self):
         h = '<script>  $(document).ready(function(){fplib.initTabs("fpMainTabs");}) </script>\n'
 
         # Tab headers:
@@ -396,7 +396,25 @@ class htmlChunkSet:
             h += '<div class="tabContent" id="{0}">\n{1}\n</div>\n\n'.format(c[0], c[2])
         return h
 
-def TrialHtml(sess, trialId):
+    def htmlTabs(self):
+        h = '<script>  $(document).ready(function(){fplib.initTabs2();}) </script>\n'
+        hlist = ''
+        hcont = ''
+        first = True
+        for c in self.chunks:
+            hlist += '  <li {2}><a href="#{0}" data-toggle="tab">{1}</a></li>\n'.format(
+                c[0], c[1], 'class="active"' if first else '')
+            hcont += '<div class="tab-pane {2}" id="{0}">\n{1}\n</div>\n\n'.format(
+                c[0], c[2], 'active' if first else '')
+            first = False
+
+        # Tab headers:
+        h += '<ul id="fpMainTabs" class="nav nav-tabs" data-tabs="tabs">\n{0}</ul>\n'.format(hlist)
+        # Tab content divs:
+        h += '<div id="my-tab-content" class="tab-content">\n{0}</div>'.format(hcont)
+        return h
+
+def htmlTrial(sess, trialId):
 #-----------------------------------------------------------------------
 # Returns the HTML for a top level page to display/manage a given trial.
 # Or None if no trial with given id.
@@ -417,7 +435,7 @@ def trialPage(sess, trialId):
 #----------------------------------------------------------------------------
 # Return response that is the urlMain page for specified file, or error message.
 #
-    trialh = TrialHtml(sess, trialId)
+    trialh = htmlTrial(sess, trialId)
     if trialh is None:
         trialh = "No trial selected"
     return dp.dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
@@ -574,7 +592,7 @@ def urlBrowseTrialAttributes(sess, trialId):
 # Page for display of trial data.
 #
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
-    return dp.dataPage(sess, content=fpUtil.htmlDatatable(hdrs, cols), title='Browse', trialId=trialId)
+    return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols), title='Browse', trialId=trialId)
 
 
 def getDataColumns(sess, trialId, tiList):

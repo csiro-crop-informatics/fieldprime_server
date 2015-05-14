@@ -174,7 +174,7 @@ def htmlDataTableMagic(tableId):
     """ % (tableId, tableId, tableId)
     return r
 
-def htmlDatatable(headers, cols):
+def htmlDatatableByCol(headers, cols):
 #-----------------------------------------------------------------------------
 # HTML for Data table with the specified headers and cols.
 # The length of these lists should be the same, col[i] being the

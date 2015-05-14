@@ -3,6 +3,7 @@
  * bits and pieces we need access to globally. In a single object
  * so as not to pollute the global namespace too much.
  */
+ /*global $:false,alert:false,d3:false*/
 var fplib = {};
 
 
@@ -366,6 +367,26 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
  * Note all the styling is done in this function. There is no separate css
  * required.
  */
+fplib.STORAGE_TAG = "fpCurrTrialPageTab";
+fplib.initTabs2 = function() {
+    var tabref = $(this).attr('href');
+    $('a[data-toggle="tab"]').on('click', function(e) {
+        if (window.sessionStorage) sessionStorage.setItem(fplib.STORAGE_TAG, tabref);
+    });
+
+    var currTab;
+    if (window.sessionStorage) {
+        currTab = sessionStorage.getItem(fplib.STORAGE_TAG);
+        var activeTab = $('[href=' + currTab + ']');
+        if (activeTab.length) {
+            activeTab.tab('show');
+        } else {
+            $('.nav-tabs a:first').tab('show');
+        }
+    }
+};
+
+
 fplib.initTabs = function (tabListId) {
     var tabLinks = {};
     var contentDivs = {};

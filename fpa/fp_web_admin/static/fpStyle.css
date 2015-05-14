@@ -141,12 +141,22 @@ button, input[type=submit], input[type=button] {
     text-transform: capitalize;
 }
 
+/* fptable is used for:
+ * Node Attributes table
+ * Individual Node Attribute values list
+ * System Traits list
+ * htmlDataTableByRow and htmlDataTableByCol
+ * for main browsing datatable
+ *
+ *
+ */
+
 table.fptable, table.fptable tr{
     border: 1px solid black;
 }
 
 .fptable th{
-    background-color: #022C38 ! important;
+    background-color: #022C38; /* ! important*/
     color: #fff;
     padding: 10px;
 }
@@ -157,7 +167,7 @@ table.fptable, table.fptable tr{
 }
 
 table.fptable{
-    margin: 0 ! important;
+    /*margin: 0 ! important;*/
     border-radius: 5px;
 }
 
