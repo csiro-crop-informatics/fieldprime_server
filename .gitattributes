@@ -56,6 +56,8 @@ fpa/fp_web_admin/static/lib/bootstrap.3.3.4.css -text
 fpa/fp_web_admin/static/lib/bootstrap.3.3.4.js -text
 fpa/fp_web_admin/static/lib/bootstrap.3.3.4.min.css -text
 fpa/fp_web_admin/static/lib/bootstrap.3.3.4.min.js -text
+fpa/fp_web_admin/static/lib/dataTables.bootstrap.1.10.7.css -text
+fpa/fp_web_admin/static/lib/dataTables.bootstrap.1.10.7.js -text
 fpa/fp_web_admin/static/lib/jquery-1.11.2.js -text
 fpa/fp_web_admin/static/lib/jquery-1.11.2.min.js -text
 fpa/fp_web_admin/static/lib/jquery-ui.1.11.4.css -text
