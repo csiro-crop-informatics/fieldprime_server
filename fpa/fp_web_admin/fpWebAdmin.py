@@ -167,10 +167,13 @@ def htmlTrialTraitTable(trial):
              trt.getNumScoreSets(trial.id),
              fpUtil.htmlButtonLink2("Details",
                  url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
-    return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable')
+
+    xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
+
+    return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False) + xxx
 
 
-def htmlTrialScoreSets(sess, trialId):
+def htmlTabScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for list of trial score sets.
 # MFK - is there security issues showing user values in table - might they inject html scripts?
@@ -205,14 +208,12 @@ def htmlTrialScoreSets(sess, trialId):
         row.append(samps)
         rows.append(row)
 
-    htm = fpUtil.htmlDatatableByRow(hdrs, rows)
-
-    #htm +=  "<button style=\"color: red\" onClick=\"location.reload()\">Press Me</button>"
-
-
+    htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
+    #htm +=  '<button style="color: red" onClick="location.reload()">Press Me</button>'
+    htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Press Me</button>'''
     return htm
 
-def htmlNodeAttributes(sess, trialId):
+def htmlTabNodeAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
 # MFK - improve this, showing type and number of values, also delete button? modify?
@@ -248,7 +249,7 @@ def urlTrialNameDetailPost(sess, trialId):
     trialProperties.processPropertiesForm(sess, trialId, request.form)
     return "Trial Properties Updated on Server"
 
-def htmlTrialNameDetails(sess, trial):
+def htmlTabProperties(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
     trialDetails = ''
@@ -282,7 +283,7 @@ def htmlTrialNameDetails(sess, trial):
         r += '<p>'
     return r
 
-def htmlTrialTraits(sess, trial):
+def htmlTabTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
@@ -300,7 +301,7 @@ def htmlTrialTraits(sess, trial):
     addSysTraitForm += '</form>'
     return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
-def htmlTrialData(sess, trial):
+def htmlTabData(sess, trial):
 #--------------------------------------------------------------------
 # Return html chunk with table of scores and attributes.
 
@@ -422,13 +423,35 @@ def htmlTrial(sess, trialId):
     trial = dal.getTrial(sess.db(), trialId)
     if trial is None: return None
     hts = htmlChunkSet()
-    hts.addChunk('scoresets', 'Score Sets', htmlTrialScoreSets(sess, trialId))
-    hts.addChunk('natts', 'Node Attributes', htmlNodeAttributes(sess, trialId))
-    hts.addChunk('traits', 'Traits', htmlTrialTraits(sess, trial))
-    hts.addChunk('data', 'Score Data', htmlTrialData(sess, trial))
-    hts.addChunk('properties', 'Properties', htmlTrialNameDetails(sess, trial))
-    #return '<h2>Trial: {0}</h2>'.format(trial.name) + hts.htmlTabs()
-    return hts.htmlTabs()
+    hts.addChunk('scoresets', 'Score Sets', htmlTabScoreSets(sess, trialId))
+    hts.addChunk('natts', 'Node Attributes', htmlTabNodeAttributes(sess, trialId))
+    hts.addChunk('traits', 'Traits', htmlTabTraits(sess, trial))
+    hts.addChunk('data', 'Score Data', htmlTabData(sess, trial))
+    hts.addChunk('properties', 'Properties', htmlTabProperties(sess, trial))
+    xxx = '''<script>
+    function showIt(tts) {
+    alert('show ' + tts);
+      //$(tts).DataTable().draw();
+      x = $(tts).DataTable();
+      y = x.api;
+      z = $(tts).dataTable();
+
+      z.fnAdjustColumnSizing();
+    }
+    $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function (e) {
+      var newtab = sessionStorage.getItem(fplib.STORAGE_TAG);
+      if (newtab == '#traits') {
+        $('#fpTraitTable').dataTable().fnAdjustColumnSizing();
+        return;
+      }
+      if (newtab == '#scoresets') {
+        $('#fpScoreSets').dataTable().fnAdjustColumnSizing();
+      }
+    })
+    </script>
+    '''
+
+    return xxx + hts.htmlTabs()
 
 
 def trialPage(sess, trialId):
@@ -592,7 +615,8 @@ def urlBrowseTrialAttributes(sess, trialId):
 # Page for display of trial data.
 #
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
-    return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols), title='Browse', trialId=trialId)
+    return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
+                       title='Browse', trialId=trialId)
 
 
 def getDataColumns(sess, trialId, tiList):
@@ -749,6 +773,86 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     r += '</table>' if htable else ''
     return r
 
+def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes):
+#-----------------------------------------------------------------------
+# Returns trial data as plain text tsv form - i.e. for download, or as html table.
+# The data is arranged in node rows, and trait instance score and attribute columns.
+# Form params indicate what score metadata to display.
+#
+# Note we have improved performance (over a separate query for each value) by getting
+# the data for each trait instance with one sql query.
+# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
+# If necessary we could check the dataset size and if necessary switch to a different method.
+# for example server side mode datatables.
+# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
+# datatables browse could show/hide columns and export current selection to tsv.
+#
+# MFK Cloned code from getTrialData above, that could be replaced with this
+# Returns (headers, rows), headers a list, rows a list of lists
+#
+    # Get Trait Instances:
+    tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
+    valCols = getDataColumns(sess, trialId, tiList)                   # get the data for the instances
+    trl = dal.getTrial(sess.db(), trialId)
+
+    # Headers:
+    hdrs = []
+    hdrs.append('fpNodeId')
+    hdrs.append('Row')
+    hdrs.append('Column')
+    if showAttributes:
+        attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
+        for tua in trl.nodeAttributes:
+            hdrs.append(tua.name)
+    for ti in tiList:
+        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
+        hdrs.append(tiName)
+        if showTime:
+            hdrs.append("{0}_timestamp".format(tiName))
+        if showUser:
+            hdrs.append("{0}_user".format(tiName))
+        if showGps:
+            hdrs.append("{0}_latitude".format(tiName))
+            hdrs.append("{0}_longitude".format(tiName))
+    if showNotes:
+        hdrs.append("Notes")
+
+    # Data:
+    rows = []
+    nodeList = trl.getNodesSortedRowCol()
+    for nodeIndex, node in enumerate(nodeList):
+        nrow = [node.id, node.row, node.col]
+        rows.append(nrow)
+
+        # Attribute Columns:
+        if showAttributes:
+            for ind, tua in enumerate(trl.nodeAttributes):
+                nrow.append(attValList[ind][nodeIndex])
+
+        # Scores:
+        for tiIndex, ti in enumerate(tiList):
+            [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
+            # Write the value:
+            nrow.append(val)
+            # Write any other datum fields specified:
+            if showTime:
+                nrow.append(timestamp)
+            if showUser:
+                nrow.append(userid)
+            if showGps:
+                nrow.extend((lat, long))
+
+        # Notes, as list separated by pipe symbols:
+        if showNotes:
+            notes = '"'
+            tuNotes = node.getNotes()
+            for note in tuNotes:
+                notes += '{0}|'.format(note.note)
+            notes += '"'
+            nrow.append(notes)
+    return hdrs, rows
+
+
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
@@ -769,8 +873,10 @@ def urlTrialDataBrowse(sess, trialId):
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    r = fpUtil.htmlDataTableMagic('trialData')
-    r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
+    (headers, rows) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
+    r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False)
+#     r = fpUtil.htmlDataTableMagic('trialData')
+#     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 

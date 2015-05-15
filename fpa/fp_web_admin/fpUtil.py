@@ -97,24 +97,12 @@ def htmlButtonLink2(label, click):
 
 def htmlDataTableMagic(tableId):
 #----------------------------------------------------------------------------
-# Html required to have a datatable table work, pass in the dom id
-# See note below on trialData_wrapper
+# Html required to have a datatable table work, pass in an id to use for the table.
 #
-    # CDN method: If we end up using datatables a lot, this should probably move to base.html
-#     r = '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-#     r += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
-
-# This in base.html now
-#     r = '<link rel="stylesheet" type="text/css" href="{0}">'.format(
-#         url_for('static', filename='lib/jquery.dataTables.1.10.7.min.css'))
-#     r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
-#         url_for('static', filename='lib/jquery.dataTables.1.10.7.min.js'))
-#     #r += '\n<script src={0}></script>'.format(url_for('static', filename='jquery.jeditable.css'))
-#
-#     r += '<link rel="stylesheet" type="text/css" href="{0}">'.format(
-#         url_for('static', filename='lib/dataTables.bootstrap.1.10.7.css'))
-#     r += '\n<script type="text/javascript" language="javascript" src="{0}"></script>'.format(
-#         url_for('static', filename='lib/dataTables.bootstrap.1.10.7.js'))
+# NB this magic doesn't include the link and script imports for datatables.
+# These are now in base.html. This is because we use datatables quite a lot,
+# and if we imported them here, we would import multiples times if there were
+# multiple tables on a page.
 
     # We need to initialize the jquery datatable, but also a bit of hacking
     # to set the width of the page. We use the datatables scrollX init param
@@ -125,31 +113,30 @@ def htmlDataTableMagic(tableId):
     # reflect the actual window size. If you set the width to 100%, it just doesn't
     # work - partly it seems because we are using css tables (i.e. if I try the
     # same code NOT in these tables 100% does work. So we are doing here at the moment
-    # is to (roughly) set the trialData_wrapper width to the appropriate size
+    # is to (roughly) set the <tableId>_wrapper width to the appropriate size
     # after the datatable is initialized and hook up a handler to redo this whenever
     # the screen is resized. Not very nice or future proof, but it will have to do for
     # the moment..
     #
-    # MFK 26/11/14: I've replaced the resize function, which was a call to setTrialDataWrapperWidth()
-    # to be instead just a reload. This works better, setTrialDataWrapperWidth() was centering the table
+    # MFK 26/11/14: I've replaced the resize function, which was a call to setTableWrapperWidth()
+    # to be instead just a reload. This works better, setTableWrapperWidth() was centering the table
     # rows without also centering the table headers. Hopefully the the reload is coming from the
     # cache rather than the network.
     #
-    # NB trialData_wrapper is (I think!) the id of a div surrounding the table created
-    # by the dataTable function (provided the table has id 'trialData').
+    # NB <tableId>_wrapper is the id of a div surrounding the table (with id tableId) created
+    # by the dataTable function.
 
     r = """
     <script>
     $(document).ready(
         function() {
-            function setTrialDataWrapperWidth() {
+            function setTableWrapperWidth() {
                 var setWidthTo = Math.round($(".fpHeader").width() - 40);
                 document.getElementById('%s_wrapper').style.width = setWidthTo + 'px';
             }
 
-
             var elId = "#%s"
-            $(elId).dataTable( {
+            $(elId).DataTable( {
                 "scrollX": true,
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
@@ -157,13 +144,14 @@ def htmlDataTableMagic(tableId):
                 },
                 "fnDrawCallback":function(){
                     $(elId).show();
-                    $(elId).dataTable().fnAdjustColumnSizing(false);
+                    //$(elId).dataTable().fnAdjustColumnSizing(false);
+                    //$(elId).DataTable().draw();
                     //$("#loading").hide();
                 },
                 "fnInitComplete": function(oSettings, json) {$(elId).show();}
             });
-            setTrialDataWrapperWidth();
-            //window.addEventListener('resize', setTrialDataWrapperWidth);
+            setTableWrapperWidth();
+            //window.addEventListener('resize', setTableWrapperWidth);
             window.addEventListener('resize', function () {
                 "use strict";
                 window.location.reload();
@@ -180,7 +168,7 @@ def htmlDataTableMagic(tableId):
     """ % (tableId, tableId, tableId)
     return r
 
-def htmlDatatableByCol(headers, cols):
+def htmlDatatableByCol(headers, cols, tableId, showFooter=True):
 #-----------------------------------------------------------------------------
 # HTML for Data table with the specified headers and cols.
 # The length of these lists should be the same, col[i] being the
@@ -192,8 +180,8 @@ def htmlDatatableByCol(headers, cols):
     if numCols <= 0 or numCols != len(cols):
         return ''
     numRows = len(cols[0])
-    r = htmlDataTableMagic('trialData')
-    r += '<p><table id="trialData" class="display fptable"  cellspacing="0" width="100%"  >'
+    r = htmlDataTableMagic(tableId)
+    r += '<p><table id="{0}" class="display fptable"  cellspacing="0" width="100%"  >'.format(tableId)
     hdrs = ''
     for h in headers:
         hdrs += '<th>{0}</th>'.format(h)
@@ -209,7 +197,7 @@ def htmlDatatableByCol(headers, cols):
     r += '</table>'
     return r
 
-def htmlDatatableByRow(headers, rows, tableId='trialData'):
+def htmlDatatableByRow(headers, rows, tableId, showFooter=True):
 # HTML for Data table with the specified headers and rows.
 # headers is list of column headers, rows a list of lists,
 # each sublist should be same length as headers.
@@ -220,7 +208,8 @@ def htmlDatatableByRow(headers, rows, tableId='trialData'):
     for h in headers:
         hdrs += '<th>{0}</th>'.format(h)
     out += '<thead><tr>{0}</tr></thead>'.format(hdrs)
-    out += '<tfoot><tr>{0}</tr></tfoot>'.format(hdrs)
+    if showFooter:
+        out += '<tfoot><tr>{0}</tr></tfoot>'.format(hdrs)
     out += '<tbody>'
     for row in rows:
         out += '<tr>'
