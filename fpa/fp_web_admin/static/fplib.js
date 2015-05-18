@@ -368,7 +368,7 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
  * required.
  */
 fplib.STORAGE_TAG = "fpCurrTrialPageTab";
-fplib.initTabs2 = function() {
+fplib.initTrialTabs = function() {
     $('a[data-toggle="tab"]').on('click', function(e) {
         var tabref = $(this).attr('href');
         if (window.sessionStorage) sessionStorage.setItem(fplib.STORAGE_TAG, tabref);
@@ -387,7 +387,7 @@ fplib.initTabs2 = function() {
 };
 
 
-fplib.initTabs = function (tabListId) {
+fplib.OLDinitTabs = function (tabListId) { // this version no longer used, using bootstrap tabs instead
     var tabLinks = {};
     var contentDivs = {};
     var STORAGE_TAG = "fpCurrTrialPageTab";
@@ -407,22 +407,6 @@ fplib.initTabs = function (tabListId) {
       for (var id in contentDivs) {
         if (id == tabId) {
           contentDivs[id].style.display = "";
-          /*
-          if (id == 'scoresets') {
-            alert('showing scoresets');
-            //var x = $('trialData');
-            //var y = x.dataTable();
-            //var z = y.fnAdjustColumnSizing(false);
-            try {
-                $('trialData').dataTable().fnAdjustColumnSizing(false);
-            } catch(err) {
-                alert(err.message);
-            }
-          }
-          if (id == 'traits') {
-              alert('showing traits');
-          }
-          */
         } else {
           contentDivs[id].style.display = "none";
         }

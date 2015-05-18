@@ -381,22 +381,8 @@ class htmlChunkSet:
             h += '\n'
         return h
 
-    def OLDhtmlTabs(self):
-        h = '<script>  $(document).ready(function(){fplib.initTabs("fpMainTabs");}) </script>\n'
-
-        # Tab headers:
-        h += '<ul id="fpMainTabs">\n'
-        for c in self.chunks:
-            h += '  <li><a href="#{0}">{1}</a></li>\n'.format(c[0], c[1])
-        h += '</ul>\n'
-
-        # Tab content divs:
-        for c in self.chunks:
-            h += '<div class="tabContent" id="{0}">\n{1}\n</div>\n\n'.format(c[0], c[2])
-        return h
-
     def htmlTabs(self):
-        h = '<script>  $(document).ready(function(){fplib.initTabs2();}) </script>\n'
+        h = '<script>  $(document).ready(function(){fplib.initTrialTabs();}) </script>\n'
         hlist = ''
         hcont = ''
         first = True
@@ -426,26 +412,28 @@ def htmlTrial(sess, trialId):
     hts.addChunk('traits', 'Traits', htmlTabTraits(sess, trial))
     hts.addChunk('data', 'Score Data', htmlTabData(sess, trial))
     hts.addChunk('properties', 'Properties', htmlTabProperties(sess, trial))
-    xxx = '''<script>
+    # Handler for when tab is selected:
+    # Bootstrap is managing the tabs, we use their hook to invoke an action
+    # after a tab is shown. We need to reshow any datatables on the shown
+    # tab since they can get messed up by being hidden. There is a problem
+    # however in that this also gets sparked when the user gets to the page
+    # via the back button. In this case the table doesn't exist yet, and
+    # the dataTable() call inits the datatable, causing an error when it is
+    # properly initialised later on.
+    tabShownHandler = '''<script>
     $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function (e) {
       var newtab = sessionStorage.getItem(fplib.STORAGE_TAG);
       if (newtab == '#traits') {
-        // This event occurs even when are coming to this page via the
-        // back button, in which case the table doesn't exist yet, and
-        // this call inits the datatable, causing an error when it is
-        // properly initialised later on. The problem is not occuring for
-        // the #fpScoreSets table for some reason, perhaps because it is the first tab?
-        if ($.fn.DataTable.isDataTable('#fpTraitTable')) {
+        if ($.fn.DataTable.isDataTable('#fpTraitTable'))
             $('#fpTraitTable').dataTable().fnAdjustColumnSizing();
-        }
       } else if (newtab == '#scoresets') {
-        $('#fpScoreSets').dataTable().fnAdjustColumnSizing();
+         if ($.fn.DataTable.isDataTable('#fpTraitTable'))
+            $('#fpScoreSets').dataTable().fnAdjustColumnSizing();
       }
     })
     </script>
     '''
-
-    return xxx + hts.htmlTabs()
+    return tabShownHandler + hts.htmlTabs()
 
 
 def trialPage(sess, trialId):
