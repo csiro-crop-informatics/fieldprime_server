@@ -168,9 +168,8 @@ def htmlTrialTraitTable(trial):
              fpUtil.htmlButtonLink2("Details",
                  url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
 
-    xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
-
-    return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False) + xxx
+    #xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
+    return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False)
 
 
 def htmlTabScoreSets(sess, trialId):
@@ -209,8 +208,7 @@ def htmlTabScoreSets(sess, trialId):
         rows.append(row)
 
     htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
-    #htm +=  '<button style="color: red" onClick="location.reload()">Press Me</button>'
-    htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Press Me</button>'''
+    #htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Press Me</button>'''
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
@@ -429,22 +427,18 @@ def htmlTrial(sess, trialId):
     hts.addChunk('data', 'Score Data', htmlTabData(sess, trial))
     hts.addChunk('properties', 'Properties', htmlTabProperties(sess, trial))
     xxx = '''<script>
-    function showIt(tts) {
-    alert('show ' + tts);
-      //$(tts).DataTable().draw();
-      x = $(tts).DataTable();
-      y = x.api;
-      z = $(tts).dataTable();
-
-      z.fnAdjustColumnSizing();
-    }
     $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function (e) {
       var newtab = sessionStorage.getItem(fplib.STORAGE_TAG);
       if (newtab == '#traits') {
-        $('#fpTraitTable').dataTable().fnAdjustColumnSizing();
-        return;
-      }
-      if (newtab == '#scoresets') {
+        // This event occurs even when are coming to this page via the
+        // back button, in which case the table doesn't exist yet, and
+        // this call inits the datatable, causing an error when it is
+        // properly initialised later on. The problem is not occuring for
+        // the #fpScoreSets table for some reason, perhaps because it is the first tab?
+        if ($.fn.DataTable.isDataTable('#fpTraitTable')) {
+            $('#fpTraitTable').dataTable().fnAdjustColumnSizing();
+        }
+      } else if (newtab == '#scoresets') {
         $('#fpScoreSets').dataTable().fnAdjustColumnSizing();
       }
     })
