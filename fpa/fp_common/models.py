@@ -491,6 +491,27 @@ class Trial(DeclarativeBase):
         dbc.commit()
         return None
 
+    def deleteTrait(self, traitId):
+    #-----------------------------------------------------------------------
+    # Delete specified trait from the DB, provided there is no score data for
+    # the trait. Returns boolean indication success or not.
+    #
+        dbc = Session.object_session(self)
+        # Determine if there is any score data:
+        numTis =  dbc.query(TraitInstance).filter(
+            and_(TraitInstance.trial_id == self.id, TraitInstance.trait_id == traitId)).count()
+        if numTis <= 0:
+            return False
+        # If local trait, delete trait (references should follow by cascade).
+        # If system trait, delete the records associated with the trial ???
+        trt = getTrait(dbc, traitId)
+        if trt.trial_id is not None:
+            trt.delete()  #does this work
+            dbc.commit()
+            return True
+        if trt.project_id is not None: # this should be automatic
+            pass
+        return False
 
 #
 # TrialProperty

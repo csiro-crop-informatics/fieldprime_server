@@ -371,7 +371,8 @@ fplib.STORAGE_TAG = "fpCurrTrialPageTab";
 fplib.initTrialTabs = function() {
     $('a[data-toggle="tab"]').on('click', function(e) {
         var tabref = $(this).attr('href');
-        if (window.sessionStorage) sessionStorage.setItem(fplib.STORAGE_TAG, tabref);
+        if (window.sessionStorage)
+            sessionStorage.setItem(fplib.STORAGE_TAG, tabref);
     });
 
     var currTab;

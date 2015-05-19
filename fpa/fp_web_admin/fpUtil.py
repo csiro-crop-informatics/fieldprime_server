@@ -138,31 +138,31 @@ def htmlDataTableMagic(tableId):
             var elId = "#%s"
             $(elId).DataTable( {
                 "scrollX": true,
+                "processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
-                    //$("#loading").show();
                 },
                 "fnDrawCallback":function(){
                     $(elId).show();
-                    //$(elId).dataTable().fnAdjustColumnSizing(false);
-                    //$(elId).DataTable().draw();
-                    //$("#loading").hide();
                 },
                 "fnInitComplete": function(oSettings, json) {$(elId).show();}
             });
-            setTableWrapperWidth();
-            //window.addEventListener('resize', setTableWrapperWidth);
-            window.addEventListener('resize', function () {
-                "use strict";
-                window.location.reload();
-            });
+            setTableWrapperWidth(); // This to force on table scroll bar
+            window.addEventListener('resize', setTableWrapperWidth);
+            /* Used to be required for nice resize, but the line above now seems to work, mostly..
+            * window.addEventListener('resize', function () {
+            *     "use strict";
+            *     window.location.reload();
+            * });
+            */
         }
     );
+    // Needed to fix things on reload:
+    // NB it only seems to be an issue for first tab
     $(window).load( function () {
         var elId = "#%s"
-        // None of this is working - it is an attempt to fix misaligned column headers in datatable on first display..
         $(elId).dataTable().fnAdjustColumnSizing(false);
-        $(elId).dataTable().fnDraw();
+        //$(elId).dataTable().fnDraw();
     } );
     </script>
     """ % (tableId, tableId, tableId)

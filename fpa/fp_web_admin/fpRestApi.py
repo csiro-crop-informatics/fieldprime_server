@@ -54,16 +54,24 @@ def urlAttributeData(sess, projectName, attId):
         data.append([av.node_id, av.value])
     return Response(json.dumps(data), mimetype='application/json')
 
+
 @webRest.route('/trial/<trialId>/trait/<traitId>', methods=['DELETE'])
 @wr_check_session
 #---------------------------------------------------------------------------------
-# Return nodeId:attValue pairs
-# These are sorted by node_id.
+# Delete specified trait in given trial.
+# If this is a local trait, it will be completely removed, along with
+# all other records that refer to it.
+# If this is a system trait, then the trait itself is not deleted, but
+# all references to it within the specified trial are removed.
+#
 def urlTraitDelete(sess, trialId, traitId):
     if not sess.adminRights() or projectName != sess.getProjectName():
         return fpUtil.badJuju(sess, 'No admin rights')
+
+    trl = models.getTrial(sess.db(), trialId)
     # Delete the trait:
-    dal.Trial.deleteTrait(sess.db(), trialId)
+    trl.deleteTrait(traitId)
+    # This will probably be called by ajax, so should return json status.
     return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
 
     errmsg = fpsys.deleteUser(sess.getProjectName(), ident)

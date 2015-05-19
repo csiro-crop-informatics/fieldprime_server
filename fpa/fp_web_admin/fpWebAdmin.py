@@ -1363,8 +1363,8 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     # Script to create DataTable of the data:
     dtab += '<div id="dtableDiv"></div>'
-    dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
-    dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
+    #dtab += '<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">'
+    #dtab += '\n<script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>'
     dtab +=  '''<script>
         $(document).ready(function() {
             fplib.tmpScoredata = JSON.parse(document.getElementById("ssdata").text); // use global var as needed elsewhere
