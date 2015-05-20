@@ -83,20 +83,35 @@ def _dataNavigationContent(sess, trialId):
 # If trialId < 0:
 #     The trial select dropdown is not shown.
 #
-    ### User and user specific buttons:
-
-    # Show current user:
-    nc = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
-    nc += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
+    nc = ''
+    #---------------------------------------------------------------------------
+    # First row. User and user specific buttons:
+    #
+    # show current user:
+    c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
+    c1 += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
 
     # Show non project specific buttons:
-    nc += '<div style="float:right; margin-top:10px">'
-    nc +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
-    nc +=   '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub"><span class="fa fa-question-circle"></span> App User Guide</a>'
-    nc += '</div><div style="clear:both"></div>'
+    #c2 = '<div style="float:right; margin-top:10px">'
+    c2 = '<div style="float:right">'
+    c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    c2 +=   '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
+            '<span class="fa fa-question-circle"></span> App User Guide</a>'
+    c2 += '</div>'
+    #c2 += '<div style="clear:both"></div>'
+    nc += fpUtil.bsRow(fpUtil.bsCol(c1, numCols=6) + fpUtil.bsCol(c2, numCols=6))
 
-    ### Project and project specific buttons:
+    teststuff = '''
+  <div class="row">
+    <div style="background-color:red" class="col-sm-6">a</div>
+    <div style="background-color:green" class="col-sm-6">b</div>
+</div>'''
+    #<div style="background-color:blue" class="col-sm-4">c</div>
+    #nc += teststuff
 
+    #---------------------------------------------------------------------------
+    # Second row. Project and project specific buttons:
+    #
     # There are currently 2 types of login, ***REMOVED***, and the project login.
     # ***REMOVED*** users may have access rights to multiple project so they get
     # a dropdown project selection. Project logins have access to a single
@@ -121,7 +136,8 @@ def _dataNavigationContent(sess, trialId):
 
     # Show project specific buttons:
     if sess.getProjectName() is not None:
-        nc += '<div style="float:right; display:inline-block; margin-top:10px">'
+        #nc += '<div style="float:right; display:inline-block; margin-top:10px">'
+        nc += '<div style="float:right; display:inline-block">'
         if sess.adminRights():
             nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
         nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))

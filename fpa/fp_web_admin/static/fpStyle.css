@@ -37,7 +37,7 @@ fieldset{
  */
 .dataHeader {
     width: 100%;
-    min-width: 800px;  /* It looks a bit better with min width, but maybe not good for mobile. */
+    /*min-width: 800px;   It looks a bit better with min width, but maybe not good for mobile. */
     background: white;
     z-index: 1000;
 }

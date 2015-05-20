@@ -228,4 +228,16 @@ def badJuju(sess, msg):
     sess.close()
     return "Something bad has happened: " + msg
 
+def bsRow(contents):
+#-----------------------------------------------------------------------
+# Return contents wrapped in a bootstrap row.
+#
+    return '<div class="row">' + contents + '</div>'
+
+def bsCol(contents, size='sm', numCols=1, extra=None):
+#-----------------------------------------------------------------------
+# Return contents wrapped in a bootstrap column.
+#
+    divclass = 'col-' + size + '-' + str(numCols)
+    return '<div {2}class="{0}">{1}</div>'.format(divclass, contents, '' if extra is None else ' {0} '.format(extra))
 

@@ -85,7 +85,6 @@
     <div class="container-fluid">
         <div class="navbar-header">
             <a class="navbar-brand" href="#">
-                <!-- <div><img  src="/fieldprime/static/css/images/logo.png" style="height:58px; margin:0 auto;">FieldPrime Server</div> -->
                 <div><img  src="{{ url_for('static', filename='css/images/logo.png') }}" style="height:58px; margin:0 auto;">FieldPrime Server</div>
             </a>
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav-collapse">
@@ -97,41 +96,42 @@
         </div>
 
         <div class="collapse navbar-collapse" id="nav-collapse">
-                <!-- Individual Navbar elements -->
-            <ul class="nav nav-justified nasti-nav">
-
+          <!-- Individual Navbar elements -->
+          <ul class="nav nav-justified nasti-nav">
             {% if loggedIn %}
-    <li>
-        <a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
-      {% else %}
-      <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
-      {% endif %}
-
-
-
-                <li><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
-                <li><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
-                <li><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
-                <li>
-                  {% if loggedIn %}
-                    <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
-                  {% else %}
-                    <a href="{{url_for('urlMain')}}"><span class='fa fa-sign-in'></span> Log In</a>
-                  {% endif %}
-                </li>
-            </ul>
+            <li><a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
+            {% else %}
+            <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
+            <li><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
+            <li><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
+            <li>
+              {% if loggedIn %}
+              <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
+              {% else %}
+              <a href="{{url_for('urlMain')}}"><span class='fa fa-sign-in'></span> Log In</a>
+              {% endif %}
+            </li>
+          </ul>
         </div>
     </div> <!-- Container fluid-->
 </nav>
 
 <!-- Content: ----------------------------------------------------------------------------- -->
+
+<!-- -->
+<div class="container-fluid">
+
 {% block content %}{% endblock %}
+<!-- -->
+</div>
+
 
 <!-- Footer: ------------------------------------------------------------------------------ -->
 <div class="fpFooter">
   &copy; 2014 CSIRO
 </div>
-
 
 </body>
 </html>
