@@ -32,15 +32,9 @@ fieldset{
 /*------------------------- Header ------------------------*/
 
 /*
- * class dataHeader
- * For the top part of the page when user is logged in.
+ * class fpHeader
+ * for the header at the top of each page.
  */
-.dataHeader {
-    width: 100%;
-    /*min-width: 800px;   It looks a bit better with min width, but maybe not good for mobile. */
-    background: white;
-    z-index: 1000;
-}
 .fpHeader {
     width: 100%;
     height: 80px;
@@ -50,6 +44,62 @@ fieldset{
     border-right: 1px solid #023;
 }
 
+/*
+ * class fpDataTop
+ * For the top part of the non-header part of the page when user is logged in.
+ * Although much of this is probably now overwritten.
+ */
+.fpDataTop {
+    width: 100%;
+    min-width: 150px;
+    /* display: table-cell; */
+    vertical-align: top;    /* without this, vertical position is affected by html in
+                             * dataContent (when using tables for equal column heights)
+                             */
+    word-wrap: break-word;
+    background: white;
+    /*min-width: 800px;   It looks a bit better with min width, but maybe not good for mobile. */
+    z-index: 1000;
+}
+.fpDataTop a {
+    margin: 0 7px;
+    font-size: smaller;
+    /*padding: 5px 10px;
+     background-color: #022C38;
+    color: white;
+    border: 2px solid black;
+    border-radius: 10px;    */
+}
+.fpDataTop ul {
+    padding-left: 40px;
+}
+.fpDataTop li {
+    display: block;
+    float: left;
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+    margin-bottom: 10px;
+}
+.fpDataTop li:before {
+    content: "\f10c";
+    text-align: center;
+}
+.fpDataTop li.selected, .fpDataTop li.selected a {
+    color: red;
+}
+.fpDataTop li.selected:before,
+.fpDataTop li.selected:hover:before {
+    content: "\f14a";
+    text-align: center;
+}
+.fpDataTop li:hover:before{
+    content: "\f111";
+    text-align: center;
+}
+.fpDataTop hr{
+    clear:both;
+}
 
 /* Suspect these 2 not used */
 .left {
@@ -323,7 +373,7 @@ table.fptable{
  * The data section may be multiple columns side by side.
  * To have these equal height, we are using css tables.
  * dataWrapper is the table, and the columns (table-cells)
- * are dataLeftBar, dataContent, and dataContentHelp
+ * are fpDataTop, dataContent, and dataContentHelp
  *
  */
 
@@ -351,68 +401,6 @@ table.fptable{
     list-style: none;
 }
 
-#dataLeftBar {
-    width: 100%;
-    min-width: 150px;
-    /* display: table-cell; */
-    vertical-align: top;    /* without this, vertical position is affected by html in
-                             * dataContent (when using tables for equal column heights)
-                             */
-    word-wrap: break-word;
-    /* background: #eeeeee;
-    padding-top: 20px;
-    padding-bottom: 50px;*/
-    /*float: left; an alternative to tables, but don't get equal column height*/
-}
-
-#dataLeftBar a{
-    margin: 0 7px;
-    font-size: smaller;
-    /*padding: 5px 10px;
-     background-color: #022C38;
-    color: white;
-    border: 2px solid black;
-    border-radius: 10px;    */
-}
-
-#dataLeftBar ul{
-    padding-left: 40px;
-}
-
-#dataLeftBar li{
-    display: block;
-    float: left;
-    width: auto;
-    min-width: 200px;
-    text-align: left;
-    margin-bottom: 10px;
-}
-
-#dataLeftBar li:before{
-    content: "\f10c";
-    text-align: center;
-}
-
-#dataLeftBar li.selected, #dataLeftBar li.selected a{
-    color: red;
-}
-
-#dataLeftBar li.selected:before,
-#dataLeftBar li.selected:hover:before
-{
-    content: "\f14a";
-    text-align: center;
-}
-
-#dataLeftBar li:hover:before{
-    content: "\f111";
-    text-align: center;
-}
-
-#dataLeftBar hr{
-    clear:both;
-}
-
 /* Make the username and password inputs line up nicely on the login page: */
 #loginout label { display: inline-block; width: 140px; }
 
@@ -423,7 +411,7 @@ table.fptable{
     padding: 15px 0 40px;
     word-wrap: normal;
     overflow: hidden;
-    clear: both;   /* Prevent Firefox overlapping this div with dataLeftBar */
+    clear: both;   /* Prevent Firefox overlapping this div with fpDataTop */
 }
 
 .dataContentHelp{
