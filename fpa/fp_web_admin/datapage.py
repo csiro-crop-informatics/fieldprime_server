@@ -25,12 +25,12 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 #
     out = ''
     out += '<div style="overflow: hidden; display:inline-block;">'
-    out += '''<script>
-    function zirptl3(newLocation) {
-    sessionStorage.removeItem("fpCurrTrialPageTab"); //MFK hard code test hack
-        if (newLocation !== 0) location=newLocation;
-    }
-    </script>'''
+#     out += '''<script>
+#     function zirptl3(newLocation) {
+#     sessionStorage.removeItem("fpCurrTrialPageTab"); //MFK hard code test hack
+#         if (newLocation !== 0) location=newLocation;
+#     }
+#     </script>'''
 
 #     if label is not None:
 #         out +=   '<div style="display:inline-block;">'
@@ -51,7 +51,8 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 
 
     sel = '<div style="display:inline-block;min-width:200px">'
-    sel += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
+    sel += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" ' + \
+              'onchange="fplib.gotoLocationAndClearLastTab(this.options[this.selectedIndex].value);">'
     if promptOptionString is not None:
         sel +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
     for thing in listOfThings:
@@ -88,18 +89,21 @@ def _dataNavigationContent(sess, trialId):
     # First row. User and user specific buttons:
     #
     # show current user:
-    c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
-    c1 += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
+
+
+    r1c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
+    r1c1 += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
+
 
     # Show non project specific buttons:
     #c2 = '<div style="float:right; margin-top:10px">'
-    c2 = '<div style="float:right">'
-    c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
-    c2 +=   '<a href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
+    r1c2 = '<div style="float:right">'
+    r1c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    r1c2 +=   '<a style="white-space:nowrap" href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
             '<span class="fa fa-question-circle"></span> App User Guide</a>'
-    c2 += '</div>'
+    r1c2 += '</div>'
     #c2 += '<div style="clear:both"></div>'
-    nc += fpUtil.bsRow(fpUtil.bsCol(c1, numCols=6) + fpUtil.bsCol(c2, numCols=6))
+    nc += fpUtil.bsRow(fpUtil.bsCol(r1c1, numCols=6) + fpUtil.bsCol(r1c2, numCols=6))
 
     teststuff = '''
   <div class="row">
@@ -124,7 +128,7 @@ def _dataNavigationContent(sess, trialId):
         if errMsg or not projList:
             return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
         currProj = sess.getProjectName()
-        nc += selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
+        r2c1 = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
             lambda p: url_for('urlProject', project=p.projectName),
             lambda p: p.projectName,
             None if currProj is None else url_for('urlProject', project=currProj))
@@ -132,26 +136,47 @@ def _dataNavigationContent(sess, trialId):
         # Show current project:
         #nc += "<h1 style='float:left; padding-right:20px; margin:0'>Project:{0}</h1>".format(projectSelectorHtml)
         #nc += '<label>Project: &nbsp;</label>' + sess.getProjectName()
-        nc += fpUtil.htmlLabelValue('Project', sess.getProjectName())
+        r2c1 = fpUtil.htmlLabelValue('Project', sess.getProjectName())
+    r2 = fpUtil.bsCol(r2c1, numCols=6)
 
     # Show project specific buttons:
     if sess.getProjectName() is not None:
         #nc += '<div style="float:right; display:inline-block; margin-top:10px">'
-        nc += '<div style="float:right; display:inline-block">'
+        r2c2 = '<div style="float:right; display:inline-block">'
         if sess.adminRights():
-            nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
-        nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
-        nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
-        nc += '</div><div style="clear:both"></div>'
+            r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
+        r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
+        r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
+        r2c2 += '</div><div style="clear:both"></div>'
+        r2 += fpUtil.bsCol(r2c2, numCols=6, extra='style="white-space:nowrap"')
+        nc += fpUtil.bsRow(r2)
 
         # Add trial selector:
         if trialId is None or trialId >= 0:
-            nc += selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
+            r3c1 = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
                 lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
                 None if trialId is None else url_for('urlTrial', trialId=trialId))
+            nc += fpUtil.bsRow(fpUtil.bsCol(r3c1, numCols=6))
     nc += fpUtil.htmlHorizontalRule()
     return nc
 
+#     # Show project specific buttons:
+#     if sess.getProjectName() is not None:
+#         #nc += '<div style="float:right; display:inline-block; margin-top:10px">'
+#         nc += '<div style="float:right; display:inline-block">'
+#         if sess.adminRights():
+#             nc += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
+#         nc += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
+#         nc += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
+#         nc += '</div><div style="clear:both"></div>'
+#
+#         # Add trial selector:
+#         if trialId is None or trialId >= 0:
+#             nc += selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None, sess.getProject().trials,
+#                 lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
+#                 None if trialId is None else url_for('urlTrial', trialId=trialId))
+#     nc += fpUtil.htmlHorizontalRule()
+#     return nc
 
 def dataPage(sess, title, content, trialId=None):
 #----------------------------------------------------------------------------

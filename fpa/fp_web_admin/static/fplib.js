@@ -387,6 +387,17 @@ fplib.initTrialTabs = function() {
     }
 };
 
+/*
+ * gotoLocationAndClearLastTab()
+ * Goes to the specified location, but also clears memory of current
+ * trial tab.
+ */
+fplib.gotoLocationAndClearLastTab = function(newLocation) {
+    sessionStorage.removeItem(fplib.STORAGE_TAG);
+    if (newLocation !== 0)
+        location=newLocation;
+};
+
 
 fplib.OLDinitTabs = function (tabListId) { // this version no longer used, using bootstrap tabs instead
     var tabLinks = {};

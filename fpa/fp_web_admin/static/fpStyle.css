@@ -345,7 +345,7 @@ table.fptable{
     /*border: solid 1px*/
     /*overflow: auto; /* so the size of the wrapper is alway the size of the longest content */
     min-height: 510px;
-    /* width: 100%; */
+    width: 100%;
     /*margin: 0 auto;   /* This causes the div to be centered. */
     padding: 20px;
     list-style: none;
