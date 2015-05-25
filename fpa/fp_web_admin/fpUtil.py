@@ -8,6 +8,9 @@ import sys
 import time
 from flask import url_for
 
+import fp_common.models as models
+import MySQLdb as mdb
+
 ###  Constants: ################################################################
 
 htmlBootstrapGumpf = '''
@@ -241,3 +244,21 @@ def bsCol(contents, size='sm', numCols=1, extra=None):
     divclass = 'col-' + size + '-' + str(numCols)
     return '<div {2}class="{0}">{1}</div>'.format(divclass, contents, '' if extra is None else ' {0} '.format(extra))
 
+
+def systemPasswordCheck(user, password):
+#-----------------------------------------------------------------------
+# Validate 'system' user/password, returning boolean indicating success.
+# A system user/pass is a mysql user/pass.
+#
+    def dbName(username):
+    #-----------------------------------------------------------------------
+    # Map username to the database name.
+        return 'fp_' + username
+
+    try:
+        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
+        con.close()
+        return True
+    except mdb.Error, e:
+        #util.flog('system password check failed')
+        return False

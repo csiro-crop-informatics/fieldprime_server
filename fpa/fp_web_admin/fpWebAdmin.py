@@ -29,7 +29,7 @@ if __name__ == '__main__':
     sys.path.insert(0,parentdir)
 
 import fpTrait
-import fp_common.models as models
+import fp_common.models as models    # why both this and dal!?
 import fp_common.util as util
 import fpTrial
 import fpUtil
@@ -133,12 +133,6 @@ def dec_check_session(returnNoneSess=False):
             return func(sess, *args, **kwargs)
         return inner
     return param_dec
-
-
-def dbName(username):
-#-----------------------------------------------------------------------
-# Map username to the database name.
-    return 'fp_' + username
 
 
 def FrontPage(sess, msg=''):
@@ -1092,7 +1086,7 @@ def urlUserDetails(sess, projectName):
             # MFK bug here: if we prompt with err message, the contact values are missing.
             currUser = sess.getUser()
             oldPassword = form.get("password")
-            if not systemPasswordCheck(sess.getProjectName(), oldPassword):
+            if not fpUtil.systemPasswordCheck(sess.getProjectName(), oldPassword):
                 sess.close()
                 return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
             newpassword1 = form.get("newpassword1")
@@ -1531,19 +1525,6 @@ def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
-def systemPasswordCheck(user, password):
-#-----------------------------------------------------------------------
-# Validate 'system' user/password, returning boolean indicating success.
-# A system user/pass is a mysql user/pass.
-#
-    try:
-        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
-        con.close()
-        return True
-    except mdb.Error, e:
-        #util.flog('system password check failed')
-        return False
-
 def ***REMOVED***PasswordCheck(username, password):
 #-----------------------------------------------------------------------
 # Validate ***REMOVED*** user/password, returning boolean indicating success
@@ -1568,7 +1549,7 @@ def passwordCheck(sess, password):
 # Check password is valid for current user/loginType
 #
     if sess.getLoginType() == LOGIN_TYPE_SYSTEM:
-        return systemPasswordCheck(sess.getUser(), password)
+        return fpUtil.systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(sess.getUser(), password)
 
@@ -1627,7 +1608,7 @@ def urlMain():
             access = None
             dbname = None
             loginType = None
-            if systemPasswordCheck(username, password):
+            if fpUtil.systemPasswordCheck(username, password):
                 project = username
                 access = websess.PROJECT_ACCESS_ALL
                 dbname = models.dbName4Project(project)

@@ -30,6 +30,7 @@ def adminAccess(perms):
 #
 class WebSess(object):
     def __init__(self, forceNew=False, sid=None, timeout=900, sessFileDir='/tmp'):
+        print 'xxxx: ' + sid
     #------------------------------------------------------------------
         self.mTimeout = timeout
         # set sid or create new one:
@@ -49,6 +50,7 @@ class WebSess(object):
         # create  or open session file:
         self.sessFile = sessFileDir + '/sess_' + self.mSid
         self.data = shelve.open(self.sessFile, writeback=True)
+        print 'XXXXXXXXXXXXXXXXXX '  + self.sessFile
         os.chmod(self.sessFile, 0660)
 
     def close(self):
