@@ -120,6 +120,31 @@ function CategoryTraitFormElement(newDiv, presets) {
             fcel.id = 'imgfile_' + i;
             fcel.name = 'imgfile_' + i;
             icel.appendChild(fcel);
+/*
+            // Image URL:
+            var icel = drow.insertCell(-1);
+            icel.style.width = '191';
+            icel.style.whiteSpace = 'nowrap';
+            icel.style.display = 'inline-block';
+            var bdiv = document.createElement("div");
+            bdiv.style.display = 'inline';
+            bdiv.style.whiteSpace = 'nowrap';
+            //bdiv.style.overflow = 'scroll';
+            if (presets[i].imageURL === 'None') {
+                bdiv.appendChild(document.createTextNode("No Image"));
+            } else {
+                var anc = document.createElement("A");
+                anc.href = presets[i].imageURL;
+                anc.appendChild(document.createTextNode('Image set'));
+                bdiv.appendChild(anc);
+            }
+            var fcel = document.createElement("input");
+            fcel.type = 'file';
+            fcel.id = 'imgfile_' + i;
+            fcel.name = 'imgfile_' + i;
+            bdiv.appendChild(fcel);
+            icel.appendChild(bdiv);
+*/
         }
     } else {
         // Set up single initial row:
