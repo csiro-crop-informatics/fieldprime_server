@@ -133,12 +133,14 @@ def htmlDataTableMagic(tableId):
     <script>
     $(document).ready(
         function() {
+            var elId = "#%s"
+
             function setTableWrapperWidth() {
                 var setWidthTo = Math.round($(".fpHeader").width() - 40);
                 document.getElementById('%s_wrapper').style.width = setWidthTo + 'px';
+                $(elId).dataTable().fnAdjustColumnSizing();
             }
 
-            var elId = "#%s"
             $(elId).DataTable( {
                 "scrollX": true,
                 "processing": true, // not clear this is doing anything..
@@ -245,20 +247,4 @@ def bsCol(contents, size='sm', numCols=1, extra=None):
     return '<div {2}class="{0}">{1}</div>'.format(divclass, contents, '' if extra is None else ' {0} '.format(extra))
 
 
-def systemPasswordCheck(user, password):
-#-----------------------------------------------------------------------
-# Validate 'system' user/password, returning boolean indicating success.
-# A system user/pass is a mysql user/pass.
-#
-    def dbName(username):
-    #-----------------------------------------------------------------------
-    # Map username to the database name.
-        return 'fp_' + username
 
-    try:
-        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
-        con.close()
-        return True
-    except mdb.Error, e:
-        #util.flog('system password check failed')
-        return False

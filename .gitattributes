@@ -16,6 +16,7 @@ fpa/fp_common/fpsys.py -text
 fpa/fp_common/models.py -text
 fpa/fp_common/***REMOVED***.py -text
 fpa/fp_common/test.py -text
+fpa/fp_common/users.py -text
 fpa/fp_common/util.py -text
 fpa/fp_web_admin/__init__.py -text
 fpa/fp_web_admin/const.py -text

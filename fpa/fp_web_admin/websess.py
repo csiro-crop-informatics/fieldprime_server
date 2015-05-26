@@ -30,14 +30,13 @@ def adminAccess(perms):
 #
 class WebSess(object):
     def __init__(self, forceNew=False, sid=None, timeout=900, sessFileDir='/tmp'):
-        print 'xxxx: ' + sid
     #------------------------------------------------------------------
         self.mTimeout = timeout
         # set sid or create new one:
         if not forceNew and sid:
             self.mSid = sid
         else:
-            self.mSid = sha.new(repr(time.time())).hexdigest()
+            self.mSid = sha.new(repr(time.time())).hexdigest()  # Should we salt this?
 
         # create if necessary session storage dir:
         if not os.path.exists(sessFileDir):
@@ -50,13 +49,11 @@ class WebSess(object):
         # create  or open session file:
         self.sessFile = sessFileDir + '/sess_' + self.mSid
         self.data = shelve.open(self.sessFile, writeback=True)
-        print 'XXXXXXXXXXXXXXXXXX '  + self.sessFile
         os.chmod(self.sessFile, 0660)
 
     def close(self):
     #------------------------------------------------------------------
         sessFile = self.sessFile
-        print sessFile
         self.data.close()
         os.remove(sessFile)
 

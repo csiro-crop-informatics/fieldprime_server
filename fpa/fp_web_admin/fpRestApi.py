@@ -10,6 +10,7 @@ from functools import wraps
 import simplejson as json
 
 import fp_common.models as models
+import fp_common.users as users
 import websess
 from const import *
 import fpUtil
@@ -142,12 +143,12 @@ def urlLogin():
     access = None
     dbname = None
     loginType = None
-    if systemPasswordCheck(username, password):
+    if users.systemPasswordCheck(username, password):
         project = username
         access = websess.PROJECT_ACCESS_ALL
         dbname = models.dbName4Project(project)
         loginType = LOGIN_TYPE_SYSTEM
-    elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+    elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
         # For ***REMOVED*** check, we should perhaps first check in a system database
         # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
         #
@@ -166,7 +167,7 @@ def urlLogin():
 
     if not error:
         # Good to go, show the user front page, after adding cookie:
-        util.fpLog(app, 'Login from user {0}'.format(username))
+        util.fpLog(current_app, 'Login from user {0}'.format(username))
         sess.resetLastUseTime()
         sess.setUser(username)
         sess.setProject(project, dbname, access)

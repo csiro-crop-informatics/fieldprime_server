@@ -31,6 +31,7 @@ if __name__ == '__main__':
 import fpTrait
 import fp_common.models as models    # why both this and dal!?
 import fp_common.util as util
+import fp_common.users as users
 import fpTrial
 import fpUtil
 import fp_common.fpsys as fpsys
@@ -1086,7 +1087,7 @@ def urlUserDetails(sess, projectName):
             # MFK bug here: if we prompt with err message, the contact values are missing.
             currUser = sess.getUser()
             oldPassword = form.get("password")
-            if not fpUtil.systemPasswordCheck(sess.getProjectName(), oldPassword):
+            if not users.systemPasswordCheck(sess.getProjectName(), oldPassword):
                 sess.close()
                 return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
             newpassword1 = form.get("newpassword1")
@@ -1525,33 +1526,14 @@ def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
-def ***REMOVED***PasswordCheck(username, password):
-#-----------------------------------------------------------------------
-# Validate ***REMOVED*** user/password, returning boolean indicating success
-#
-#     if username == '***REMOVED***' and password == 'm':
-#         return True;
-    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-    if not ***REMOVED***Server:
-        util.flog('Cannot connect to ***REMOVED*** server')
-        return False
-    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(username)
-    if ***REMOVED***User is None:
-        util.flog('The supplied username is unknown.')
-        return False
-    if not ***REMOVED***User.authenticate(password):
-        #util.flog('wrong ***REMOVED*** password')
-        return False
-    return True;
-
 def passwordCheck(sess, password):
 #-----------------------------------------------------------------------
 # Check password is valid for current user/loginType
 #
     if sess.getLoginType() == LOGIN_TYPE_SYSTEM:
-        return fpUtil.systemPasswordCheck(sess.getUser(), password)
+        return users.systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-        return ***REMOVED***PasswordCheck(sess.getUser(), password)
+        return users.***REMOVED***PasswordCheck(sess.getUser(), password)
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -1608,12 +1590,12 @@ def urlMain():
             access = None
             dbname = None
             loginType = None
-            if fpUtil.systemPasswordCheck(username, password):
+            if users.systemPasswordCheck(username, password):
                 project = username
                 access = websess.PROJECT_ACCESS_ALL
                 dbname = models.dbName4Project(project)
                 loginType = LOGIN_TYPE_SYSTEM
-            elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+            elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
                 # For ***REMOVED*** check, we should perhaps first check in a system database
                 # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
                 #
