@@ -154,30 +154,18 @@ def urlLogin():
         #
         # OK, valid ***REMOVED*** user. Find project they have access to:
         loginType = LOGIN_TYPE_***REMOVED***
-        projList, errMsg = fpsys.getProjects(username)
-        if errMsg is not None:
-            error = 'Failed system login'
-        elif not projList:
-            error = 'No projects found for user {0}'.format(username)
-        else:
-            project = access = dbname = None
+        project = access = dbname = None
     else:
-        util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
+        util.fpLog(current_app, 'Login failed attempt for user {0}'.format(username))
+        return _jsonErrorReturn('invalid username/password')
         error = 'Invalid Password'
 
-    if not error:
-        # Good to go, show the user front page, after adding cookie:
-        util.fpLog(current_app, 'Login from user {0}'.format(username))
-        sess.resetLastUseTime()
-        sess.setUser(username)
-        sess.setProject(project, dbname, access)
-        sess.setLoginType(loginType)
-        g.userName = username
-        g.projectName = project
-        resp = make_response(FrontPage(sess))
-        resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
-        return resp
+    # Create session and return token (session id):
+    util.fpLog(current_app, 'Login from user {0}'.format(username))
+    sess = websess.WebSess(sessFileDir=current_app.config['SESS_FILE_DIR'])  # Create session object
+    sess.resetLastUseTime()
+    sess.setUser(username)
+    sess.setProject(project, dbname, access)
+    sess.setLoginType(loginType)
+    return jsonify({'token':sess.sid()})
 
-
-    # Error return
-    return render_template('sessError.html', msg=error, title='FieldPrime Login')
