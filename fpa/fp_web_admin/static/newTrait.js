@@ -120,7 +120,7 @@ function CategoryTraitFormElement(newDiv, presets) {
             fcel.id = 'imgfile_' + i;
             fcel.name = 'imgfile_' + i;
             icel.appendChild(fcel);
-/*
+/* This an attempt to stop the two elements (text node and file input) in this td from wrapping, unsuccessful so far..
             // Image URL:
             var icel = drow.insertCell(-1);
             icel.style.width = '191';

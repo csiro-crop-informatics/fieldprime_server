@@ -282,7 +282,7 @@ create table traitInstance(
   UNIQUE KEY ttsst (trial_id, trait_id, seqNum, sampleNum, token_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id),
   FOREIGN KEY fk_trial (trial_id) REFERENCES trial(id) ON DELETE CASCADE,
-  foreign key(token_id) references token(id)
+  foreign key(token_id) references token(id) ON DELETE CASCADE
 );
 
 
