@@ -339,15 +339,20 @@ class Project(DeclarativeBase):
         return session.query(Trait).filter(Trait.project_id == self.id).all()
 
     def newTrial(self, name, site, year, acro):
-    # NB may throw exceptions, not handled here.
+    # Creates new trial in the database with given details.
+    # Raises DalError if this fails.
+    #
         session = Session.object_session(self)
+        # Check if there is already a trial by that name:
+        numNames = session.query(Trial).filter(Trial.name == name).count()
+        if numNames != 0:
+            raise DalError("There is already a trial with that name")
         try:
             ntrial = Trial(self.id, name, site, year, acro)
             session.add(ntrial)
             session.commit()
         except sqlalchemy.exc.SQLAlchemyError as e:
-            # Delete trial and raise exception on error:
-            Trial.delete(session, ntrial.id)
+            session.rollback()   # This should ensure bad trial is not created in db
             raise DalError("Database error ({0})".format(e.__str__()))
         return ntrial
 

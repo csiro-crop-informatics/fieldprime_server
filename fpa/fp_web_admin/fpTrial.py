@@ -31,7 +31,12 @@ def ParseNodeCSV(f):
 # Returns dictionary, with either an 'error' key, or the above fields.
 #
     # Get headers,
-    hdrs = f.readline().strip().split(',')
+    hdrLine = f.readline().strip()
+    try:
+        hdrLine.decode('ascii')
+    except UnicodeDecodeError:
+        return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
+    hdrs = hdrLine.split(',')
     numFields = 0
     fixIndex = {}
     attIndex = {}
@@ -69,6 +74,10 @@ def ParseNodeCSV(f):
     rowNum = 2
     rowColSet = set()
     while line:
+        try:
+            line.decode('ascii')
+        except UnicodeDecodeError:
+            return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
         flds = line.strip().split(',')
         if not len(flds) == numFields:
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
@@ -103,7 +112,7 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
         #ntrial = models.Trial.new(dbc, tname, tsite, tyear, tacro)
         ntrial = sess.getProject().newTrial(tname, tsite, tyear, tacro)
     except models.DalError as e:
-        return (None, "Database error ({0})".format(e.__str__()))
+        return (None, e.__str__())
 
     # Add trial details from csv:
     res = updateTrialFile(sess, f, ntrial)
