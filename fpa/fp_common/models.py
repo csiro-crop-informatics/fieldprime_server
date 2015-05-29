@@ -477,6 +477,27 @@ class Trial(DeclarativeBase):
         dbc = Session.object_session(self)
         return dbc.query(Node).filter(Node.trial_id==self.id).order_by(Node.row, Node.col).all()
 
+#     The original version, now switched to having an instance version which
+#     calls a static version. The reason being that many of the calls to this
+#     do not already have a Trial object, and hence have to create one to use
+#     an instance method.
+#     def navIndexName(self, indexOrder):
+#         # Return the name to use for the first index attribute
+#         dbc = Session.object_session(self)
+#         indexName = ['rowNameName', 'colNameName'][indexOrder]
+#         try:
+#             print 'id: {0}'.format(id)
+#             val = dbc.query(TrialProperty).filter(
+#                         and_(TrialProperty.trial_id == self.id, TrialProperty.name == indexName)
+#                         ).one().value
+#         except NoResultFound:
+#             return ['Row', 'Column'][indexOrder]
+#         else:
+#             return val
+
+    def navIndexName(self, indexOrder):
+        # Return the name to use for the first index attribute
+        return navIndexName(Session.object_session(self), self.id, indexOrder)
 
     @staticmethod
     def getTraitInstancesForTrial(dbc, trialID):
@@ -518,6 +539,25 @@ class Trial(DeclarativeBase):
             pass
         return False
 
+def navIndexName(dbc, trialId, indexOrder):
+# Static version of Trial method navIndexName, exists because some callers
+# of this function may not already have a trial instance, just a trialId.
+# Return the name to use for the specified index attribute.
+#
+    indexName = ['rowNameName', 'colNameName'][indexOrder]
+    try:
+        print 'id: {0}'.format(id)
+        val = dbc.query(TrialProperty).filter(
+                    and_(TrialProperty.trial_id == trialId, TrialProperty.name == indexName)
+                    ).one().value
+    except NoResultFound:
+        return ['Row', 'Column'][indexOrder]
+    else:
+        return val
+
+
+
+
 #
 # TrialProperty
 # Table for trial attributes.
@@ -534,7 +574,7 @@ class Trial(DeclarativeBase):
 # could be driven from the tables, and to add a new attribute we would only need adjust
 # the tables. But we don't have that attow. On the other hand, a table hardcoded in the
 # software isn't necessarily any harder to adjust.
-# MFK - would be better named TrialProperty
+#
 class TrialProperty(DeclarativeBase):
     __tablename__ = 'trialProperty'
     __table_args__ = {}

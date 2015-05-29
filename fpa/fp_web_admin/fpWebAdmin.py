@@ -563,7 +563,8 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
         colCol.append("" if row[1] is None else row[1])
         colBarcode.append("" if row[2] is None else row[2])
     attValList = [colRow, colCol, colBarcode]
-    hdrs = ['Row', 'Col', 'Barcode']
+    trl = dal.getTrial(sess.db(), trialId)
+    hdrs = [trl.navIndexName(0), trl.navIndexName(1), 'Barcode']
 
     if not fixedOnly:
         # And add the other attributes:
@@ -664,7 +665,6 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
-
     trl = dal.getTrial(sess.db(), trialId)
 
     # Work out number of columns for each trait instance:
@@ -690,7 +690,7 @@ def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, sho
 
     # Headers:
     r += HROWSTART
-    r += 'fpNodeId' + HSEP + "Row" + HSEP + "Column"
+    r += 'fpNodeId' + HSEP + trl.navIndexName(0) + HSEP + trl.navIndexName(1)
     # xxx need to show row col even if attributes not shown?
     if showAttributes:
         attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
@@ -775,8 +775,8 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     # Headers:
     hdrs = []
     hdrs.append('fpNodeId')
-    hdrs.append('Row')
-    hdrs.append('Column')
+    hdrs.append(dal.navIndexName(sess.db(), trialId, 0))
+    hdrs.append(dal.navIndexName(sess.db(), trialId, 1))
     if showAttributes:
         attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
         for tua in trl.nodeAttributes:
@@ -951,7 +951,9 @@ def urlAttributeDisplay(sess, trialId, attId):
     r = "Attribute {0}".format(tua.name)
     r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
     r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
-    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format("fpNodeId", "Row", "Column", "Value")
+    trl = dal.getTrial(sess.db(), trialId)  # MFK what is the cost of getting trial object?
+    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
+        "fpNodeId", trl.navIndexName(0), trl.navIndexName(1), "Value")
     aVals = tua.getAttributeValues()
     for av in aVals:
         r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(av.node.id, av.node.row, av.node.col, av.value)
@@ -1304,6 +1306,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 # MFK this should probably display RepSets, not individual TIs
 #
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
+    trl = ti.trial
     typ = ti.trait.datatype
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
@@ -1321,7 +1324,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
     # Get data:
-    hdrs = ('fpNodeId', 'Row', 'Column', 'Value', 'User', 'Time', 'Latitude', 'Longitude')
+    hdrs = ('fpNodeId', trl.navIndexName(0), trl.navIndexName(1), 'Value', 'User', 'Time', 'Latitude', 'Longitude')
     rows = []
     for idx, d in enumerate(data):
         # Is this an overwritten datum?

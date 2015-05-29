@@ -16,7 +16,8 @@ import fp_common.models as models
 # If present in the uploaded trial file, these become column headers
 # indicate node members rather than generic attributes:
 #
-ATR_ROW = 'row'
+ATR_ROW = 'row'      # MFK need to replace with navIndexName, but this don't exist prior to trial creation
+                     # so instead need option to get this (and 'column') from user in newTrial form.
 ATR_COL = 'column'
 ATR_DES = 'description'
 ATR_BAR = 'barcode'

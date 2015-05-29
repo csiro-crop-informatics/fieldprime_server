@@ -73,7 +73,11 @@ gTrialAttributes = [
     formElement('NodeCreation', 'Allow node creation from app',
                 'nodeCreation', 'ncid',
                 etype=formElement.RADIO,
-                typeSpecificData={'yes':'true', 'no':'false'})
+                typeSpecificData={'yes':'true', 'no':'false'}),
+    formElement('Row alias', 'Word to use for rows',
+                'rowNameName', 'rowNameId'),
+    formElement('Column alias', 'Word to use for columnss',
+                'colNameName', 'rowNameId')
 ]
 
 
