@@ -147,6 +147,7 @@ def htmlDataTableMagic(tableId):
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
                 },
+                "pageLength":100,
                 "fnDrawCallback":function(){
                     $(elId).show();
                 },
