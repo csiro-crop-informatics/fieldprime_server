@@ -9,20 +9,26 @@ class="active"
     {% set loggedIn = (g.userName and g.userName != 'unknown') %}
 
     {# Login fields, or name of logged in user and logout button: #}
-      <div id="contents" class=infoText>
-		<div class=fpInfoText>
+      <div class="fpInfoText">
 			<h1>Welcome to FieldPrime</h1>
-            <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
-            <h2>FieldPrime</h2>
-            <p>
-            FieldPrime is a software suite designed to ease the process of
-            manual collection and collation of data. For example the collection
-            of trait score data in agricultural trials.
-            <br>The software consists of the FieldPrime Android app -
-            used for the data collection. And the FieldPrime
-            Server - used to store and manage the trial data.
+			<!-- <div class="row" grid not really adding anything here.. >
+			  <div class="col-sm-4"> -->
+              <img src="{{ url_for('static', filename='fpIcon.png') }}" width="250px" align="left">
+              <!-- </div>
+              <div class="col-sm-8"> -->
+                <h2>FieldPrime</h2>
+                <p>
+                FieldPrime is a software suite designed to ease the process of
+                manual collection and collation of data. For example the collection
+                of trait score data in agricultural trials.
+                <br>The software consists of the FieldPrime Android app -
+                used for the data collection. And the FieldPrime
+                Server - used to store and manage the trial data.
 
-                <div id="loginout"  class="infoText" style="clear:both; padding-top:25px;">
+              <!-- </div>
+            </div> -->
+
+                <div id="loginout" style="clear:both; padding-top:25px;">
                   {% if not loggedIn %} <!-- If there is NO user logged in: -->
                   <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
                     <h2>Please sign in</h2>
@@ -34,6 +40,5 @@ class="active"
                   </FORM>
                   {% endif %}
                 </div>
-            </div>
 	</div>
 {% endblock %}

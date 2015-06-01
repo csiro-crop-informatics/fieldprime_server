@@ -119,48 +119,6 @@ fieldset{
     -webkit-user-select: none;
     user-select: none;
 }
-.column {
-    height: 150px;
-    min-width: 200px;
-    float: left;
-    border: 2px solid rgba(234, 244, 244, 0.6);
-    background-color: rgba(229, 204, 238, 0.12);
-    margin-right: 5px;
-    -webkit-border-radius: 10px;
-    -ms-border-radius: 10px;
-    -moz-border-radius: 10px;
-    border-radius: 10px;
-    -webkit-box-shadow: inset 0 0 3px #000;
-    -ms-box-shadow: inset 0 0 3px #000;
-    box-shadow: inset 0 0 3px #000;
-    text-align: center;
-    cursor: move;
-}
-.column header {
-    color: #fff;
-    text-shadow: #000 0 1px;
-    box-shadow: 5px;
-    padding: 5px;
-    background: -moz-linear-gradient(left center, rgb(0,0,0), rgb(79,79,79), rgb(21,21,21));
-    background: -webkit-gradient(linear, left top, right top,
-    color-stop(0, rgb(0,0,0)),
-    color-stop(0.50, rgb(79,79,79)),
-    color-stop(1, rgb(21,21,21)));
-    background: -webkit-linear-gradient(left center, rgb(0,0,0), rgb(79,79,79), rgb(21,21,21));
-    background: -ms-linear-gradient(left center, rgb(0,0,0), rgb(79,79,79), rgb(21,21,21));
-    border-bottom: 1px solid #ddd;
-    -webkit-border-top-left-radius: 10px;
-    -moz-border-radius-topleft: 10px;
-    -ms-border-radius-topleft: 10px;
-    border-top-left-radius: 10px;
-    -webkit-border-top-right-radius: 10px;
-    -ms-border-top-right-radius: 10px;
-    -moz-border-radius-topright: 10px;
-    border-top-right-radius: 10px;
-}
-.column.over {
-    border: 2px dashed #000;
-}
 
 .hidden{
     display: none !important;
@@ -221,25 +179,17 @@ table.fptable{
     border-radius: 5px;
 }
 
-
 /*
- * not_too_wide
+ * fpNotTooWide
  * Eg to limit length of text lines.
-
-.not_too_wide {
+ */
+.fpNotTooWide {
     max-width: 500px;
 }
-*/
 
-/*------------------------------ CONTENTS ------------------------------*/
-#contents {
-	/* min-height: 510px;*/
-	width: 990px;
-	margin: 0 auto;
-	padding: 30px 30px 60px;
-	list-style: none;
-}
-.date {
+/**** Static News Page:------------------------------------- ****/
+
+.fpNewsDate {
 	float: left;
 	height: 78px;
 	width: 70px;
@@ -247,18 +197,17 @@ table.fptable{
 	border: 1px solid #d5d5d5;
 	text-align: center;
 }
-.date p {
+.fpNewsDate p {
 	margin: 12px 0 0;
     line-height: normal! important;
 }
-.date p span {
+.fpNewsDate p span {
 	display: block;
 	font-size: 30px;
 	margin-bottom: 6px;
 }
 
-/** main  This all for news page alone it seems. sidebar not used **/
-.main {
+.fpNewsMain {
 	float: left;
 	background: url(../images/divider.png) repeat-y right top;
 	min-height: 100px;
@@ -266,57 +215,47 @@ table.fptable{
     margin: 0 20px;
 }
 
-.main h2 span {
+.fpNewsMain h2 span {
 	display: block;
 	font-size: 12px;
 }
 
-/*** news: ********************************/
-.news {
+.fpNewsList {
 	list-style: none;
     padding: 0;
 }
-.news>li {
+.fpNewsList>li {
+	border-bottom: 1px solid #d5d5d5;
+	padding: 24px 30px 0 100px;
+	position: relative;
+}
+.fpNewsList>li>li {
 	border-top: 1px solid #d5d5d5;
 	padding: 24px 30px 0 100px;
 	position: relative;
 }
-.news>li>li {
-	border-top: 1px solid #d5d5d5;
-	padding: 24px 30px 0 100px;
-	position: relative;
-}
-.news li .date {
+.fpNewsList li .date {
 	float: none;
 	position: absolute;
 	left: 0;
 	top: 30px;
 }
-.news li > p span, .post > span {
+.fpNewsList li > p span, .post > span {
 	display: block;
 	text-align: right;
 }
-.news li {
+.fpNewsList li {
 	color: #585858;
 }
 
-/* these infoText should be merged if possible */
-/*** infoText: ***/
-.infoText p  {
-      color: #585858;
-      font-size: 16px;
-      line-height: 24px;
-      margin: 0 0 30px;
-}
-.infoText p a {
-      color: #585858;
-}
 
 /* Class fpInfoText is used in 3 pages, news.html, about.html, and fieldprime.html
  * The border-bottom draws a nice line under a H1 (of which there is only 1 on each
  * of these pages).
  */
+
 .fpInfoText {
+    color: #585858;
     margin: 0 20px;
 }
 .fpInfoText h1 {
@@ -324,41 +263,6 @@ table.fptable{
     padding-bottom: 12px;
 }
 
-
-/*******************************************/
-
-#contents .features {
-	width: 810px;
-	margin: 0 auto;
-}
-.features > div {
-	display: inline-block;
-	margin: 0 0 30px;
-}
-.features > div img {
-	float: left;
-	margin-right: 20px;
-	margin-top: 36px;
-}
-
-.description {
-    color: #585858;
-}
-
-
-.contact {
-	background-color: #f8f8f8;
-	width: 270px;
-	padding: 124px 60px;
-	text-align: center;
-}
-.contact p span {
-	color: #2c2c2c;
-	display: block;
-	font-size: 30px;
-	line-height: 36px;
-	padding: 18px 0;
-}
 
 /*** footer: ********************************/
 #footer {
@@ -405,7 +309,6 @@ table.fptable{
 #loginout label { display: inline-block; width: 140px; }
 
 .dataContent {
-    /* display: table-cell; */
     vertical-align: top;
     width: 100%;
     padding: 15px 0 40px;
@@ -416,7 +319,7 @@ table.fptable{
 
 .dataContentHelp{
     vertical-align: top;
-    color:#fff;
+    color:#585858;
     background: #eee;
     width: 950px;
     min-width: 250px;
@@ -426,6 +329,9 @@ table.fptable{
     top: 230px;
     opacity: 0.9;
 }
+
+/*******************************************/
+
 
 /* Help button/page stuff:
  * This is a div containing the help button.
