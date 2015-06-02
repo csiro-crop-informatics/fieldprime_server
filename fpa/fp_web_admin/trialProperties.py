@@ -75,9 +75,9 @@ gTrialAttributes = [
                 etype=formElement.RADIO,
                 typeSpecificData={'yes':'true', 'no':'false'}),
     formElement('Row alias', 'Word to use for rows',
-                'rowNameName', 'rowNameId'),
-    formElement('Column alias', 'Word to use for columnss',
-                'colNameName', 'rowNameId')
+                'indexName1', 'rowNameId'),
+    formElement('Column alias', 'Word to use for columns',
+                'indexName2', 'rowNameId')
 ]
 
 
