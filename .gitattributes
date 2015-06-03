@@ -89,3 +89,4 @@ misc/fp.conf -text
 misc/handy.sql -text
 misc/sampleTrial1.csv -text
 misc/sampleTrial1Mod.csv -text
+misc/sampleTrial1RangeRun.csv -text

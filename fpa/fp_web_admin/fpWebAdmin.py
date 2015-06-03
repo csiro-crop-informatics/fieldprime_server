@@ -489,7 +489,7 @@ def downloadApp(sess):
 
 @app.route('/newTrial/', methods=["GET", "POST"])
 @dec_check_session()
-def newTrial(sess):
+def urlNewTrial(sess):
 #===========================================================================
 # Page for trial creation.
 #
@@ -503,7 +503,8 @@ def newTrial(sess):
     if request.method == 'POST':
         uploadFile = request.files['file']
         trl, errMsg = fpTrial.uploadTrialFile(sess, uploadFile, request.form.get('name'), request.form.get('site'),
-                                      request.form.get('year'), request.form.get('acronym'))
+                                      request.form.get('year'), request.form.get('acronym'),
+                                      request.form.get(INDEX_NAME_1), request.form.get(INDEX_NAME_2))
         # Handle error (trl will be string error message):
         if trl is None:
             return dp.dataTemplatePage(sess, 'newTrial.html', title='Create Trial', msg = errMsg, extraElements=extras)

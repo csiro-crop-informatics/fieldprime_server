@@ -338,7 +338,7 @@ class Project(DeclarativeBase):
         session = Session.object_session(self)
         return session.query(Trait).filter(Trait.project_id == self.id).all()
 
-    def newTrial(self, name, site, year, acro):
+    def newTrial(self, name, site, year, acro): # see comment below , i1name=None, i2name=None):
     # Creates new trial in the database with given details.
     # Raises DalError if this fails.
     #
@@ -351,6 +351,14 @@ class Project(DeclarativeBase):
             ntrial = Trial(self.id, name, site, year, acro)
             session.add(ntrial)
             session.commit()
+# Code to set index names, not needed ATTOW as the single call to this is followed by
+# a call to trialProperties.processPropertiesForm which does this.
+#             # Add index names:
+#             if i1name is not None:
+#                 session.add(TrialProperty(ntrial.id, INDEX_NAME_1, i1name))
+#                 if i2name is not None:   # NB i2name only used if i1name is present.
+#                     session.add(TrialProperty(ntrial.id, INDEX_NAME_2, i2name))
+#                 session.commit()
         except sqlalchemy.exc.SQLAlchemyError as e:
             session.rollback()   # This should ensure bad trial is not created in db
             raise DalError("Database error ({0})".format(e.__str__()))
@@ -544,7 +552,7 @@ def navIndexName(dbc, trialId, indexOrder):
 # of this function may not already have a trial instance, just a trialId.
 # Return the name to use for the specified index attribute.
 #
-    indexName = ['rowNameName', 'colNameName'][indexOrder]
+    indexName = [INDEX_NAME_1, INDEX_NAME_2][indexOrder]
     try:
         print 'id: {0}'.format(id)
         val = dbc.query(TrialProperty).filter(

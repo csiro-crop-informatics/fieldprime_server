@@ -139,7 +139,7 @@ def _dataNavigationContent(sess, trialId):
         if sess.adminRights():
             r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=sess.getProjectName()))
         r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=sess.getProjectName()))
-        r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("newTrial"))
+        r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("urlNewTrial"))
         r2c2 += '</div><div style="clear:both"></div>'
         r2 += fpUtil.bsCol(r2c2, numCols=6, extra='style="white-space:nowrap"')
 

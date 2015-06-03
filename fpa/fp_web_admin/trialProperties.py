@@ -6,6 +6,7 @@
 #
 
 import fp_common.models as models
+import fp_common.const as fpconst
 
 
 #
@@ -75,9 +76,9 @@ gTrialAttributes = [
                 etype=formElement.RADIO,
                 typeSpecificData={'yes':'true', 'no':'false'}),
     formElement('Row alias', 'Word to use for rows',
-                'indexName1', 'rowNameId'),
+               fpconst.INDEX_NAME_1, 'rowNameId'),
     formElement('Column alias', 'Word to use for columns',
-                'indexName2', 'rowNameId')
+                fpconst.INDEX_NAME_2, 'rowNameId')
 ]
 
 

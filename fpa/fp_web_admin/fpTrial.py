@@ -16,21 +16,19 @@ import fp_common.models as models
 # If present in the uploaded trial file, these become column headers
 # indicate node members rather than generic attributes:
 #
-ATR_ROW = 'row'      # MFK need to replace with navIndexName, but this don't exist prior to trial creation
-                     # so instead need option to get this (and 'column') from user in newTrial form.
-ATR_COL = 'column'
 ATR_DES = 'description'
 ATR_BAR = 'barcode'
 ATR_LAT = 'latitude'
 ATR_LON = 'longitude'
-FIXED_ATTRIBUTES = [ATR_ROW, ATR_COL, ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
 
-def ParseNodeCSV(f):
+def _parseNodeCSV(f, ind1name, ind2name):
 #-----------------------------------------------------------------------
 # Parses the file to check valid trial input. Also determines the
 # number of fields, and the column index of each fixed and attribute columns.
 # Returns dictionary, with either an 'error' key, or the above fields.
 #
+    FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
+
     # Get headers,
     hdrLine = f.readline().strip()
     try:
@@ -56,7 +54,7 @@ def ParseNodeCSV(f):
         numFields += 1
 
     # Check both row and column are present:
-    for mand in [ATR_ROW, ATR_COL]:
+    for mand in [ind1name, ind2name]:
         if not mand in fixIndex.keys():
             return {'error':"Error - Missing required column ({0}), aborting.".format(mand)}
 
@@ -68,7 +66,6 @@ def ParseNodeCSV(f):
     if ATR_LON in fixIndex.keys() and not ATR_LAT in fixIndex.keys():
         attIndex[ATR_LON] = fixIndex[ATR_LON]
         del fixIndex[ATR_LON]
-
 
     # Check node lines:
     line = f.readline()
@@ -84,8 +81,8 @@ def ParseNodeCSV(f):
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
             err += "Bad line was: " + line
             return {'error':err}
-        srow = flds[fixIndex[ATR_ROW]]
-        scol = flds[fixIndex[ATR_COL]]
+        srow = flds[fixIndex[ind1name]]
+        scol = flds[fixIndex[ind2name]]
         if not (srow.isdigit() and scol.isdigit()):
             return {'error':"Error - row or col field is not integer, line {0}, aborting".format(rowNum)}
 
@@ -103,27 +100,27 @@ def ParseNodeCSV(f):
     return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
 
 
-def uploadTrialFile(sess, f, tname, tsite, tyear, tacro):
+def uploadTrialFile(sess, f, tname, tsite, tyear, tacro, i1name, i2name):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
 # Return Trial object, None on success, else None, string error message.
 #
     dbc = sess.db()
     try:
-        #ntrial = models.Trial.new(dbc, tname, tsite, tyear, tacro)
         ntrial = sess.getProject().newTrial(tname, tsite, tyear, tacro)
+        # NB index names for the trial are set by the caller of this func.
     except models.DalError as e:
         return (None, e.__str__())
 
     # Add trial details from csv:
-    res = updateTrialFile(sess, f, ntrial)
+    res = updateTrialFile(sess, f, ntrial, i1name, i2name)
     if res is not None and 'error' in res:
         models.Trial.delete(dbc, ntrial.id)   # delete the new trial if some error
         return (None, res['error'])
     return ntrial, None
 
 
-def updateTrialFile(sess, trialCsv, trl):
+def updateTrialFile(sess, trialCsv, trl, i1name=None, i2name=None):
 #-----------------------------------------------------------------------
 # Update trial data according to csv file trialCsv.
 # The trial should already exist. First line is headers,
@@ -151,8 +148,17 @@ def updateTrialFile(sess, trialCsv, trl):
 # values will match. This precludes having columns with names only
 # differing in case.
 #
+    # Get index names if not supplied:
+    if i1name is None:
+        i1name = trl.navIndexName(0).lower()
+    if i2name is None:
+        i2name = trl.navIndexName(1).lower()
+    # Convert to lower case here - this means user needs to know (and can rely on) this is case insensitive.
+    i1name = i1name.lower()
+    i2name = i2name.lower()
+
     # Check csv file:
-    tuFileInfo = ParseNodeCSV(trialCsv)  # Ideally need version that checks trial units, should we allow new ones?
+    tuFileInfo = _parseNodeCSV(trialCsv, i1name, i2name)
     if 'error' in tuFileInfo:
         return tuFileInfo
     fixIndex = tuFileInfo['fixIndex']
@@ -179,8 +185,8 @@ def updateTrialFile(sess, trialCsv, trl):
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"DB error adding nodeAttribute ({0})".format(e.orig.args)}
 
+    # Iterate thru the nodes (each line is assumed to be a node), creating or updating as necessary:
     try:
-        # Iterate thru the nodes (each line is assumed to be a node):
         trialCsv.seek(0,0)
         trialCsv.readline() # skip headers
         line = trialCsv.readline()
@@ -188,9 +194,9 @@ def updateTrialFile(sess, trialCsv, trl):
             flds = line.strip().split(',')
             # Get or create the node (specified by row/col):
             # MFK if duplicate row col?
-            node = trl.addOrGetNode(flds[fixIndex[ATR_ROW]], flds[fixIndex[ATR_COL]])
+            node = trl.addOrGetNode(flds[fixIndex[i1name]], flds[fixIndex[i2name]])
             if node is None:
-                out = "Problem getting or creating node: row" + str(flds[fixIndex[ATR_ROW]]) + " col " + str(flds[fixIndex[ATR_COL]])
+                out = "Problem getting or creating node: row" + str(flds[fixIndex[i1name]]) + " col " + str(flds[fixIndex[i2name]])
                 return {'error':out}
 
             # Update fixed node attributes in the node struct:

@@ -86,3 +86,8 @@ jDataUpload = {
     'value':'value'
 }
 
+
+# Trial Property keys:
+INDEX_NAME_1 = 'indexName1'
+INDEX_NAME_2 = 'indexName2'
+
