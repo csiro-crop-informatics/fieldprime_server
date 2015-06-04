@@ -53,6 +53,8 @@ class formElement:
         #
         element = ''
         if self.etype == self.TEXT:
+            if value is None and self.typeSpecificData is not None:
+                value = self.typeSpecificData
             element = '''
                    <input type="text" id='{0}' name="{1}" {2}>
                 '''.format(self.eid, self.ename,
@@ -76,9 +78,11 @@ gTrialAttributes = [
                 etype=formElement.RADIO,
                 typeSpecificData={'yes':'true', 'no':'false'}),
     formElement('Row alias', 'Word to use for rows',
-               fpconst.INDEX_NAME_1, 'rowNameId'),
+               fpconst.INDEX_NAME_1, 'rowNameId',
+               etype=formElement.TEXT, typeSpecificData='Row'),  #MFK constants for "row" "column"?
     formElement('Column alias', 'Word to use for columns',
-                fpconst.INDEX_NAME_2, 'rowNameId')
+                fpconst.INDEX_NAME_2, 'rowNameId',
+                etype=formElement.TEXT, typeSpecificData='Column')
 ]
 
 
