@@ -277,7 +277,7 @@ fplib.makeDataTable = function(tdata, tname, divName) {
  * which should have the specified width and height.
  * Assumes d3 library is loaded.
  */
-fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
+fplib.drawHistogram = function(values, valmin, valmax, divId, divWidth, divHeight) {
     /*
      * Style the div - should this be scoped?:
      */
@@ -294,7 +294,6 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
     /*
      * Make the hist:
      */
-    var values = fplib.tmpScoredata.values;
     var margin = {top: 10, right: 30, bottom: 30, left: 30},
         width = divWidth - margin.left - margin.right,
         height = divHeight - margin.top - margin.bottom;
@@ -304,12 +303,12 @@ fplib.drawHistogram = function(values, divId, divWidth, divHeight) {
     // in which case d3.scale.linear would give an empty array of ticks
     // There's probaby a nicer way to present this, but when there's only a single
     // unique value, the histogram is not really of much use anyway..
-    var binTicks = fplib.tmpScoredata.min < fplib.tmpScoredata.max ?
+    var binTicks = valmin < valmax ?
         d3.scale.linear()
-            .domain([fplib.tmpScoredata.min, fplib.tmpScoredata.max])
+            .domain([valmin, valmax])
             .range([0, width])
           .ticks(20)
-        : [fplib.tmpScoredata.min - 1, fplib.tmpScoredata.min + 1];
+        : [valmin - 1, valmin + 1];
 
     var xsc = d3.scale.linear()
         .domain([binTicks[0], binTicks[binTicks.length-1]])

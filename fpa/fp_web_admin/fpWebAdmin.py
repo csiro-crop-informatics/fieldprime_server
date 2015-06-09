@@ -1252,7 +1252,7 @@ def htmlNumericScoreSetStats(data, name):
     <div id="hist_div" style="width: %dpx; height: %dpx;"></div>
     <script>
         $(document).ready(function() {
-            fplib.drawHistogram(fplib.tmpScoredata.values, "hist_div", %d, %d);
+            fplib.drawHistogram(fplib.tmpScoredata.values, fplib.tmpScoredata.min, fplib.tmpScoredata.max, "hist_div", %d, %d);
         });
     </script>
     ''' % (width, height, width, height)
