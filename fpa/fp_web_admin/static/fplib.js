@@ -276,6 +276,8 @@ fplib.makeDataTable = function(tdata, tname, divName) {
  * Draws histogram of given values in the specified (by id) div,
  * which should have the specified width and height.
  * Assumes d3 library is loaded.
+ * Parameter values is an array of numbers (passed to the d3 function to make a histogram),
+ * valmin and valmax should be the min and max of these.
  */
 fplib.drawHistogram = function(values, valmin, valmax, divId, divWidth, divHeight) {
     /*

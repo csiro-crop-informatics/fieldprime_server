@@ -223,7 +223,7 @@ create table trialTrait(
   PRIMARY KEY(trial_id, trait_id),
   FOREIGN KEY(trait_id) REFERENCES trait(id) ON DELETE CASCADE,
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
-  FOREIGN KEY(barcodeAtt_id) REFERENCES nodeAttribute(id)
+  FOREIGN KEY(barcodeAtt_id) REFERENCES nodeAttribute(id) on delete set null
 );
 
 
