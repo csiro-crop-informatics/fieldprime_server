@@ -72,7 +72,7 @@ create table token(
 -- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
 -- something generic, like serverId. The type field would identify the table that serverId
 -- was for.
---
+-- MFK node_id should be fk and token_id should probably be on delete cascade
 create table tokenNode(
   token_id   INT NOT NULL,
   localId    INT NOT NULL,
@@ -151,7 +151,7 @@ create table nodeNote(
   note          text,
   unique (node_id, timestamp, note(100)),
   foreign key(node_id) references node(id) on delete CASCADE,
-  foreign key(token_id) references token(id)
+  foreign key(token_id) references token(id) on delete CASCADE
 );
 
 --
@@ -270,7 +270,7 @@ create table traitString(
 -- traitInstance
 -- A traitInstance is uniquely identified by trial/trait/seqNum/sampleNum/token.
 -- They are grouped into score set by trial/trait/seqNum/token.
---
+-- MFK fk trait_id should have on delete handler
 create table traitInstance(
   id          INT PRIMARY KEY AUTO_INCREMENT,
   trial_id    INT NOT NULL,
@@ -285,7 +285,7 @@ create table traitInstance(
   foreign key(token_id) references token(id) ON DELETE CASCADE
 );
 
-
+-- MFK fk on delete handlers needed
 -- create table scoreSet(
 --   id	      INT PRIMARY KEY AUTO_INCREMENT,
 --   trial_id    INT NOT NULL,
