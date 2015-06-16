@@ -10,6 +10,8 @@
 import sys, os, traceback
 import sqlalchemy
 import fp_common.models as models
+import csv
+import StringIO
 
 #
 # Special column headers.
@@ -21,7 +23,30 @@ ATR_BAR = 'barcode'
 ATR_LAT = 'latitude'
 ATR_LON = 'longitude'
 
-def _parseNodeCSV(f, ind1name, ind2name):
+# def _getCsvLineAsArray(fobj):
+#     line = fobj.readline().strip();
+#     try:
+#         line.decode('ascii')
+#     except UnicodeDecodeError:
+#         return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
+#     sline = StringIO.StringIO(line)
+#     return csv.reader(sline).next()
+
+def _getCsvLineAsArray(fobj):
+# Returns boolean (ascii error occurred), line, array
+    line = fobj.readline().strip();
+    if not line:
+        return False, None, None
+    try:
+        line.decode('ascii')
+    except UnicodeDecodeError:
+        return True, line, None
+
+    sline = StringIO.StringIO(line)
+    return False, line, csv.reader(sline).next()
+
+
+def _parseNodeCSV(fobj, ind1name, ind2name):
 #-----------------------------------------------------------------------
 # Parses the file to check valid trial input. Also determines the
 # number of fields, and the column index of each fixed and attribute columns.
@@ -30,12 +55,19 @@ def _parseNodeCSV(f, ind1name, ind2name):
     FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
 
     # Get headers,
-    hdrLine = f.readline().strip()
-    try:
-        hdrLine.decode('ascii')
-    except UnicodeDecodeError:
+    (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
+    if asciiError:
         return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
-    hdrs = hdrLine.split(',')
+    if not hdrs:
+        return {'error':"No header line in file"}
+
+#     hdrLine = fobj.readline().strip()
+#     try:
+#         hdrLine.decode('ascii')
+#     except UnicodeDecodeError:
+#         return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
+#     hdrs = hdrLine.split(',')
+
     numFields = 0
     fixIndex = {}
     attIndex = {}
@@ -68,15 +100,24 @@ def _parseNodeCSV(f, ind1name, ind2name):
         del fixIndex[ATR_LON]
 
     # Check node lines:
-    line = f.readline()
+    #line = fobj.readline()
     rowNum = 2
     rowColSet = set()
-    while line:
-        try:
-            line.decode('ascii')
-        except UnicodeDecodeError:
+    while True:
+        print 'hey'
+        (asciiError, line, flds) = _getCsvLineAsArray(fobj)
+        if asciiError:
             return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
-        flds = line.strip().split(',')
+        if not flds:
+            break
+
+#         try:
+#             line.decode('ascii')
+#         except UnicodeDecodeError:
+#             return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
+#         flds = line.strip().split(',')
+
+
         if not len(flds) == numFields:
             err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
             err += "Bad line was: " + line
@@ -94,7 +135,7 @@ def _parseNodeCSV(f, ind1name, ind2name):
         rowColSet.add((nrow, ncol))
 
         rowNum += 1
-        line = f.readline()
+        #line = fobj.readline()
 
     # All good
     return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
