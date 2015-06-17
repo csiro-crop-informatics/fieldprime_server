@@ -88,5 +88,7 @@ misc/datareap.php -text
 misc/fp.conf -text
 misc/handy.sql -text
 misc/sampleTrial1.csv -text
+misc/sampleTrial1.nonAscii.csv -text
 misc/sampleTrial1Mod.csv -text
 misc/sampleTrial1RangeRun.csv -text
+misc/splitEntryBook.py -text

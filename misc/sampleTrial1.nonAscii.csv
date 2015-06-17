@@ -1,0 +1,25 @@
+row,column,replicate,genotype,pedigree,description,barcode,rootstock,latitude,longitude,decimalValue,intValue
+1,1,0,shiraz,fre¢nch,spicy,1,AxR1,-35.278,149.1144,,
+1,2,0,cabernet,french,mellow,2,AxR1,-35.278,149.1144,1,0
+1,3,0,riesling,german,austere,3,5BB Kober,-35.278,149.1144,2.2,1
+1,4,0,sangiovese,italian,cheeky,4,5BB Kober,-35.278,149.1144,-1,2
+2,1,0,grenache,spanish,warm,5,5C Teleki,-35.278,149.1144,4.3,3
+2,2,0,viognier,german,stern,6,,-35.278,149.1144,2.1,4
+2,3,0,marsanne,french,musky,7,SO4,-35.278,149.1144,5.6,5
+2,4,0,roussane,french,approachable,8,SO4,-35.278,149.1144,0,6
+3,1,0,cinceau,french,odd,8,California,-35.278,149.1144,9.999,7
+3,2,0,sauvignon,french,cold,10,5C Teleki,-35.278,149.1144,1.0000001,8
+3,3,0,chardonnay,french,blousy,11,AxR1,-35.278,149.1144,5,9
+3,4,0,muscat,french,dangerous,12,none,-35.278,149.1144,5,10
+4,1,1,shiraz,french,spicy,1,California,-35.278,149.1144,5,11
+4,2,1,cabernet,french,mellow,2,Adelaide,-35.278,149.1144,5,12
+4,3,1,riesling,german,austere,3,WSI,-35.278,149.1144,5,13
+4,4,1,sangiovese,italian,cheeky,4,Loire Valley,-35.278,149.1144,5,14
+5,1,1,grenache,spanish,warm,5,Adelaide,-35.278,149.1144,5,15
+5,2,1,viognier,german,stern,6,Murrumbateman,-35.278,149.1144,5,16
+5,3,1,marsanne,french,musky,7,Young,-35.278,149.1144,5,17
+5,4,1,roussane,french,approachable,8,Charles Sturt,-35.278,149.1144,5,18
+6,1,1,cinceau,french,odd,8,Young,-35.278,149.1144,5,19
+6,2,1,sauvignon,french,cold,10,Hilltops,-35.278,149.1144,5,20
+6,3,1,chardonnay,french,blousy,11,Young,-35.278,149.1144,5,21
+6,4,1,muscat,french,dangerous,12,South Africa,-35.278,149.1144,5,22

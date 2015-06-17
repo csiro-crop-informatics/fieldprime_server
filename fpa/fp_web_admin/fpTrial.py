@@ -23,6 +23,19 @@ ATR_BAR = 'barcode'
 ATR_LAT = 'latitude'
 ATR_LON = 'longitude'
 
+class Result:
+    def __init__(self, status, msg, obj):
+        self.status = status
+        self.msg = msg
+        self.obj = obj
+    def good(self):
+        return self.status
+    def msg(self):
+        return self.msg
+    def obj(self):
+        return self.obj
+
+
 # def _getCsvLineAsArray(fobj):
 #     line = fobj.readline().strip();
 #     try:
@@ -104,7 +117,6 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
     rowNum = 2
     rowColSet = set()
     while True:
-        print 'hey'
         (asciiError, line, flds) = _getCsvLineAsArray(fobj)
         if asciiError:
             return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
