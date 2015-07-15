@@ -91,4 +91,13 @@ misc/sampleTrial1.csv -text
 misc/sampleTrial1.nonAscii.csv -text
 misc/sampleTrial1Mod.csv -text
 misc/sampleTrial1RangeRun.csv -text
+misc/screenshots/FieldPrime_app_decimal_scoring.png -text
+misc/screenshots/FieldPrime_app_exporting_data_to_server.png -text
+misc/screenshots/FieldPrime_app_front_page.png -text
+misc/screenshots/FieldPrime_app_gps_scoring_alert.png -text
+misc/screenshots/FieldPrime_app_image_based_scoring.png -text
+misc/screenshots/FieldPrime_app_updating_trial.png -text
+misc/screenshots/FieldPrime_server_photo_scoreset.png -text
+misc/screenshots/FieldPrime_server_tabs.png -text
+misc/screenshots/FieldPrime_server_traits_tab.png -text
 misc/splitEntryBook.py -text
