@@ -101,23 +101,13 @@ def urlLogin():
 # The request should contain parameters "username" and "password".
 #
 # Note the use of sessions. On login, a server side session is established (state is stored
-# in the file system), and the id of this session is sent back to the browser in a cookie,
+# in the file system), and the id of this session is sent back to the browser as a token,
 # which should be sent back with each subsequent request.
 #
 # Every access via the various app.routes above, should go through decorator dec_check_session
 # which will check there is a valid session current. If not, eg due to timeout, then it redirects
 # to the login screen.
 #
-# Notes:
-# Ideally, perhaps, after a redirect to the login screen, and successful login, we should go directly
-# to where the user was originally trying to get to..
-#
-# Perhaps all of the app.routes should start with a /trial/<trialId>, even when this is not strictly
-# necessary, eg for urlScoreSetTraitInstance, which doesn't need it since the TI id is unique within db.
-# Or perhaps it should be /user/userName/[trial/trialId]/
-#
-# Might want to change displayed url for some things eg the op to change password ends up displaying
-# the FrontPage, but shows the URL for the op.
 #
     error = ""
     if request.method != 'POST':
