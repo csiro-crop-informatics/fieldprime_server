@@ -132,7 +132,8 @@ def getProjectDBname(projectName):
         qry = "select dbname from project where name = %s"
         cur = con.cursor()
         cur.execute(qry, (projectName))
-        return cur.fetchone()[0]
+        foo = cur.fetchone()
+        return None if foo is None else foo[0]
     except mdb.Error, e:
         return None
 
