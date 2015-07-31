@@ -3,7 +3,7 @@
 #
 # Functions to respond to REST type calls, i.e. urls for
 # getting or setting data in json format.
-#
+# see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask
 
 from flask import Blueprint, current_app, request, Response, jsonify
 from functools import wraps
