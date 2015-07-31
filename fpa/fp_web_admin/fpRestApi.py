@@ -93,6 +93,21 @@ def _jsonErrorReturn(error=None):
     #resp.status_code = 500
     return resp
 
+# not used yet
+def userPasswordCheck(username, password):
+    if users.systemPasswordCheck(username, password):
+        return LOGIN_TYPE_SYSTEM
+    elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+        # For ***REMOVED*** check, we should perhaps first check in a system database
+        # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
+        #
+        # OK, valid ***REMOVED*** user. Find project they have access to:
+        return LOGIN_TYPE_***REMOVED***
+    else:
+        return None
+
+
+
 
 @webRest.route('/restapi/login', methods=["POST"])
 def urlLogin():
