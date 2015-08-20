@@ -193,7 +193,7 @@ def htmlTabScoreSets(sess, trialId):
         row.append(firstTi.trait.caption)
         row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
         row.append(firstTi.getDeviceId())
-        row.append(firstTi.seqNum)
+        row.append(ss.getFPId()) # was firstTi.seqNum
         samps = ''   # We show all the separate samples in a single cell
         for oti in tis:
             samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
@@ -306,6 +306,15 @@ def htmlTabData(sess, trial):
     #
     jscript = """
     <script>
+    function addParams(url) {{
+        var tdms = document.getElementById('tdms');
+        var out = url;
+        // Add parameters indicating what to include in the download
+        for (var i=0; i<tdms.length; i++)
+            if (tdms[i].selected)
+              out += '&' + tdms[i].value + '=1';
+        return out;
+    }};
     function downloadURL(tables) {{
         var tdms = document.getElementById('tdms');
         var out = tables ? '{1}?' : '{0}?';
@@ -348,6 +357,9 @@ def htmlTabData(sess, trial):
     dl += "</select>"
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
     dl +=     "<button>Download Trial Data</button></a><br />"
+    dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams({1})'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
+    dl +=     "<button>Download Trial Data - long form</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
     dl += "<p><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
     dl +=     "<button>View tab separated score data</button></a><br />"
@@ -857,6 +869,17 @@ def urlTrialDataBrowse(sess, trialId):
 #     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
+@app.route('/trial/<trialId>/data/', methods=['GET'])
+@dec_check_session()
+def urlTrialDataLongForm(sess, trialId):
+    showGps = request.args.get("gps")
+    showUser = request.args.get("user")
+    showTime = request.args.get("timestamp")
+    showNotes = request.args.get("notes")
+    showAttributes = request.args.get("attributes")
+    trl = dal.getTrial(sess.db(), trialId)
+    out = trl.getDataLongForm(showTime, showUser, showGps, showNotes, showAttributes)
+    return Response(out, content_type='text/plain')
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
