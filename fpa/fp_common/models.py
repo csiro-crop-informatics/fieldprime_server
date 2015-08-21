@@ -185,6 +185,13 @@ class Trait(DeclarativeBase):
                 TraitInstance.trial_id == trialId)).group_by(
                 TraitInstance.seqNum, TraitInstance.token_id).count()
 
+    def getName(self):
+        return self.caption
+
+    def getValueFieldName(self):
+        return 'txtValue' if self.datatype == T_STRING or self.datatype == T_PHOTO else 'numValue'
+
+
 class TraitCategory(DeclarativeBase):
     __tablename__ = 'traitCategory'
     __table_args__ = {}
@@ -266,6 +273,8 @@ class TraitInstance(DeclarativeBase):
                 if allResults[i].node_id == allResults[i-1].node_id:
                     del allResults[i]
         return allResults
+    def getTrait(self):
+        return self.trait
 
 # class TrialTraitNumeric
 # Validation information specific to a given trial/trait.
@@ -320,7 +329,10 @@ class ScoreSet():
         return self.instances
     def getFPId(self):
         return 0 if len(self.instances) <= 0 else self.instances[0].id
-
+    def getTrait(self):
+        if len(self.instances) <= 0:
+            return ''
+        return self.instances[0].getTrait()
 
 class Project(DeclarativeBase):
     __tablename__ = 'project'
@@ -555,82 +567,60 @@ class Trial(DeclarativeBase):
     #---------------------------------------------------------------------------------------
     # Return score data for the file in long form.
     #
-        hdrs = "fpNodeId\tTrait\tScoreSetId\tSampleNum\tValue"
-        if showTime:
-            hdrs += '\tTime'
-        if showUser:
-            hdrs += '\tUser'
-        if showGps:
-            hdrs += '\tLatitude\tLongitude'
-
         session = Session.object_session(self)
         engine = session.bind
-        engine.execute()
+        metas = ''
+        out = "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
+        numCols = 5
+        if showTime:
+            out += '\tTime'
+            metas += ',FROM_UNIXTIME(timestamp/1000)'
+            numCols += 1
+        if showUser:
+            out += '\tUser'
+            metas += ',userid'
+            numCols += 1
+        if showGps:
+            out += '\tLatitude\tLongitude'
+            metas += ',gps_lat,gps_long'
+            numCols += 1
+        out += '\n'
+        sql = '''
+        select d.node_id, ti.sampleNum, {{0}} {0}
+        from datum d join traitInstance ti on d.traitInstance_id = ti.id
+          join trial t on ti.trial_id = t.id
+        where t.id = {1}
+          and ti.id in {{1}}
+        order by d.node_id, ti.id
+        '''.format(metas, self.id)
 
-        sql = '''select d.node_id, d.numValue from datum d join traitInstance ti on d.traitInstance_id = ti.id
-        join trial t on ti.trial_id = t.id
-        where t.id = :tid'''
-        result = engine.execute(sql, tid=self.id)
-        out = ''
-        for row in result:
-            out += '{0}\t{1}\n'.format(row[0], row[1])
+        # Iterate over scoresets:
+        scoreSets = self.getScoreSets()
+        for ss in scoreSets:
+            trait = ss.getTrait()
+            traitName = trait.getName()
+            ssId = ss.getFPId()
+            tis = ss.getInstances()
+            tiIdList = '('
+            for ti in tis:
+                if len(tiIdList) > 1:
+                    tiIdList += ','
+                tiIdList += str(ti.id)
+            tiIdList += ')'
+            valueField = trait.getValueFieldName()
+            result = engine.execute(sql.format(valueField , tiIdList))
+            for row in result:
+                out += '{0}\t{1}'.format(traitName, ssId)
+                for i in range(0, len(row)):
+                    # Need to detect NA, this is where the value field (3rd column) is null
+                    if i == 2:
+                        out += '\t{0}'.format('NA' if row[i] is None else row[i])
+                    else:
+                        out += '\t{0}'.format(row[i])
+                out += '\n'
+
         return out
 
-        # Iterate over scoresets
-#         scoreSets = self.getScoreSets()
-#         for ss in scoreSets:
-#             ssId = ss.getFPId()
-#             tis = ss.getInstances()
-
-            # Iterate over nodes
-                # Iterate over samples
-
-#         sql = text('select name from penguins')
-#         result = db.engine.execute(sql)
-#         names = []
-#         for row in result:
-#             names.append(row[0])
-#
-#         print names
-
-        # Cloned code:
-#         con = getMYSQLDBConnection(sess)
-#         qry = """
-#         select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
-#         from node t
-#           left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = %s
-#           left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
-#         where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
-#         order by row, col
-#         """
-#         #print qry
-#         outList = []
-#         for ti in tiList:
-#             # If trait type is categorical then the values will be numbers which should be
-#             # converted into names (via the traitCategory table), retrieve the map for the
-#             # trait first:
-#             if ti.trait.datatype == T_CATEGORICAL:
-#                 catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
-#             else:
-#                 catMap = None
-#
-#             valList = []
-#             outList.append
-#             cur = con.cursor()
-#             cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.datatype)), (ti.id, trialId, ti.id))
-#             for row in cur.fetchall():
-#                 timestamp = row[1]
-#                 if timestamp is None:          # no datum record case
-#                     valList.append(["","","","",""])
-#                 else:
-#                     val = row[0]
-#                     if val is None: val = "NA"
-#                     elif catMap is not None:   # map value to name for categorical trait
-#                         val = catMap[int(val)]
-#                     valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
-#             outList.append(valList)
-#             cur.close()
-#         return outList
 
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers

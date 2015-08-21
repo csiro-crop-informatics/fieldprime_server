@@ -309,10 +309,14 @@ def htmlTabData(sess, trial):
     function addParams(url) {{
         var tdms = document.getElementById('tdms');
         var out = url;
+        var first = true;
         // Add parameters indicating what to include in the download
         for (var i=0; i<tdms.length; i++)
-            if (tdms[i].selected)
-              out += '&' + tdms[i].value + '=1';
+            if (tdms[i].selected) {{
+              out += first ? '?' : '&';
+              first = false;
+              out += tdms[i].value + '=1';
+            }}
         return out;
     }};
     function downloadURL(tables) {{
@@ -358,7 +362,7 @@ def htmlTabData(sess, trial):
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
     dl +=     "<button>Download Trial Data</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
-    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams({1})'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
     dl +=     "<button>Download Trial Data - long form</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
     dl += "<p><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
@@ -869,7 +873,7 @@ def urlTrialDataBrowse(sess, trialId):
 #     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
-@app.route('/trial/<trialId>/data/', methods=['GET'])
+@app.route('/trial/<trialId>/datalong/', methods=['GET'])
 @dec_check_session()
 def urlTrialDataLongForm(sess, trialId):
     showGps = request.args.get("gps")
