@@ -347,6 +347,19 @@ class Project(DeclarativeBase):
 
     #relation definitions:
     trials = relationship('Trial')
+    upProject = relationship('Project', remote_side=[id])
+
+    def getName(self):
+        return self.name
+
+    def path(self):
+    #-----------------------------------------------------------------------
+    # Recursion - whee!
+    #
+        if self.upProject is not None:
+            return '{0}/{1}'.format(self.upProject.path(), self.getName())
+        else:
+            return self.getName()
 
     def getTraits(self):
         session = Session.object_session(self)
@@ -563,14 +576,27 @@ class Trial(DeclarativeBase):
             pass
         return False
 
+    def path(self):
+    #---------------------------------------------------------------------------------------
+    # Return project path and trial name
+    #
+        return '{0}/{1}'.format(self.project.path(), self.name)
+
+
     def getDataLongForm(self, showTime, showUser, showGps, showNotes, showAttributes):
     #---------------------------------------------------------------------------------------
-    # Return score data for the file in long form.
+    # Return score data for the trial in long form.
+    # Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
+    # Output is one line per datum:
+    # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
     #
         session = Session.object_session(self)
         engine = session.bind
         metas = ''
-        out = "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
+        out = '# FieldPrime long form trial data\n'
+        out += '# Trial: {0}\n'.format(self.path())
+        out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
+        out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
         numCols = 5
         if showTime:
             out += '\tTime'
@@ -587,10 +613,8 @@ class Trial(DeclarativeBase):
         out += '\n'
         sql = '''
         select d.node_id, ti.sampleNum, {{0}} {0}
-        from datum d join traitInstance ti on d.traitInstance_id = ti.id
-          join trial t on ti.trial_id = t.id
-        where t.id = {1}
-          and ti.id in {{1}}
+        from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
+        where t.id = {1} and ti.id in {{1}}
         order by d.node_id, ti.id
         '''.format(metas, self.id)
 
@@ -629,7 +653,6 @@ def navIndexName(dbc, trialId, indexOrder):
 #
     indexName = [INDEX_NAME_1, INDEX_NAME_2][indexOrder]
     try:
-        print 'id: {0}'.format(id)
         val = dbc.query(TrialProperty).filter(
                     and_(TrialProperty.trial_id == trialId, TrialProperty.name == indexName)
                     ).one().value
@@ -637,8 +660,6 @@ def navIndexName(dbc, trialId, indexOrder):
         return ['Row', 'Column'][indexOrder]
     else:
         return val
-
-
 
 
 #

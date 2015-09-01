@@ -296,8 +296,8 @@ def htmlTabTraits(sess, trial):
 
 def htmlTabData(sess, trial):
 #--------------------------------------------------------------------
-# Return html chunk with table of scores and attributes.
-
+# Return html chunk for data tab.
+#
     # Javascript function to generate the href for the download links.
     # The generated link includes trialId and the user selected output options.
     # MFK, note we have problem with download link in that if the session has timed
@@ -352,6 +352,7 @@ def htmlTabData(sess, trial):
     dl += jscript
     # Multi select output columns:
     dl += "Select columns to view/download:<br>"
+    dl += "<div style='margin-bottom:20px'>"
     dl += "<select multiple='multiple' id='tdms'>";
     dl += "<option value='timestamp' selected='selected'>Timestamps</option>";
     dl += "<option value='user' selected='selected'>User Idents</option>"
@@ -359,6 +360,7 @@ def htmlTabData(sess, trial):
     dl += "<option value='notes' selected='selected'>Notes</option>"
     dl += "<option value='attributes' selected='selected'>Attributes</option>"
     dl += "</select>"
+    dl += "</div>"
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
     dl +=     "<button>Download Trial Data</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
