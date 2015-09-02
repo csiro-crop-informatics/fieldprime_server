@@ -215,22 +215,12 @@ def htmlTabNodeAttributes(sess, trialId):
     if len(attList) < 1:
         out += "No attributes found"
     else:
-        if True:
-            hdrs = ["Name", "Datatype", "Values"]
-            rows = []
-            for att in attList:
-                valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
-                rows.append([att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton])
-            out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpNodeAttributes', showFooter=False)
-        else:  # Old way, not a datatable, delete when happy with new way
-            out = "<table class='fptable' cellspacing='0' cellpadding='5'>"
-            out += "<tr><th>{0}</th><th>{1}</th><th>{2}</th></tr>".format(
-                "Name", "Datatype", "Values")
-            for att in attList:
-                valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
-                out += "<tr><td>{0}</td><td>{1}</td><td>{2}</td>".format(
-                       att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton)
-            out += "</table>"
+        hdrs = ["Name", "Datatype", "Values"]
+        rows = []
+        for att in attList:
+            valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            rows.append([att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton])
+        out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpNodeAttributes', showFooter=False)
 
     # Add BROWSE button:
     out += '<p>'
