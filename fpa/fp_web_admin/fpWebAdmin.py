@@ -989,17 +989,18 @@ def urlAttributeUpload(sess, trialId):
 @dec_check_session()
 def urlAttributeDisplay(sess, trialId, attId):
     tua = dal.getAttribute(sess.db(), attId)
-    r = "Attribute {0}".format(tua.name)
-    r += "<br>Datatype : " + TRAIT_TYPE_NAMES[tua.datatype]
-    r += "<p><table class='fptable' cellspacing='0' cellpadding='5'>"
+    out = "<b>Attribute</b> : {0}".format(tua.name)
+    out += "<br><b>Datatype</b> : " + TRAIT_TYPE_NAMES[tua.datatype]
+    # Construct datatable:
     trl = dal.getTrial(sess.db(), trialId)  # MFK what is the cost of getting trial object?
-    r += "<tr><th>{0}</th><th>{1}</th><th>{2}</th><th>{3}</th></tr>".format(
-        "fpNodeId", trl.navIndexName(0), trl.navIndexName(1), "Value")
+    hdrs = ["fpNodeId", trl.navIndexName(0), trl.navIndexName(1), "Value"]
+    rows = []
     aVals = tua.getAttributeValues()
     for av in aVals:
-        r += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>".format(av.node.id, av.node.row, av.node.col, av.value)
-    r += "</table>"
-    return dp.dataPage(sess, content=r, title='Attribute', trialId=trialId)
+        rows.append([av.node.id, av.node.row, av.node.col, av.value])
+    out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpAttValues', showFooter=False)
+
+    return dp.dataPage(sess, content=out, title='Attribute', trialId=trialId)
 
 #######################################################################################################
 ### USERS STUFF: ######################################################################################
