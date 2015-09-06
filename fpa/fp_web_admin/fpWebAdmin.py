@@ -1326,6 +1326,24 @@ def htmlNumericScoreSetStats(data, name):
     oStats += scatters
     return oStats
 
+#
+# Example of getting response from another URL:
+# NB to use, uncomment this and change the current
+# method to:
+# @app.route('/scoreSet2/<traitInstanceId>/', methods=['GET'])
+# @dec_check_session()
+# def urlScoreSetTraitInstance2(sess, traitInstanceId):
+#
+#
+# import requests
+# @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+# @dec_check_session()
+# def urlScoreSetTraitInstance(sess, traitInstanceId):
+#     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
+#     print 'newurl:' + newurl
+#     f = request.cookies.get('sid')
+#     cooky = {'sid':f}
+#     return requests.get(newurl, cookies=cooky).content
 
 @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
@@ -1684,5 +1702,5 @@ if __name__ == '__main__':
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
     util.initLogging(app, True)  # Specify print log messages
 
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, threaded=True, host='0.0.0.0', port=5001)
 
