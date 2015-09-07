@@ -150,6 +150,8 @@ def get_trial(username, trl, dbc, token=None):
 
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
+    if int(clientVersion) < 400:
+        return JsonErrorResponse('This client version ({0}) is too old. Please upgrade, or contact support for help'.format(clientVersion))
 
     # Create new token if this is a new trial download:
     if token is None:
@@ -196,10 +198,10 @@ def get_trial(username, trl, dbc, token=None):
     jtrl['nodeAttributes'] = attDefs
 
     # Nodes:
-    tuList = []
+    nodeList = []
     tuNames = ["id", "row", "col", "description", "barcode"]
     for ctu in trl.nodes:
-        jtu = {}
+        jnode = {}
         # MFK - there is a problem here, the fixed names and the user provided
         # attribute names are in the same name space. This is a problem if, for example
         # there is a user provided 'id' attribute.
@@ -208,7 +210,7 @@ def get_trial(username, trl, dbc, token=None):
 
         # Trial unit attributes:
         for n in tuNames:
-            jtu[n] = getattr(ctu, n)
+            jnode[n] = getattr(ctu, n)
 
         # Attribute values:
         if len(ctu.attVals) > 0:
@@ -216,18 +218,18 @@ def get_trial(username, trl, dbc, token=None):
                 atts = {}
                 for att in ctu.attVals:
                     atts[att.nodeAttribute.name] = att.value
-                    jtu['attvals'] = atts
+                    jnode['attvals'] = atts
             else:     # MFK - support for old clients, remove when all clients updated
                 for att in ctu.attVals:
-                    jtu[att.nodeAttribute.name] = att.value
+                    jnode[att.nodeAttribute.name] = att.value
 
         # GPS location:
         if ctu.latitude is not None and ctu.longitude is not None:
             jloc = [ctu.latitude, ctu.longitude]
-            jtu['location'] = jloc
+            jnode['location'] = jloc
 
-        tuList.append(jtu)
-    jtrl['trialUnits'] = tuList   # MFK change this to Nodes - when enough clients support this.
+        nodeList.append(jnode)
+    jtrl['nodes'] = nodeList
 
     # Traits:
     traitList = []
