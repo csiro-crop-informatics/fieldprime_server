@@ -25,6 +25,7 @@ $MYSQL -uSuperadm -p <<EOF
 create database if not exists $DBNAME;
 use $DBNAME;
 source fprime.create.tables.sql;
+# Comment out next line if non ***REMOVED*** login not required.
 grant all on $DBNAME.* to '$DBUSER'@'localhost' identified by '$DBPASS';
 grant all on $DBNAME.* to '$WEBUSER'@'localhost';
 insert project values (2, null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
