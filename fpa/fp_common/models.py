@@ -645,6 +645,15 @@ class Trial(DeclarativeBase):
 
         return out
 
+    def getAttribute(self, name):
+    #---------------------------------------------------------------------------------------
+    # Return named attribute, if it's in this trial
+    #
+        for att in self.nodeAttributes:
+            if att.name == name:
+                return att
+        return None
+
 
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers

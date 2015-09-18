@@ -1,0 +1,26 @@
+{% extends "dataPage.html" %}
+
+{% block dataContent %}
+<font color="red">{{msg}}</font>
+<h2>Reload Attributes</h2>
+<div class="fpNotTooWide fpInfoText">
+<p>
+Select a CSV file containing score data for the trial.
+The file should have a similar format as the original trial upload file.
+It should be CSV, with a single header row, providing a name for each column,
+and then one line for each node in the trial (for which scores are to be
+added). The first column, or columns, must be attributes that already exist for
+the trial that uniquely identify the nodes - for example Row and Column columns.
+All columns following these must be scores or score metadata. For score values,
+the column header must be the name of a trait, that must already be in the trial.
+
+</div>
+<form enctype="multipart/form-data"
+  action=""
+  method="post">
+
+<p>Trial Plan CSV File: <input type="file" id='uploadFile_id' name="file"></p>
+<p><input type="submit" value="Upload"></p>
+
+</form>
+{% endblock %}

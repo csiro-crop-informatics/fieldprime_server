@@ -203,7 +203,11 @@ def htmlTabScoreSets(sess, trialId):
         rows.append(row)
 
     htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
-    #htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Press Me</button>'''
+
+    # Add button to upload new/modified attributes:
+    #htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Upload Score Sets</button>'''
+    htm += fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
+
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
@@ -960,6 +964,21 @@ def urlTraitDetails(sess, trialId, traitId):
 # Page to display/modify the details for a trait.
 #
     return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
+
+@app.route('/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
+@dec_check_session()
+def urlUploadScores(sess, trialId):
+    if request.method == 'GET':
+        return dp.dataTemplatePage(sess, 'uploadScores.html', title='Upload Scores', trialId=trialId)
+
+    if request.method == 'POST':
+        uploadFile = request.files['file']
+        res = fpTrial.uploadScores(sess, uploadFile, dal.getTrial(sess.db(), trialId))
+        if res is not None and 'error' in res:
+            return dp.dataTemplatePage(sess, 'uploadScores.html', title='Load Attributes', msg = res['error'], trialId=trialId)
+        else:
+            return trialPage(sess, trialId) #FrontPage(sess)
+
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()

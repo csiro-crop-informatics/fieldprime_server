@@ -153,6 +153,7 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
     return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
 
 
+
 def uploadTrialFile(sess, f, tname, tsite, tyear, tacro, i1name, i2name):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
@@ -290,4 +291,144 @@ def updateTrialFile(sess, trialCsv, trl, i1name=None, i2name=None):
     except sqlalchemy.exc.SQLAlchemyError as e:
         return {'error':"DB error adding attributeValue ({0})".format(e.orig.args)}
     return None
+
+
+def _parseScoresCSV(fobj, trl, ind1name, ind2name):
+#-----------------------------------------------------------------------
+# Parses the file to check valid trial input. Also determines the
+# number of fields, and the column index of each fixed and attribute columns.
+# Returns dictionary, with either an 'error' key, or the above fields.
+#
+    FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
+
+    # Get headers,
+    (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
+    if asciiError:
+        return {'error':"Non ascii characters found in file. Please remove or contact FieldPrime support"}
+    if not hdrs:
+        return {'error':"No header line in file"}
+
+    idAtts = []
+    scoreSets = []  # each item should be a dictionary trait:trait value:valueCol, user:userCol..
+    inAtts = True
+    for i, hdr in enumerate(hdrs):
+        if inAtts:
+            att = trl.getAttribute(hdr)
+            if att is not None:
+                inAtts.append(att)
+                continue
+        inAtts = False
+        #if hdr.endswith('_time'):
+
+    currTraitName = None
+    for i in range(len(hdrs)):
+        hdr = hdrs[i]
+        if inAtts:
+            att = trl.getAttribute(hdr)
+            if att is not None:
+                inAtts.append(att)
+                continue
+        inAtts = False
+        if currTraitName is None:
+            ssDetails = {}
+            trt = trl.getTrait(hdr)
+            if trt is None:
+                return {'error':"Expected trait name as header in column {0}".format(i+1)}
+            currTraitName = hdr
+            ssDetails['trait'] = hdr
+            ssDetails[valueCol] = i
+            # Look ahead for metadata
+            for j in range(1, max(5, len(hdrs)-i)):
+                xxx
+
+
+        if hdr == currTraitName + '_time':
+            pass
+
+
+
+            # check hdr is an attribute name, or ind1, ind2, or barcode
+
+#     hdrLine = fobj.readline().strip()
+#     try:
+#         hdrLine.decode('ascii')
+#     except UnicodeDecodeError:
+#         return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
+#     hdrs = hdrLine.split(',')
+
+    numFields = 0
+    fixIndex = {}
+    attIndex = {}
+    for hd in hdrs:
+        hdl = hd.strip().lower()
+        if not hdl:
+            return {'error':"Error - Empty header found for column {0}, aborting.".format(numFields + 1)}
+        if len(hdl) > 127:
+             return {'error':"Error - column header too long {0} for column {1}, aborting.".format(hdl, numFields + 1)}
+        if hdl in FIXED_ATTRIBUTES:
+            fixIndex[hdl] = numFields
+        elif hdl in attIndex.keys():
+            return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
+        else:
+            attIndex[hdl] = numFields
+        numFields += 1
+
+    # Check both row and column are present:
+    for mand in [ind1name, ind2name]:
+        if not mand in fixIndex.keys():
+            return {'error':"Error - Missing required column ({0}), aborting.".format(mand)}
+
+    # Check that if either latitude or longitude are present then they both are,
+    # else revert the one present to a generic attribute:
+    if ATR_LAT in fixIndex.keys() and not ATR_LON in fixIndex.keys():
+        attIndex[ATR_LAT] = fixIndex[ATR_LAT]
+        del fixIndex[ATR_LAT]
+    if ATR_LON in fixIndex.keys() and not ATR_LAT in fixIndex.keys():
+        attIndex[ATR_LON] = fixIndex[ATR_LON]
+        del fixIndex[ATR_LON]
+
+    # Check node lines:
+    #line = fobj.readline()
+    rowNum = 2
+    rowColSet = set()
+    while True:
+        (asciiError, line, flds) = _getCsvLineAsArray(fobj)
+        if asciiError:
+            return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
+        if not flds:
+            break
+
+#         try:
+#             line.decode('ascii')
+#         except UnicodeDecodeError:
+#             return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
+#         flds = line.strip().split(',')
+
+
+        if not len(flds) == numFields:
+            err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
+            err += "Bad line was: " + line
+            return {'error':err}
+        srow = flds[fixIndex[ind1name]]
+        scol = flds[fixIndex[ind2name]]
+        if not (srow.isdigit() and scol.isdigit()):
+            return {'error':"Error - row or col field is not integer, line {0}, aborting".format(rowNum)}
+
+        # check for duplicates:
+        nrow = int(srow)
+        ncol = int(scol)
+        if (nrow, ncol) in rowColSet:
+            return {'error':"Error - duplicate row/column pair, line {0}, aborting".format(rowNum)}
+        rowColSet.add((nrow, ncol))
+
+        rowNum += 1
+        #line = fobj.readline()
+
+    # All good
+    return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
+
+
+def uploadScores(sess, trialCsv, trl, i1name=None, i2name=None):
+    _parseScoresCSV(trialCsv, trl, i1name, i2name)
+    return {'error':"Software engineer underpaid"}
 
