@@ -536,6 +536,9 @@ class Trial(DeclarativeBase):
         # Return the name to use for the first index attribute
         return navIndexName(Session.object_session(self), self.id, indexOrder)
 
+    def navIndexNames(self):
+        return (self.navIndexName(0), self.navIndexName(1))
+
     @staticmethod
     def getTraitInstancesForTrial(dbc, trialID):
     #-----------------------------------------------------------------------
@@ -653,6 +656,10 @@ class Trial(DeclarativeBase):
             if att.name == name:
                 return att
         return None
+
+    def hasNodeProperty(self, name):
+        if name in self.navIndexNames() or name.lower() == 'barcode':
+            return True
 
 
 def navIndexName(dbc, trialId, indexOrder):

@@ -297,54 +297,66 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
 #-----------------------------------------------------------------------
 # Parses the file to check valid trial input. Also determines the
 # number of fields, and the column index of each fixed and attribute columns.
+# Expected file format is header line then one line per node.
+# Columns must first be attribute names (including fixed attributes), and
+# then trait names, optionally followed by metadata.
+# {Att Names} { <traitname> (<traitname>_user | <traitname>_time | <traitname>_latitude | <traitname>_longitude)*}
 # Returns dictionary, with either an 'error' key, or the above fields.
 #
-    FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
+    FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_BAR]
 
-    # Get headers,
+    #
+    # Process headers:
+    #
     (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
     if asciiError:
         return {'error':"Non ascii characters found in file. Please remove or contact FieldPrime support"}
     if not hdrs:
         return {'error':"No header line in file"}
 
-    idAtts = []
     scoreSets = []  # each item should be a dictionary trait:trait value:valueCol, user:userCol..
-    inAtts = True
-    for i, hdr in enumerate(hdrs):
-        if inAtts:
-            att = trl.getAttribute(hdr)
-            if att is not None:
-                inAtts.append(att)
-                continue
-        inAtts = False
-        #if hdr.endswith('_time'):
-
+    idColNames = []
+    idColIndex = []
+    stateIndexes = True # mandate that indexs must be row/col, barcode, or single attribute.
     currTraitName = None
-    for i in range(len(hdrs)):
-        hdr = hdrs[i]
-        if inAtts:
-            att = trl.getAttribute(hdr)
-            if att is not None:
-                inAtts.append(att)
+    for ind in range(len(hdrs)):
+        hdr = hdrs[ind].lower()
+        if stateIndexes:
+            if trl.hasNodeProperty(hdr):
+                idColNames.append(hdr)
+                idColIndex.append(ind)
                 continue
-        inAtts = False
+#             att = trl.getAttribute(hdr)  # we need to allow index names and barcode here
+#             if att is not None:
+#                 stateIndexes.append(att)
+#                 idColNames.append(hdr)
+#                 idColIndex.append(ind)
+#                 continue
+#             elif hdr in FIXED_ATTRIBUTES:
+#                 idColNames.append(hdr)
+#                 idColIndex.append(ind)
+#                 continue  # wait and see what we need to do with these things, then maybe make return nodeProperty from trial, duck typ
+
+        stateIndexes = False
         if currTraitName is None:
             ssDetails = {}
             trt = trl.getTrait(hdr)
             if trt is None:
-                return {'error':"Expected trait name as header in column {0}".format(i+1)}
+                return {'error':"Expected trait name as header in column {0}".format(ind+1)}
             currTraitName = hdr
             ssDetails['trait'] = hdr
-            ssDetails[valueCol] = i
-            # Look ahead for metadata
-            for j in range(1, max(5, len(hdrs)-i)):
-                xxx
+            ssDetails['valueCol'] = ind
+            # Look ahead for metadata, up to 4 fields.
+            numMetadataCol = 0
+            for j in range(ind+1, min(ind+5, len(hdrs)-ind)):
+                for mdfield in ('time', 'user', 'latitude', 'longitude'):
+                    if hdrs[j] == currTraitName + '_' + mdfield:  # case insensitive?
+                        numMetadataCol += 1
+                        ssDetails[mdfield] = j
+                        continue
+            ind += numMetadataCol
 
-
-        if hdr == currTraitName + '_time':
-            pass
-
+        scoreSets.append(ssDetails)
 
 
             # check hdr is an attribute name, or ind1, ind2, or barcode
@@ -429,6 +441,8 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
 
 
 def uploadScores(sess, trialCsv, trl, i1name=None, i2name=None):
+    # We may load all the file's data into memory, so should put a size limit
+    # in here. A few mb?
     _parseScoresCSV(trialCsv, trl, i1name, i2name)
     return {'error':"Software engineer underpaid"}
 

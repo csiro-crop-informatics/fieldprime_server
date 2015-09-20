@@ -203,11 +203,8 @@ def htmlTabScoreSets(sess, trialId):
         rows.append(row)
 
     htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
-
-    # Add button to upload new/modified attributes:
-    #htm +=  '''<button style="color: red" onClick="showIt('#fpScoreSets')">Upload Score Sets</button>'''
+    # Add button to upload scores:
     htm += fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
-
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
