@@ -77,6 +77,19 @@ class TrialTrait(DeclarativeBase):
     #relation definitions:
     barcodeAtt = relation('NodeAttribute', primaryjoin='TrialTrait.barcodeAtt_id==NodeAttribute.id')
 
+    def addTraitInstance(self, dayCreated, tokenId):
+        ti = TraitInstance()
+        ti.trial_id = self.trial_id
+        ti.trait_id = self.trait_id
+        ti.dayCreated = dayCreated
+        ti.seqNum = 0
+        ti.sampleNum = 1
+        ti.token_id = tokenId
+        dbc().add(ti)
+        dbc().commit()
+        return ti
+
+
 class AttributeValue(DeclarativeBase):
     __table__ = attributeValue
 
@@ -276,6 +289,75 @@ class TraitInstance(DeclarativeBase):
     def getTrait(self):
         return self.trait
 
+    def addData(self, aData):
+    #-------------------------------------------------------------------------------------------------
+    # Insert or update datum records for specified trait instance.
+    # Params:
+    # trtType - type of trait instance
+    # aData - array of data values, each a dictionary with fields:
+    #   Mandatory: node_id
+    #   Optional: value, timestamp, gps_long, gps_lat, userid
+    #
+    # Return None for success, else an error message.
+    #
+        trtType = self.trait.datatype
+        # Construct list of dictionaries of values to insert:
+        try:
+            valueFieldName = 'txtValue' if  trtType == T_STRING or trtType == T_PHOTO else 'numValue'
+            dlist = []
+            for jdat in aData:
+                newrec = {
+                     'node_id' : jdat.get(jDataUpload['node_id']),
+                     'traitInstance_id' : self.id,
+                     valueFieldName : jdat[jDataUpload['value']] if jDataUpload['value'] in jdat else None
+                }
+                for md in ('timestamp', 'gps_long', 'gps_lat', 'userid'):
+                    if md in jdat:
+                        newrec[md] = jdat[md]
+                dlist.append(newrec)
+
+            # Note we use ignore because the same data items may be uploaded more than
+            # once, and this should not cause the insert to fail.
+            insob = datum.insert().prefix_with("ignore")
+            dbc().execute(insob, dlist)   # error checking?
+            dbc().commit()
+            return None
+        except Exception, e:
+            return "An error occurred"
+
+    def addDatum(self, nodeId, timestamp, userid, gpslat, gpslong, value):
+    #-------------------------------------------------------------------------------------------------
+    # Insert or update datum records for specified trait instance.
+    # Params:
+    # dbc - db connection
+    # tiID - id of trait instance
+    # trtType - type of trait instance
+    # aData - array of data values, json from device
+    #
+    # Return None for success, else an error message.
+    #
+        trtType = self.trait.datatype
+        # Construct list of dictionaries of values to insert:
+        try:
+            valueFieldName = Datum.valueFieldName(trtType)
+            ins = datum.insert().prefix_with('ignore').values({
+                 DM_NODE_ID: nodeId,
+                 DM_TRAITINSTANCE_ID : self.id,
+                 DM_TIMESTAMP : timestamp,
+                 DM_GPS_LONG : gpslong,
+                 DM_GPS_LAT : gpslat,
+                 DM_USERID : userid,
+                 valueFieldName : value
+            })
+            res = dbc().execute(ins)
+            dbc().commit()
+            return None
+        except Exception, e:
+            util.flog('TraitInstance.addDatum: {0},{1},{2},{3},{4},{5}'.format(self.id, trtType, nodeId, timestamp, userid, gpslat))
+            util.flog(e.__doc__)
+            util.flog(e.message)
+            return "An error occurred"
+
 # class TrialTraitNumeric
 # Validation information specific to a given trial/trait.
 class TrialTraitNumeric(DeclarativeBase):
@@ -419,6 +501,9 @@ class Trial(DeclarativeBase):
         self.acronym = acro
         super(Trial, self).__init__()
 
+    def getId(self):
+        return self.id
+
     @staticmethod
     def new(dbc, tname, tsite, tyear, tacro):
     # NB may throw exceptions, not handled here.
@@ -451,8 +536,34 @@ class Trial(DeclarativeBase):
             session.commit()
         except MultipleResultsFound:
             return None
-
         return tu
+
+    def getNodeId(self, row, col):
+    #-------------------------------------------------------------------------------------------------------
+    # Return node id for given row/col or None if not found or not unique
+    #
+        try:
+            session = Session.object_session(self)
+            nodeId = session.query(Node.id).filter(
+                        and_(Node.trial_id == self.id, Node.row == row, Node.col == col)).one()
+        except NoResultFound:
+            return None
+        except MultipleResultsFound:
+            return None
+        return nodeId
+
+    def getNodeIdFromBarcode(self, barcode):
+    #-------------------------------------------------------------------------------------------------------
+    # Return node id for given barcode or None if not found or not unique
+    #
+        try:
+            session = Session.object_session(self)
+            nodeId = session.query(Node.id).filter(and_(Node.trial_id == self.id, Node.barcode == barcode)).one()
+        except NoResultFound:
+            return None
+        except MultipleResultsFound:
+            return None
+        return nodeId
 
     def numScores(self):
         tis = self.getTraitInstances()
@@ -514,26 +625,10 @@ class Trial(DeclarativeBase):
         dbc = Session.object_session(self)
         return dbc.query(Node).filter(Node.trial_id==self.id).order_by(Node.row, Node.col).all()
 
-#     The original version, now switched to having an instance version which
-#     calls a static version. The reason being that many of the calls to this
-#     do not already have a Trial object, and hence have to create one to use
-#     an instance method.
-#     def navIndexName(self, indexOrder):
-#         # Return the name to use for the first index attribute
-#         dbc = Session.object_session(self)
-#         indexName = ['rowNameName', 'colNameName'][indexOrder]
-#         try:
-#             print 'id: {0}'.format(id)
-#             val = dbc.query(TrialProperty).filter(
-#                         and_(TrialProperty.trial_id == self.id, TrialProperty.name == indexName)
-#                         ).one().value
-#         except NoResultFound:
-#             return ['Row', 'Column'][indexOrder]
-#         else:
-#             return val
-
     def navIndexName(self, indexOrder):
-        # Return the name to use for the first index attribute
+    #----------------------------------------------------------------------------------------------------
+    # Return the name to use for the index attribute identified by indexOrder.
+    # Calls static version of the function, which we need since many callers have trialId but not object.
         return navIndexName(Session.object_session(self), self.id, indexOrder)
 
     def navIndexNames(self):
@@ -744,8 +839,7 @@ class Node(DeclarativeBase):
 
     @oneException2None
     def getAttributeValue(self, nodeAttributeId):
-        dbc = Session.object_session(self)
-        return dbc.query(AttributeValue).filter(
+        return dbc(self).query(AttributeValue).filter(
             and_(
                 AttributeValue.node_id == self.id,
                 AttributeValue.nodeAttribute_id == nodeAttributeId)
@@ -784,6 +878,11 @@ class NodeAttribute(DeclarativeBase):
             .order_by(AttributeValue.node_id.asc()) \
             .all()
 
+    @oneException2None
+    def getUniqueNodeIdFromValue(self, val):
+        return dbc(self).query(AttributeValue.node_id) \
+            .filter(and_(AttributeValue.nodeAttribute_id == self.id, AttributeValue.value == val)) \
+            .one()
 
 class System(DeclarativeBase):
     __tablename__ = 'system'
@@ -1106,6 +1205,7 @@ def getOrCreateTraitInstance(dbc, traitID, trialID, seqNum, sampleNum, dayCreate
 def getAttribute(dbc, attId):
     return dbc.query(NodeAttribute).filter(NodeAttribute.id == attId).one()
 
+# Deprecate - replace with TraitInstance.addData
 def AddTraitInstanceData(dbc, tiID, trtType, aData):
 #-------------------------------------------------------------------------------------------------
 # Insert or update datum records for specified trait instance.
@@ -1141,6 +1241,7 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
     except Exception, e:
         return "An error occurred"
 
+# Deprecate - replace with TraitInstance.addDatum
 def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat, gpslong, value):
 #-------------------------------------------------------------------------------------------------
 # Insert or update datum records for specified trait instance.
