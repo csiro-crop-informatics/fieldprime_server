@@ -12,6 +12,8 @@ import sqlalchemy
 import fp_common.models as models
 import csv
 import StringIO
+import simplejson as json
+
 
 #
 # Special column headers.
@@ -267,15 +269,17 @@ def errDict(errmsg):
 # Returns dictionary with single key value pair 'error':errmsg
     return {'error':errmsg}
 
+
 def _parseScoresCSV(fobj, trl, ind1name, ind2name):
 #-----------------------------------------------------------------------
-# Parses the file to check valid trial input. Also determines the
+# Parses the file to check valid format.
+# Makes list of scoresets within the file, see comment below for structure of this list.
 # number of fields, and the column index of each fixed and attribute columns.
 # Expected file format is header line then one line per node.
 # Columns must first be attribute names (including fixed attributes), and
 # then trait names, optionally followed by metadata.
-# {Att Names} { <traitname> (<traitname>_user | <traitname>_time | <traitname>_latitude | <traitname>_longitude)*}
-# Returns dictionary, with either an 'error' key, or the above fields.
+# {Att Names} { <traitname> (<traitname>:user | <traitname>:time | <traitname>:latitude | <traitname>:longitude)*}
+# Returns dictionary, with either an 'error' key, or the scoreset list with key 'scoreSets'.
 #
     #
     # Process headers:
@@ -285,8 +289,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
         return errDict("Non ascii characters found in file. Please remove or contact FieldPrime support")
     if not hdrs:
         return errDict("No header line in file")
-
-
+    #
     # First 1 or 2 columns must identify the nodes, there are 3 options:
     # . The first 2 columns are the row and column (with whatever user names for these are set)
     # . single 'barcode' column
@@ -297,10 +300,10 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     numFields = len(hdrs)
     if numFields < 2: # Check we have at least 2 columns
         return errDict('Too few columns in file')
-    h0, h1 = hdrs[0], hdrs[1]
-    if h0.lower() == 'barcode':
+    h0, h1 = hdrs[0].lower(), hdrs[1].lower()
+    if h0 == 'barcode':
         nodeIdOption = 1
-    elif h0 == ind1name and h1 == ind2name:
+    elif h0 == ind1name.lower() and h1 == ind2name.lower():
         nodeIdOption = 2
         firstDataCol = 2
     else:
@@ -308,39 +311,46 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
         if idAttr is not None:
             nodeIdOption = 3
         else:
-            return errDict('First 1 or 2 columns must identify node.')
-
-    scoreSets = []  # each item should be a dictionary trait:trait value:valueCol, user:userCol..
+            return errDict('First 1 or 2 columns must identify node.' + '{0} {1}'.format(h0, h1))
+    #
+    # Process rest of headers. Make list, one item for each scoreset. Each item should be a dictionary:
+    # {trait:traitObject, value:colIndex, user:colIndex, latitude:colIndex, longitude:colIndex}
+    #
+    scoreSets = []
+    currScoreSet = None
     currTraitName = None
-    for ind in range(firstDataCol, len(hdrs)):
+    ind = firstDataCol - 1
+    while ind + 1 < len(hdrs):
+        ind += 1  # python doesn't have good old fashioned for loops
         hdr = hdrs[ind]  #.lower()
-        if currTraitName is None:
-            newScoreSet = {'data':[]}
+        #
+        # Parse column header from scores upload file, and check stuff:
+        #
+        tokes = hdr.split(':')
+        if len(tokes) == 1: # Value field, start new scoreSet dict
             trt = trl.getTrait(hdr)
             if trt is None:
                 return errDict("Expected trait name as header in column {0}".format(ind+1))
             currTraitName = hdr
-            newScoreSet['trait'] = trt
-            newScoreSet['valueCol'] = ind
-            # Look ahead for metadata, up to 4 fields.
-            numMetadataCol = 0
-            for j in range(ind+1, min(ind+5, len(hdrs)-ind)):
-                for mdfield in ('time', 'user', 'latitude', 'longitude'):
-                    if hdrs[j] == currTraitName + '_' + mdfield:  # case insensitive?
-                        numMetadataCol += 1
-                        newScoreSet[mdfield] = j
-                        continue
-            ind += numMetadataCol
-        scoreSets.append(newScoreSet)
-
+            currScoreSet = {'data':[], 'trait':trt, 'value':ind}
+            scoreSets.append(currScoreSet)
+            continue
+        if len(tokes) != 2 or tokes[1] not in ('time', 'user', 'latitude', 'longitude'): # Bad header
+            return errDict('Invalid column header ({0})'.format(hdr))
+        trtName, mdType = tokes  # Get the trait name and metadata kind
+        if trtName != currTraitName:   # Disallow metadata column without preceding trait value column
+            return errDict('Metadata header ({0}) for trait without preceding trait column'.format(hdr))
+        if currScoreSet.has_key(mdType): # Disallow multiple columns for same metadata kind
+            return errDict('Error, multiple {0} columns for trait {1}'.format(mdType, currTraitName))
+        # All good
+        currScoreSet[mdType] = ind
     #
-    # Iterate over data rows, checking stuff and create list of nodeIds:
+    # Iterate over data rows, checking stuff and getting nodeIds and data:
     # Maybe a bit of code overlap with _parseNodeCSV()
     # May need to detect end of file properly - currently treats empty line as eof.
     #
     rowNum = 2
     nodeIdSet = set()
-    nodeIds = []
     while True:
         (asciiError, line, flds) = _getCsvLineAsArray(fobj)
         if asciiError:
@@ -364,9 +374,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
         else:
             fpNodeId = idAttr.getUniqueNodeIdFromValue(flds[0])
 
-        if fpNodeId is not None:
-            nodeIds.append(fpNodeId)
-        else:
+        if fpNodeId is None:
             return errDict('Cannot determine node id for line {0}'.format(rowNum))
 
         # check for duplicates:
@@ -374,11 +382,16 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
             return errDict("Error - multiple lines identifying same node, line {0}, aborting".format(rowNum))
         nodeIdSet.add(fpNodeId)
 
-        # any more checks on data?
+        # any more checks on data?  How about type checks?
 
         # Get the data:   STILL NEED METADATA
         for ss in scoreSets:
-            newy = {'node_id':fpNodeId, 'value':flds[ss['valueCol']]}
+            valueField = flds[ss['value']]
+            if len(valueField) == 0:  # If no value, then assume no score intended
+                continue
+            newy = {'node_id':fpNodeId}
+            if valueField != 'NA':   # NA means NA
+                newy['value'] = valueField       # MFK type check here! eg ss['trait'].checkStringOK(valueField), can disallow photos there..
             if 'time' in ss:
                 timeField = flds[ss['time']].strip()   # should we strip all fields in one go somehow above?
                 if len(timeField) == 0:
@@ -394,25 +407,34 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                     newy['userid'] = None
                 else:
                     newy['userid'] = userField
+            if 'latitude' in ss:  #MFK probably need to parse this into decimal (check what's expected), add longitude
+                latField = flds[ss['latitude']].strip()   # should we strip all fields in one go somehow above?
+                if len(userField) == 0:
+                    newy['gps_lat'] = None
+                else:
+                    newy['gps_lat'] = latField
 
             ss['data'].append(newy)
-
         rowNum += 1
-
-    # All good
-    return {'numFields':numFields, 'nodeIds':nodeIds, 'scoreSets':scoreSets}
+    # All good:
+    return {'scoreSets':scoreSets}
 
 
 def uploadScores(sess, scoresCsv, trl, i1name=None, i2name=None):
 #-----------------------------------------------------------------------
 # Update trial data according to csv file scoresCsv.
 #
+    # Get index names if not supplied:
+    if i1name is None:
+        i1name = trl.navIndexName(0).lower()
+    if i2name is None:
+        i2name = trl.navIndexName(1).lower()
+
     # We may load all the file's data into memory, so should put a size limit in here. A few mb?
     info = _parseScoresCSV(scoresCsv, trl, i1name, i2name)
         # Check csv file:
     if 'error' in info:
         return info
-    nodeIds = info['nodeIds']
     scoreSets = info['scoreSets']
     # get or create dummy token representing data uploaded via this function
     token = models.Token.getOrCreateToken(sess.db(), "web upload", trl.getId())
@@ -421,9 +443,7 @@ def uploadScores(sess, scoresCsv, trl, i1name=None, i2name=None):
     for ss in scoreSets:
         trt = ss['trait']
         trlTrait = models.getTrialTrait(sess.db(), trl.getId(), trt.getId())
-        newti = trlTrait.newInstance(fpDate, token)
-        data = 0 # construct data
+        newti = trlTrait.addTraitInstance(fpDate, token.getId())
         newti.addData(ss['data'])
-
-    return {'error':"Computer says no"}
+    return None
 

@@ -23,7 +23,8 @@ def isNumeric(x):
 
 def epoch2dateTime(timestamp):
 # Return readable date/time string from timestamp (assumed to be in milliseconds).
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))
+# A time of zero (presumably a default rather than real time) is returned as empty string.
+    return '' if timestamp == 0 else time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp/1000))
 
 def formatJapDate(jdate):
     year = jdate / 10000

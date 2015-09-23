@@ -78,15 +78,24 @@ class TrialTrait(DeclarativeBase):
     barcodeAtt = relation('NodeAttribute', primaryjoin='TrialTrait.barcodeAtt_id==NodeAttribute.id')
 
     def addTraitInstance(self, dayCreated, tokenId):
+    #-------------------------------------------------------------------
+    # Create new trait instance for this trial/trait with given details.
+    # To make it new, we need a value for trial/trait/seq/sample/token
+    # and we can do that by varying the seq number.
+    #
+        maxSeq = dbc(self).query(func.max(TraitInstance.seqNum)).filter(
+             and_(TraitInstance.token_id == tokenId,
+                  TraitInstance.trial_id == self.trial_id,
+                  TraitInstance.trait_id == self.trait_id)).one()
         ti = TraitInstance()
         ti.trial_id = self.trial_id
         ti.trait_id = self.trait_id
         ti.dayCreated = dayCreated
-        ti.seqNum = 0
+        ti.seqNum = 1 if maxSeq[0] is None else maxSeq[0] + 1
         ti.sampleNum = 1
         ti.token_id = tokenId
-        dbc().add(ti)
-        dbc().commit()
+        dbc(self).add(ti)
+        dbc(self).commit()
         return ti
 
 
@@ -158,6 +167,9 @@ class Datum(DeclarativeBase):
             value = "NA"
         return value
 
+    def getTimeAsString(self):
+        return util.epoch2dateTime(self.timestamp)
+
 class Trait(DeclarativeBase):
     __tablename__ = 'trait'
     __table_args__ = {}
@@ -200,6 +212,9 @@ class Trait(DeclarativeBase):
 
     def getName(self):
         return self.caption
+
+    def getId(self):
+        return self.id
 
     def getValueFieldName(self):
         return 'txtValue' if self.datatype == T_STRING or self.datatype == T_PHOTO else 'numValue'
@@ -319,8 +334,8 @@ class TraitInstance(DeclarativeBase):
             # Note we use ignore because the same data items may be uploaded more than
             # once, and this should not cause the insert to fail.
             insob = datum.insert().prefix_with("ignore")
-            dbc().execute(insob, dlist)   # error checking?
-            dbc().commit()
+            dbc(self).execute(insob, dlist)   # error checking?
+            dbc(self).commit()
             return None
         except Exception, e:
             return "An error occurred"
@@ -349,8 +364,8 @@ class TraitInstance(DeclarativeBase):
                  DM_USERID : userid,
                  valueFieldName : value
             })
-            res = dbc().execute(ins)
-            dbc().commit()
+            res = dbc(self).execute(ins)
+            dbc(self).commit()
             return None
         except Exception, e:
             util.flog('TraitInstance.addDatum: {0},{1},{2},{3},{4},{5}'.format(self.id, trtType, nodeId, timestamp, userid, gpslat))
@@ -550,7 +565,7 @@ class Trial(DeclarativeBase):
             return None
         except MultipleResultsFound:
             return None
-        return nodeId
+        return nodeId.id
 
     def getNodeIdFromBarcode(self, barcode):
     #-------------------------------------------------------------------------------------------------------
@@ -563,7 +578,7 @@ class Trial(DeclarativeBase):
             return None
         except MultipleResultsFound:
             return None
-        return nodeId
+        return nodeId.id
 
     def numScores(self):
         tis = self.getTraitInstances()
@@ -657,18 +672,18 @@ class Trial(DeclarativeBase):
     # Delete specified trait from the DB, provided there is no score data for
     # the trait. Returns boolean indication success or not.
     #
-        dbc = Session.object_session(self)
+        db = dbc(self)
         # Determine if there is any score data:
-        numTis =  dbc.query(TraitInstance).filter(
+        numTis =  db.query(TraitInstance).filter(
             and_(TraitInstance.trial_id == self.id, TraitInstance.trait_id == traitId)).count()
         if numTis <= 0:
             return False
         # If local trait, delete trait (references should follow by cascade).
         # If system trait, delete the records associated with the trial ???
-        trt = getTrait(dbc, traitId)
+        trt = getTrait(db, traitId)
         if trt.trial_id is not None:
             trt.delete()  #does this work
-            dbc.commit()
+            db.commit()
             return True
         if trt.project_id is not None: # this should be automatic
             pass
@@ -755,6 +770,15 @@ class Trial(DeclarativeBase):
     def hasNodeProperty(self, name):
         if name in self.navIndexNames() or name.lower() == 'barcode':
             return True
+
+    def getTrait(self, trtName):
+    #---------------------------------------------------------------------------------------
+    # Return named trait, if it's in this trial.
+    #
+        for trt in self.traits:
+            if trt.getName() == trtName:
+                return trt
+        return None
 
 
 def navIndexName(dbc, trialId, indexOrder):
@@ -882,7 +906,7 @@ class NodeAttribute(DeclarativeBase):
     def getUniqueNodeIdFromValue(self, val):
         return dbc(self).query(AttributeValue.node_id) \
             .filter(and_(AttributeValue.nodeAttribute_id == self.id, AttributeValue.value == val)) \
-            .one()
+            .one().node_id
 
 class System(DeclarativeBase):
     __tablename__ = 'system'
@@ -925,6 +949,9 @@ class Token(DeclarativeBase):
         self.token = token
         self.trial_id = trialId
         super(Token, self).__init__()
+
+    def getId(self):
+        return self.id
 
     def getDeviceId(self):
         return self.token.split('.')[0]
@@ -1383,7 +1410,6 @@ def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
 
 def getTraitString(dbc, trait_id, trial_id):
 # Return TraitString for specified trait/trial, or None if none exists.
-    print 'trial {0} trait {1}'.format(trial_id, trait_id)
     ttlist = dbc.query(TraitString).filter(and_(
             TraitString.trait_id == trait_id,
             TraitString.trial_id == trial_id

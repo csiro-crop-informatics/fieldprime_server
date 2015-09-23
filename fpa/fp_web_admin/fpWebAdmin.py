@@ -1409,7 +1409,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             value = d.getValue()
         rows.append([d.node.id, d.node.row, d.node.col,
                      value if not overWritten else ('<del>' + str(value) + '</del>'),
-                     d.userid, util.epoch2dateTime(d.timestamp), d.gps_lat, d.gps_long])
+                     d.userid, d.getTimeAsString(), d.gps_lat, d.gps_long])
 
     # Make list of urls for trial attributes:  MFK we should put urls for traitInstances as well
     nodeAtts = []
