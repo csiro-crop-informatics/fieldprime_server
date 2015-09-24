@@ -16,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, relationship, sessionmaker, Session
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import time
+import decimal
 
 from const import *
 import util
@@ -216,8 +217,17 @@ class Trait(DeclarativeBase):
     def getId(self):
         return self.id
 
+    def getDatatypeCode(self):
+        return self.datatype
+
+    def getDatatypeName(self):
+        return datatypeName(self.datatype)
+
     def getValueFieldName(self):
         return 'txtValue' if self.datatype == T_STRING or self.datatype == T_PHOTO else 'numValue'
+
+    def valueFromString(self, val):
+        return valueFromString(self.datatype, val)
 
 
 class TraitCategory(DeclarativeBase):
@@ -313,6 +323,7 @@ class TraitInstance(DeclarativeBase):
     #   Mandatory: node_id
     #   Optional: value, timestamp, gps_long, gps_lat, userid
     #
+    # Note if value field is missing, it is assumed to be NA.
     # Return None for success, else an error message.
     #
         trtType = self.trait.datatype
@@ -338,7 +349,7 @@ class TraitInstance(DeclarativeBase):
             dbc(self).commit()
             return None
         except Exception, e:
-            return "An error occurred"
+            return "An error occurred: {0}".format(str(e))
 
     def addDatum(self, nodeId, timestamp, userid, gpslat, gpslong, value):
     #-------------------------------------------------------------------------------------------------
@@ -1422,4 +1433,37 @@ def getTraitString(dbc, trait_id, trial_id):
 def photoFileName(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum):
 # Return the file name (not including directory) of the photo for the score with the specified attributes.
     return '{0}_{1}_{2}_{3}_{4}_{5}_{6}.jpg'.format(dbusername, trialId, traitId, nodeId, tokenStr, seqNum, sampNum)
+
+def valueFromString(dtype, valString):
+#---------------------------------------------------------------
+# Return value from string, if valid for datatype, else None.
+# NB not all types supported, non supported types return None.
+#
+    try:
+        if dtype == T_INTEGER: return int(valString)
+        elif dtype == T_DECIMAL: return decimal.Decimal(valString)
+        elif dtype == T_STRING: return valString
+        elif dtype == T_CATEGORICAL: return None
+#             value = self.numValue
+#             # Need to look up the text for the value:
+#             if value is not None:
+#                 session = Session.object_session(self)
+#                 traitId = self.traitInstance.trait.id
+#                 trtCat = session.query(TraitCategory).filter(
+#                     and_(TraitCategory.trait_id == traitId, TraitCategory.value == value)).one()
+#                 value = trtCat.caption
+        elif dtype == T_DATE: return int(valString)
+        elif dtype == T_PHOTO: return None
+        else:
+            return None
+    except ValueError:
+        return None
+    except decimal.InvalidOperation:
+        return None
+
+def datatypeName(dtypeCode):
+    try:
+        return TRAIT_TYPE_NAMES[dtypeCode]
+    except (IndexError, TypeError):
+        return None
 

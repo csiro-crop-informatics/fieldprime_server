@@ -13,6 +13,7 @@ import fp_common.models as models
 import csv
 import StringIO
 import simplejson as json
+from fp_common.const import T_DECIMAL, TRAIT_TYPE_NAMES
 
 
 #
@@ -225,7 +226,7 @@ def updateTrialFile(sess, trialCsv, trl, i1name=None, i2name=None):
         while line:
             flds = line.strip().split(',')
             # Get or create the node (specified by row/col):
-            # MFK if duplicate row col?
+            # NB - _parseNodeCSV() checked that there were no duplicate row/cols
             node = trl.addOrGetNode(flds[fixIndex[i1name]], flds[fixIndex[i2name]])
             if node is None:
                 out = "Problem getting or creating node: row" + str(flds[fixIndex[i1name]]) + " col " + str(flds[fixIndex[i2name]])
@@ -382,16 +383,29 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
             return errDict("Error - multiple lines identifying same node, line {0}, aborting".format(rowNum))
         nodeIdSet.add(fpNodeId)
 
-        # any more checks on data?  How about type checks?
-
-        # Get the data:   STILL NEED METADATA
+        #
+        # Get the data:
+        #
+        # NB For values we need to consider the following cases:
+        # . empty or whitespace - no error, no value
+        # . NA - NA value
+        # . Valid value
+        # . anything else - error
+        #
+        # Note the processing of the metadata options, and even the value, have a lot in common,
+        # there is probably a more elegant way..
         for ss in scoreSets:
-            valueField = flds[ss['value']]
-            if len(valueField) == 0:  # If no value, then assume no score intended
+            valueField = flds[ss['value']].strip()    # NB remove surrounding whitespace.
+            if len(valueField) == 0:  # If no value, then assume no score intended, metadata ignored
                 continue
             newy = {'node_id':fpNodeId}
-            if valueField != 'NA':   # NA means NA
-                newy['value'] = valueField       # MFK type check here! eg ss['trait'].checkStringOK(valueField), can disallow photos there..
+            if valueField != 'NA':   # NA means NA. If it is NA, then no value key is added, this means NA in the db load func.
+                trt = ss['trait']
+                val = trt.valueFromString(valueField)
+                if val is None:
+                    return errDict('Cannot convert value ({0}) to {1} at line {2}'.format(
+                                valueField, trt.getDatatypeName(), rowNum))
+                newy['value'] = val
             if 'time' in ss:
                 timeField = flds[ss['time']].strip()   # should we strip all fields in one go somehow above?
                 if len(timeField) == 0:
@@ -407,13 +421,26 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                     newy['userid'] = None
                 else:
                     newy['userid'] = userField
-            if 'latitude' in ss:  #MFK probably need to parse this into decimal (check what's expected), add longitude
-                latField = flds[ss['latitude']].strip()   # should we strip all fields in one go somehow above?
-                if len(userField) == 0:
+            if 'latitude' in ss:
+                field = flds[ss['latitude']].strip()   # should we strip all fields in one go somehow above?
+                if len(field) == 0:
                     newy['gps_lat'] = None
                 else:
-                    newy['gps_lat'] = latField
-
+                    val = models.valueFromString(T_DECIMAL, field)
+                    if val is None:
+                        return errDict('Cannot convert latitude value ({0}) to {1} at line {2}'.format(
+                                field, TRAIT_TYPE_NAMES[T_DECIMAL], rowNum))
+                    newy['gps_lat'] = val
+            if 'longitude' in ss:
+                field = flds[ss['longitude']].strip()   # should we strip all fields in one go somehow above?
+                if len(field) == 0:
+                    newy['gps_long'] = None
+                else:
+                    val = models.valueFromString(T_DECIMAL, field)
+                    if val is None:
+                        return errDict('Cannot convert longitude value ({0}) to {1} at line {2}'.format(
+                                field, TRAIT_TYPE_NAMES[T_DECIMAL], rowNum))
+                    newy['gps_long'] = val
             ss['data'].append(newy)
         rowNum += 1
     # All good:

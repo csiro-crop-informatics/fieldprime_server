@@ -361,6 +361,9 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     if aData is None or len(aData) <= 0:
         errMsg = None
     else:
+# MFK Replace with
+#        dbTi.addData(aData)
+# After testing thoroughly
         errMsg = dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.datatype, aData)
 
     return (Response('success') if errMsg is None else Response(errMsg))
