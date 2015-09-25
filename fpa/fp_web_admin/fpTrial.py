@@ -376,7 +376,13 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
             fpNodeId = idAttr.getUniqueNodeIdFromValue(flds[0])
 
         if fpNodeId is None:
-            return errDict('Cannot determine node id for line {0}'.format(rowNum))
+            if nodeIdOption == 1:
+                optionSpecificErr = 'using barcode "{0}"'.format(flds[0])
+            elif nodeIdOption == 2:
+                optionSpecificErr = 'using {0} "{1}" and {2} "{3}"'.format(ind1name, flds[0], ind2name, flds[1])
+            else:
+                optionSpecificErr = 'using {0} "{1}"'.format(hdrs[0], flds[0])
+            return errDict('Cannot determine node id for line {0}, {1}'.format(rowNum, optionSpecificErr))
 
         # check for duplicates:
         if fpNodeId in nodeIdSet:

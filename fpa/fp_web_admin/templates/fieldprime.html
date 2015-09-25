@@ -33,7 +33,7 @@ class="active"
                   <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
                     <h2>Please sign in</h2>
                     <div class="form-group">
-                      <input type="text" class="form-control" name='username' placeholder="Enter User Name">
+                      <input type="text" class="form-control" id='usernameField' name='username' placeholder="Enter User Name">
                       <input type=password class="form-control" name='password' placeholder="Password">
                     </div>
                     <input type="submit" value="Login"></p>
@@ -41,4 +41,7 @@ class="active"
                   {% endif %}
                 </div>
 	</div>
+<script>
+document.getElementById('usernameField').focus()
+</script>
 {% endblock %}
