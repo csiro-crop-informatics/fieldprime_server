@@ -70,7 +70,7 @@ class WebSess(object):
         lv = self.data.get('lastvisit')
         return float(lv) if lv else False
 
-    def timeSinceUse(self):
+    def _timeSinceUse(self):
     #------------------------------------------------------------------
         return float(time.time() - float(self.data.get('lastvisit')))
 
@@ -121,7 +121,7 @@ class WebSess(object):
 
     def valid(self):
     #------------------------------------------------------------------
-        valid = self.data.get('user') and self.timeSinceUse() < self.mTimeout
+        valid = self.data.get('user') and self._timeSinceUse() < self.mTimeout
         if valid:
             self.resetLastUseTime()
         return valid

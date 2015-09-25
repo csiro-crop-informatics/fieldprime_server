@@ -99,9 +99,9 @@
           <!-- Individual Navbar elements -->
           <ul class="nav nav-justified nasti-nav">
             {% if loggedIn %}
-            <li><a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>  User Data</a></li>
+            <li><a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>Home</a></li>
             {% else %}
-            <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span> Home</a></li>
+            <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span>Home</a></li>
             {% endif %}
             <li><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
             <li><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>

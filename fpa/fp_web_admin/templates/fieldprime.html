@@ -31,6 +31,7 @@ class="active"
                 <div id="loginout" style="clear:both; padding-top:25px;">
                   {% if not loggedIn %} <!-- If there is NO user logged in: -->
                   <FORM method="POST" action="{{ url_for('urlMain') }}"><p>
+                    <div class="fpErrMsg">{{msg}}</font></div>
                     <h2>Please sign in</h2>
                     <div class="form-group">
                       <input type="text" class="form-control" id='usernameField' name='username' placeholder="Enter User Name">

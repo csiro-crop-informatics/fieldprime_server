@@ -270,6 +270,8 @@ def errDict(errmsg):
 # Returns dictionary with single key value pair 'error':errmsg
     return {'error':errmsg}
 
+def csvErr(errmsg):
+    return errDict('Invalid input: ' + errmsg)
 
 def _parseScoresCSV(fobj, trl, ind1name, ind2name):
 #-----------------------------------------------------------------------
@@ -287,9 +289,9 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     #
     (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
     if asciiError:
-        return errDict("Non ascii characters found in file. Please remove or contact FieldPrime support")
+        return csvErr("Non ascii characters found in file. Please remove or contact FieldPrime support")
     if not hdrs:
-        return errDict("No header line in file")
+        return csvErr("No header line in file")
     #
     # First 1 or 2 columns must identify the nodes, there are 3 options:
     # . The first 2 columns are the row and column (with whatever user names for these are set)
@@ -300,8 +302,8 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     firstDataCol = 1
     numFields = len(hdrs)
     if numFields < 2: # Check we have at least 2 columns
-        return errDict('Too few columns in file')
-    h0, h1 = hdrs[0].lower(), hdrs[1].lower()
+        return csvErr('Too few columns in file')
+    h0, h1 = hdrs[0].strip().lower(), hdrs[1].strip().lower()
     if h0 == 'barcode':
         nodeIdOption = 1
     elif h0 == ind1name.lower() and h1 == ind2name.lower():
@@ -312,7 +314,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
         if idAttr is not None:
             nodeIdOption = 3
         else:
-            return errDict('First 1 or 2 columns must identify node.' + '{0} {1}'.format(h0, h1))
+            return csvErr('First 1 or 2 columns must identify node.' + '{0} {1}'.format(h0, h1))
     #
     # Process rest of headers. Make list, one item for each scoreset. Each item should be a dictionary:
     # {trait:traitObject, value:colIndex, user:colIndex, latitude:colIndex, longitude:colIndex}
@@ -323,7 +325,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     ind = firstDataCol - 1
     while ind + 1 < len(hdrs):
         ind += 1  # python doesn't have good old fashioned for loops
-        hdr = hdrs[ind]  #.lower()
+        hdr = hdrs[ind].strip()  #.lower()
         #
         # Parse column header from scores upload file, and check stuff:
         #
@@ -331,18 +333,18 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
         if len(tokes) == 1: # Value field, start new scoreSet dict
             trt = trl.getTrait(hdr)
             if trt is None:
-                return errDict("Expected trait name as header in column {0}".format(ind+1))
+                return csvErr("Expected trait name as header in column {0}".format(ind+1))
             currTraitName = hdr
             currScoreSet = {'data':[], 'trait':trt, 'value':ind}
             scoreSets.append(currScoreSet)
             continue
         if len(tokes) != 2 or tokes[1] not in ('time', 'user', 'latitude', 'longitude'): # Bad header
-            return errDict('Invalid column header ({0})'.format(hdr))
+            return csvErr('Invalid column header ({0})'.format(hdr))
         trtName, mdType = tokes  # Get the trait name and metadata kind
         if trtName != currTraitName:   # Disallow metadata column without preceding trait value column
-            return errDict('Metadata header ({0}) for trait without preceding trait column'.format(hdr))
+            return csvErr('Metadata header ({0}) for trait without preceding trait column'.format(hdr))
         if currScoreSet.has_key(mdType): # Disallow multiple columns for same metadata kind
-            return errDict('Error, multiple {0} columns for trait {1}'.format(mdType, currTraitName))
+            return csvErr('Multiple {0} columns for trait {1}'.format(mdType, currTraitName))
         # All good
         currScoreSet[mdType] = ind
     #
@@ -355,22 +357,21 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     while True:
         (asciiError, line, flds) = _getCsvLineAsArray(fobj)
         if asciiError:
-            return errDict("Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum))
+            return csvErr("Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum))
         if not flds:
             break
         if not len(flds) == numFields:
-            err =  "Error - wrong number of fields ({0}, should be {1}), line {2}, aborting. <br>".format(len(flds), numFields, rowNum)
-            err += "Bad line was: " + line
-            return errDict(err)
+            err =  "wrong number of fields ({0}, should be {1}), line {2}.".format(len(flds), numFields, rowNum)
+            return csvErr(err)
 
         # get and store nodeId - but can these be deleted in the meantime? no worse than current upload from app I guess..
         if nodeIdOption == 1:
             fpNodeId = trl.getNodeIdFromBarcode(flds[0])
         elif nodeIdOption == 2:
-            srow = flds[0]
-            scol = flds[1]
+            srow = flds[0].strip()
+            scol = flds[1].strip()
             if not (srow.isdigit() and scol.isdigit()):
-                return errDict("Row or col field is not integer, line {0}, aborting".format(rowNum))
+                return csvErr("{0} or {1} field is not integer, line {2}".format(ind1name, ind2name, rowNum))
             fpNodeId = trl.getNodeId(srow, scol)
         else:
             fpNodeId = idAttr.getUniqueNodeIdFromValue(flds[0])
@@ -382,11 +383,11 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                 optionSpecificErr = 'using {0} "{1}" and {2} "{3}"'.format(ind1name, flds[0], ind2name, flds[1])
             else:
                 optionSpecificErr = 'using {0} "{1}"'.format(hdrs[0], flds[0])
-            return errDict('Cannot determine node id for line {0}, {1}'.format(rowNum, optionSpecificErr))
+            return csvErr('Cannot determine node id for line {0}, {1}'.format(rowNum, optionSpecificErr))
 
         # check for duplicates:
         if fpNodeId in nodeIdSet:
-            return errDict("Error - multiple lines identifying same node, line {0}, aborting".format(rowNum))
+            return csvErr("Multiple lines identifying same node, line {0}, aborting".format(rowNum))
         nodeIdSet.add(fpNodeId)
 
         #
@@ -409,7 +410,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                 trt = ss['trait']
                 val = trt.valueFromString(valueField)
                 if val is None:
-                    return errDict('Cannot convert value ({0}) to {1} at line {2}'.format(
+                    return csvErr('Cannot convert value ({0}) to {1} at line {2}'.format(
                                 valueField, trt.getDatatypeName(), rowNum))
                 newy['value'] = val
             if 'time' in ss:
@@ -418,7 +419,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                     newy['timestamp'] = None
                 else:
                     if not timeField.isdigit():
-                        return errDict('Invalid time field line {0}'.format(rowNum))
+                        return csvErr('Invalid time field line {0}'.format(rowNum))
                     else:
                         newy['timestamp'] = timeField
             if 'user' in ss:
@@ -434,7 +435,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                 else:
                     val = models.valueFromString(T_DECIMAL, field)
                     if val is None:
-                        return errDict('Cannot convert latitude value ({0}) to {1} at line {2}'.format(
+                        return csvErr('Cannot convert latitude value ({0}) to {1} at line {2}'.format(
                                 field, TRAIT_TYPE_NAMES[T_DECIMAL], rowNum))
                     newy['gps_lat'] = val
             if 'longitude' in ss:
@@ -444,7 +445,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                 else:
                     val = models.valueFromString(T_DECIMAL, field)
                     if val is None:
-                        return errDict('Cannot convert longitude value ({0}) to {1} at line {2}'.format(
+                        return csvErr('Cannot convert longitude value ({0}) to {1} at line {2}'.format(
                                 field, TRAIT_TYPE_NAMES[T_DECIMAL], rowNum))
                     newy['gps_long'] = val
             ss['data'].append(newy)

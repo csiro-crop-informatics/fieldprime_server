@@ -248,6 +248,9 @@ table.fptable{
 	color: #585858;
 }
 
+.fpErrMsg {
+    color: red
+}
 
 /* Class fpInfoText is used in 3 pages, news.html, about.html, and fieldprime.html
  * The border-bottom draws a nice line under a H1 (of which there is only 1 on each

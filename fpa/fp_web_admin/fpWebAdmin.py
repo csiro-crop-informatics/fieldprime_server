@@ -127,8 +127,7 @@ def dec_check_session(returnNoneSess=False):
             if not sess.valid():  # Check if session is still valid
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
-                return render_template('sessError.html', title='Field Prime Login',
-                                       msg='Your session has timed out - please login again.')
+                return loginPage('Your session has timed out - please login again.')
             g.userName = sess.getUser()
             g.projectName = sess.getProjectName()
             return func(sess, *args, **kwargs)
@@ -144,6 +143,21 @@ def FrontPage(sess, msg=''):
                                # after login has been checked (i.e. can't click on link on page that's been
                                # been sitting around for a long time and have it prevent the timeout).
     return dp.dataPage(sess, content=msg, title="FieldPrime")
+
+
+def loginPage(error=None):
+#-----------------------------------------------------------------------
+# Response for login page, error shown as red message if present.
+#
+    return render_template('fieldprime.html', msg=error, title='FieldPrime Login')
+
+def logoutPage(sess, msg):
+#-----------------------------------------------------------------------
+# Logs out and returns login page with msg.
+#
+    sess.close()
+    g.userName = 'unknown'
+    return loginPage(msg)
 
 
 #####################################################################################################
@@ -1138,8 +1152,7 @@ def urlUserDetails(sess, projectName):
             currUser = sess.getUser()
             oldPassword = form.get("password")
             if not users.systemPasswordCheck(sess.getProjectName(), oldPassword):
-                sess.close()
-                return render_template('sessError.html', msg="Password is incorrect", title='FieldPrime Login')
+                return logoutPage(sess, "Password is incorrect")
             newpassword1 = form.get("newpassword1")
             newpassword2 = form.get("newpassword2")
             if not (oldPassword and newpassword1 and newpassword2):
@@ -1171,8 +1184,7 @@ def urlUserDetails(sess, projectName):
                 con.close()
                 return FrontPage(sess, msg)
             except mdb.Error, e:
-                sess.close()
-                return render_template('sessError.html', msg="Unexpected error trying to change password", title='FieldPrime Login')
+                return logoutPage(sess, 'Unexpected error trying to change password')
         elif op == 'manageUsers':
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
@@ -1695,7 +1707,7 @@ def urlMain():
                 return resp
 
         # Error return
-        return render_template('sessError.html', msg=error, title='FieldPrime Login')
+        return loginPage(error)
 
     # Request method is 'GET':
     return urlInfoPage('fieldprime')
