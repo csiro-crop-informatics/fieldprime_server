@@ -195,28 +195,28 @@ def htmlTabScoreSets(sess, trialId):
     trl = dal.getTrial(sess.db(), trialId)
     scoreSets = trl.getScoreSets()
     if len(scoreSets) < 1:
-        return "No trait score sets yet"
+        htm =  "No trait score sets yet"
+    else:
+        # Make datatable of scoresets:
+        hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
+        rows = []
+        for ss in scoreSets:
+            tis = ss.getInstances()
+            firstTi = tis[0]   # check for none?
+            row = []
+            row.append(firstTi.trait.caption)
+            row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
+            row.append(firstTi.getDeviceId())
+            row.append(ss.getFPId()) # was firstTi.seqNum
+            samps = ''   # We show all the separate samples in a single cell
+            for oti in tis:
+                samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
+                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        oti.numScoredNodes())
+            row.append(samps)
+            rows.append(row)
 
-    # Datatables version:
-    hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
-    rows = []
-    for ss in scoreSets:
-        tis = ss.getInstances()
-        firstTi = tis[0]   # check for none?
-        row = []
-        row.append(firstTi.trait.caption)
-        row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
-        row.append(firstTi.getDeviceId())
-        row.append(ss.getFPId()) # was firstTi.seqNum
-        samps = ''   # We show all the separate samples in a single cell
-        for oti in tis:
-            samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
-                    url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
-                    oti.numScoredNodes())
-        row.append(samps)
-        rows.append(row)
-
-    htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
+        htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
     # Add button to upload scores:
     htm += fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
     return htm
