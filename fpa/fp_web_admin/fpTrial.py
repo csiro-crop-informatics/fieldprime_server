@@ -13,6 +13,7 @@ import fp_common.models as models
 import csv
 import StringIO
 import simplejson as json
+import time
 from fp_common.const import T_DECIMAL, TRAIT_TYPE_NAMES
 
 
@@ -419,7 +420,12 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
                     newy['timestamp'] = None
                 else:
                     if not timeField.isdigit():
-                        return csvErr('Invalid time field line {0}'.format(rowNum))
+                        try:
+                            pattern = '%m/%d/%Y'
+                            epoch = int(time.mktime(time.strptime(timeField, pattern)))
+                            newy['timestamp'] = epoch
+                        except ValueError:
+                            return csvErr('Invalid time field line {0}'.format(rowNum))
                     else:
                         newy['timestamp'] = timeField
             if 'user' in ss:
