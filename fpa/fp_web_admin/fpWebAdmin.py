@@ -374,16 +374,28 @@ def htmlTabData(sess, trial):
     dl += "<option value='attributes' selected='selected'>Attributes</option>"
     dl += "</select>"
     dl += "</div>"
-    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
-    dl +=     "<button>Download Trial Data</button></a><br />"
+
+#     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
+#     dl +=     "<button>Download Trial Data - wide format</button></a><br />"
+#     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+
+    # Download wide format:
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataTSV", trialId=trial.id))
+    dl +=     "<button>Download Trial Data - wide format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+
+    # Download long format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
-    dl +=     "<button>Download Trial Data - long form</button></a><br />"
+    dl +=     "<button>Download Trial Data - long format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
-    dl += "<p><a href='dummy' onclick='this.href=downloadURL(false)' onContextMenu='this.href=downloadURL()'>"
+
+    # View plain text tsv long format (why?):
+    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataTSV", trialId=trial.id))
     dl +=     "<button>View tab separated score data</button></a><br />"
-    dl += "<span style='font-size: smaller;'>Note data is TAB separated"
-    dl += "<p><a href='dummy' onclick='this.href=downloadURL(true)'>".format(trial.name)
+    dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
+
+    # View long format as datatable:
+    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataBrowse", trialId=trial.id))
     dl +=     "<button>Browse Trial Data</button></a>"
     return dl
 
