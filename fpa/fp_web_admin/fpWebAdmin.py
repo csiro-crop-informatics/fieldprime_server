@@ -97,18 +97,6 @@ def internalError(e):
     return 'FieldPrime: An error has occurred'
 
 
-def getMYSQLDBConnection(sess):
-#-------------------------------------------------------------------------------
-# Return mysqldb connection for user associated with session
-#
-    try:
-        projectDBname = models.dbName4Project(sess.getProjectName())
-        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, projectDBname)
-        return con
-    except mdb.Error, e:
-        return None
-
-
 def dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
@@ -561,29 +549,7 @@ def urlNewTrial(sess):
         trialProperties.processPropertiesForm(sess, trl.id, request.form)
         return FrontPage(sess)
 
-def getAttributeColumns(sess, trialId, attList):
-#-----------------------------------------------------------------------
-# Returns a list of columns one for each attribute in attList - each column
-# being an array of attribute values with one entry for each node in the trial.
-# The columns are in the same order as attList, and the column entries are
-# ordered by row/col. Missing values are given as the empty string.
-    con = getMYSQLDBConnection(sess)
-    qry = """
-        select a.value from node n left join attributeValue a
-        on n.id = a.node_id and a.nodeAttribute_id = %s
-        where n.trial_id = %s
-        order by row, col"""
-    attValList = []
-    for att in attList:
-        valList = []
-        cur = con.cursor()
-        cur.execute(qry, (att.id, trialId))
-        for row in cur.fetchall():  # can we just store cur.fetchall()? Yes we could, but perhaps better this way
-            valList.append("" if row[0] is None else row[0])
-        attValList.append(valList)
-        cur.close()
-    return attValList
-
+#MFK move to models
 def getAllAttributeColumns(sess, trialId, fixedOnly=False):
 #-----------------------------------------------------------------------
 # Returns a list of columns of values for each attribute in attList, including
@@ -598,7 +564,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
 #
 
     # First get row, column, and barcode:
-    con = getMYSQLDBConnection(sess)
+    con = dal.getMYSQLDBConnection(sess)
     qry = 'select row, col, barcode from node where trial_id = %s order by id'
     cur = con.cursor()
     cur.execute(qry, trialId)
@@ -643,160 +609,6 @@ def urlBrowseTrialAttributes(sess, trialId):
     return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
                        title='Browse', trialId=trialId)
 
-
-def getDataColumns(sess, trialId, tiList):
-#-----------------------------------------------------------------------
-# SQL query - this is a bit complicated:
-# Get a row for each node in a given trial, showing the most recent value for the node
-# for a given trait instance. Note we can distinguish NA from not present as
-# those rows that have a non null value for any of the d1 fields that are alway
-# non null - eg timestamp. The values we need are the datum value (type appropriate)
-# and the score metadata. There must be a result for every node, and these must be
-# in row/col order.
-# NB we could pass in which metadata parameters are required, rather than getting them all.
-# Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
-# The columns are in the same order as tiList. Timestamp is given in readable form.
-#
-    con = getMYSQLDBConnection(sess)
-    qry = """
-    select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
-    from node t
-      left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = %s
-      left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
-    where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
-    order by row, col
-    """
-    #print qry
-    outList = []
-    for ti in tiList:
-        # If trait type is categorical then the values will be numbers which should be
-        # converted into names (via the traitCategory table), retrieve the map for the
-        # trait first:
-        if ti.trait.datatype == T_CATEGORICAL:
-            catMap = models.TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
-        else:
-            catMap = None
-
-        valList = []
-        outList.append
-        cur = con.cursor()
-        cur.execute(qry.format(models.Datum.valueFieldName(ti.trait.datatype)), (ti.id, trialId, ti.id))
-        for row in cur.fetchall():
-            timestamp = row[1]
-            if timestamp is None:          # no datum record case
-                valList.append(["","","","",""])
-            else:
-                val = row[0]
-                if val is None: val = "NA"
-                elif catMap is not None:   # map value to name for categorical trait
-                    val = catMap[int(val)]
-                valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
-        outList.append(valList)
-        cur.close()
-    return outList
-
-def getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, htable=False):
-#-----------------------------------------------------------------------
-# Returns trial data as plain text tsv form - i.e. for download, or as html table.
-# The data is arranged in node rows, and trait instance score and attribute columns.
-# Form params indicate what score metadata to display.
-#
-# Note we have improved performance (over a separate query for each value) by getting
-# the data for each trait instance with one sql query.
-# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
-# If necessary we could check the dataset size and if necessary switch to a different method.
-# for example server side mode datatables.
-# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
-# datatables browse could show/hide columns and export current selection to tsv.
-#
-    # Get Trait Instances:
-    tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
-    valCols = getDataColumns(sess, trialId, tiList)            # get the data for the instances
-    trl = dal.getTrial(sess.db(), trialId)
-
-    # Work out number of columns for each trait instance:
-    numColsPerValue = 1
-    if showTime:
-        numColsPerValue += 1
-    if showUser:
-        numColsPerValue += 1
-    if showGps:
-        numColsPerValue += 2
-
-    # Format controls, table or tsv
-    #tables = True
-    SEP = '</td><td>' if htable else '\t'
-    HSEP = '</th><th>'
-    ROWSTART = '<tr><td>' if htable else ''
-    ROWEND = '</td></tr>\n' if htable else '\n'
-    HSEP = '</th><th>' if htable else '\t'
-    HROWSTART = '<thead><th>' if htable else ''
-    HROWEND = '</th></thead>\n' if htable else '\n'
-    # MFK unify with browseData (for attributes
-    r = '\n<table class="fptable" id="trialData" class="display" cellspacing="0" width="100%">' if htable else ''
-
-    # Headers:
-    r += HROWSTART
-    r += 'fpNodeId' + HSEP + trl.navIndexName(0) + HSEP + trl.navIndexName(1)
-    # xxx need to show row col even if attributes not shown?
-    if showAttributes:
-        attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
-        for tua in trl.nodeAttributes:
-            r += HSEP + tua.name
-    for ti in tiList:
-        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        r += "{1}{0}".format(tiName, HSEP)
-        if showTime:
-            r += "{1}{0}_timestamp".format(tiName, HSEP)
-        if showUser:
-            r += "{1}{0}_user".format(tiName, HSEP)
-        if showGps:
-            r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, HSEP)
-    if showNotes:
-        r += HSEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
-    r += HROWEND
-
-    # Data:
-    nodeList = trl.getNodesSortedRowCol()
-    for nodeIndex, node in enumerate(nodeList):
-        r += ROWSTART
-
-        # Row and Col:
-        r += "{0}{3}{1}{3}{2}".format(node.id, node.row, node.col, SEP)
-
-        # Attribute Columns:
-        if showAttributes:
-            for ind, tua in enumerate(trl.nodeAttributes):
-                r += SEP
-                r += attValList[ind][nodeIndex]
-
-        # Scores:
-        for tiIndex, ti in enumerate(tiList):
-            [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
-            # Write the value:
-            r += "{0}{1}".format(SEP, val)
-            # Write any other datum fields specified:
-            if showTime:
-                r += "{0}{1}".format(SEP, timestamp)
-            if showUser:
-                r += "{0}{1}".format(SEP, userid)
-            if showGps:
-                r += "{0}{1}{0}{2}".format(SEP, lat, long)
-
-        # Notes, as list separated by pipe symbols:
-        if showNotes:
-            r += SEP + '"'
-            tuNotes = node.getNotes()
-            for note in tuNotes:
-                r += '{0}|'.format(note.note)
-            r += '"'
-
-        # End the line:
-        r += ROWEND
-
-    r += '</table>' if htable else ''
-    return r
-
 def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes):
 #-----------------------------------------------------------------------
 # Returns trial data as plain text tsv form - i.e. for download, or as html table.
@@ -816,8 +628,8 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
 #
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
-    valCols = getDataColumns(sess, trialId, tiList)                   # get the data for the instances
     trl = dal.getTrial(sess.db(), trialId)
+    valCols = trl.getDataColumns(sess, trialId, tiList)                   # get the data for the instances
 
     # Headers:
     hdrs = []
@@ -825,7 +637,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     hdrs.append(dal.navIndexName(sess.db(), trialId, 0))
     hdrs.append(dal.navIndexName(sess.db(), trialId, 1))
     if showAttributes:
-        attValList = getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
+        attValList = dal.getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
         for tua in trl.nodeAttributes:
             hdrs.append(tua.name)
     for ti in tiList:
@@ -886,8 +698,9 @@ def urlTrialDataTSV(sess, trialId):
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    r = getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, False)
-    return Response(r, content_type='text/plain')
+    trl = dal.getTrial(sess.db(), trialId)
+    out = trl.getDataWideForm(showTime, showUser, showGps, showNotes, showAttributes)
+    return Response(out, content_type='text/plain')
 
 @app.route('/trial/<trialId>/data/browse', methods=['GET'])
 @dec_check_session()
