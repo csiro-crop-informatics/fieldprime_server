@@ -6,16 +6,15 @@
 #
 # Standard or third party imports:
 #
-import os, sys, re, traceback
+import os
+import time
+import traceback
 import zipfile, ntpath
 import MySQLdb as mdb
-from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response, abort
+from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import jsonify
 import simplejson as json
-from werkzeug import secure_filename
-from jinja2 import Environment, FileSystemLoader
 from functools import wraps
-from time import strftime
 
 #
 # Local imports:
@@ -23,7 +22,7 @@ from time import strftime
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
-    import os,sys,inspect
+    import sys, inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir)
@@ -36,11 +35,8 @@ import fpTrial
 import fpUtil
 import fp_common.fpsys as fpsys
 import trialProperties
-import fp_common.***REMOVED*** as ***REMOVED***
 from fp_common.const import *
 from const import *
-import fpUtil
-import fp_common.util as util
 import datapage as dp
 import websess
 from fpRestApi import webRest
@@ -95,6 +91,18 @@ def internalError(e):
     util.flog(e)
     util.flog(traceback.format_exc())
     return 'FieldPrime: An error has occurred'
+
+
+def getMYSQLDBConnection(sess):
+#-------------------------------------------------------------------------------
+# Return mysqldb connection for user associated with session
+#
+    try:
+        projectDBname = models.dbName4Project(sess.getProjectName())
+        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, projectDBname)
+        return con
+    except mdb.Error:
+        return None
 
 
 def dec_check_session(returnNoneSess=False):
@@ -330,7 +338,7 @@ def htmlTabData(sess, trial):
         return out;
     }}
     </script>
-    """.format(url_for("urlTrialDataTSV", trialId=trial.id), url_for("urlTrialDataBrowse", trialId=trial.id))
+    """.format(url_for("urlTrialDataWideTSV", trialId=trial.id), url_for("urlTrialDataBrowse", trialId=trial.id))
 
 #     jq1 = """
 #     <link rel=stylesheet type=text/css href="{0}">
@@ -368,7 +376,7 @@ def htmlTabData(sess, trial):
 #     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
 
     # Download wide format:
-    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataTSV", trialId=trial.id))
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataWideTSV", trialId=trial.id))
     dl +=     "<button>Download Trial Data - wide format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
 
@@ -378,7 +386,7 @@ def htmlTabData(sess, trial):
     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
 
     # View plain text tsv long format (why?):
-    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataTSV", trialId=trial.id))
+    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataWideTSV", trialId=trial.id))
     dl +=     "<button>View tab separated score data</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
 
@@ -483,26 +491,6 @@ def urlTrial(sess, trialId):
 #
     return trialPage(sess, trialId)
 
-# def AddSysTrialTrait(sess, trialId, traitId):
-# #-----------------------------------------------------------------------
-# # Return error string, None for success
-# # MFK perhaps this would be better done with sqlalchemy? It should in any case
-# # be in models.py, not here.
-# #
-#     if traitId == "0":
-#         return "Select a system trait to add"
-#     try:
-#         con = getMYSQLDBConnection(sess)
-#         if con is None:
-#             return "Error accessing database"
-#         cur = con.cursor()
-#         cur.execute("insert into trialTrait (trial_id, trait_id) values (%s, %s)", (trialId, traitId))
-#         cur.close()
-#         con.commit()
-#     except mdb.Error, e:
-#         return "Error accessing database"
-#     return None
-
 
 @app.route('/downloadApp/', methods=['GET'])
 @dec_check_session()
@@ -564,7 +552,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
 #
 
     # First get row, column, and barcode:
-    con = dal.getMYSQLDBConnection(sess)
+    con = getMYSQLDBConnection(sess)
     qry = 'select row, col, barcode from node where trial_id = %s order by id'
     cur = con.cursor()
     cur.execute(qry, trialId)
@@ -689,17 +677,200 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     return hdrs, rows
 
 
+def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttributes):
+#---------------------------------------------------------------------------------------
+# Return score data for the trial in wide form.
+# NB - I briefly moved this into models.py, but have brought it back as it's basically a view function.
+#
+# should Keep an eye on efficiency, see getDataLongForm in models.py, we iterate over scoresets and do a single sql query on each.
+# Output is one line per datum:
+# TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
+#
+#-----------------------------------------------------------------------
+# Returns trial data as plain text tsv form - eg for download.
+# The data is arranged in node rows, and trait instance score and attribute columns.
+# Form params indicate what score metadata to display.
+#
+# Note we have improved performance (over a separate query for each value) by getting
+# the data for each trait instance with one sql query.
+# Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
+# If necessary we could check the dataset size and if necessary switch to a different method.
+# for example server side mode datatables.
+# MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
+# datatables browse could show/hide columns and export current selection to tsv.
+#
+    # Get Trait Instances:
+    tiList = trial.getTraitInstances()           # get Trait Instances
+    valCols = trial.getDataColumns(tiList)       # get the data for the instances
+
+    # Work out number of columns for each trait instance:
+    numColsPerValue = 1
+    if showTime:
+        numColsPerValue += 1
+    if showUser:
+        numColsPerValue += 1
+    if showGps:
+        numColsPerValue += 2
+
+    # Format controls, table or tsv
+    #tables = True
+    SEP = '\t'
+    ROWEND = '\n'
+    HROWEND = '\n'
+
+    r = '# FieldPrime wide form trial data\n'
+    r += '# Trial: {0}\n'.format(trial.path())
+    r += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
+
+    # Headers:
+    r += 'fpNodeId' + SEP + trial.navIndexName(0) + SEP + trial.navIndexName(1)
+    # xxx need to show row col even if attributes not shown?
+    if showAttributes:
+        trlAttributes = trial.getAttributes()
+        attValList = trial.getAttributeColumns(trlAttributes)  # Get all the att vals in advance
+        for tua in trlAttributes:
+            r += SEP + tua.name
+    for ti in tiList:
+        tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
+        r += "{1}{0}".format(tiName, SEP)
+        if showTime:
+            r += "{1}{0}_timestamp".format(tiName, SEP)
+        if showUser:
+            r += "{1}{0}_user".format(tiName, SEP)
+        if showGps:
+            r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, SEP)
+    if showNotes:
+        r += SEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
+    r += HROWEND
+
+    # Data:
+    nodeList = trial.getNodesSortedRowCol()
+    for nodeIndex, node in enumerate(nodeList):
+        # Row and Col:
+        r += "{0}{3}{1}{3}{2}".format(node.id, node.row, node.col, SEP)
+        # Attribute Columns:
+        if showAttributes:
+            for ind, tua in enumerate(trlAttributes):
+                r += SEP
+                r += attValList[ind][nodeIndex]
+        # Scores:
+        for tiIndex, ti in enumerate(tiList):
+            [val, timestamp, userid, lat, lon] = valCols[tiIndex][nodeIndex]
+            # Write the value:
+            r += "{0}{1}".format(SEP, val)
+            # Write any other datum fields specified:
+            if showTime:
+                r += "{0}{1}".format(SEP, timestamp)
+            if showUser:
+                r += "{0}{1}".format(SEP, userid)
+            if showGps:
+                r += "{0}{1}{0}{2}".format(SEP, lat, lon)
+
+        # Notes, as list separated by pipe symbols:
+        if showNotes:
+            r += SEP + '"'
+            tuNotes = node.getNotes()
+            for note in tuNotes:
+                r += '{0}|'.format(note.note)
+            r += '"'
+
+        # End the line:
+        r += ROWEND
+    return r
+
+def getDataLongForm2(trial, showTime, showUser, showGps, showNotes, showAttributes):
+#---------------------------------------------------------------------------------------
+# Return score data for the trial in long form.
+# Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
+# Output is one line per datum:
+# TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
+#
+    session = Session.object_session(self)
+    engine = session.bind
+
+    sep = '\t'
+    metas = ''
+    out = '# FieldPrime long form trial data\n'
+    out += '# Trial: {0}\n'.format(trial.path())
+    out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
+    out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
+    numCols = 5
+    if showTime:
+        out += '\tTime'
+        metas += ',FROM_UNIXTIME(timestamp/1000)'
+        numCols += 1
+    if showUser:
+        out += '\tUser'
+        metas += ',userid'
+        numCols += 1
+    if showGps:
+        out += '\tLatitude\tLongitude'
+        metas += ',gps_lat,gps_long'
+        numCols += 1
+    if showAttributes:
+        out += sep + trial.navIndexName(0) + sep + trial.navIndexName(1)
+        trlAttributes = trial.getAttributes()
+        for tua in trlAttributes:
+            out += sep + tua.name
+        nodeIds = trial.getNodeIds()   # get list of node ids in same order as elements of attValList
+        attValList = trial.getAttributeColumns(trlAttributes, True)  # Get all the att vals in advance
+
+    out += '\n'
+    sql = '''
+    select d.node_id, ti.sampleNum, {{0}} {0}
+    from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
+    where t.id = {1} and ti.id in {{1}}
+    order by d.node_id, ti.id
+    '''.format(metas, trial.getId())
+
+    # Iterate over scoresets:
+    scoreSets = trial.getScoreSets()
+    for ss in scoreSets:
+        trait = ss.getTrait()
+        traitName = trait.getName()
+        ssId = ss.getFPId()
+        tis = ss.getInstances()
+        tiIdList = '('
+        for ti in tis:
+            if len(tiIdList) > 1:
+                tiIdList += ','
+            tiIdList += str(ti.id)
+        tiIdList += ')'
+        valueField = trait.getValueFieldName()
+        result = engine.execute(sql.format(valueField , tiIdList))
+        nodeIdsIndex = 0;
+        for row in result:
+            out += '{0}\t{1}'.format(traitName, ssId)
+            for i in range(0, len(row)):
+                # Need to detect NA, this is where the value field (3rd column) is null
+                if i == 2:
+                    out += '\t{0}'.format('NA' if row[i] is None else row[i])
+                else:
+                    out += '\t{0}'.format(row[i])
+            if showAttributes:
+                nodeId = row[0] # need cast as long?
+                while nodeId < nodeIds[nodeIdsIndex]:    # MFK should check for index error
+                    nodeIdsIndex += 1
+                for ind, tua in enumerate(trlAttributes):
+                    out += sep
+                    out += attValList[ind][nodeIdsIndex]
+
+                pass
+            out += '\n'
+
+    return out
+
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
-def urlTrialDataTSV(sess, trialId):
+def urlTrialDataWideTSV(sess, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
     trl = dal.getTrial(sess.db(), trialId)
-    out = trl.getDataWideForm(showTime, showUser, showGps, showNotes, showAttributes)
+    out = getDataWideForm(trl, showTime, showUser, showGps, showNotes, showAttributes)
     return Response(out, content_type='text/plain')
 
 @app.route('/trial/<trialId>/data/browse', methods=['GET'])
@@ -725,7 +896,8 @@ def urlTrialDataLongForm(sess, trialId):
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
     trl = dal.getTrial(sess.db(), trialId)
-    out = trl.getDataLongForm(showTime, showUser, showGps, showNotes, showAttributes)
+    #out = trl.getDataLongForm(showTime, showUser, showGps, showNotes, showAttributes)
+    out = trl.getDataLongForm2(showTime, showUser, showGps, showAttributes)
     return Response(out, content_type='text/plain')
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
@@ -987,8 +1159,6 @@ def urlUserDetails(sess, projectName):
 
             # OK, all good, change their password:
             try:
-                #con = getMYSQLDBConnection(sess)
-
                 # New way - get a connection for the system project user for changing the password.
                 # This to avoid having the fpwserver user needing ability to set passwords (access to mysql database).
                 # Ideally however, we should be able to have admin privileges for ***REMOVED*** users, so remembering the system

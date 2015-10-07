@@ -85,7 +85,8 @@ class TrialTrait(DeclarativeBase):
     # To make it new, we need a value for trial/trait/seq/sample/token
     # and we can do that by varying the seq number.
     #
-        maxSeq = dbc(self).query(func.max(TraitInstance.seqNum)).filter(
+        db = _dbc(self)
+        maxSeq = db.query(func.max(TraitInstance.seqNum)).filter(
              and_(TraitInstance.token_id == tokenId,
                   TraitInstance.trial_id == self.trial_id,
                   TraitInstance.trait_id == self.trait_id)).one()
@@ -96,8 +97,8 @@ class TrialTrait(DeclarativeBase):
         ti.seqNum = 1 if maxSeq[0] is None else maxSeq[0] + 1
         ti.sampleNum = 1
         ti.token_id = tokenId
-        dbc(self).add(ti)
-        dbc(self).commit()
+        db.add(ti)
+        db.commit()
         return ti
 
 
@@ -346,8 +347,8 @@ class TraitInstance(DeclarativeBase):
             # Note we use ignore because the same data items may be uploaded more than
             # once, and this should not cause the insert to fail.
             insob = datum.insert().prefix_with("ignore")
-            dbc(self).execute(insob, dlist)   # error checking?
-            dbc(self).commit()
+            _dbc(self).execute(insob, dlist)   # error checking?
+            _dbc(self).commit()
             return None
         except Exception, e:
             return "An error occurred: {0}".format(str(e))
@@ -376,8 +377,8 @@ class TraitInstance(DeclarativeBase):
                  DM_USERID : userid,
                  valueFieldName : value
             })
-            res = dbc(self).execute(ins)
-            dbc(self).commit()
+            res = _dbc(self).execute(ins)
+            _dbc(self).commit()
             return None
         except Exception, e:
             util.flog('TraitInstance.addDatum: {0},{1},{2},{3},{4},{5}'.format(self.id, trtType, nodeId, timestamp, userid, gpslat))
@@ -530,6 +531,8 @@ class Trial(DeclarativeBase):
 
     def getId(self):
         return self.id
+    def getAttributes(self):
+        return self.nodeAttributes
 
     @staticmethod
     def new(dbc, tname, tsite, tyear, tacro):
@@ -652,6 +655,16 @@ class Trial(DeclarativeBase):
         dbc = Session.object_session(self)
         return dbc.query(Node).filter(Node.trial_id==self.id).order_by(Node.row, Node.col).all()
 
+    def getNodesSortedById(self):  # Not used, returns ids as tuple anyway
+        # Return node ids for the specified trial, sorted by id.
+        db = _dbc(self)
+        return db.query(Node).filter(Node.trial_id==self.id).order_by(Node.id).all()
+
+    def getNodeIds(self):  # Not used, returns ids as tuple anyway
+        # Return node ids for the specified trial, sorted by id.
+        db = _dbc(self)
+        return db.query(Node.id).filter(Node.trial_id==self.id).order_by(Node.id).all()
+
     def navIndexName(self, indexOrder):
     #----------------------------------------------------------------------------------------------------
     # Return the name to use for the index attribute identified by indexOrder.
@@ -684,7 +697,7 @@ class Trial(DeclarativeBase):
     # Delete specified trait from the DB, provided there is no score data for
     # the trait. Returns boolean indication success or not.
     #
-        db = dbc(self)
+        db = _dbc(self)
         # Determine if there is any score data:
         numTis =  db.query(TraitInstance).filter(
             and_(TraitInstance.trial_id == self.id, TraitInstance.trait_id == traitId)).count()
@@ -707,112 +720,6 @@ class Trial(DeclarativeBase):
     #
         return '{0}/{1}'.format(self.project.path(), self.name)
 
-    def getDataWideForm(self, showTime, showUser, showGps, showNotes, showAttributes):
-    #---------------------------------------------------------------------------------------
-    # Return score data for the trial in wide form.
-    # JUST MOVED FROM fpWebAdmin:getTrialData() IN HERE...  MFK
-    #
-    # should Keep an eye on efficiency, see getDataLongForm below, we iterate over scoresets and do a single sql query on each.
-    # Output is one line per datum:
-    # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
-    #
-    #-----------------------------------------------------------------------
-    # Returns trial data as plain text tsv form - i.e. for download, or as html table.
-    # The data is arranged in node rows, and trait instance score and attribute columns.
-    # Form params indicate what score metadata to display.
-    #
-    # Note we have improved performance (over a separate query for each value) by getting
-    # the data for each trait instance with one sql query.
-    # Note this will not scale indefinitely, it requires having the whole dataset in mem at one time.
-    # If necessary we could check the dataset size and if necessary switch to a different method.
-    # for example server side mode datatables.
-    # MFK Need better support for choosing attributes, metadata, and score columns to show. Ideally within
-    # datatables browse could show/hide columns and export current selection to tsv.
-    #
-        sess = Session.object_session(self)
-
-        # Get Trait Instances:
-        tiList = self.getTraitInstances()  # get Trait Instances
-        valCols = getDataColumns(sess, self.getId(), tiList)            # get the data for the instances
-
-        # Work out number of columns for each trait instance:
-        numColsPerValue = 1
-        if showTime:
-            numColsPerValue += 1
-        if showUser:
-            numColsPerValue += 1
-        if showGps:
-            numColsPerValue += 2
-
-        # Format controls, table or tsv
-        #tables = True
-        SEP = '\t'
-        ROWEND = '\n'
-        HROWEND = '\n'
-
-        r = '# FieldPrime wide form trial data\n'
-        r += '# Trial: {0}\n'.format(self.path())
-        r += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
-        r = ''
-
-        # Headers:
-        r += 'fpNodeId' + SEP + self.navIndexName(0) + SEP + self.navIndexName(1)
-        # xxx need to show row col even if attributes not shown?
-        if showAttributes:
-            attValList = getAttributeColumns(sess, self.getId(), self.nodeAttributes)  # Get all the att vals in advance
-            for tua in self.nodeAttributes:
-                r += SEP + tua.name
-        for ti in tiList:
-            tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-            r += "{1}{0}".format(tiName, SEP)
-            if showTime:
-                r += "{1}{0}_timestamp".format(tiName, SEP)
-            if showUser:
-                r += "{1}{0}_user".format(tiName, SEP)
-            if showGps:
-                r += "{1}{0}_latitude{1}{0}_longitude".format(tiName, SEP)
-        if showNotes:
-            r += SEP + "Notes"  # Putting notes at end in case some commas slip thru and mess up csv structure
-        r += HROWEND
-
-        # Data:
-        nodeList = self.getNodesSortedRowCol()
-        for nodeIndex, node in enumerate(nodeList):
-            # Row and Col:
-            r += "{0}{3}{1}{3}{2}".format(node.id, node.row, node.col, SEP)
-
-            # Attribute Columns:
-            if showAttributes:
-                for ind, tua in enumerate(self.nodeAttributes):
-                    r += SEP
-                    r += attValList[ind][nodeIndex]
-
-            # Scores:
-            for tiIndex, ti in enumerate(tiList):
-                [val, timestamp, userid, lat, lon] = valCols[tiIndex][nodeIndex]
-                # Write the value:
-                r += "{0}{1}".format(SEP, val)
-                # Write any other datum fields specified:
-                if showTime:
-                    r += "{0}{1}".format(SEP, timestamp)
-                if showUser:
-                    r += "{0}{1}".format(SEP, userid)
-                if showGps:
-                    r += "{0}{1}{0}{2}".format(SEP, lat, lon)
-
-            # Notes, as list separated by pipe symbols:
-            if showNotes:
-                r += SEP + '"'
-                tuNotes = node.getNotes()
-                for note in tuNotes:
-                    r += '{0}|'.format(note.note)
-                r += '"'
-
-            # End the line:
-            r += ROWEND
-
-        return r
-
     def getDataLongForm(self, showTime, showUser, showGps, showNotes, showAttributes):
     #---------------------------------------------------------------------------------------
     # Return score data for the trial in long form.
@@ -820,8 +727,7 @@ class Trial(DeclarativeBase):
     # Output is one line per datum:
     # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
     #
-        session = Session.object_session(self)
-        engine = session.bind
+        engine = _eng(self)
         metas = ''
         out = '# FieldPrime long form trial data\n'
         out += '# Trial: {0}\n'.format(self.path())
@@ -872,7 +778,91 @@ class Trial(DeclarativeBase):
                     else:
                         out += '\t{0}'.format(row[i])
                 out += '\n'
+        return out
 
+    def getDataLongForm2(self, showTime, showUser, showGps, showAttributes):
+    #---------------------------------------------------------------------------------------
+    # Return score data for the trial in long form.
+    # Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
+    # Output is one line per datum:
+    # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
+    #
+        session = Session.object_session(self)
+        engine = session.bind
+
+        sep = '\t'
+        metas = ''
+        out = '# FieldPrime long form trial data\n'
+        out += '# Trial: {0}\n'.format(self.path())
+        out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
+        out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
+        numCols = 5
+        if showTime:
+            out += '\tTime'
+            metas += ',FROM_UNIXTIME(timestamp/1000)'
+            numCols += 1
+        if showUser:
+            out += '\tUser'
+            metas += ',userid'
+            numCols += 1
+        if showGps:
+            out += '\tLatitude\tLongitude'
+            metas += ',gps_lat,gps_long'
+            numCols += 1
+        if showAttributes:
+            out += sep + self.navIndexName(0) + sep + self.navIndexName(1)
+            trlAttributes = self.getAttributes()
+            for tua in trlAttributes:
+                out += sep + tua.name
+            nodes = self.getNodesSortedById()   # get list of node ids in same order as elements of attValList
+            attValList = self.getAttributeColumns(trlAttributes, True)  # Get all the att vals in advance
+
+        out += '\n'
+        sql = '''
+        select d.node_id, ti.sampleNum, {{0}} {0}
+        from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
+        where t.id = {1} and ti.id in {{1}}
+        order by d.node_id, ti.id
+        '''.format(metas, self.getId())
+
+        # Iterate over scoresets:
+        scoreSets = self.getScoreSets()
+        for ss in scoreSets:
+            trait = ss.getTrait()
+            traitName = trait.getName()
+            ssId = ss.getFPId()
+            tis = ss.getInstances()
+            tiIdList = '('
+            for ti in tis:
+                if len(tiIdList) > 1:
+                    tiIdList += ','
+                tiIdList += str(ti.id)
+            tiIdList += ')'
+            valueField = trait.getValueFieldName()
+            result = engine.execute(sql.format(valueField , tiIdList))
+            nodeIdsIndex = 0;
+            for row in result:
+                out += '{0}\t{1}'.format(traitName, ssId)
+                for i in range(0, len(row)):
+                    # Need to detect NA, this is where the value field (3rd column) is null
+                    if i == 2:
+                        out += '\t{0}'.format('NA' if row[i] is None else row[i])
+                    else:
+                        out += '\t{0}'.format(row[i])
+                if showAttributes:
+                    nodeId = row[0] # need cast as long?
+                    try:
+                        while nodeId < nodes[nodeIdsIndex].getId():    # MFK should check for index error
+                            nodeIdsIndex += 1
+                    except IndexError:
+                        print 'IndexError getDataLongForm {0} {1}'.format(nodeId, nodeIdsIndex)
+                        print nodes
+                        return 'bad juju'
+                    out += sep + str(nodes[nodeIdsIndex].row)
+                    out += sep + str(nodes[nodeIdsIndex].col)
+                    for ind in range(len(trlAttributes)):
+                        out += sep + attValList[ind][nodeIdsIndex]
+                out += '\n'
         return out
 
     def getAttribute(self, name):
@@ -897,23 +887,76 @@ class Trial(DeclarativeBase):
                 return trt
         return None
 
-    def getAttributeColumns(self, attList):
+    def getDataColumns(self, tiList):
+    #-----------------------------------------------------------------------
+    # SQL query - this is a bit complicated:
+    # Returns a list of lists of tuples. Each element in the top list is for one of the ti in tiList (in order).
+    # The element for a ti is a list of tuples, for for each node in the trial, ordered by row/col.
+    # NB, a tuple of empty strings will be used for nodes without a value.
+    # The tuples are the most recent value and metadata for the node/ti in the trial
+    # Timestamp is given in readable form.
+    #
+    # Note we can distinguish NA from not present as NA rows will have a non null value for any of the
+    # d1 fields that are always non null - eg timestamp.
+    # The values we need are the datum value (type appropriate) and the score metadata. There is a tuple
+    # for every node, and these are in row/col order.
+    #
+    # NB we could pass in which metadata parameters are required, rather than getting them all.
+    # Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
+    #
+        eng = _eng(self)
+        qry = """
+        select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
+        from node t
+          left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = {1}
+          left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
+        where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
+        order by row, col
+        """
+        #print qry
+        outList = []
+        for ti in tiList:
+            # If trait type is categorical then the values will be numbers which should be
+            # converted into names (via the traitCategory table), retrieve the map for the
+            # trait first:
+            if ti.trait.datatype == T_CATEGORICAL:
+                catMap = TraitCategory.getCategoricalTraitValue2NameMap(_dbc(self), ti.trait_id)
+            else:
+                catMap = None
+
+            valList = []
+            result = eng.execute(qry.format(Datum.valueFieldName(ti.trait.datatype), ti.id, self.getId()))
+            for row in result:
+                timestamp = row[1]
+                if timestamp is None:          # no datum record case
+                    valList.append(["","","","",""])
+                else:
+                    val = row[0]
+                    if val is None: val = "NA"
+                    elif catMap is not None:   # map value to name for categorical trait
+                        val = catMap[int(val)]
+                    valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
+            outList.append(valList)
+        return outList
+
+    def getAttributeColumns(self, attList, orderByNodeId=False):
     #-----------------------------------------------------------------------
     # Returns a list of columns one for each attribute in attList - each column
     # being an array of attribute values with one entry for each node in the trial.
     # The columns are in the same order as attList, and the column entries are
-    # ordered by row/col. Missing values are given as the empty string.
-        session = Session.object_session(self)
-        engine = session.bind
+    # orderedby row/col by default, or node id if specified.
+    # Missing values are given as the empty string.
+    #
+        eng = _eng(self)
         qry = """
             select a.value from node n left join attributeValue a
-            on n.id = a.node_id and a.nodeAttribute_id = {{0}}
-            where n.trial_id = {{1}}
-            order by row, col"""
+            on n.id = a.node_id and a.nodeAttribute_id = {0}
+            where n.trial_id = {1}
+            order by """ + ('n.id' if orderByNodeId else 'row,col')
         attValList = []
         for att in attList:
             valList = []
-            result = engine.execute(qry.format(att.id , self.getId()))
+            result = eng.execute(qry.format(att.id , self.getId()))
             for row in result:
                 valList.append("" if row[0] is None else row[0])
             attValList.append(valList)
@@ -999,9 +1042,12 @@ class Node(DeclarativeBase):
         secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
+    def getId(self):
+        return self.id
+
     @oneException2None
     def getAttributeValue(self, nodeAttributeId):
-        return dbc(self).query(AttributeValue).filter(
+        return _dbc(self).query(AttributeValue).filter(
             and_(
                 AttributeValue.node_id == self.id,
                 AttributeValue.nodeAttribute_id == nodeAttributeId)
@@ -1035,14 +1081,14 @@ class NodeAttribute(DeclarativeBase):
     def getAttributeValues(self):
     #----------------------------------------------------
     # Return the AttributeValues, sorted by node Id
-        return dbc(self).query(AttributeValue) \
+        return _dbc(self).query(AttributeValue) \
             .filter(AttributeValue.nodeAttribute_id == self.id) \
             .order_by(AttributeValue.node_id.asc()) \
             .all()
 
     @oneException2None
     def getUniqueNodeIdFromValue(self, val):
-        return dbc(self).query(AttributeValue.node_id) \
+        return _dbc(self).query(AttributeValue.node_id) \
             .filter(and_(AttributeValue.nodeAttribute_id == self.id, AttributeValue.value == val)) \
             .one().node_id
 
@@ -1203,11 +1249,23 @@ gdbg = True
 class DalError(Exception):
     pass
 
-def dbc(obj):
+def _dbc(obj):
 #------------------------------------------------------------------------
 # Return database connection from given object (should be sqlalchemy class instance).
 #
     return Session.object_session(obj)
+
+def _eng(obj):
+#------------------------------------------------------------------------
+# Return engine associate given object (which should be sqlalchemy class instance),
+# or None if can't get.
+#
+    sess = Session.object_session(obj)
+    if sess is None:
+        return None
+    return sess.get_bind()
+
+
 
 def dbName4Project(project):
 #-----------------------------------------------------------------------
@@ -1593,91 +1651,3 @@ def datatypeName(dtypeCode):
         return TRAIT_TYPE_NAMES[dtypeCode]
     except (IndexError, TypeError):
         return None
-
-def getMYSQLDBConnection(sess):
-#-------------------------------------------------------------------------------
-# Return mysqldb connection for user associated with session
-#
-    try:
-        projectDBname = dbName4Project(sess.getProjectName())
-        con = mdb.connect('localhost', APPUSR, APPPWD, projectDBname)
-        return con
-    except mdb.Error, e:
-        return None
-
-
-# MFK should be Trial method
-def getDataColumns(sess, trialId, tiList):
-#-----------------------------------------------------------------------
-# SQL query - this is a bit complicated:
-# Get a row for each node in a given trial, showing the most recent value for the node
-# for a given trait instance. Note we can distinguish NA from not present as
-# those rows that have a non null value for any of the d1 fields that are alway
-# non null - eg timestamp. The values we need are the datum value (type appropriate)
-# and the score metadata. There must be a result for every node, and these must be
-# in row/col order.
-# NB we could pass in which metadata parameters are required, rather than getting them all.
-# Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
-# The columns are in the same order as tiList. Timestamp is given in readable form.
-#
-    con = getMYSQLDBConnection(sess)
-    qry = """
-    select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
-    from node t
-      left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = %s
-      left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
-    where t.trial_id = %s and ((d2.timestamp is null and d1.traitInstance_id = %s) or d1.timestamp is null)
-    order by row, col
-    """
-    #print qry
-    outList = []
-    for ti in tiList:
-        # If trait type is categorical then the values will be numbers which should be
-        # converted into names (via the traitCategory table), retrieve the map for the
-        # trait first:
-        if ti.trait.datatype == T_CATEGORICAL:
-            catMap = TraitCategory.getCategoricalTraitValue2NameMap(sess.db(), ti.trait_id)
-        else:
-            catMap = None
-
-        valList = []
-        outList.append
-        cur = con.cursor()
-        cur.execute(qry.format(Datum.valueFieldName(ti.trait.datatype)), (ti.id, trialId, ti.id))
-        for row in cur.fetchall():
-            timestamp = row[1]
-            if timestamp is None:          # no datum record case
-                valList.append(["","","","",""])
-            else:
-                val = row[0]
-                if val is None: val = "NA"
-                elif catMap is not None:   # map value to name for categorical trait
-                    val = catMap[int(val)]
-                valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
-        outList.append(valList)
-        cur.close()
-    return outList
-
-# MFK should be Trial method
-def getAttributeColumns(sess, trialId, attList):
-#-----------------------------------------------------------------------
-# Returns a list of columns one for each attribute in attList - each column
-# being an array of attribute values with one entry for each node in the trial.
-# The columns are in the same order as attList, and the column entries are
-# ordered by row/col. Missing values are given as the empty string.
-    con = getMYSQLDBConnection(sess)
-    qry = """
-        select a.value from node n left join attributeValue a
-        on n.id = a.node_id and a.nodeAttribute_id = %s
-        where n.trial_id = %s
-        order by row, col"""
-    attValList = []
-    for att in attList:
-        valList = []
-        cur = con.cursor()
-        cur.execute(qry, (att.id, trialId))
-        for row in cur.fetchall():  # can we just store cur.fetchall()? Yes we could, but perhaps better this way
-            valList.append("" if row[0] is None else row[0])
-        attValList.append(valList)
-        cur.close()
-    return attValList

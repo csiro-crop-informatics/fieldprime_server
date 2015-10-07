@@ -102,3 +102,4 @@ misc/screenshots/FieldPrime_server_photo_scoreset.png -text
 misc/screenshots/FieldPrime_server_tabs.png -text
 misc/screenshots/FieldPrime_server_traits_tab.png -text
 misc/splitEntryBook.py -text
+misc/sqlalchemyExample.py -text
