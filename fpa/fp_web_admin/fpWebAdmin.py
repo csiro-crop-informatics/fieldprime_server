@@ -131,13 +131,10 @@ def dec_check_session(returnNoneSess=False):
     return param_dec
 
 
-def FrontPage(sess, msg=''):
+def frontPage(sess, msg=''):
 #-----------------------------------------------------------------------
 # Return HTML Response for urlMain user page after login
 #
-    sess.resetLastUseTime()    # This should perhaps be in dataPage, assuming it will only run immediately
-                               # after login has been checked (i.e. can't click on link on page that's been
-                               # been sitting around for a long time and have it prevent the timeout).
     return dp.dataPage(sess, content=msg, title="FieldPrime")
 
 
@@ -535,7 +532,7 @@ def urlNewTrial(sess):
         # MFK in general we will need insert or update (merge)
         #
         trialProperties.processPropertiesForm(sess, trl.id, request.form)
-        return FrontPage(sess)
+        return frontPage(sess)
 
 #MFK move to models
 def getAllAttributeColumns(sess, trialId, fixedOnly=False):
@@ -778,88 +775,6 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
         r += ROWEND
     return r
 
-def getDataLongForm2(trial, showTime, showUser, showGps, showNotes, showAttributes):
-#---------------------------------------------------------------------------------------
-# Return score data for the trial in long form.
-# Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
-# Output is one line per datum:
-# TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
-#
-    session = Session.object_session(self)
-    engine = session.bind
-
-    sep = '\t'
-    metas = ''
-    out = '# FieldPrime long form trial data\n'
-    out += '# Trial: {0}\n'.format(trial.path())
-    out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
-    out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
-    numCols = 5
-    if showTime:
-        out += '\tTime'
-        metas += ',FROM_UNIXTIME(timestamp/1000)'
-        numCols += 1
-    if showUser:
-        out += '\tUser'
-        metas += ',userid'
-        numCols += 1
-    if showGps:
-        out += '\tLatitude\tLongitude'
-        metas += ',gps_lat,gps_long'
-        numCols += 1
-    if showAttributes:
-        out += sep + trial.navIndexName(0) + sep + trial.navIndexName(1)
-        trlAttributes = trial.getAttributes()
-        for tua in trlAttributes:
-            out += sep + tua.name
-        nodeIds = trial.getNodeIds()   # get list of node ids in same order as elements of attValList
-        attValList = trial.getAttributeColumns(trlAttributes, True)  # Get all the att vals in advance
-
-    out += '\n'
-    sql = '''
-    select d.node_id, ti.sampleNum, {{0}} {0}
-    from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
-    where t.id = {1} and ti.id in {{1}}
-    order by d.node_id, ti.id
-    '''.format(metas, trial.getId())
-
-    # Iterate over scoresets:
-    scoreSets = trial.getScoreSets()
-    for ss in scoreSets:
-        trait = ss.getTrait()
-        traitName = trait.getName()
-        ssId = ss.getFPId()
-        tis = ss.getInstances()
-        tiIdList = '('
-        for ti in tis:
-            if len(tiIdList) > 1:
-                tiIdList += ','
-            tiIdList += str(ti.id)
-        tiIdList += ')'
-        valueField = trait.getValueFieldName()
-        result = engine.execute(sql.format(valueField , tiIdList))
-        nodeIdsIndex = 0;
-        for row in result:
-            out += '{0}\t{1}'.format(traitName, ssId)
-            for i in range(0, len(row)):
-                # Need to detect NA, this is where the value field (3rd column) is null
-                if i == 2:
-                    out += '\t{0}'.format('NA' if row[i] is None else row[i])
-                else:
-                    out += '\t{0}'.format(row[i])
-            if showAttributes:
-                nodeId = row[0] # need cast as long?
-                while nodeId < nodeIds[nodeIdsIndex]:    # MFK should check for index error
-                    nodeIdsIndex += 1
-                for ind, tua in enumerate(trlAttributes):
-                    out += sep
-                    out += attValList[ind][nodeIdsIndex]
-
-                pass
-            out += '\n'
-
-    return out
-
 
 @app.route('/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
@@ -893,11 +808,9 @@ def urlTrialDataLongForm(sess, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
-    showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
     trl = dal.getTrial(sess.db(), trialId)
-    #out = trl.getDataLongForm(showTime, showUser, showGps, showNotes, showAttributes)
-    out = trl.getDataLongForm2(showTime, showUser, showGps, showAttributes)
+    out = trl.getDataLongForm(showTime, showUser, showGps, showAttributes)
     return Response(out, content_type='text/plain')
 
 @app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
@@ -940,7 +853,7 @@ def urlDeleteTrial(sess, trialId):
                 return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
-            return FrontPage(sess)
+            return frontPage(sess)
 
 @app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()
@@ -961,7 +874,7 @@ def urlNewTrait(sess, trialId):
         if errMsg:
             return dp.dataErrorPage(sess, errMsg, trialId)
         if trialId == -1:
-            return FrontPage(sess, 'System trait created')
+            return frontPage(sess, 'System trait created')
         return trialPage(sess, trialId)
 
 
@@ -985,7 +898,7 @@ def urlUploadScores(sess, trialId):
         if res is not None and 'error' in res:
             return dp.dataTemplatePage(sess, 'uploadScores.html', title='Load Attributes', msg = res['error'], trialId=trialId)
         else:
-            return trialPage(sess, trialId) #FrontPage(sess)
+            return trialPage(sess, trialId)
 
 
 @app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
@@ -1000,7 +913,7 @@ def urlAttributeUpload(sess, trialId):
         if res is not None and 'error' in res:
             return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', msg = res['error'], trialId=trialId)
         else:
-            return trialPage(sess, trialId) #FrontPage(sess)
+            return trialPage(sess, trialId)
 
 @app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
@@ -1177,7 +1090,7 @@ def urlUserDetails(sess, projectName):
                     con.commit()
                     msg = 'Scoring password reset successfully'
                 con.close()
-                return FrontPage(sess, msg)
+                return frontPage(sess, msg)
             except mdb.Error, e:
                 return logoutPage(sess, 'Unexpected error trying to change password')
         elif op == 'manageUsers':
@@ -1538,7 +1451,7 @@ def urlPhoto(sess, trialId, filename):
 @app.route('/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
-    return FrontPage(sess)
+    return frontPage(sess)
 
 @app.route('/FieldPrime/project/<project>/', methods=['GET'])
 @dec_check_session()
@@ -1563,7 +1476,7 @@ def urlProject(sess, project):
                 if prj.projectName == project:
                     # All checks passed, set the project as specified:
                     sess.setProject(prj.projectName, prj.dbname, prj.access)
-                    return FrontPage(sess)
+                    return frontPage(sess)
             # No access to this project - bad user!
             return badJuju(sess, 'no access to project')
 
@@ -1636,7 +1549,7 @@ def urlMain():
 # Or perhaps it should be /user/userName/[trial/trialId]/
 #
 # Might want to change displayed url for some things eg the op to change password ends up displaying
-# the FrontPage, but shows the URL for the op.
+# the frontPage, but shows the URL for the op.
 #
     COOKIE_NAME = 'sid'
     sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)
@@ -1697,7 +1610,7 @@ def urlMain():
                 sess.setLoginType(loginType)
                 g.userName = username
                 g.projectName = project
-                resp = make_response(FrontPage(sess))
+                resp = make_response(frontPage(sess))
                 resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
                 return resp
 

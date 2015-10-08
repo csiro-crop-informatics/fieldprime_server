@@ -720,81 +720,24 @@ class Trial(DeclarativeBase):
     #
         return '{0}/{1}'.format(self.project.path(), self.name)
 
-    def getDataLongForm(self, showTime, showUser, showGps, showNotes, showAttributes):
+    def getDataLongForm(self, showTime, showUser, showGps, showAttributes):
     #---------------------------------------------------------------------------------------
-    # Return score data for the trial in long form.
+    # Return score data for the trial in tab separated long form.
     # Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
     # Output is one line per datum:
     # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
+    # NB this function's sibling getDataWideFormTSV is in fpWebAdmin. Maybe this should be too -
+    # except for the sql bit. Could have func here that return the sql result (note however that
+    # I think the result can only be iterated over, once. It isn't a normal data structure.
     #
-        engine = _eng(self)
-        metas = ''
+        # Add file info:
         out = '# FieldPrime long form trial data\n'
         out += '# Trial: {0}\n'.format(self.path())
         out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
-        out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
-        numCols = 5
-        if showTime:
-            out += '\tTime'
-            metas += ',FROM_UNIXTIME(timestamp/1000)'
-            numCols += 1
-        if showUser:
-            out += '\tUser'
-            metas += ',userid'
-            numCols += 1
-        if showGps:
-            out += '\tLatitude\tLongitude'
-            metas += ',gps_lat,gps_long'
-            numCols += 1
-        out += '\n'
-        sql = '''
-        select d.node_id, ti.sampleNum, {{0}} {0}
-        from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
-        where t.id = {1} and ti.id in {{1}}
-        order by d.node_id, ti.id
-        '''.format(metas, self.id)
 
-        # Iterate over scoresets:
-        scoreSets = self.getScoreSets()
-        for ss in scoreSets:
-            trait = ss.getTrait()
-            traitName = trait.getName()
-            ssId = ss.getFPId()
-            tis = ss.getInstances()
-            tiIdList = '('
-            for ti in tis:
-                if len(tiIdList) > 1:
-                    tiIdList += ','
-                tiIdList += str(ti.id)
-            tiIdList += ')'
-            valueField = trait.getValueFieldName()
-            result = engine.execute(sql.format(valueField , tiIdList))
-            for row in result:
-                out += '{0}\t{1}'.format(traitName, ssId)
-                for i in range(0, len(row)):
-                    # Need to detect NA, this is where the value field (3rd column) is null
-                    if i == 2:
-                        out += '\t{0}'.format('NA' if row[i] is None else row[i])
-                    else:
-                        out += '\t{0}'.format(row[i])
-                out += '\n'
-        return out
-
-    def getDataLongForm2(self, showTime, showUser, showGps, showAttributes):
-    #---------------------------------------------------------------------------------------
-    # Return score data for the trial in long form.
-    # Keeping an eye on efficiency, we iterate over scoresets and do a single sql query on each.
-    # Output is one line per datum:
-    # TraitName, ssId, nodeId, sampleNum, value [,time] [,user] [,gps]
-    #
-        session = Session.object_session(self)
-        engine = session.bind
-
+        # Add headers:
         sep = '\t'
         metas = ''
-        out = '# FieldPrime long form trial data\n'
-        out += '# Trial: {0}\n'.format(self.path())
-        out += '# Creation time: {0}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S"))
         out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
         numCols = 5
         if showTime:
@@ -816,16 +759,16 @@ class Trial(DeclarativeBase):
                 out += sep + tua.name
             nodes = self.getNodesSortedById()   # get list of node ids in same order as elements of attValList
             attValList = self.getAttributeColumns(trlAttributes, True)  # Get all the att vals in advance
-
         out += '\n'
+
+        # Add data rows - iterate over scoresets:
+        engine = _eng(self)
         sql = '''
         select d.node_id, ti.sampleNum, {{0}} {0}
         from datum d join traitInstance ti on d.traitInstance_id = ti.id join trial t on ti.trial_id = t.id
         where t.id = {1} and ti.id in {{1}}
         order by d.node_id, ti.id
         '''.format(metas, self.getId())
-
-        # Iterate over scoresets:
         scoreSets = self.getScoreSets()
         for ss in scoreSets:
             trait = ss.getTrait()
@@ -850,14 +793,12 @@ class Trial(DeclarativeBase):
                     else:
                         out += '\t{0}'.format(row[i])
                 if showAttributes:
-                    nodeId = row[0] # need cast as long?
+                    nodeId = long(row[0])
                     try:
-                        while nodeId < nodes[nodeIdsIndex].getId():    # MFK should check for index error
+                        while nodeId > nodes[nodeIdsIndex].getId():    # MFK should check for index error
                             nodeIdsIndex += 1
                     except IndexError:
-                        print 'IndexError getDataLongForm {0} {1}'.format(nodeId, nodeIdsIndex)
-                        print nodes
-                        return 'bad juju'
+                        return 'Unexpected Error: IndexError in getDataLongForm'
                     out += sep + str(nodes[nodeIdsIndex].row)
                     out += sep + str(nodes[nodeIdsIndex].col)
                     for ind in range(len(trlAttributes)):
