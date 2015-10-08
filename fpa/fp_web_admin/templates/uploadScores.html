@@ -9,7 +9,7 @@ Select a CSV file containing score data for the trial.
 
 The file must be comma separated, with a single line of headers, then data rows (no empty rows allowed).
 
-The first 1 or 2 columns determine the node (plot).  There are 3 options here:
+The first 1 or 2 columns determine the node (plot) &mdash; there are 3 options for this:
 <dl>
 <dt><strong>Option 1:</strong>
 <dd>First column is labelled 'barcode' and this refers to the barcode attribute (loaded up
@@ -26,8 +26,9 @@ After these first 1 or 2 columns, comes the score data. For a single score set, 
 will be first a column headed by the trait name (trait must exist already) with the
 values below it.  After this column, you can optionally 1 to 4 columns for the metadata:
 user, time, latitude, longitude. The column headers here must be the trait name, then
-a colon, then the metadata type.  Eg ginTrait:user, ginTrait:time, ginTrait:latitude, or
-ginTrait:longitude.
+a colon, then the metadata type.  Eg for a "height" trait, you can add the metadata with columns
+height:user, height:time, height:latitude, or
+height:longitude.
 </div>
 <div>
 <form enctype="multipart/form-data"

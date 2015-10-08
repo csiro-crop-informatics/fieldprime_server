@@ -7,6 +7,7 @@
 # Standard or third party imports:
 #
 import os
+import sys
 import time
 import traceback
 import zipfile, ntpath
@@ -22,7 +23,7 @@ from functools import wraps
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
-    import sys, inspect
+    import inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir)

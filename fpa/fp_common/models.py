@@ -854,7 +854,6 @@ class Trial(DeclarativeBase):
         where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
         order by row, col
         """
-        #print qry
         outList = []
         for ti in tiList:
             # If trait type is categorical then the values will be numbers which should be
