@@ -615,7 +615,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     trl = dal.getTrial(sess.db(), trialId)
-    valCols = trl.getDataColumns(sess, trialId, tiList)                   # get the data for the instances
+    valCols = trl.getDataColumns(tiList)                   # get the data for the instances
 
     # Headers:
     hdrs = []

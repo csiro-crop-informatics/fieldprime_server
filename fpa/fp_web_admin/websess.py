@@ -65,7 +65,7 @@ class WebSess(object):
     #------------------------------------------------------------------
         self.data['lastvisit'] = repr(time.time())
 
-    def getLastUseTime(self):
+    def _getLastUseTime(self):
     #------------------------------------------------------------------
         lv = self.data.get('lastvisit')
         return float(lv) if lv else False
