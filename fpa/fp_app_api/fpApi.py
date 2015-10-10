@@ -550,7 +550,7 @@ def upload_trial_data(username, trial, dbc, token):
     # Old clients may just send 'notes', we process that here in the manner they expect:
     # MFK - so what do new clients do different? Nothing attow.
     if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.addNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
+        err = trial.addNodeNotes(token, jtrial[jTrialUpload['notes']])
         if err is not None:
             util.flog('addNodeNotes fail:{0}'.format(err))
             return Response(err)

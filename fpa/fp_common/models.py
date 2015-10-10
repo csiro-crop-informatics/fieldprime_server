@@ -902,6 +902,63 @@ class Trial(DeclarativeBase):
             attValList.append(valList)
         return attValList
 
+    def addNodeNotes(self, tokenStr, notes):
+    #-------------------------------------------------------------------------------------------------
+    # Return None for success, else an error message.
+    # MFK need check nodeIds are in correct trial
+    #
+        # Convert tokenStr to its token id. The token should exist in the token table,
+        # otherwise something fishy may be going on.
+        try:
+            db = _dbc(self)
+            tokenId = Token.getTokenId(db, tokenStr)
+        except Exception, e:
+            return "Token not found ({0})".format(e.__str__())
+        try:
+            dlist = []
+            for n in notes:
+                nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')  # check int and valid id in trial
+                #nodeId = long(nodeId)
+
+                timestamp = n[jNotesUpload['timestamp']] # check valid
+                userid = n[jNotesUpload['userid']]
+                note = n[jNotesUpload['note']]
+                newrec = {
+                     'node_id' : nodeId,
+                     'timestamp' : timestamp,
+                     'userid' : userid,
+                     'token_id' : tokenId,
+                     'note' : note
+                }
+                dlist.append(newrec)
+
+            # Note we use ignore because the same data items may be uploaded more than
+            # once, and this should not cause the insert to fail.
+            insob = NodeNote.__table__.insert().prefix_with("ignore")
+            db.execute(insob, dlist)   # error checking?
+            db.commit()
+            return None
+        except Exception, e:
+            return "An error occurred: {0}".format(str(e))
+
+#         qry = 'insert ignore into {0} ({1}, {2}, {3}, {4}, {5}) values '.format(
+#             'nodeNote', 'node_id', 'timestamp', 'userid', 'token_id', 'note')
+#         if len(notes) <= 0:
+#             return None
+#         for n in notes:
+#             try:
+#                 nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')
+#                 qry += '({0}, {1}, "{2}", {3}, "{4}"),'.format(
+#                     nodeId, n[jNotesUpload['timestamp']],
+#                     n[jNotesUpload['userid']], tokenId, n[jNotesUpload['note']])
+#                 # Should be this, but have to cope with 'trialUnit_id' coming
+#                 # from clients for a while..
+#                 # qry += '({0}, {1}, "{2}", {3}, "{4}"),'.format(
+#                 #     n[jNotesUpload['node_id']], n[jNotesUpload['timestamp']],
+#                 #     n[jNotesUpload['userid']], tokenId, n[jNotesUpload['note']])
+#             except Exception, e:
+#                 return 'Error parsing note ' + e.args[0]
+
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers
 # of this function may not already have a trial instance, just a trialId.
@@ -1452,6 +1509,7 @@ def setSystemValue(dbc, name, value):
 def addNodeNotes(dbc, tokenStr, notes):
 #-------------------------------------------------------------------------------------------------
 # Return None for success, else an error message.
+# MFK need check nodeIds are in correct trial
 #
     # Convert tokenStr to its token id. The token should exist in the token table,
     # otherwise something fishy may be going on.
