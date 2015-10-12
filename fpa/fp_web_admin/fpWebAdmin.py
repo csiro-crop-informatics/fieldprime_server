@@ -92,6 +92,14 @@ def internalError(e):
     util.flog(e)
     util.flog(traceback.format_exc())
     return 'FieldPrime: An error has occurred'
+    #print 'we are in here'
+    #return make_response('FieldPrime: An error has occurred', 500)
+
+# @app.route('/crash', methods=['GET'])
+# def crashMe():
+#     x = 1 / 0
+#     return x
+#     #return 'hallo world'
 
 
 def getMYSQLDBConnection(sess):
@@ -623,7 +631,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     hdrs.append(dal.navIndexName(sess.db(), trialId, 0))
     hdrs.append(dal.navIndexName(sess.db(), trialId, 1))
     if showAttributes:
-        attValList = dal.getAttributeColumns(sess, trialId, trl.nodeAttributes)  # Get all the att vals in advance
+        attValList = trl.getAttributeColumns(trl.getAttributes())  # Get all the att vals in advance
         for tua in trl.nodeAttributes:
             hdrs.append(tua.name)
     for ti in tiList:
