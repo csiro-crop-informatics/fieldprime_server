@@ -88,18 +88,14 @@ def internalError(e):
 # due to some problem in code or database. We log the details. Possibly should
 # try to send an email (to me I guess) to raise the alarm..
 #
-    util.flog('internal error:')
-    util.flog(e)
-    util.flog(traceback.format_exc())
-    return 'FieldPrime: An error has occurred'
-    #print 'we are in here'
-    #return make_response('FieldPrime: An error has occurred', 500)
+    errmsg = 'Internal error:####################################\n{0}\nTraceback:\n{1}##########'.format(e, traceback.format_exc())
+    util.flog(errmsg)
+    return make_response('FieldPrime: An error has occurred\n', 500)
 
-# @app.route('/crash', methods=['GET'])
-# def crashMe():
-#     x = 1 / 0
-#     return x
-#     #return 'hallo world'
+#@app.route('/crash', methods=['GET'])
+#def crashMe():
+#    x = 1 / 0
+#    return 'hallo world'
 
 
 def getMYSQLDBConnection(sess):
