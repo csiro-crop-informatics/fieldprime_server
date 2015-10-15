@@ -97,7 +97,18 @@ def dec_get_trial(jsonReturn):
         return inner
     return param_dec
 
-
+def successResponse():
+#-------------------------------------------------------------------------------------------------
+# Response to return for successful data upload. Currently this is just the string 'success'.
+# I would like it to be JSON, but we have to first introduce support for this into the clients,
+# and wait until there are no older clients still in use.
+# Note this is for JSON uploads that do not expect content back, other than success indicator
+# or error code. Perhaps we could just rely on the returned status code and message?
+#
+# A better solution would be to retrieve the client version number from the request, store
+# it in a global var if possible so available everywhere without passing, and switch behaviour
+# on that.
+    return Response('success')
 
 @app.route('/user/<username>/', methods=['GET'])
 def trial_list(username):
@@ -351,7 +362,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
     # set to be created. So for the moment, we'll limit this to photo traits only,
     # and then remove that when we're confident all apps are updated:
     if (aData is None or len(aData) <= 0) and dal.getTrait(dbc, traitid).datatype != T_PHOTO:
-        return Response('success')
+        return successResponse()
     # Get/Create trait instance:
     dbTi = dal.getOrCreateTraitInstance(dbc, traitid, trial.id, seqNum, sampleNum, dayCreated, token)
     if dbTi is None:
@@ -366,7 +377,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
 # After testing thoroughly
         errMsg = dal.AddTraitInstanceData(dbc, dbTi.id, dbTi.trait.datatype, aData)
 
-    return (Response('success') if errMsg is None else Response(errMsg))
+    return (successResponse() if errMsg is None else Response(errMsg))
 
 
 def allowed_file(filename):
@@ -457,12 +468,12 @@ def upload_photo(username, trial, dbc, traitid, token):
             res = dal.AddTraitInstanceDatum(dbc, dbTi.id, dbTi.trait.datatype, nodeId, timestamp,
                                             userid, gpslat, gpslong, os.path.basename(fullPath))
             if res is None:
-                return Response('success')
+                return successResponse()
             else:
                 return serverErrorResponse('Failed photo upload : datum create fail')
         else:
             util.flog('upload_photo: no nodeId, presumed old app version')
-            return Response('success')
+            return successResponse()
     else:
         return serverErrorResponse('Failed photo upload : bad file')
 
@@ -480,7 +491,7 @@ def upload_crash_report():
             # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
             fullPath = app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName
             cfile.save(fullPath)
-            return Response('success')
+            return successResponse()
         except Exception, e:
             util.flog('failed save {0}'.format(app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName))
             util.flog(e.__doc__)
@@ -531,7 +542,7 @@ def upload_trial_old_version(username, trial, dbc):
             return Response(err)
 
     # All done, return success indicator:
-    return Response('success')
+    return successResponse()
 
 @app.route('/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
@@ -556,7 +567,7 @@ def upload_trial_data(username, trial, dbc, token):
             return Response(err)
 
         # All done, return success indicator:
-        return Response('success')
+        return successResponse()
 
     #
     # Created Nodes:
@@ -582,7 +593,7 @@ def upload_trial_data(username, trial, dbc, token):
         return Response(json.dumps(returnObj), mimetype='application/json')  # prob need ob
 
     # All done, return success indicator:
-    return Response('success')
+    return successResponse()
 
 @app.route('/user/<username>/trial/<trialid>/createAdHocTrait/', methods=['GET'])
 @dec_get_trial(True)
