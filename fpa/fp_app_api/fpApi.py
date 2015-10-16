@@ -548,6 +548,10 @@ def upload_trial_old_version(username, trial, dbc):
 @dec_get_trial(False)
 #-------------------------------------------------------------------------------------------------
 # This version should return JSON!
+# NB historical peculiarities here, this attow only used for upload nodes, or notes.
+# And the format of the response differs between these two. Probably would be better
+# with separate urls.
+#
 def upload_trial_data(username, trial, dbc, token):
     jtrial = request.json
     if not jtrial:
