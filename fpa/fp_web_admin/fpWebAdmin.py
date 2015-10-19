@@ -292,7 +292,7 @@ def htmlTabTraits(sess, trial):
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
-    addSysTraitForm += '<select name="traitID"><option value="0">Select System Trait to add</option>'
+    addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select System Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
@@ -301,7 +301,18 @@ def htmlTabTraits(sess, trial):
         else:
             addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
     addSysTraitForm += '</select> &nbsp; '
-    addSysTraitForm += '<input type="submit" value="Add System Trait">'  #MFK need javascript to check selection made before submitting
+    addSysTraitForm += '''
+    <script>
+    function checkSelectionMade(selElementId) {
+        var e = document.getElementById(selElementId);
+        if (e.selectedIndex == 0) {
+            alert('Please select a system trait to add');
+            event.preventDefault()
+        }
+    }
+    </script>
+    '''
+    addSysTraitForm += '<input type="submit" value="Add System Trait" onclick="checkSelectionMade(\'sysTraitSelId\')">'
     addSysTraitForm += '</form>'
     return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
