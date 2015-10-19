@@ -103,7 +103,6 @@ def dec_get_trial(jsonReturn):
                 if jsonReturn:
                     return JsonErrorResponse(errMsg)
                 else:
-                    #return Response("error:" + errMsg)
                     return serverErrorResponse("error:" + errMsg)
 
             trl = dal.getTrial(dbc, trialid)
