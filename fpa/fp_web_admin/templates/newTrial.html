@@ -90,8 +90,10 @@ provided as a comma separated (CSV) file, which must have the
 following format:
 <dl>
   <dt>First line</dt><dd>Column Headers. There can be any number of
-    columns, but there must be a "row" and a "column" column, since
-    each node is identified by a row and column number.</dd>
+    columns, but there must be a pair of columns titled "row" and "column",
+    or titled with the row and column aliases you provide in this page.
+    These are required as each node is uniquely identified by its row and
+    column values (regardless of what names you use for "row" and "column").</dd>
   <dt>Subsequent lines</dt><dd>Trial Nodes. Each line after the header line
     identifies and describes one trial node. A node is identified by
     its row and column values. Any values in other columns will be
