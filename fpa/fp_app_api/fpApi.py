@@ -60,6 +60,25 @@ def internalError(e):
     util.flog(traceback.format_exc())
     return 'FieldPrime: Internal Server Error'
 
+def serverErrorResponse(msg):
+    util.flog(msg)
+    response = Response(msg)
+    response.status = '500 {0}'.format(msg)
+    return response
+
+def successResponse():
+#-------------------------------------------------------------------------------------------------
+# Response to return for successful data upload. Currently this is just the string 'success'.
+# I would like it to be JSON, but we have to first introduce support for this into the clients,
+# and wait until there are no older clients still in use.
+# Note this is for JSON uploads that do not expect content back, other than success indicator
+# or error code. Perhaps we could just rely on the returned status code and message?
+#
+# A better solution would be to retrieve the client version number from the request, store
+# it in a global var if possible so available everywhere without passing, and switch behaviour
+# on that.
+    return Response('success')
+
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
 # Decorator, for app.route functions with username and trialid parameters.
@@ -84,7 +103,8 @@ def dec_get_trial(jsonReturn):
                 if jsonReturn:
                     return JsonErrorResponse(errMsg)
                 else:
-                    return Response("error:" + errMsg)
+                    #return Response("error:" + errMsg)
+                    return serverErrorResponse("error:" + errMsg)
 
             trl = dal.getTrial(dbc, trialid)
             if trl is None:
@@ -96,19 +116,6 @@ def dec_get_trial(jsonReturn):
             return func(username, trl, dbc, *args, **kwargs)
         return inner
     return param_dec
-
-def successResponse():
-#-------------------------------------------------------------------------------------------------
-# Response to return for successful data upload. Currently this is just the string 'success'.
-# I would like it to be JSON, but we have to first introduce support for this into the clients,
-# and wait until there are no older clients still in use.
-# Note this is for JSON uploads that do not expect content back, other than success indicator
-# or error code. Perhaps we could just rely on the returned status code and message?
-#
-# A better solution would be to retrieve the client version number from the request, store
-# it in a global var if possible so available everywhere without passing, and switch behaviour
-# on that.
-    return Response('success')
 
 @app.route('/user/<username>/', methods=['GET'])
 def trial_list(username):
@@ -643,12 +650,6 @@ def JsonErrorResponse(errMsg):
 def error_404(msg):
     response = Response(msg)
     response.status_code = 404
-    return response
-
-def serverErrorResponse(msg):
-    util.flog(msg)
-    response = Response(msg)
-    response.status = '500 {0}'.format(msg)
     return response
 
 
