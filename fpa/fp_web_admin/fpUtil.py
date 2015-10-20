@@ -142,6 +142,8 @@ def htmlDataTableMagic(tableId):
             }
 
             $(elId).DataTable( {
+            dom: 'Bfrtip',
+                 buttons: ['copyHtml5', 'csvHtml5'],
                 "scrollX": true,
                 "processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
@@ -155,7 +157,7 @@ def htmlDataTableMagic(tableId):
             });
             setTableWrapperWidth(); // This to force on table scroll bar
             window.addEventListener('resize', setTableWrapperWidth);
-            /* Used to be required for nice resize, but the line above now seems to work, mostly..
+            /* Used to be required for nice resize, but the line above now seems to work
             * window.addEventListener('resize', function () {
             *     "use strict";
             *     window.location.reload();

@@ -341,17 +341,8 @@ def htmlTabData(sess, trial):
             }}
         return out;
     }};
-    function downloadURL(tables) {{
-        var tdms = document.getElementById('tdms');
-        var out = tables ? '{1}?' : '{0}?';
-        // Add parameters indicating what to include in the download
-        for (var i=0; i<tdms.length; i++)
-            if (tdms[i].selected)
-              out += '&' + tdms[i].value + '=1';
-        return out;
-    }}
     </script>
-    """.format(url_for("urlTrialDataWideTSV", trialId=trial.id), url_for("urlTrialDataBrowse", trialId=trial.id))
+    """
 
 #     jq1 = """
 #     <link rel=stylesheet type=text/css href="{0}">
@@ -384,10 +375,6 @@ def htmlTabData(sess, trial):
     dl += "</select>"
     dl += "</div>"
 
-#     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=downloadURL(false)'>".format(trial.name)
-#     dl +=     "<button>Download Trial Data - wide format</button></a><br />"
-#     dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
-
     # Download wide format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataWideTSV", trialId=trial.id))
     dl +=     "<button>Download Trial Data - wide format</button></a><br />"
@@ -403,7 +390,7 @@ def htmlTabData(sess, trial):
     dl +=     "<button>View tab separated score data</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
 
-    # View long format as datatable:
+    # View wide format as datatable:
     dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataBrowse", trialId=trial.id))
     dl +=     "<button>Browse Trial Data</button></a>"
     return dl
