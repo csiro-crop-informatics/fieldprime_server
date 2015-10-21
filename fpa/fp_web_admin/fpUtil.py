@@ -24,6 +24,14 @@ htmlBootstrapGumpf = '''
 
 ###  Functions: ################################################################
 
+def hsafe(h):
+#-------------------------------------------------------------------------------
+# Return a string version of h that has been made safe for putting in html.
+# Currently simply by replacing '<' with '&lt;'. So this is not for use with
+# stuff that is supposed to be html, but for values that should NOT do any html.
+#
+    return str(h).replace('<', '&lt;')
+
 def getString(x):
 #-----------------------------------------------------------------------
 # For when x is a string, or a function returning string
@@ -142,8 +150,8 @@ def htmlDataTableMagic(tableId):
             }
 
             $(elId).DataTable( {
-            dom: 'Bfrtip',
-                 buttons: ['copyHtml5', 'csvHtml5'],
+            //dom: 'Bfrtip',
+                 //buttons: ['copyHtml5', 'csvHtml5'],
                 "scrollX": true,
                 "processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
@@ -221,8 +229,8 @@ def htmlDatatableByRow(headers, rows, tableId, showFooter=True):
     out += '<tbody>'
     for row in rows:
         out += '<tr>'
-        for i in row:
-            out += '<td>{0}</td>'.format(i)
+        for el in row:
+            out += '<td>{0}</td>'.format(el)
         out += '</tr>'
     out += '</tbody>'
     out += '</table>'

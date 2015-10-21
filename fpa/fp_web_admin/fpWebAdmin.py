@@ -34,6 +34,7 @@ import fp_common.util as util
 import fp_common.users as users
 import fpTrial
 import fpUtil
+from fpUtil import hsafe
 import fp_common.fpsys as fpsys
 import trialProperties
 from fp_common.const import *
@@ -170,7 +171,7 @@ def htmlTrialTraitTable(trial):
     hdrs = ["Caption", "Description", "DataType", "Num ScoreSets", "Details"]
     trows = []
     for trt in trial.traits:
-        trows.append([trt.caption, trt.description, TRAIT_TYPE_NAMES[trt.datatype],
+        trows.append([hsafe(trt.caption), hsafe(trt.description), TRAIT_TYPE_NAMES[trt.datatype],
              trt.getNumScoreSets(trial.id),
              fpUtil.htmlButtonLink2("Details",
                  url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
@@ -202,7 +203,7 @@ def htmlTabScoreSets(sess, trialId):
             tis = ss.getInstances()
             firstTi = tis[0]   # check for none?
             row = []
-            row.append(firstTi.trait.caption)
+            row.append(hsafe(firstTi.trait.caption))
             row.append(util.formatJapDateSortFormat(firstTi.dayCreated))
             row.append(firstTi.getDeviceId())
             row.append(ss.getFPId()) # was firstTi.seqNum
@@ -232,7 +233,7 @@ def htmlTabNodeAttributes(sess, trialId):
         rows = []
         for att in attList:
             valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
-            rows.append([att.name, TRAIT_TYPE_NAMES[att.datatype], valuesButton])
+            rows.append([hsafe(att.name), TRAIT_TYPE_NAMES[att.datatype], valuesButton])
         out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpNodeAttributes', showFooter=False)
 
     # Add BROWSE button:
@@ -562,10 +563,10 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
     for row in cur.fetchall():
         colRow.append("" if row[0] is None else row[0])
         colCol.append("" if row[1] is None else row[1])
-        colBarcode.append("" if row[2] is None else row[2])
+        colBarcode.append("" if row[2] is None else hsafe(row[2]))
     attValList = [colRow, colCol, colBarcode]
     trl = dal.getTrial(sess.db(), trialId)
-    hdrs = [trl.navIndexName(0), trl.navIndexName(1), 'Barcode']
+    hdrs = [hsafe(trl.navIndexName(0)), hsafe(trl.navIndexName(1)), 'Barcode']
 
     if not fixedOnly:
         # And add the other attributes:
@@ -577,12 +578,12 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
             where n.trial_id = %s
             order by n.id"""
         for att in attList:
-            hdrs.append(att.name)
+            hdrs.append(hsafe(att.name))
             valList = []
             cur = con.cursor()
             cur.execute(qry, (att.id, trialId))
             for row in cur.fetchall():  # can we just store cur.fetchall()? Yes we could, but perhaps better this way
-                valList.append("" if row[0] is None else row[0])
+                valList.append("" if row[0] is None else hsafe(row[0]))
             attValList.append(valList)
             cur.close()
     return (hdrs, attValList)
@@ -596,6 +597,9 @@ def urlBrowseTrialAttributes(sess, trialId):
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
     return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
                        title='Browse', trialId=trialId)
+
+def safeAppend(arr, val):
+    arr.append(hsafe(val))
 
 def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes):
 #-----------------------------------------------------------------------
@@ -622,22 +626,22 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     # Headers:
     hdrs = []
     hdrs.append('fpNodeId')
-    hdrs.append(dal.navIndexName(sess.db(), trialId, 0))
-    hdrs.append(dal.navIndexName(sess.db(), trialId, 1))
+    safeAppend(hdrs, dal.navIndexName(sess.db(), trialId, 0))
+    safeAppend(hdrs, dal.navIndexName(sess.db(), trialId, 1))
     if showAttributes:
         attValList = trl.getAttributeColumns(trl.getAttributes())  # Get all the att vals in advance
         for tua in trl.nodeAttributes:
-            hdrs.append(tua.name)
+            safeAppend(hdrs, tua.name)
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
-        hdrs.append(tiName)
+        safeAppend(hdrs, tiName)
         if showTime:
-            hdrs.append("{0}_timestamp".format(tiName))
+            safeAppend(hdrs, "{0}_timestamp".format(tiName))
         if showUser:
-            hdrs.append("{0}_user".format(tiName))
+            safeAppend(hdrs, "{0}_user".format(tiName))
         if showGps:
-            hdrs.append("{0}_latitude".format(tiName))
-            hdrs.append("{0}_longitude".format(tiName))
+            safeAppend(hdrs, "{0}_latitude".format(tiName))
+            safeAppend(hdrs, "{0}_longitude".format(tiName))
     if showNotes:
         hdrs.append("Notes")
 
@@ -651,20 +655,21 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
         # Attribute Columns:
         if showAttributes:
             for ind, tua in enumerate(trl.nodeAttributes):
-                nrow.append(attValList[ind][nodeIndex])
+                safeAppend(nrow, attValList[ind][nodeIndex])
 
         # Scores:
         for tiIndex, ti in enumerate(tiList):
             [val, timestamp, userid, lat, long] = valCols[tiIndex][nodeIndex]
             # Write the value:
-            nrow.append(val)
+            safeAppend(nrow, val)
             # Write any other datum fields specified:
             if showTime:
-                nrow.append(timestamp)
+                safeAppend(nrow, timestamp)
             if showUser:
-                nrow.append(userid)
+                safeAppend(nrow, userid)
             if showGps:
-                nrow.extend((lat, long))
+                safeAppend(nrow, lat)
+                safeAppend(nrow, long)
 
         # Notes, as list separated by pipe symbols:
         if showNotes:
@@ -673,7 +678,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
             for note in tuNotes:
                 notes += '{0}|'.format(note.note)
             notes += '"'
-            nrow.append(notes)
+            safeAppend(nrow, notes)
     return hdrs, rows
 
 
@@ -801,8 +806,6 @@ def urlTrialDataBrowse(sess, trialId):
     showAttributes = request.args.get("attributes")
     (headers, rows) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False)
-#     r = fpUtil.htmlDataTableMagic('trialData')
-#     r += getTrialData(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes, True)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 @app.route('/trial/<trialId>/datalong/', methods=['GET'])
@@ -926,11 +929,11 @@ def urlAttributeDisplay(sess, trialId, attId):
     out += "<br><b>Datatype</b> : " + TRAIT_TYPE_NAMES[tua.datatype]
     # Construct datatable:
     trl = dal.getTrial(sess.db(), trialId)  # MFK what is the cost of getting trial object?
-    hdrs = ["fpNodeId", trl.navIndexName(0), trl.navIndexName(1), "Value"]
+    hdrs = ["fpNodeId", hsafe(trl.navIndexName(0)), hsafe(trl.navIndexName(1)), "Value"]
     rows = []
     aVals = tua.getAttributeValues()
     for av in aVals:
-        rows.append([av.node.id, av.node.row, av.node.col, av.value])
+        rows.append([av.node.id, av.node.row, av.node.col, hsafe(av.value)])
     out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpAttValues', showFooter=False)
 
     return dp.dataPage(sess, content=out, title='Attribute', trialId=trialId)
