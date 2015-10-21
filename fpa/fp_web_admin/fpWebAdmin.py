@@ -17,6 +17,7 @@ from flask import jsonify
 import simplejson as json
 from functools import wraps
 
+
 #
 # Local imports:
 #
@@ -35,6 +36,7 @@ import fp_common.users as users
 import fpTrial
 import fpUtil
 from fpUtil import hsafe
+
 import fp_common.fpsys as fpsys
 import trialProperties
 from fp_common.const import *

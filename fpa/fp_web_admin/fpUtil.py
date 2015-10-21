@@ -7,6 +7,7 @@
 import sys
 import time
 from flask import url_for
+from cgi import escape
 
 import fp_common.models as models
 import MySQLdb as mdb
@@ -24,13 +25,8 @@ htmlBootstrapGumpf = '''
 
 ###  Functions: ################################################################
 
-def hsafe(h):
-#-------------------------------------------------------------------------------
-# Return a string version of h that has been made safe for putting in html.
-# Currently simply by replacing '<' with '&lt;'. So this is not for use with
-# stuff that is supposed to be html, but for values that should NOT do any html.
-#
-    return str(h).replace('<', '&lt;')
+def hsafe(x):
+    return escape(str(x))
 
 def getString(x):
 #-----------------------------------------------------------------------
@@ -150,8 +146,19 @@ def htmlDataTableMagic(tableId):
             }
 
             $(elId).DataTable( {
-            //dom: 'Bfrtip',
-                 //buttons: ['copyHtml5', 'csvHtml5'],
+                dom: 'Bfrtip',
+                buttons: [
+                    'copyHtml5',
+                    {extend:'columnToggle', text:'foo', columns:function(ndx,data,node){alert(node + ndx); return ndx<=3}},
+                    {extend:'csvHtml5', exportOptions: {columns: ':visible'}},
+                    {extend:'colvis', text:'metadata', columns:':gt(0)'},
+                    {
+                        extend:'colvisGroup',
+                        text:'metadata',
+                        show:function(ndx,data,node){return ndx<=3},
+                        hide:function(ndx,data,node){return ndx>3}
+                    }
+                ],
                 "scrollX": true,
                 "processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
