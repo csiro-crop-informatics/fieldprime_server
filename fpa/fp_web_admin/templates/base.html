@@ -19,6 +19,33 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- Font Awesome for icons: -->
+  <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
+
+  <link rel="stylesheet" type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
+  <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+  <link rel="stylesheet" type="text/css" href="/static/lib/jquery.dataTables.1.10.7.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.9/css/dataTables.bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/static/lib/buttons.dataTables.min.css">
+
+  <!-- Jquery:-->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+  <!-- Bootstrap:-->
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+  <!-- DataTables integrators:-->
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.9/js/dataTables.bootstrap.min.js"></script>
+
+  <!-- dataTables buttons: -->
+  <script type="text/javascript" language="javascript" src="/static/lib/dataTables.buttons.min.js"></script>
+  <script type="text/javascript" language="javascript" src="/static/lib/buttons.html5.min.js"></script>
+  <script type="text/javascript" language="javascript" src="/static/lib/buttons.colVis.min.js"></script>
+
+{#
   <!-- Jquery: -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
   <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
@@ -39,14 +66,10 @@
         document.write(script.outerHTML);
     }
   </script>
-
+#}
   <script src="{{ url_for('static', filename='fplib.js') }}"></script>
 
-  <!-- Font Awesome for icons: -->
-  <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
-
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
-
+{#
   <!-- Bootstrap: -->
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
   <!-- Optional theme
@@ -64,10 +87,10 @@
         document.write(css.outerHTML);
     }
   </script>
-
+#}
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStylePostBootstrap.css') }}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+{#
   <!-- Datatables: -NB, these also available from a CDN if required:
     <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">
     <script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>
@@ -82,7 +105,7 @@
   <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='lib/dataTables.buttons.min.js') }}"></script>
   <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='lib/buttons.html5.min.js') }}"></script>
   <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='lib/buttons.colVis.min.js') }}"></script>
-
+#}
   <title>{{ title }}</title>
 </head>
 

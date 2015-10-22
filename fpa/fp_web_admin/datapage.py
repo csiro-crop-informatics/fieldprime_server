@@ -93,6 +93,9 @@ def _dataNavigationContent(sess, trialId):
     r1c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
     r1c1 += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
 
+    # Test button, if you need one. Calls urlTest function
+    #r1c1 += '<a href="{0}" class="btn btn-primary" role="button">Test</a>'.format(url_for('urlTest'))
+
     # Show non project specific buttons:
     r1c2 = '<div style="float:right">'
     r1c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
@@ -166,6 +169,16 @@ def dataPage(sess, title, content, trialId=None):
     nc = _dataNavigationContent(sess, trialId)
     return render_template('dataPage.html', navContent=nc, content=content, title=title)
 
+def dataPageTest(sess, title, content, trialId=None):
+#----------------------------------------------------------------------------
+# Test version: copy datapage.html to dataPageTest.html, and base.html to baseTest.html
+# and hack away.
+# Return page for user data with given content and title.
+# The point of this function is to add the navigation content.
+# See comment on _dataNavigationContent for trialId semantics.
+#
+    nc = _dataNavigationContent(sess, trialId)
+    return render_template('dataPageTest.html', navContent=nc, content=content, title=title)
 
 def dataTemplatePage(sess, template, **kwargs):
 #----------------------------------------------------------------------------

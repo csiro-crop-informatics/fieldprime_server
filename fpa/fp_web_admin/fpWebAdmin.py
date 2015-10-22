@@ -181,6 +181,11 @@ def htmlTrialTraitTable(trial):
     #xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
     return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False)
 
+@app.route('/test', methods=["GET"])
+@dec_check_session()
+def urlTest(sess):
+    #return  dp.dataPageTest(sess, content=htmlTabScoreSets(sess, 1), title='foo', trialId=1)
+    return render_template('foo.html', title="test")
 
 def htmlTabScoreSets(sess, trialId):
 #----------------------------------------------------------------------------------------------------
@@ -1641,6 +1646,7 @@ if __name__ == '__main__':
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
     app.config['CATEGORY_IMAGE_FOLDER'] = expanduser("~") + '/proj/fpserver/catPhotos'
     app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + expanduser("~") + '/proj/fpserver/catPhotos'
+    LOGIN_TIMEOUT = 36000
 
     # Setup logging:
     app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'

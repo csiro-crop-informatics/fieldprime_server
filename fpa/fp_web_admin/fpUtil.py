@@ -146,17 +146,17 @@ def htmlDataTableMagic(tableId):
             }
 
             $(elId).DataTable( {
-                dom: 'Bfrtip',
+                dom: 'Blfrtip',
                 buttons: [
-                    'copyHtml5',
-                    {extend:'columnToggle', text:'foo', columns:function(ndx,data,node){alert(node + ndx); return ndx<=3}},
-                    {extend:'csvHtml5', exportOptions: {columns: ':visible'}},
-                    {extend:'colvis', text:'metadata', columns:':gt(0)'},
+                    //'copyHtml5',
+                    //{extend:'columnToggle', text:'foo', columns:function(ndx,data,node){ return ndx<=3}},
+                    //{extend:'csvHtml5', exportOptions: {columns: ':visible'}},
+                    //{extend:'colvis', text:'metadata', columns:':gt(0)'},
                     {
                         extend:'colvisGroup',
-                        text:'metadata',
-                        show:function(ndx,data,node){return ndx<=3},
-                        hide:function(ndx,data,node){return ndx>3}
+                        text:'hide some',
+                        show:function(ndx,data,node){return ndx<=2},
+                        hide:function(ndx,data,node){return ndx>2}
                     }
                 ],
                 "scrollX": true,
