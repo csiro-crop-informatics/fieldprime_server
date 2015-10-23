@@ -3,6 +3,10 @@
  * For any styling that needs to go after the bootstrap css has loaded.
  */
 
+.dt-buttons {
+    margin-left: 30px;
+}
+
 /*
  * Footer that sits at bottom of page if no scrollbar, or at bottom of content
  * if contents scrolls off page. NB, the setting of margin-bottom needs to

@@ -3,6 +3,7 @@
  * bits and pieces we need access to globally. In a single object
  * so as not to pollute the global namespace too much.
  */
+ /* Some magic to prevent warnings in Eclipse: */
  /*global $:false,alert:false,d3:false*/
 var fplib = {};
 
@@ -703,3 +704,4 @@ fplib.fillUserTable = function () {
 // error handling?
     $.getJSON(url, sfunc);
 }
+

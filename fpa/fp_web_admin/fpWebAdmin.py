@@ -632,6 +632,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
 
     # Headers:
     hdrs = []
+    metas = []
     hdrs.append('fpNodeId')
     safeAppend(hdrs, dal.navIndexName(sess.db(), trialId, 0))
     safeAppend(hdrs, dal.navIndexName(sess.db(), trialId, 1))
@@ -643,11 +644,15 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
         safeAppend(hdrs, tiName)
         if showTime:
+            metas.append(len(hdrs))
             safeAppend(hdrs, "{0}_timestamp".format(tiName))
         if showUser:
+            metas.append(len(hdrs))
             safeAppend(hdrs, "{0}_user".format(tiName))
         if showGps:
+            metas.append(len(hdrs))
             safeAppend(hdrs, "{0}_latitude".format(tiName))
+            metas.append(len(hdrs))
             safeAppend(hdrs, "{0}_longitude".format(tiName))
     if showNotes:
         hdrs.append("Notes")
@@ -686,7 +691,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
                 notes += '{0}|'.format(note.note)
             notes += '"'
             safeAppend(nrow, notes)
-    return hdrs, rows
+    return hdrs, rows, metas
 
 
 def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttributes):
@@ -811,8 +816,67 @@ def urlTrialDataBrowse(sess, trialId):
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    (headers, rows) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
-    r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False)
+    (headers, rows, metas) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
+    # Probably should return array with type code for each column rather than metas
+    extras = '''
+        dom: 'lBfrtip',
+        buttons: [
+            //'copyHtml5',
+            //{extend:'columnToggle', text:'foo', columns:function(ndx,data,node){ return ndx<=3}},
+            {extend:'csvHtml5', exportOptions: {columns: ':visible'}},
+            //{extend:'colvis', text:'metadata', columns:':gt(0)'},
+            {
+                extend:'colvisGroup',
+                /*action: function(){
+                //arguments[1].columns([1,2]).visible(false);
+                this.columns([1,2]).visible(false);},*/
+                action: function() {
+                   var hid;
+                   return function(){
+                       if (hid == null) {
+                           hid = [1,2];
+                           this.columns(hid).visible(false);
+                       } else {
+                           this.columns(hid).visible(true);
+                           hid = null;
+                       }
+                   }
+                }(),
+                text:'hide some',
+                //show:function(ndx,data,node){return ndx<=2},
+                //hide:function(ndx,data,node){return ndx>2}
+            }
+        ],
+    '''
+    r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
+    r += '''
+    <script> $(document).ready(
+    function() {
+        var table = $('#fpTrialData').DataTable();
+        new $.fn.dataTable.Buttons(table,
+            {
+                buttons: [
+                    { extend:'csvHtml5', exportOptions: {columns: ':visible'}},
+                    {   extend:'colvisGroup',
+                        action: function() {
+                           var hid;
+                           return function(){
+                               if (hid == null) {
+                                   hid = %s;
+                                   this.columns(hid).visible(false);
+                               } else {
+                                   this.columns(hid).visible(true);
+                                   hid = null;
+                               }
+                           }
+                        }(),
+                        text:'Metadata',
+                    }
+                ]
+            });
+        table.buttons().container().appendTo($('.col-sm-6:eq(0)', table.table().container()));
+    });
+    </script>''' % str(metas)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 @app.route('/trial/<trialId>/datalong/', methods=['GET'])

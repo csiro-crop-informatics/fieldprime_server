@@ -102,7 +102,7 @@ def htmlButtonLink2(label, click):
     #return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
 
 
-def htmlDataTableMagic(tableId):
+def _htmlDataTableMagic(tableId, extraOptions=''):
 #----------------------------------------------------------------------------
 # Html required to have a datatable table work, pass in an id to use for the table.
 #
@@ -146,21 +146,9 @@ def htmlDataTableMagic(tableId):
             }
 
             $(elId).DataTable( {
-                dom: 'Blfrtip',
-                buttons: [
-                    //'copyHtml5',
-                    //{extend:'columnToggle', text:'foo', columns:function(ndx,data,node){ return ndx<=3}},
-                    //{extend:'csvHtml5', exportOptions: {columns: ':visible'}},
-                    //{extend:'colvis', text:'metadata', columns:':gt(0)'},
-                    {
-                        extend:'colvisGroup',
-                        text:'hide some',
-                        show:function(ndx,data,node){return ndx<=2},
-                        hide:function(ndx,data,node){return ndx>2}
-                    }
-                ],
+                %s
                 "scrollX": true,
-                "processing": true, // not clear this is doing anything..
+                //"processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
                 },
@@ -188,10 +176,10 @@ def htmlDataTableMagic(tableId):
         //$(elId).dataTable().fnDraw();
     } );
     </script>
-    """ % (tableId, tableId, tableId)
+    """ % (tableId, tableId, extraOptions, tableId)
     return r
 
-def htmlDatatableByCol(headers, cols, tableId, showFooter=True):
+def htmlDatatableByCol(headers, cols, tableId, showFooter=True, extraOptions=''):
 #-----------------------------------------------------------------------------
 # HTML for Data table with the specified headers and cols.
 # The length of these lists should be the same, col[i] being the
@@ -203,7 +191,7 @@ def htmlDatatableByCol(headers, cols, tableId, showFooter=True):
     if numCols <= 0 or numCols != len(cols):
         return ''
     numRows = len(cols[0])
-    r = htmlDataTableMagic(tableId)
+    r = _htmlDataTableMagic(tableId, extraOptions)
     r += '<p><table id="{0}" class="display fptable"  cellspacing="0" width="100%"  >'.format(tableId)
     hdrs = ''
     for h in headers:
@@ -220,12 +208,12 @@ def htmlDatatableByCol(headers, cols, tableId, showFooter=True):
     r += '</table>'
     return r
 
-def htmlDatatableByRow(headers, rows, tableId, showFooter=True):
+def htmlDatatableByRow(headers, rows, tableId, showFooter=True, extraOptions=''):
 # HTML for Data table with the specified headers and rows.
 # headers is list of column headers, rows a list of lists,
 # each sublist should be same length as headers.
 #
-    out = htmlDataTableMagic(tableId)
+    out = _htmlDataTableMagic(tableId, extraOptions)
     out += '<p><table id="{0}" class="display fptable"  cellspacing="0" width="100%"  >'.format(tableId)
     hdrs = ''
     for h in headers:
