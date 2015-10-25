@@ -849,6 +849,7 @@ def urlTrialDataBrowse(sess, trialId):
         ],
     '''
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
+    r += '<script type="text/javascript" language="javascript" src="%s"></script>' % url_for('static', filename='lib/jquery.doubleScroll.js')
     r += '''
     <script> $(document).ready(
     function() {
@@ -875,6 +876,9 @@ def urlTrialDataBrowse(sess, trialId):
                 ]
             });
         table.buttons().container().appendTo($('.col-sm-6:eq(0)', table.table().container()));
+        // Double scrollbar:
+        $('#fpTrialData').wrap("<div id='scrooll_div'></div>");
+        $('#scrooll_div').doubleScroll();
     });
     </script>''' % str(metas)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
