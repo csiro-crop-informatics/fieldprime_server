@@ -68,6 +68,7 @@ fpa/fp_web_admin/static/lib/jquery-ui.1.11.4.css -text
 fpa/fp_web_admin/static/lib/jquery-ui.1.11.4.min.js -text
 fpa/fp_web_admin/static/lib/jquery.dataTables.1.10.7.min.css -text
 fpa/fp_web_admin/static/lib/jquery.dataTables.1.10.7.min.js -text
+fpa/fp_web_admin/static/lib/jquery.doubleScroll.js -text
 fpa/fp_web_admin/static/newTrait.js -text
 fpa/fp_web_admin/stats.py -text
 fpa/fp_web_admin/templates/about.html -text

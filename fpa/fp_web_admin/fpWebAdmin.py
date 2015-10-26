@@ -201,7 +201,7 @@ def htmlTabScoreSets(sess, trialId):
     trl = dal.getTrial(sess.db(), trialId)
     scoreSets = trl.getScoreSets()
     if len(scoreSets) < 1:
-        htm =  "No trait score sets yet"
+        htm =  "<p>No trait score sets yet"
     else:
         # Make datatable of scoresets:
         hdrs = ["Trait", "Date Created", "Device Id", "fpId", "Score Data"]
@@ -224,7 +224,10 @@ def htmlTabScoreSets(sess, trialId):
 
         htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
     # Add button to upload scores:
+    htm += '<p>'
     htm += fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
+    #htm += fpUtil.bsRow(fpUtil.bsCol(
+    #        fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))))
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
@@ -811,6 +814,9 @@ def urlTrialDataWideTSV(sess, trialId):
 @app.route('/trial/<trialId>/data/browse', methods=['GET'])
 @dec_check_session()
 def urlTrialDataBrowse(sess, trialId):
+#---------------------------------------------------------------------------------------
+# Return page with datatable for the trial in wide form.
+#
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
@@ -818,36 +824,6 @@ def urlTrialDataBrowse(sess, trialId):
     showAttributes = request.args.get("attributes")
     (headers, rows, metas) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
     # Probably should return array with type code for each column rather than metas
-    extras = '''
-        dom: 'lBfrtip',
-        buttons: [
-            //'copyHtml5',
-            //{extend:'columnToggle', text:'foo', columns:function(ndx,data,node){ return ndx<=3}},
-            {extend:'csvHtml5', exportOptions: {columns: ':visible'}},
-            //{extend:'colvis', text:'metadata', columns:':gt(0)'},
-            {
-                extend:'colvisGroup',
-                /*action: function(){
-                //arguments[1].columns([1,2]).visible(false);
-                this.columns([1,2]).visible(false);},*/
-                action: function() {
-                   var hid;
-                   return function(){
-                       if (hid == null) {
-                           hid = [1,2];
-                           this.columns(hid).visible(false);
-                       } else {
-                           this.columns(hid).visible(true);
-                           hid = null;
-                       }
-                   }
-                }(),
-                text:'hide some',
-                //show:function(ndx,data,node){return ndx<=2},
-                //hide:function(ndx,data,node){return ndx>2}
-            }
-        ],
-    '''
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
     r += '<script type="text/javascript" language="javascript" src="%s"></script>' % url_for('static', filename='lib/jquery.doubleScroll.js')
     r += '''
