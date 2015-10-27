@@ -845,6 +845,7 @@ def urlTrialDataBrowse(sess, trialId):
                                    this.columns(hid).visible(true);
                                    hid = null;
                                }
+                               //$('#scrooll_div').doubleScroll();
                            }
                         }(),
                         text:'Metadata',
@@ -853,8 +854,8 @@ def urlTrialDataBrowse(sess, trialId):
             });
         table.buttons().container().appendTo($('.col-sm-6:eq(0)', table.table().container()));
         // Double scrollbar:
-        $('#fpTrialData').wrap("<div id='scrooll_div'></div>");
-        $('#scrooll_div').doubleScroll();
+        //$('#fpTrialData').wrap("<div id='scrooll_div'></div>");
+        //$('#scrooll_div').doubleScroll();
     });
     </script>''' % str(metas)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)

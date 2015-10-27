@@ -431,19 +431,12 @@ def upload_photo(username, trial, dbc, traitid, token):
     gpslong = request.args.get(DM_GPS_LONG, '')
     nodeId = request.args.get(DM_NODE_ID_CLIENT_VERSION, '')
     dayCreated = request.args.get(TI_DAYCREATED, '')
-    util.flog('upload_photo:node {0}, seq {1} samp {2}'.format(nodeId, seqNum, sampNum))
 
     file = request.files.get('uploadedfile')
-    util.flog('upload_photo: filename {0}'.format(file.filename))
+    util.flog('upload_photo:node {0}, seq {1} samp {2} filename {3}'.format(nodeId, seqNum, sampNum, file.filename))
     if file and allowed_file(file.filename):
-        util.flog('upload_photo: 1')
         sentFilename = secure_filename(file.filename)
-        # Old method, file name contains information, now not used, delete..
-        #select count(*) from trait t join traitInstance i on i.trait_id = t.id join datum d on d.traitInstance_id = i.id where t.datatype = 5;
-        #(nodeIdStr, fileExt) = os.path.splitext(sentFilename)  # only need nodeIdStr now as file ext must be .jpg
-        util.flog('upload_photo: 2')
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeId), token, seqNum, sampNum)
-        util.flog('upload_photo: 3')
         try:
             # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
             fullPath = app.config['PHOTO_UPLOAD_FOLDER'] + saveName
