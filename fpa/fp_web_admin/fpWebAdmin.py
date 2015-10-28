@@ -787,6 +787,7 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
                 r += "{0}{1}{0}{2}".format(SEP, lat, lon)
 
         # Notes, as list separated by pipe symbols:
+        # Also surrounded by quotes - this may be a problem, and are we doing this for text scores?
         if showNotes:
             r += SEP + '"'
             tuNotes = node.getNotes()

@@ -250,7 +250,7 @@ class TraitCategory(DeclarativeBase):
     # Return dictionary providing value to caption map for specified trait.
     # The trait should be categorical, if not empty map will be returned, I think.
         cats = dbc.query(TraitCategory).filter(TraitCategory.trait_id == traitId).all()
-        util.flog('num cats: {0}'.format(len(cats)))
+        #util.flog('num cats: {0}'.format(len(cats)))
         retMap = {}
         for cat in cats:
             retMap[cat.value] = cat.caption
