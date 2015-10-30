@@ -6,13 +6,14 @@
 # which will be used by wsgi to service requests.
 #
 
+FP_ROOT = '***REMOVED***/'
 
 #
 # Check for server down flag file. If the flag is there, we export an application
 # that provides only a 'down for maintenance' message.
 #
 import os.path
-flagdir = '***REMOVED***/fplog/'
+flagdir = FP_ROOT + 'fplog/'
 fpdown = os.path.isfile(flagdir + "/fpdown")
 if fpdown:
     import sys
@@ -27,10 +28,10 @@ if fpdown:
 else:
     if False:    # For testing at a different location to the main one (WSGIPythonPath) configured in apache.
         import sys
-        sys.path.insert(0, '***REMOVED***/fptest/fpa')
+        sys.path.insert(0, FP_ROOT + 'fptest/fpa')
     from fp_web_admin import app as application
     from fp_common import util
-    application.config['SESS_FILE_DIR'] =  '***REMOVED***/fpa/wsessions'
+    application.config['SESS_FILE_DIR'] =  FP_ROOT + 'fpa/wsessions'
     application.config['FP_FLAG_DIR'] =  flagdir
 
     # Setup logging:
