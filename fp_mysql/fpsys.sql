@@ -4,21 +4,14 @@
 -- We could add logging tables in here perhaps.
 -- -----------------------------------------------------------------------------------------------------
 
+create database fpsys;
+use fpsys;
 
 create table user(
   id       INT PRIMARY KEY AUTO_INCREMENT,
   login	   VARCHAR(63) not null,
   name     VARCHAR(255),
   UNIQUE (login)
-);
-
-create table userProject(
-  user_id      int,
-  project_id   int,
-  permissions  int default 0,
-  unique (user_id, project_id),
-  foreign key(user_id) references user(id) on delete cascade
-  foreign key(project_id) reference project(id) on delete cascade
 );
 
 create table project(
@@ -28,5 +21,12 @@ create table project(
   unique (name)
 );
 
-
+create table userProject(
+  user_id      int,
+  project_id   int,
+  permissions  int default 0,
+  unique (user_id, project_id),
+  foreign key(user_id) references user(id) on delete cascade,
+  foreign key(project_id) references project(id) on delete cascade
+);
 
