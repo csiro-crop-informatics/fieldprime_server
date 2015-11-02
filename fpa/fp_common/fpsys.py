@@ -27,7 +27,7 @@ def _getProjectIdFromName(projName):
         con = _getDbConnection()
         qry = "select id from project where name = %s"
         cur = con.cursor()
-        cur.execute(qry, (projName))
+        cur.execute(qry, (projName,))
         resRow = cur.fetchone()
         return None if resRow is None else resRow[0]
     except mdb.Error, e:
@@ -41,7 +41,7 @@ def _getUserIdFromIdent(ident):
     try:
         con = _getDbConnection()
         cur = con.cursor()
-        cur.execute("select id from user where login = %s", (ident))
+        cur.execute("select id from user where login = %s", (ident,))
         resRow = cur.fetchone()
         return None if resRow is None else resRow[0]
     except mdb.Error, e:
@@ -87,7 +87,7 @@ def getProjectUsers(project):
         con = _getDbConnection()
         qry = 'select login, name, permissions from user join userProject on id = user_id where project_id = %s'
         cur = con.cursor()
-        cur.execute(qry, (projId))
+        cur.execute(qry, (projId,))
         users = {}
         for row in cur.fetchall():
             users[row[0]] = row[1], row[2]
@@ -131,7 +131,7 @@ def getProjectDBname(projectName):
         con = _getDbConnection()
         qry = "select dbname from project where name = %s"
         cur = con.cursor()
-        cur.execute(qry, (projectName))
+        cur.execute(qry, (projectName,))
         foo = cur.fetchone()
         return None if foo is None else foo[0]
     except mdb.Error, e:
