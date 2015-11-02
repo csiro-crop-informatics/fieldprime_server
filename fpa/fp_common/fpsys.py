@@ -113,7 +113,7 @@ def getProjects(username):
             select p.name, up.permissions, p.dbname from user u join userProject up
             on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id"""
         cur = con.cursor()
-        cur.execute(qry, (username))
+        cur.execute(qry, (username,))
         userProjs = []
         for row in cur.fetchall():
             np = UserProject(row[0], row[2], username, row[1])
