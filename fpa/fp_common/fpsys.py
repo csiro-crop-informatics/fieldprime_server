@@ -120,7 +120,7 @@ def getProjects(username):
             userProjs.append(np)
         return (userProjs, None)
     except mdb.Error, e:
-        return (None, 'Failed system login')
+        return (None, 'Failed system login:' + str(e))
 
 
 def getProjectDBname(projectName):

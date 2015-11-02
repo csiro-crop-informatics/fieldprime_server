@@ -1651,7 +1651,7 @@ def urlMain():
                 loginType = LOGIN_TYPE_***REMOVED***
                 projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
-                    error = 'Failed system login'
+                    error = errMsg
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
                 else:
