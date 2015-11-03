@@ -3,6 +3,10 @@
  * For any styling that needs to go after the bootstrap css has loaded.
  */
 
+/*
+ * This is to make the buttons on the datatables not be right up against the
+ * control to its left.
+ */
 .dt-buttons {
     margin-left: 30px;
 }

@@ -828,7 +828,7 @@ class Trial(DeclarativeBase):
                 return trt
         return None
 
-    def getDataColumns(self, tiList):
+    def getDataColumns(self, tiList, quoteStrings=True):
     #-----------------------------------------------------------------------
     # SQL query - this is a bit complicated:
     # Returns a list of lists of tuples. Each element in the top list is for one of the ti in tiList (in order).
@@ -845,6 +845,7 @@ class Trial(DeclarativeBase):
     # NB we could pass in which metadata parameters are required, rather than getting them all.
     # Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
     #
+        quoteFunc = util.quote if quoteStrings else lambda x: x
         eng = _eng(self)
         qry = """
         select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
@@ -856,10 +857,11 @@ class Trial(DeclarativeBase):
         """
         outList = []
         for ti in tiList:
+            datatype = ti.trait.datatype
             # If trait type is categorical then the values will be numbers which should be
             # converted into names (via the traitCategory table), retrieve the map for the
             # trait first:
-            if ti.trait.datatype == T_CATEGORICAL:
+            if datatype == T_CATEGORICAL:
                 catMap = TraitCategory.getCategoricalTraitValue2NameMap(_dbc(self), ti.trait_id)
             else:
                 catMap = None
@@ -873,8 +875,10 @@ class Trial(DeclarativeBase):
                 else:
                     val = row[0]
                     if val is None: val = "NA"
-                    elif catMap is not None:   # map value to name for categorical trait
-                        val = catMap[int(val)]
+                    elif datatype == T_CATEGORICAL:   # map value to name for categorical trait
+                        val = quoteFunc(catMap[int(val)])
+                    elif quoteStrings and (datatype == T_STRING or datatype == T_PHOTO):
+                        val = quoteFunc(val)
                     valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
             outList.append(valList)
         return outList

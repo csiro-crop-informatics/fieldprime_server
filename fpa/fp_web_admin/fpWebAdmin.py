@@ -631,7 +631,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     trl = dal.getTrial(sess.db(), trialId)
-    valCols = trl.getDataColumns(tiList)                   # get the data for the instances
+    valCols = trl.getDataColumns(tiList, quoteStrings=False)                   # get the data for the instances
 
     # Headers:
     hdrs = []
@@ -688,14 +688,15 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
 
         # Notes, as list separated by pipe symbols:
         if showNotes:
-            notes = '"'
+            notes = ''
+            #notes = '"'
             tuNotes = node.getNotes()
             for note in tuNotes:
-                notes += '{0}|'.format(note.note)
-            notes += '"'
+                if notes: notes += '|'
+                notes += note.note
+            #notes += '"'
             safeAppend(nrow, notes)
     return hdrs, rows, metas
-
 
 def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttributes):
 #---------------------------------------------------------------------------------------
@@ -788,12 +789,15 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
 
         # Notes, as list separated by pipe symbols:
         # Also surrounded by quotes - this may be a problem, and are we doing this for text scores?
+        # MFK - I think we do need quotes, but then presumable need to escape quotes within
         if showNotes:
-            r += SEP + '"'
-            tuNotes = node.getNotes()
-            for note in tuNotes:
-                r += '{0}|'.format(note.note)
-            r += '"'
+#             r += SEP + '"'
+#             tuNotes = node.getNotes()
+#             for note in tuNotes:
+#                 r += '{0}|'.format(note.note)
+#             r += '"'
+
+            r += SEP + util.quote('|'.join(node.getNotes()))
 
         # End the line:
         r += ROWEND

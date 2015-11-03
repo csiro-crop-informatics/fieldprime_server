@@ -65,6 +65,13 @@ def escapeHtml(html):
 # Make html safe, hopefully, currently just using cgi.escape.
     return None if html is None else cgi.escape(html)
 
+def quote(col):
+#-----------------------------------------------------------------------
+# uses double-quoting style to escape existing quotes
+    if col is None:
+        return ''
+    return '"{}"'.format(str(col).replace('"', '""'))
+
 
 ###  Logging: ##################################################################
 # We want a logging system that can be turned on or off by use of a flag file:
