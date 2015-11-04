@@ -130,8 +130,7 @@ def _newTraitCategorical(sess, request, trt):
         except Exception, e:
             util.flog("Exception in _newTraitCategorical: {0}".format(str(e)))
 
-
-        util.flog("A key category: cap:{0} value:{1}".format(caption, value))
+        #util.flog("A key category: cap:{0} value:{1}".format(caption, value))
 
         # MFK here we should determine if this is an existing category - in which we may need
         # to update fields or a new one. Trait categories are identified by the value (within
@@ -146,7 +145,6 @@ def _newTraitCategorical(sess, request, trt):
             tcat.trait_id = trt.id
             tcat.imageURL = imageURL
             sess.db().add(tcat)
-
         else:
             util.flog("Existing category: cap:{0} value:{1}".format(caption, value))
             # This is an existing category, update caption, or image URL if necessary:
@@ -217,25 +215,15 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             # Retrieve the categories from the database and make of it a javascript literal:
             catRecs = trt.categories
             catObs = ''
-            first = True
             for cat in catRecs:
-                if first:
-                    first = False
-                else:
-                    catObs += ','
+                if catObs: catObs += ','
                 catObs += '{{caption:"{0}", imageURL:"{1}", value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
             jsRecDec = '[{0}]'.format(catObs)
-            print jsRecDec
-
-            div = '<div id="traitDiv"></div>\n'
-            scrpt1 = """<script src="{0}"></script>\n""".format(url_for('static', filename='newTrait.js'))
-            scrpt2 = """<script type="text/javascript">
-            $(document).ready ( function(){{
-                if (typeof(SetTraitFormElements) === "function") {{
-                   SetTraitFormElements('traitDiv', '3', {0});
-                }} else alert('no SetTraitFormElements');
-            }});</script>""".format(jsRecDec)
-            formh += div + scrpt1 + scrpt2
+            formh += '<div id="traitDiv"></div>\n'
+            formh += '<script src="{0}"></script>\n'.format(url_for('static', filename='newTrait.js'))
+            formh += """<script type="text/javascript">
+                jQuery(function(){{SetTraitFormElements('traitDiv', '3', {0});}});
+            </script>""".format(jsRecDec)
         elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
@@ -336,7 +324,6 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
                 }
                 </script>
             """
-
             formh += minMaxBounds
             formh += '<p>Integer traits can be validated by comparison with an attribute:'
             formh += '<br>Trait value should be ' + valOp + attListHtml

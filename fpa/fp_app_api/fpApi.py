@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
 app = Flask(__name__)
 try:
-    app.config.from_object('fp_app_api.fpAppConfig')
+    app.config.from_object('fp_common.config')
 except ImportError:
     pass
 
