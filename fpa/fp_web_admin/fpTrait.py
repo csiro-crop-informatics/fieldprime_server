@@ -179,7 +179,6 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         formh = fpUtil.htmlLabelValue('Trait', trt.caption) + '<br>'
         formh += fpUtil.htmlLabelValue('Type', TRAIT_TYPE_NAMES[trt.datatype])
         formh += fpUtil.htmlHorizontalRule()
-
         formh += fpUtil.htmlLabelValue('Description',
             '<input type="text" size=96 name="description" value="{0}">'.format(trt.description))
 
@@ -334,9 +333,9 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             patText = "value='{0}'".format(tts.pattern) if tts is not None else ""
             formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
 
-        formh += ('\n<p><input type="button" style="color:red" value="Cancel"' +
+        formh += ('\n<p><input type="button" value="Cancel"' +
             ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
-        formh += '\n<input type="submit" style="color:red" value="Submit">'
+        formh += '\n<input type="submit" value="Submit">'
         return dp.dataPage(sess,
                     content=preform + fpUtil.htmlForm(formh, post=True, onsubmit=onsubmit, multipart=True),
                     title='Trait Validation', trialId=trialId)
