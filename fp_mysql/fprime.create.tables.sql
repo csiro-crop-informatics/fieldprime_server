@@ -72,13 +72,14 @@ create table token(
 -- add a type field (eg nodeCreation or scoreSets) and the node_id field would have to become
 -- something generic, like serverId. The type field would identify the table that serverId
 -- was for.
--- MFK node_id should be fk and token_id should probably be on delete cascade
+-- NB - node_id is foreign key, but if this were a generic id, that might not be possible.
 create table tokenNode(
   token_id   INT NOT NULL,
   localId    INT NOT NULL,
   node_id    INT NOT NULL,
   PRIMARY KEY(token_id, localId),
-  FOREIGN KEY(token_id) REFERENCES token(id)
+  FOREIGN KEY(token_id) REFERENCES token(id) ON DELETE CASCADE,
+  FOREIGN KEY(node_id) REFERENCES node(id) ON DELETE CASCADE
 );
 
 --
