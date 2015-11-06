@@ -130,11 +130,8 @@ def _newTraitCategorical(sess, request, trt):
         except Exception, e:
             util.flog("Exception in _newTraitCategorical: {0}".format(str(e)))
 
-        #util.flog("A key category: cap:{0} value:{1}".format(caption, value))
-
-        # MFK here we should determine if this is an existing category - in which we may need
-        # to update fields or a new one. Trait categories are identified by the value (within
-        # a trait).
+        # Determine if this is a new category or an existing one.
+        # Trait categories are identified by the value (within a trait).
         tcat = trt.getCategory(value)
         newCat = tcat is None
         if newCat:
@@ -150,10 +147,13 @@ def _newTraitCategorical(sess, request, trt):
             # This is an existing category, update caption, or image URL if necessary:
             if tcat.caption != caption:
                 tcat.caption = caption
-            tcat.imageURL = imageURL
-
-        # Note no commit - we assume calling function will do it.
-
+            # (Re)Set the image if necessary. There is a difficulty here.
+            # NB If an image was already set, and user doesn't change it, it will come back empty.
+            # And we don't want to set it to nothing in this case. The problem remains, however, as
+            # to how can the user explicitly set it to no image?
+            if imageURL is not None:
+                tcat.imageURL = imageURL
+        # NB: no commit - we assume calling function will do it.
 
 def traitDetailsPageHandler(sess, request, trialId, traitId):
 #===========================================================================

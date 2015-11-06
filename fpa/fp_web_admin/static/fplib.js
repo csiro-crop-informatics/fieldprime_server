@@ -179,9 +179,8 @@ fplib.drawScatterPlot = function(xdata, xname, ydata, yname, divId, divWidth, di
       .on("mouseover", function(d) {
           tooltip.transition()
                .duration(200)
-               .style("opacity", .9);
-          tooltip.html("NodeId:" + nodeIdFromPoint(d) + "<br/> (" + xValue(d)
-            + ", " + yValue(d) + ")")
+               .style("opacity", 0.9);
+          tooltip.html("NodeId:" + nodeIdFromPoint(d) + "<br/> (" + xValue(d) + ", " + yValue(d) + ")")
                .style("left", (d3.event.pageX + 5) + "px")
                .style("top", (d3.event.pageY - 28) + "px");
       })
@@ -397,7 +396,7 @@ fplib.initTrialTabs = function() {
 fplib.gotoLocationAndClearLastTab = function(newLocation) {
     sessionStorage.removeItem(fplib.STORAGE_TAG);
     if (newLocation !== 0)
-        location=newLocation;
+        window.location=newLocation;
 };
 
 
@@ -602,17 +601,16 @@ fplib.userSaveChanges = function (destUrl) {
     };
 
     for (var i = 1, row; row = table.rows[i]; i++) {
+       var loginId;
        if (row.hasAttribute("data-addedUser")) {
-           var loginId = row.cells[0].children[0].value;
+           loginId = row.cells[0].children[0].value;
            if (loginId.length > 0 && loginId.length < 16) {
-               var admin = row.cells[2].getElementsByTagName('input')[0].checked;
-               newUsers[loginId] = admin;
+               newUsers[loginId] = row.cells[2].getElementsByTagName('input')[0].checked; // admin field
            }
        } else if (row.hasAttribute("data-dirty")) {
            var login = row.cells[0];
-           var loginId = login.innerHTML;
-           var admin = row.cells[2].getElementsByTagName('input')[0].checked;
-           updateUsers[loginId] = admin;
+           loginId = login.innerHTML;
+           updateUsers[loginId] = row.cells[2].getElementsByTagName('input')[0].checked; // admin field
        }
     }
 

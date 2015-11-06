@@ -69,9 +69,18 @@ function CategoryTraitFormElement(newDiv, presets) {
     //MFK - why do the data rows end up in the table header?
     var hrow = tab.createTHead().insertRow(-1);
     hrow.insertCell(-1).innerHTML = "Caption";
-    hrow.insertCell(-1).innerHTML = "Value";
+    //hrow.insertCell(-1).innerHTML = "Value";
+    hrow.insertCell(-1).appendChild(document.createTextNode("Value"));
     hrow.insertCell(-1).appendChild(document.createTextNode("Image File"));
-    hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="addRow()">';
+    if (true) {
+        var btn = document.createElement("BUTTON");
+        btn.name = "button";
+        btn.innerHTML = "+";
+        btn.onclick = addRow;
+        hrow.insertCell(-1).appendChild(btn);
+    } else {
+        hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="addRow()">';
+    }
 
     // Table contents:
     var drow;

@@ -358,7 +358,12 @@ table.fptable{
 }
 
 
-/*** user input forms: ******************************************/
+/*** user input forms: *****************************************
+ *
+ * The idea here (I guess) is to have a standard format for user input
+ * forms. ATTOW only used in 3 places, if you see the usage, a table
+ * needs to be built.
+ */
 
 .userInputForm button{
     clear:both;
