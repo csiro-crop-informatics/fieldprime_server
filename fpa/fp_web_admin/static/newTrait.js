@@ -1,8 +1,24 @@
+ /*
+  * fpTrait object - functions for make trait page.
+  *
+  *
+  */
+
+/*global $:false,alert:false,d3:false*/
+
+
+var fpTrait = {};
+
+
 /*
- * addRow()
+ * _addRow()
  * Add row to catTable.
  */
-function addRow(){
+fpTrait._addRow = function(){
+    var x = $(this);
+    var pob = x.closest("#fpTraitSpecificFields");
+    var count = pob[0].catCount;
+    alert(count);
     var currval = document.getElementById('catCount').value;
     var root = document.getElementById('catTable');
     var row=root.insertRow(-1);
@@ -19,40 +35,37 @@ function addRow(){
     var btn=document.createElement("BUTTON");
     var t=document.createTextNode("-");
     btn.appendChild(t);
-    btn.setAttribute('onclick', "removeRow(this)");
+    btn.setAttribute('onclick', "fpTrait.removeRow(this)");
     row.appendChild(btn);
 
     document.getElementById('catCount').value = ++currval;
-}
+};
 
 /*
  * removeRow()
  * Remove row from catTable.
  */
-function removeRow(btn) {
+fpTrait.removeRow = function(btn) {
     btn.parentNode.parentNode.removeChild(btn.parentNode);
     var currval = document.getElementById('catCount').value;
     document.getElementById('catCount').value = --currval;
-}
+};
 
-
-
-function createFieldset(legendText) {
+fpTrait.createFieldset = function(legendText) {
     var fieldset = document.createElement('fieldset');
     var legend = fieldset.appendChild(document.createElement("legend"));
     legend.appendChild( document.createTextNode(legendText));
     return fieldset;
-}
-
+};
 
 /*
- * CategoryTraitFormElement()
+ * categoryTraitFormElement()
  * Adds to newDiv a fieldset containing table of category trait elements.
  * presets are existing values to put in the table.
  * MFK: this version of the function an attempt to use only the dom, no html.
  */
-function CategoryTraitFormElement(newDiv, presets) {
-    var fset = newDiv.appendChild(createFieldset('Categories'));
+fpTrait.categoryTraitFormElement = function(newDiv, presets) {
+    var fset = newDiv.appendChild(fpTrait.createFieldset('Categories'));
     var tab = fset.appendChild(document.createElement('table'));
     tab.style.width = "766";
     tab.style.padding = "0";
@@ -60,14 +73,17 @@ function CategoryTraitFormElement(newDiv, presets) {
     tab.style.border="0";
 
     // Add hidden field that records count:
-    var hiddenCount = fset.appendChild(document.createElement("input"));
-    hiddenCount.type = "hidden";
-    hiddenCount.id = "catCount";
-    hiddenCount.value = (presets !== undefined) ? presets.length : 1;  // hidden row counter, note may be gaps in the count
+    newDiv.catCount = (presets !== undefined) ? presets.length : 1;
+
+//     var hiddenCount = fset.appendChild(document.createElement("input"));
+//     hiddenCount.type = "hidden";
+//     hiddenCount.id = "catCount";
+//     hiddenCount.value = (presets !== undefined) ? presets.length : 1;  // hidden row counter, note may be gaps in the count
 
     // Table header:
     //MFK - why do the data rows end up in the table header?
     var hrow = tab.createTHead().insertRow(-1);
+    hrow.insertCell(-1).innerHTML = "Caption";   // use document.createTextNode("Caption");
     hrow.insertCell(-1).innerHTML = "Caption";
     //hrow.insertCell(-1).innerHTML = "Value";
     hrow.insertCell(-1).appendChild(document.createTextNode("Value"));
@@ -76,10 +92,10 @@ function CategoryTraitFormElement(newDiv, presets) {
         var btn = document.createElement("BUTTON");
         btn.name = "button";
         btn.innerHTML = "+";
-        btn.onclick = addRow;
+        btn.onclick = fpTrait._addRow;
         hrow.insertCell(-1).appendChild(btn);
     } else {
-        hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="addRow()">';
+        hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="fpTrait._addRow()">';
     }
 
     // Table contents:
@@ -182,19 +198,19 @@ function CategoryTraitFormElement(newDiv, presets) {
         inp.name = inp.id;
         drow.insertCell(-1).appendChild(inp);
     }
-}
+};
 
 
 /*
- * SetTraitFormElements()
+ * setTraitFormElements()
  * Called on select of trait type on newTrait form.
  * Modifies the form to reflect the selected trait type.
  * Creates and adds a new div with fields specific to traitType.
  * Param divName should be the id of the element to which
  * the new fields should be added.
  */
-function SetTraitFormElements(divName, traitType, curVals){
-    var newDivId = 'SpecificFields';
+fpTrait.setTraitFormElements = function(divName, traitType, curVals){
+    var newDivId = 'fpTraitSpecificFields';
     var parentDiv = document.getElementById(divName);
 
     // Remove previously created elements, if present:
@@ -228,17 +244,17 @@ function SetTraitFormElements(divName, traitType, curVals){
         break;
 */
     case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
-        CategoryTraitFormElement(newdiv, curVals);
         parentDiv.appendChild(newdiv);
+        fpTrait.categoryTraitFormElement(newdiv, curVals);
         break;
     }
-}
+};
 
 /*
- * ValidateTraitForm()
+ * validateTraitForm()
  * validation function for new trait form.
  */
-function ValidateTraitForm()
+fpTrait.validateTraitForm = function()
 {
     var cap;
     try {
@@ -260,7 +276,7 @@ function ValidateTraitForm()
     switch (selVal) {
     case "3":
         var catCount = document.getElementById("catCount").value;
-        for (var i=0; i < parseInt(catCount); i++) {
+        for (var i=0; i < parseInt(catCount, 10); i++) {
             var catCap = document.getElementById("caption_" + i).value;
             if (catCap !== null && catCap === "") {
                 alert("Please provide a caption for row " + i);
@@ -273,39 +289,4 @@ function ValidateTraitForm()
             }
         }
     }
-}
-
-
-/* Not used ****************************************************************************
-var counter = 1;
-var limit = 3;
-
-function addInput(divName){
-     if (counter == limit)  {
-          alert("You have reached the limit of adding " + counter + " inputs");
-     }
-     else {
-          var newdiv = document.createElement('div');
-          newdiv.innerHTML = "Entry " + (counter + 1) + " <br><input type='text' name='myInputs[]'>";
-          document.getElementById(divName).appendChild(newdiv);
-          counter++;
-     }
-}
-
-
-function removeCat(r){
-    var currval = document.getElementById('catCount').value;
-    var root = r.parentNode;//the root
-    var allRows = root.getElementsByTagName('tr');//the rows' collection
-    var cRow = allRows[1].cloneNode(true)//the clone of the 1st row
-    var cInp = cRow.getElementsByTagName('input');//the inputs' collection of the 1st row
-    for(var i=0;i<cInp.length;i++){//changes the inputs' names (indexes the names)
-        var name = cInp[i].getAttribute('name')
-        var nameStub = name.substring(0, name.length - 1)
-        cInp[i].setAttribute('name', nameStub + (allRows.length+1))
-    }
-    root.appendChild(cRow);//appends the cloned row as a new row
-    document.getElementById('catCount').value = ++currval;
-}
-
-*/
+};

@@ -221,7 +221,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             formh += '<div id="traitDiv"></div>\n'
             formh += '<script src="{0}"></script>\n'.format(url_for('static', filename='newTrait.js'))
             formh += """<script type="text/javascript">
-                jQuery(function(){{SetTraitFormElements('traitDiv', '3', {0});}});
+                jQuery(function(){{fpTrait.setTraitFormElements('traitDiv', '3', {0});}});
             </script>""".format(jsRecDec)
         elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL:
             #

@@ -135,7 +135,7 @@ def _htmlDataTableMagic(tableId, extraOptions=''):
 
     r = """
     <script>
-    $(document).ready(
+    jQuery(
         function() {
             var elId = "#%s"
 
