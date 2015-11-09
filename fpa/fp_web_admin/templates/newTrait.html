@@ -1,10 +1,11 @@
 {% extends "dataPage.html" %}
 
 {% block dataContent %}
+{% set divName = 'traitTypeSpecificsDiv' %}
 <script src="{{ url_for('static', filename='newTrait.js') }}"></script>
 <div id="attributeData" data-attributes="{{attributesList}}">
   <form enctype="multipart/form-data"
-        onsubmit="return fpTrait.validateTraitForm()"
+        onsubmit="return fpTrait.validateNewTraitForm('{{divName}}')"
         method="post">
     <fieldset>
       <legend><h3>Create New {% if trialId == -1 %}System{% else %}Trial{% endif %} Trait</h3></legend>
@@ -32,7 +33,7 @@
             </td>
             <td>
               <select id='traitType' name='type'
-                                      onchange="fpTrait.setTraitFormElements('traitDiv',this.options[selectedIndex].value)">
+                                      onchange="fpTrait.setTraitFormElements('{{divName}}',this.options[selectedIndex].value)">
                     <option value="-1" name="none">..Select a Trait Type..</option>
                     {% for typ, value in traitTypes.iteritems() %}
                     <option value="{{value|e}}" name={{typ|e}}>{{typ|e}}</option>
@@ -41,8 +42,8 @@
             </td>
           </tr>
         </table>
-        <div id="traitDiv">
-           <!-- type specific field added here -->
+        <div id="{{divName}}">
+           <!-- type specific fields added here -->
         </div>
         <p><input type="submit" value="Create Trait">
       </div>

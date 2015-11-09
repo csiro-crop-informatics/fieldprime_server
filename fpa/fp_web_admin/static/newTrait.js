@@ -6,51 +6,15 @@
 
 /*global $:false,alert:false,d3:false*/
 
-
 var fpTrait = {};
 
-
 /*
- * _addRow()
- * Add row to catTable.
+ * These two should prob be in less specific library..
  */
-fpTrait._addRow = function(){
-    var x = $(this);
-    var pob = x.closest("#fpTraitSpecificFields");
-    var count = pob[0].catCount;
-    alert(count);
-    var currval = document.getElementById('catCount').value;
-    var root = document.getElementById('catTable');
-    var row=root.insertRow(-1);
-    var names = ['caption_', 'value_', 'imgfile_'];
-    for (var i = 0; i < names.length; i++) {
-        var cap = document.createElement("input");
-        cap.type = (i == 2) ? "file" : "text";
-        cap.id = names[i] + currval;
-        cap.name = cap.id;
-        var cell=row.insertCell(-1);
-        cell.appendChild(cap);
-    }
-    // Add delete button, could put it in cell, but doesn't seem to be necessary
-    var btn=document.createElement("BUTTON");
-    var t=document.createTextNode("-");
-    btn.appendChild(t);
-    btn.setAttribute('onclick', "fpTrait.removeRow(this)");
-    row.appendChild(btn);
-
-    document.getElementById('catCount').value = ++currval;
+fpTrait.isValidDecimal = function(inputtxt) {
+    var decPat =  /^[+-]?[0-9]+(?:\.[0-9]+)?$/g;
+    return inputtxt.match(decPat);
 };
-
-/*
- * removeRow()
- * Remove row from catTable.
- */
-fpTrait.removeRow = function(btn) {
-    btn.parentNode.parentNode.removeChild(btn.parentNode);
-    var currval = document.getElementById('catCount').value;
-    document.getElementById('catCount').value = --currval;
-};
-
 fpTrait.createFieldset = function(legendText) {
     var fieldset = document.createElement('fieldset');
     var legend = fieldset.appendChild(document.createElement("legend"));
@@ -58,11 +22,42 @@ fpTrait.createFieldset = function(legendText) {
     return fieldset;
 };
 
+
+/*
+ * _addRow()
+ * Add row to catTable.
+ */
+fpTrait._addRow = function(){
+    var rootDiv = this.topDiv;
+    var row=rootDiv.catTable.insertRow(-1);
+
+    // Add caption, value, and imageFile fields:
+    var names = ['caption_', 'value_', 'imgfile_'];
+    for (var i = 0; i < names.length; i++) {
+        var cap = document.createElement("input");
+        cap.type = (i == 2) ? "file" : "text";
+        cap.id = names[i] + rootDiv.catCount;
+        cap.name = cap.id;
+        row.insertCell(-1).appendChild(cap);
+    }
+
+    // Add delete button, could put it in cell, but doesn't seem to be necessary
+    var btn=document.createElement("BUTTON");
+    btn.appendChild(document.createTextNode("-"));
+    btn.onclick = function() {
+        btn.parentNode.parentNode.removeChild(btn.parentNode);
+        --rootDiv.catCount;
+    };
+    row.appendChild(btn);
+
+    ++rootDiv.catCount;
+    return false;  // need this else browser leaves the page
+};
+
 /*
  * categoryTraitFormElement()
  * Adds to newDiv a fieldset containing table of category trait elements.
  * presets are existing values to put in the table.
- * MFK: this version of the function an attempt to use only the dom, no html.
  */
 fpTrait.categoryTraitFormElement = function(newDiv, presets) {
     var fset = newDiv.appendChild(fpTrait.createFieldset('Categories'));
@@ -72,27 +67,21 @@ fpTrait.categoryTraitFormElement = function(newDiv, presets) {
     tab.id = "catTable";
     tab.style.border="0";
 
-    // Add hidden field that records count:
+    // Store the count and the table in the div, for access by other functions:
     newDiv.catCount = (presets !== undefined) ? presets.length : 1;
-
-//     var hiddenCount = fset.appendChild(document.createElement("input"));
-//     hiddenCount.type = "hidden";
-//     hiddenCount.id = "catCount";
-//     hiddenCount.value = (presets !== undefined) ? presets.length : 1;  // hidden row counter, note may be gaps in the count
+    newDiv.catTable = tab;
 
     // Table header:
-    //MFK - why do the data rows end up in the table header?
     var hrow = tab.createTHead().insertRow(-1);
     hrow.insertCell(-1).innerHTML = "Caption";   // use document.createTextNode("Caption");
-    hrow.insertCell(-1).innerHTML = "Caption";
-    //hrow.insertCell(-1).innerHTML = "Value";
-    hrow.insertCell(-1).appendChild(document.createTextNode("Value"));
+    hrow.insertCell(-1).innerHTML = "Value";
     hrow.insertCell(-1).appendChild(document.createTextNode("Image File"));
     if (true) {
         var btn = document.createElement("BUTTON");
         btn.name = "button";
         btn.innerHTML = "+";
         btn.onclick = fpTrait._addRow;
+        btn.topDiv = newDiv;
         hrow.insertCell(-1).appendChild(btn);
     } else {
         hrow.insertCell(-1).innerHTML = '<input name="button" type="button" value="+" onclick="fpTrait._addRow()">';
@@ -200,7 +189,6 @@ fpTrait.categoryTraitFormElement = function(newDiv, presets) {
     }
 };
 
-
 /*
  * setTraitFormElements()
  * Called on select of trait type on newTrait form.
@@ -210,51 +198,30 @@ fpTrait.categoryTraitFormElement = function(newDiv, presets) {
  * the new fields should be added.
  */
 fpTrait.setTraitFormElements = function(divName, traitType, curVals){
-    var newDivId = 'fpTraitSpecificFields';
-    var parentDiv = document.getElementById(divName);
-
-    // Remove previously created elements, if present:
-    var prevAdded = document.getElementById(newDivId);
-    if (prevAdded !== null) parentDiv.removeChild(prevAdded);
-
-    // Create new element with id:
-    var newdiv = document.createElement('div');
-    newdiv.id = newDivId;
+    var rootDiv = document.getElementById(divName);
+    rootDiv.innerHTML = ''; // Remove previously created elements, if present:
     switch(traitType) {
     case "2": // string
-        break;
     case "4": // date
-        break;
     case "0": // integer
     case "1": // decimal
+        /*
+         * NB when called from new trait form, there is no type specific fields for these
+         * types - since it may be a system trait. We should perhaps detect this..
+         */
         break;
-/*
-        // type specific stuff here incomplete, should be the same as the Validation button in the traits table
-        // Min and Max:
-        html = "<p>Minimum: <input type='text' name='min'><p>Maximum: <input type='text' name='max'><br>";
-
-        // Validation:
-        html += '<p>Validation, score should be:';
-        html += '<select name="validationOp">';
-        html += '<option value="0">Greater Than</option>';
-        html += '<option value="0">Less Than</option>';
-        html += '</select>';
-        newdiv.innerHTML = html;
-        parentDiv.appendChild(newdiv);
-        break;
-*/
     case "3": // categorical, we need to add elements for adding categories: <value>,<caption>,[<image>]
-        parentDiv.appendChild(newdiv);
-        fpTrait.categoryTraitFormElement(newdiv, curVals);
+        fpTrait.categoryTraitFormElement(rootDiv, curVals);
         break;
     }
 };
 
 /*
- * validateTraitForm()
- * validation function for new trait form.
+ * validateNewTraitForm()
+ * Checks the form fields that are only present on the new trait form,
+ * and then calls func to check field on new and existing trait forms.
  */
-fpTrait.validateTraitForm = function()
+fpTrait.validateNewTraitForm = function(divName)
 {
     var cap;
     try {
@@ -272,11 +239,31 @@ fpTrait.validateTraitForm = function()
         window.alert("Please select a trait type");
         return false;
     }
-    // If category trait, check categories:
-    switch (selVal) {
+
+    return fpTrait.validateTraitTypeSpecific(divName, selVal);
+};
+
+/*
+ * validateTraitTypeSpecific()
+ * validation function for type specific fields of trait form.
+ */
+fpTrait.validateTraitTypeSpecific = function(divName, traitType)
+{
+    switch (traitType) {
+    case "2": // string
+    case "4": // date
+    case "0": // integer
+    case "1": // decimal
+        /*
+         * NB there may or may not be type specific fields, when we are
+         * called from the new trait form there will be nothing (attow).
+         * So we must be careful to allow this. See comment in setTraitFormElements.
+         */
+        break;
     case "3":
-        var catCount = document.getElementById("catCount").value;
-        for (var i=0; i < parseInt(catCount, 10); i++) {
+        // If category trait, check categories:
+        var rootDiv = document.getElementById(divName);
+        for (var i=0; i < parseInt(rootDiv.catCount, 10); i++) {
             var catCap = document.getElementById("caption_" + i).value;
             if (catCap !== null && catCap === "") {
                 alert("Please provide a caption for row " + i);
@@ -288,5 +275,7 @@ fpTrait.validateTraitForm = function()
                 return false;
             }
         }
+        break;
     }
+    return true;
 };

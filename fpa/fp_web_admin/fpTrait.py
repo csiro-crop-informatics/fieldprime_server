@@ -211,23 +211,27 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             ## Setup javascript to manage the display/modification of the categories.
             #####
 
-            # Retrieve the categories from the database and make of it a javascript literal:
+            # Retrieve the categories from the database and make of them a javascript literal:
             catRecs = trt.categories
             catObs = ''
             for cat in catRecs:
                 if catObs: catObs += ','
                 catObs += '{{caption:"{0}", imageURL:"{1}", value:{2}}}'.format(cat.caption, cat.imageURL, cat.value)
             jsRecDec = '[{0}]'.format(catObs)
-            formh += '<div id="traitDiv"></div>\n'
+            formh += '<div id="traitTypeSpecificsDiv"></div>\n'
             formh += '<script src="{0}"></script>\n'.format(url_for('static', filename='newTrait.js'))
             formh += """<script type="text/javascript">
-                jQuery(function(){{fpTrait.setTraitFormElements('traitDiv', '3', {0});}});
+                jQuery(function(){{fpTrait.setTraitFormElements('traitTypeSpecificsDiv', '3', {0});}});
             </script>""".format(jsRecDec)
+
+            onsubmit = "return fpTrait.validateTraitTypeSpecific('traitTypeSpecificsDiv', '{0}')".format(trt.datatype)
         elif trt.datatype == T_INTEGER or trt.datatype == T_DECIMAL:
             #
             # Generate form on the fly. Could use template but there's lots of variables.
             # Make this a separate function to generate html form, so can be used from
-            # trait creation page.
+            # trait creation page. MFK - maybe not relevant now for trait creation page,
+            # as we don't put the min/max or validation options there (in case it's a sys
+            # trait, and these things should be able to vary between instances of the trait).
             #
             ttn = models.GetTrialTraitNumericDetails(sess.db(), traitId, trialId)
 
