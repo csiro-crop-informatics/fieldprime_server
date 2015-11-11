@@ -4,7 +4,7 @@
  * so as not to pollute the global namespace too much.
  */
  /* Some magic to prevent warnings in Eclipse: */
- /*global $:false,alert:false,d3:false*/
+ /*global $:false,jQuery:false,alert:false,d3:false*/
 var fplib = {};
 
 
@@ -229,8 +229,7 @@ fplib.makeTable = function(tdata, tname) {
     document.getElementsByClassName("dataContent")[0].appendChild(table);
 };
 
-fplib.makeDataTable = function(tdata, tname, divName) {
-
+fplib.makeDataTable = function(tdata, tabid, divName) {
     var hdrs = tdata.headers;
     var rows = tdata.rows;
 
@@ -242,32 +241,35 @@ fplib.makeDataTable = function(tdata, tname, divName) {
         mycols.push({"title":hdrs[i]});
     }
 
+     var tselect = '#' + tabid;
+     jQuery(function() {
+         $('#' + divName).html( '<table class="display fptable" width="100%" cellspacing="0" border="0" class="display" id="' + tabid + '"></table>' );
 
-    $(document).ready(function() {
-        $('#' + divName).html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="example"></table>' );
-        $('#example').dataTable({
-            // this not working for some reason
-            "scrollX": true,
-            /*"fnPreDrawCallback":function(){
-                $("#example").hide();
-            },
-            "fnDrawCallback":function(){
-                $("#example").show();
-            },
-            "fnInitComplete": function(oSettings, json) {$("#example").show();},*/
+         function setTableWrapperWidth() {
+             var setWidthTo = Math.round($(".fpHeader").width() - 40);
+             document.getElementById(tabid).style.width = setWidthTo + 'px';
+             //$(tselect).dataTable().fnAdjustColumnSizing();
+             $(tselect).DataTable().columns.adjust().draw();  // it seems we need the .draw() here
+         }
 
-            "data": rows,
-            "columns": mycols
-        });
+         $(tselect).DataTable( {
+             "scrollX": true,
+             "fnPreDrawCallback": function() { $(tselect).hide(); },
+             "pageLength":10,
+             "fnDrawCallback": function() { $(tselect).show(); },
+             "fnInitComplete": function(oSettings, json) { $(tselect).show(); },
 
-        /* this not working for some reason
-        fplib.setWrapperWidth('example');
-        window.addEventListener('resize', function () {
-            "use strict";
-            window.location.reload();
-        });*/
-
-    } );
+             "data": rows,
+             "columns": mycols
+         });
+         setTableWrapperWidth(); // This to force on table scroll bar
+         window.addEventListener('resize', setTableWrapperWidth);
+     });
+     // Needed to fix things on reload:
+     $(window).load( function () {
+         //$(tselect).dataTable().fnAdjustColumnSizing(false);
+         $(tselect).DataTable().columns.adjust();//.draw();  // This is the new api way to do this, NB with .draw() it has problems with the header width when vert scrollbar is present.
+     } );
 };
 
 

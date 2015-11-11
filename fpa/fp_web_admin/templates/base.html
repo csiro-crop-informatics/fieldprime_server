@@ -19,33 +19,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- Font Awesome for icons: -->
+  {# StyleSheets: ==================================================================================== #}
+  {# Font Awesome for icons: #}
   <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+  {# local #}
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStyle.css') }}">
 
-  <link rel="stylesheet" type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css">
+  {# JqueryUI - Not sure if using, test and remove if not.
+  <link rel="stylesheet" type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/themes/smoothness/jquery-ui.css">#}
+
+  {# Bootstrap #}
   <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="/static/lib/jquery.dataTables.1.10.7.min.css">
-  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.9/css/dataTables.bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="/static/lib/buttons.dataTables.min.css">
 
-  <!-- Jquery:-->
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+  {# DataTables #}
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.10/css/dataTables.bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.1.0/css/buttons.bootstrap.min.css">
 
-  <!-- Bootstrap:-->
+  {# Local post bootstrap #}
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStylePostBootstrap.css') }}">
+
+  {# Javascript: ===================================================================================== #}
+  {# Jquery: #}
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+ {#<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/jquery-ui.min.js"></script> #}
+
+  {# Bootstrap: #}
   <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 
-  <!-- DataTables integrators:-->
-  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
-  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.9/js/dataTables.bootstrap.min.js"></script>
+  {# DataTables: #}
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.10/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.10/js/dataTables.bootstrap.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/dataTables.buttons.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.bootstrap.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.colVis.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.html5.min.js"></script>
 
-  <!-- dataTables buttons: -->
-  <script type="text/javascript" language="javascript" src="/static/lib/dataTables.buttons.min.js"></script>
-  <script type="text/javascript" language="javascript" src="/static/lib/buttons.html5.min.js"></script>
-  <script type="text/javascript" language="javascript" src="/static/lib/buttons.colVis.min.js"></script>
+  {# local #}
+  <script src="{{ url_for('static', filename='fplib.js') }}"></script>
 
-{#
+  {# ===================================================================================== #}
+  {# Needed for mobile, I think #}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{{ title }}</title>
+
+{# Old stuff - note script for falling back to local copies if CDN fails. Might be good..
+  <link rel="stylesheet" type="text/css" href="/static/lib/jquery.dataTables.1.10.7.min.css">
+
   <!-- Jquery: -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
   <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
@@ -66,10 +86,7 @@
         document.write(script.outerHTML);
     }
   </script>
-#}
-  <script src="{{ url_for('static', filename='fplib.js') }}"></script>
 
-{#
   <!-- Bootstrap: -->
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
   <!-- Optional theme
@@ -87,10 +104,7 @@
         document.write(css.outerHTML);
     }
   </script>
-#}
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fpStylePostBootstrap.css') }}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-{#
+
   <!-- Datatables: -NB, these also available from a CDN if required:
     <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.0/css/jquery.dataTables.css">
     <script type="text/javascript" language="javascript" src="//cdn.datatables.net/1.10.0/js/jquery.dataTables.js"></script>
@@ -106,7 +120,6 @@
   <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='lib/buttons.html5.min.js') }}"></script>
   <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='lib/buttons.colVis.min.js') }}"></script>
 #}
-  <title>{{ title }}</title>
 </head>
 
 <body>
@@ -147,14 +160,13 @@
     </div><!-- Container fluid-->
 </nav>
 
-<!-- Content: ----------------------------------------------------------------------------- -->
-
+<!-- Content: ================================================================================ -->
 <div class="container-fluid">
 {% block content %}{% endblock %}
 </div><!-- Container fluid-->
 
 
-<!-- Footer: ------------------------------------------------------------------------------ -->
+<!-- Footer: ================================================================================ -->
 <div class="fpFooter">
   &copy; 2014 CSIRO
 </div>
