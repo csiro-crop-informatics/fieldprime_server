@@ -831,38 +831,36 @@ def urlTrialDataBrowse(sess, trialId):
     # Probably should return array with type code for each column rather than metas
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
     r += '<script type="text/javascript" language="javascript" src="%s"></script>' % url_for('static', filename='lib/jquery.doubleScroll.js')
-    r += '''
-    <script> $(document).ready(
-    function() {
-        var table = $('#fpTrialData').DataTable();
-        new $.fn.dataTable.Buttons(table,
-            {
-                buttons: [
-                    { extend:'csvHtml5', exportOptions: {columns: ':visible'}},
-                    {   extend:'colvisGroup',
-                        action: function() {
-                           var hid;
-                           return function(){
-                               if (hid == null) {
-                                   hid = %s;
-                                   this.columns(hid).visible(false);
-                               } else {
-                                   this.columns(hid).visible(true);
-                                   hid = null;
-                               }
-                               //$('#scrooll_div').doubleScroll();
-                           }
-                        }(),
-                        text:'Metadata',
-                    }
-                ]
-            });
-        table.buttons().container().appendTo($('.col-sm-6:eq(0)', table.table().container()));
-        // Double scrollbar:
-        //$('#fpTrialData').wrap("<div id='scrooll_div'></div>");
-        //$('#scrooll_div').doubleScroll();
-    });
-    </script>''' % str(metas)
+#     r += '''<script>jQuery(
+#     function() {
+#         var table = $('#fpTrialData').DataTable();
+#         new $.fn.dataTable.Buttons(table,
+#             {
+#                 buttons: [
+#                     { extend:'csvHtml5', exportOptions: {columns: ':visible'}},
+#                     {   extend:'colvisGroup',
+#                         action: function() {
+#                            var hid;
+#                            return function(){
+#                                if (hid == null) {
+#                                    hid = %s;
+#                                    this.columns(hid).visible(false);
+#                                } else {
+#                                    this.columns(hid).visible(true);
+#                                    hid = null;
+#                                }
+#                                //$('#scrooll_div').doubleScroll();
+#                            }
+#                         }(),
+#                         text:'Metadata',
+#                     }
+#                 ]
+#             });
+#         table.buttons().container().appendTo($('.col-sm-6:eq(0)', table.table().container()));
+#         // Double scrollbar:
+#         //$('#fpTrialData').wrap("<div id='scrooll_div'></div>");
+#         //$('#scrooll_div').doubleScroll();
+#     });</script>''' % str(metas)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
 @app.route('/trial/<trialId>/datalong/', methods=['GET'])
