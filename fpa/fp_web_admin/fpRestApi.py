@@ -11,12 +11,94 @@ import simplejson as json
 
 import fp_common.models as models
 import fp_common.users as users
+import fp_common.fpsys as fpsys
 import websess
-from const import *
+from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***
 import fpUtil
 import fp_common.util as util
 
 webRest = Blueprint('webRest', __name__)
+
+
+########################################################################################
+########################################################################################
+from flask import g
+from flask.ext.httpauth import HTTPBasicAuth
+from passlib.apps import custom_app_context as pwd_context
+from itsdangerous import (TimedJSONWebSignatureSerializer
+                          as Serializer, BadSignature, SignatureExpired)
+
+# initialization
+
+#current_app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
+
+# extensions
+auth = HTTPBasicAuth()
+
+
+
+def hash_password(self, password):
+    self.password_hash = pwd_context.encrypt(password)
+
+# def verify_user_password(username, password):
+#     return pwd_context.verify(password, self.password_hash)
+
+def generate_auth_token(username, expiration=600):
+    s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
+    return s.dumps({'id': username})
+
+def verify_auth_token(token):
+    s = Serializer(current_app.config['SECRET_KEY'])
+    try:
+        data = s.loads(token)
+    except SignatureExpired:
+        return None    # valid token, but expired
+    except BadSignature:
+        return None    # invalid token
+    user = data['id']
+    return user
+
+@auth.verify_password
+def verify_password(username_or_token, password):
+    # first try to authenticate by token
+    user = verify_auth_token(username_or_token)
+    if not user:
+        # try to authenticate with username/password
+        check = users.userPasswordCheck(username_or_token, password)
+        if check is None:
+            return False
+    g.user = username_or_token
+    return True
+
+@webRest.route('/api/token')
+@auth.login_required
+def get_auth_token():
+    token = generate_auth_token(g.user, 600)
+    return jsonify({'token': token.decode('ascii'), 'duration': 600})
+
+
+@webRest.route('/api/resource')
+@auth.login_required
+def get_resource():
+    return jsonify({'data': 'Hello, %s!' % g.user})
+
+def jsonErrorReturn(errmsg):
+    return jsonify({'error':errmsg})
+
+def jsonReturn(jo):
+    return Response(json.dumps(jo), mimetype='application/json')
+
+@webRest.route('/fp/project')
+@auth.login_required
+def getProjects():
+    (plist, errmsg) = fpsys.getProjects(g.user)
+    if errmsg:
+        return jsonErrorReturn(errmsg)
+    print len(plist)
+    nplist = [p.name() for p in plist]
+    return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
+
+########################################################################################
 
 
 def wr_check_session(func):

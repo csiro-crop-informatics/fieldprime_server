@@ -40,7 +40,6 @@ from fpUtil import hsafe
 import fp_common.fpsys as fpsys
 import trialProperties
 from fp_common.const import *
-from const import *
 import datapage as dp
 import websess
 from fpRestApi import webRest

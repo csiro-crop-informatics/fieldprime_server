@@ -102,6 +102,9 @@ class UserProject:
         self.ident = ident
         self.access = access
 
+    def name(self):
+        return self.projectName
+
 def getProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.

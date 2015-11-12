@@ -7,7 +7,7 @@
 
 from flask import url_for, render_template
 import fp_common.fpsys as fpsys
-import fp_common.models as models
+import fp_common.const as const
 import fpUtil
 from const import *
 
@@ -119,7 +119,7 @@ def _dataNavigationContent(sess, trialId):
     # ***REMOVED*** users may have access rights to multiple project so they get
     # a dropdown project selection. Project logins have access to a single
     # project only, so they don't get a drop down.
-    if sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
+    if sess.getLoginType() == const.LOGIN_TYPE_***REMOVED***:
         # Make select of user's projects.
         # Note we need to construct the URL for retrieving the project page in javascript,
         # and hence cannot use url_for.

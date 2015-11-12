@@ -9,8 +9,13 @@
 
 # Values for trait sysType field:
 SYSTYPE_TRIAL = 0
-SYSTYPE_SYSTEM = 1;
-SYSTYPE_ADHOC = 2;
+SYSTYPE_SYSTEM = 1
+SYSTYPE_ADHOC = 2
+
+# Login stuff:
+LOGIN_TIMEOUT = 900          # Idle time before requiring web user to login again
+LOGIN_TYPE_SYSTEM = 1
+LOGIN_TYPE_***REMOVED*** = 2
 
 # Names and values for trait datatype field:
 T_INTEGER = 0
