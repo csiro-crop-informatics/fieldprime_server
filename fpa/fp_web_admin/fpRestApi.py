@@ -91,6 +91,7 @@ def jsonReturn(jo):
 @webRest.route('/fp/project')
 @auth.login_required
 def getProjects():
+    util.flog("in getProjects")
     (plist, errmsg) = fpsys.getProjects(g.user)
     if errmsg:
         return jsonErrorReturn(errmsg)
