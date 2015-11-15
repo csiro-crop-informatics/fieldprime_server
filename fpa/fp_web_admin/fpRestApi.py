@@ -58,6 +58,22 @@ def verify_auth_token(token):
     user = data['id']
     return user
 
+@webRest.route(/fp/newUser/<login>/fullname/<fullname>/password/<password)
+def newUser(login, fullname, password):
+    # check user strings for bad stuff
+    pwhash = hashPassword(password)
+    try:
+        con = fpsys.getFpsysDbConnection()
+        qry = "insert user values (login, name, password, login_type) values (%s,%s,%s,%s)"
+        cur = con.cursor()
+        cur.execute(qry, (login, fullname, pwhash, LOGIN_TYPE_LOCAL))
+        return None if resRow is None else resRow[0]
+    except mdb.Error, e:
+        return None
+
+    pass
+    #need password and such
+
 @auth.verify_password
 def verify_password(username_or_token, password):
     # first try to authenticate by token
@@ -65,9 +81,10 @@ def verify_password(username_or_token, password):
     if not user:
         # try to authenticate with username/password
         check = users.userPasswordCheck(username_or_token, password)
-        if check is None:
-            return False
-    g.user = username_or_token
+        if check is None: return False
+        else: user = username_or_token
+    g.user = user
+    print 'user: %s' % user
     return True
 
 @webRest.route('/api/token')

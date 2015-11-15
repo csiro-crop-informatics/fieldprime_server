@@ -15,7 +15,7 @@ from fp_common.models import APPUSR, APPPWD          # circularity here, could m
 import fp_common.util as util
 import ***REMOVED***
 
-def _getDbConnection():
+def getFpsysDbConnection():
     return mdb.connect('localhost', APPUSR, APPPWD, 'fpsys')
 
 
@@ -24,7 +24,7 @@ def _getProjectIdFromName(projName):
 # Return project id or None on error.
 #
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         qry = "select id from project where name = %s"
         cur = con.cursor()
         cur.execute(qry, (projName,))
@@ -39,7 +39,7 @@ def _getUserIdFromIdent(ident):
 # Return project id or None on if non-existent, or other error.
 #
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         cur = con.cursor()
         cur.execute("select id from user where login = %s", (ident,))
         resRow = cur.fetchone()
@@ -57,7 +57,7 @@ def deleteUser(project, ident):
     if projId is None:
         return 'bad project name'
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         cur = con.cursor()
         # Get user id:
         uid = _getUserIdFromIdent(ident)
@@ -84,7 +84,7 @@ def getProjectUsers(project):
     if projId is None:
         return None, 'bad project name'
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         qry = 'select login, name, permissions from user join userProject on id = user_id where project_id = %s'
         cur = con.cursor()
         cur.execute(qry, (projId,))
@@ -111,7 +111,7 @@ def getProjects(username):
 # Returns tuple, project dictionary and errorMessage (which will be None if no error).
 # The dictionary keys are the project names, the values are the permissions (for the specified user).
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         qry = """
             select p.name, up.permissions, p.dbname from user u join userProject up
             on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id"""
@@ -131,7 +131,7 @@ def getProjectDBname(projectName):
 # Returns dbname for named project or None on error.
 #
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         qry = "select dbname from project where name = %s"
         cur = con.cursor()
         cur.execute(qry, (projectName,))
@@ -162,7 +162,7 @@ def addUserToProject(ident, project, perms):
         return None, 'bad project name'
     print 'here 1'
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         cur = con.cursor()
         # Get user id if exists
         userFpId = _getUserIdFromIdent(ident)
@@ -209,7 +209,7 @@ def updateUser(ident, project, perms):
         return None, 'bad project name'
 
     try:
-        con = _getDbConnection()
+        con = getFpsysDbConnection()
         cur = con.cursor()
         # Check user exists in fpsys
         userFpId = _getUserIdFromIdent(ident)

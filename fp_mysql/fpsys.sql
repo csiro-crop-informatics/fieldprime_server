@@ -9,14 +9,16 @@ use fpsys;
 
 create table user(
   id       INT PRIMARY KEY AUTO_INCREMENT,
-  login	   VARCHAR(63) not null,
+  login	   VARCHAR(63) not null unique,
   name     VARCHAR(255),
+  password VARCHAR(255),
+  login_type INT,
   UNIQUE (login)
 );
 
 create table project(
   id     int primary key auto_increment,
-  name   varchar(255),
+  name   varchar(255) unique,
   dbname varchar(63),
   unique (name)
 );

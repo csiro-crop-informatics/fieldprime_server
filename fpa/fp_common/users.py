@@ -10,7 +10,33 @@ import MySQLdb as mdb
 import util
 import models
 import ***REMOVED***
+from passlib.apps import custom_app_context as pwd
+
 from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***
+from fpsys import getFpsysDbConnection
+
+def localPasswordCheck(user, password):
+#-----------------------------------------------------------------------
+# Validate 'system' user/password, returning boolean indicating success.
+# A system user/pass is a mysql user/pass.
+#
+    phash = ''
+    try:
+        con = getFpsysDbConnection()
+        qry = "select password from user where login = %s"
+        cur = con.cursor()
+        cur.execute(qry, (user,))
+        resRow = cur.fetchone()
+        if resRow is None:
+            return None
+        phash = resRow[0]
+        return pwd.verify(password, phash)
+    except mdb.Error, e:
+        return None
+
+
+
+
 
 def systemPasswordCheck(user, password):
 #-----------------------------------------------------------------------

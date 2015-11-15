@@ -16,6 +16,7 @@ SYSTYPE_ADHOC = 2
 LOGIN_TIMEOUT = 900          # Idle time before requiring web user to login again
 LOGIN_TYPE_SYSTEM = 1
 LOGIN_TYPE_***REMOVED*** = 2
+LOGIN_TYPE_LOCAL = 3
 
 # Names and values for trait datatype field:
 T_INTEGER = 0
