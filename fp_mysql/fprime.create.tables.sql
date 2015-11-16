@@ -61,6 +61,29 @@ create table token(
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
+
+--
+-- node
+-- Each trial has a set of nodes (eg plots)
+-- NB, the text attributes will be moved to another table,so as to allow
+-- an arbritrary (user specified) set of attributes.
+-- So genotype, pedigree, and barcode will be removed (and possibly description).
+-- All trial unit attributes other than the mandatory first four will be stored
+-- via the nodeAttribute and attributeValue tables.
+--
+create table node(
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  trial_id    INT NOT NULL,
+  row         INT NOT NULL,
+  col         INT NOT NULL,
+  description text,
+  barcode     text,
+  latitude    DOUBLE,
+  longitude   DOUBLE,
+  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
+);
+
+
 --
 -- tokenNode
 -- Used to record nodes created from devices, so as to avoid creating multiple copies.
@@ -99,27 +122,6 @@ create table trialProperty(
   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
 );
 
-
---
--- node
--- Each trial has a set of nodes (eg plots)
--- NB, the text attributes will be moved to another table,so as to allow
--- an arbritrary (user specified) set of attributes.
--- So genotype, pedigree, and barcode will be removed (and possibly description).
--- All trial unit attributes other than the mandatory first four will be stored
--- via the nodeAttribute and attributeValue tables.
---
-create table node(
-  id          INT PRIMARY KEY AUTO_INCREMENT,
-  trial_id    INT NOT NULL,
-  row         INT NOT NULL,
-  col         INT NOT NULL,
-  description text,
-  barcode     text,
-  latitude    DOUBLE,
-  longitude   DOUBLE,
-  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE
-);
 
 
 --

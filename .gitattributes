@@ -1,4 +1,5 @@
 * text=auto !eol
+fp_mysql/createProject.sh -text
 fp_mysql/delete_fprime_user.sh -text
 fp_mysql/forEachDb.sh -text
 fp_mysql/fprime.create.tables.sql -text
