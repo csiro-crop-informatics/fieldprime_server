@@ -4,6 +4,8 @@ EXPECTED_ARGS=3
 E_BADARGS=65
 MYSQL=`which mysql`
  
+echo numargs $#
+
 while getopts "p:" opt; do
 case $opt in
     p)
@@ -16,6 +18,10 @@ case $opt in
 done
 shift $(expr $OPTIND - 1 )
 
+echo numargs $#
+echo optind $OPTIND 
+echo difference $[$# - $OPTIND]
+
 # Show usage if wrong number of args: 
 if [ $# -ne $EXPECTED_ARGS ]
 then
@@ -26,17 +32,22 @@ then
 fi
 
 WEBUSER=fpwserver
-PROJNAME=$1
+PROJNAME=${@:$OPTIND:1}
 DBNAME=fp_$PROJNAME
 DBUSER=fp_$PROJNAME
-CONTACT_NAME=$3
-CONTACT_EMAIL=$4
+CONTACT_NAME=${@:$OPTIND+1:1}
+CONTACT_EMAIL=${@:$OPTIND+2:1}
 
 # Mysql command to create user if specified:
 if [ -n ${DBPASS+x} ]
 then
     CREATE_USER_CMD="grant all on $DBNAME.* to '$DBUSER'@'localhost' identified by '$DBPASS';"
 fi
+
+echo projname $PROJNAME
+echo name $CONTACT_NAME
+echo email $CONTACT_EMAIL
+exit 0
 
 # Run Mysql script:
 $MYSQL -uSuperadm -p <<EOF

@@ -17,6 +17,7 @@ LOGIN_TIMEOUT = 900          # Idle time before requiring web user to login agai
 LOGIN_TYPE_SYSTEM = 1
 LOGIN_TYPE_***REMOVED*** = 2
 LOGIN_TYPE_LOCAL = 3
+LOGIN_TYPE_MYSQL = 4
 
 # Names and values for trait datatype field:
 T_INTEGER = 0

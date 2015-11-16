@@ -13,7 +13,7 @@ import fp_common.models as models
 import fp_common.users as users
 import fp_common.fpsys as fpsys
 import websess
-from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***
+from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 import fpUtil
 import fp_common.util as util
 
@@ -25,8 +25,7 @@ webRest = Blueprint('webRest', __name__)
 from flask import g
 from flask.ext.httpauth import HTTPBasicAuth
 from passlib.apps import custom_app_context as pwd_context
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as Serializer, BadSignature, SignatureExpired)
+from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 
 # initialization
 
@@ -39,6 +38,7 @@ auth = HTTPBasicAuth()
 
 def hash_password(self, password):
     self.password_hash = pwd_context.encrypt(password)
+
 
 # def verify_user_password(username, password):
 #     return pwd_context.verify(password, self.password_hash)
@@ -58,21 +58,13 @@ def verify_auth_token(token):
     user = data['id']
     return user
 
-@webRest.route(/fp/newUser/<login>/fullname/<fullname>/password/<password)
+@webRest.route('/fp/newUser/<login>/fullname/<fullname>/password/<password>', methods=['GET'])
 def newUser(login, fullname, password):
-    # check user strings for bad stuff
-    pwhash = hashPassword(password)
-    try:
-        con = fpsys.getFpsysDbConnection()
-        qry = "insert user values (login, name, password, login_type) values (%s,%s,%s,%s)"
-        cur = con.cursor()
-        cur.execute(qry, (login, fullname, pwhash, LOGIN_TYPE_LOCAL))
-        return None if resRow is None else resRow[0]
-    except mdb.Error, e:
-        return None
-
-    pass
-    #need password and such
+    # check user strings for bad stuff?
+    errmsg = fpsys.addLocalUser(login, fullname, password)
+    if errmsg is not None:
+        return jsonErrorReturn(errmsg)
+    return 'success'   # what should we return on success
 
 @auth.verify_password
 def verify_password(username_or_token, password):

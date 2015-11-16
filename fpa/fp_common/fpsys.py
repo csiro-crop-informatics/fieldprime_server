@@ -10,10 +10,12 @@
 #
 
 import MySQLdb as mdb
-
-from fp_common.models import APPUSR, APPPWD          # circularity here, could move APP* to separate module
-import fp_common.util as util
 import ***REMOVED***
+
+import util
+from models import APPUSR, APPPWD          # circularity here, could move APP* to separate module
+from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
+from passlib.apps import custom_app_context as pwd_context
 
 def getFpsysDbConnection():
     return mdb.connect('localhost', APPUSR, APPPWD, 'fpsys')
@@ -234,3 +236,15 @@ def updateUser(ident, project, perms):
         return (None, 'Failed system login')
     return None
 
+
+def addLocalUser(login, fullname, password):
+# Returns None on success, else error message.
+    # check strings for bad stuff?
+    try:
+        con = getFpsysDbConnection()
+        qry = "insert user (login, name, password, login_type) values (%s,%s,%s,%s)"
+        cur = con.cursor()
+        cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL))
+    except mdb.Error, e:
+        return str(e)
+    return None

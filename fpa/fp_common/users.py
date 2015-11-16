@@ -12,7 +12,7 @@ import models
 import ***REMOVED***
 from passlib.apps import custom_app_context as pwd
 
-from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***
+from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 from fpsys import getFpsysDbConnection
 
 def localPasswordCheck(user, password):
@@ -23,9 +23,9 @@ def localPasswordCheck(user, password):
     phash = ''
     try:
         con = getFpsysDbConnection()
-        qry = "select password from user where login = %s"
+        qry = "select password from user where login = %s and login_type = %s"
         cur = con.cursor()
-        cur.execute(qry, (user,))
+        cur.execute(qry, (user, LOGIN_TYPE_LOCAL))
         resRow = cur.fetchone()
         if resRow is None:
             return None
@@ -33,10 +33,6 @@ def localPasswordCheck(user, password):
         return pwd.verify(password, phash)
     except mdb.Error, e:
         return None
-
-
-
-
 
 def systemPasswordCheck(user, password):
 #-----------------------------------------------------------------------
