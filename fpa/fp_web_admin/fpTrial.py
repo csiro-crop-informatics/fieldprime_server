@@ -41,19 +41,19 @@ class Result:
 
 def _getCsvLineAsArray(fobj):
 # fobj should be a file object.
-# Returns tuple of boolean (indicating ascii error occurred), line (stripped of whitespace),
-# and array of values (None if line is empty or whitespace only).
+# Returns tuple of errmsg, (None if no error), line (stripped of whitespace),
+# array of values (None if line is empty or whitespace only).
 #
     line = fobj.readline().strip();
     if not line:
-        return False, None, None
+        return None, None, None
     try:
         line.decode('ascii')
     except UnicodeDecodeError:
-        return True, line, None
+        return "Non ascii characters found in file", line, None
 
     sline = StringIO.StringIO(line)
-    return False, line, csv.reader(sline).next()
+    return None, line, csv.reader(sline).next()
 
 
 def _parseNodeCSV(fobj, ind1name, ind2name):
@@ -65,9 +65,9 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
     FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
 
     # Get headers,
-    (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
-    if asciiError:
-        return {'error':"Non ascii characters found in file. Please contact FieldPrime support"}
+    (errmsg, line, hdrs) = _getCsvLineAsArray(fobj)
+    if errmsg:
+        return {'error':errmsg}
     if not hdrs:
         return {'error':"No header line in file"}
 
@@ -106,9 +106,9 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
     rowNum = 2
     rowColSet = set()
     while True:
-        (asciiError, line, flds) = _getCsvLineAsArray(fobj)
-        if asciiError:
-            return {'error':"Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum)}
+        (errmsg, line, flds) = _getCsvLineAsArray(fobj)
+        if errmsg:
+            return {'error': errmsg + " (line {0}). Please contact FieldPrime support".format(rowNum)}
         if not flds:
             break
 
@@ -134,7 +134,7 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
 
 
 
-def uploadTrialFile(sess, f, tname, tsite, tyear, tacro, i1name, i2name):
+def uploadTrialFile(sess, uploadFile, tname, tsite, tyear, tacro, i1name, i2name):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
 # Return Trial object, None on success, else None, string error message.
@@ -147,7 +147,7 @@ def uploadTrialFile(sess, f, tname, tsite, tyear, tacro, i1name, i2name):
         return (None, e.__str__())
 
     # Add trial details from csv:
-    res = updateTrialFile(sess, f, ntrial, i1name, i2name)
+    res = updateTrialFile(sess, uploadFile, ntrial, i1name, i2name)
     if res is not None and 'error' in res:
         models.Trial.delete(dbc, ntrial.id)   # delete the new trial if some error
         return (None, res['error'])
@@ -288,9 +288,9 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     #
     # Process headers:
     #
-    (asciiError, line, hdrs) = _getCsvLineAsArray(fobj)
-    if asciiError:
-        return csvErr("Non ascii characters found in file. Please remove or contact FieldPrime support")
+    (errmsg, line, hdrs) = _getCsvLineAsArray(fobj)
+    if errmsg:
+        return csvErr(errmsg)
     if not hdrs:
         return csvErr("No header line in file")
     #
@@ -356,9 +356,9 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
     rowNum = 2
     nodeIdSet = set()
     while True:
-        (asciiError, line, flds) = _getCsvLineAsArray(fobj)
-        if asciiError:
-            return csvErr("Non ascii characters found in file (line {0}). Please contact FieldPrime support".format(rowNum))
+        (errmsg, line, flds) = _getCsvLineAsArray(fobj)
+        if errmsg:
+            return csvErr(errmsg + " (line {0}). Please contact FieldPrime support".format(rowNum))
         if not flds:
             break
         if not len(flds) == numFields:

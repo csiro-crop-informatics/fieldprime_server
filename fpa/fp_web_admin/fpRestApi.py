@@ -5,9 +5,13 @@
 # getting or setting data in json format.
 # see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask
 
-from flask import Blueprint, current_app, request, Response, jsonify
+from flask import Blueprint, current_app, request, Response, jsonify, g, abort
+from flask.ext.httpauth import HTTPBasicAuth
 from functools import wraps
 import simplejson as json
+from passlib.apps import custom_app_context as pwd_context
+from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
+import re
 
 import fp_common.models as models
 import fp_common.users as users
@@ -22,22 +26,30 @@ webRest = Blueprint('webRest', __name__)
 
 ########################################################################################
 ########################################################################################
-from flask import g
-from flask.ext.httpauth import HTTPBasicAuth
-from passlib.apps import custom_app_context as pwd_context
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
+
+API_PREFIX = '/fpv1/'
+
+# Http status codes:
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_BAD_REQUEST = 400
+HTTP_UNAUTHORIZED = 401
+HTTP_NOT_FOUND = 404
+HTTP_SERVER_ERROR = 500
 
 # initialization
 
-#current_app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
 
 # extensions
 auth = HTTPBasicAuth()
 
 
+def jsonErrorReturn(errmsg):
+    return jsonify({'error':errmsg})
 
-def hash_password(self, password):
-    self.password_hash = pwd_context.encrypt(password)
+def jsonReturn(jo):
+    return Response(json.dumps(jo), mimetype='application/json')
+
 
 
 # def verify_user_password(username, password):
@@ -58,46 +70,71 @@ def verify_auth_token(token):
     user = data['id']
     return user
 
-@webRest.route('/fp/newUser/<login>/fullname/<fullname>/password/<password>', methods=['GET'])
-def newUser(login, fullname, password):
-    # check user strings for bad stuff?
-    errmsg = fpsys.addLocalUser(login, fullname, password)
-    if errmsg is not None:
-        return jsonErrorReturn(errmsg)
-    return 'success'   # what should we return on success
-
 @auth.verify_password
 def verify_password(username_or_token, password):
     # first try to authenticate by token
+    print 'happy ' + username_or_token
     user = verify_auth_token(username_or_token)
     if not user:
         # try to authenticate with username/password
-        check = users.userPasswordCheck(username_or_token, password)
+        check = fpsys.userPasswordCheck(username_or_token, password)
         if check is None: return False
         else: user = username_or_token
     g.user = user
     print 'user: %s' % user
     return True
 
-@webRest.route('/api/token')
+@webRest.route('/fp/token')
 @auth.login_required
 def get_auth_token():
     token = generate_auth_token(g.user, 600)
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
+# Old Way:
+# @webRest.route('/fp/newUser/<login>/fullname/<fullname>/password/<password>', methods=['GET'])
+# def newUser(login, fullname, password):
+# # Note no password required.
+#     # check user strings for bad stuff?
+#     errmsg = fpsys.addLocalUser(login, fullname, password)
+#     if errmsg is not None:
+#         return jsonErrorReturn(errmsg)
+#     return 'success'   # what should we return on success
 
-@webRest.route('/api/resource')
+@webRest.route('/fp/users', methods=['POST'])
+def new_user():
+    login = request.json.get('login')
+    password = request.json.get('password')
+    fullname = request.json.get('fullname')
+    if login is None or password is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+    errmsg = fpsys.addLocalUser(login, fullname, password)
+    if errmsg is not None:
+        return jsonErrorReturn(errmsg)
+    return json.dumps({'username': login}), HTTP_CREATED,
+
+#     # Check if user already exists. May not be necessary, we could instead
+#     # detect this as a failure of the db add operation
+#     if User.query.filter_by(username=username).first() is not None:
+#         abort(400)    # existing user
+#     user = User(username=username)
+#     user.hash_password(password)
+#     db.session.add(user)
+#     db.session.commit()
+#     return (json.dumps({'username': login}), 201,
+#             {'Location': url_for('get_user', id=user.id, _external=True)})
+
+
+@webRest.route('/fp/grant/<login>/<permission>', methods=['GET'])
+@auth.login_required
+def authUser(login, permission):
+    pass
+
+@webRest.route('/fp/resource')
 @auth.login_required
 def get_resource():
     return jsonify({'data': 'Hello, %s!' % g.user})
 
-def jsonErrorReturn(errmsg):
-    return jsonify({'error':errmsg})
-
-def jsonReturn(jo):
-    return Response(json.dumps(jo), mimetype='application/json')
-
-@webRest.route('/fp/project')
+@webRest.route('/fp/projects', methods=['GET'])
 @auth.login_required
 def getProjects():
     util.flog("in getProjects")
@@ -108,6 +145,76 @@ def getProjects():
     nplist = [p.name() for p in plist]
     return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
 
+@webRest.route(API_PREFIX + 'projects/<path:path>', methods=['POST'])
+@auth.login_required
+def createProject(path):
+    return 'You want path: %s' % path
+
+    # top level dir called 'projects'? 'users'
+    parent = request.json.get('parent')
+    name = request.json.get('name')
+    if parent is None or name is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+
+    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
+
+    # create the project:
+    proj = models.Project();
+
+def checkIdent(candidate):
+    re.match('\w\w*')
+
+@webRest.route(API_PREFIX + 'projects', methods=['POST'])
+@auth.login_required
+def createProject2():
+# Expects JSON object:
+#   parent : url for parent project. If missing root is used.
+#   name : project name, must be nice
+#   contactName :
+#   contactEmail :
+#
+
+    # top level dir called 'projects'? 'users'
+    parentUrl = request.json.get('parent')
+    parentProj = models.Project.getByUrl(parentUrl);
+
+    # get project
+    name = request.json.get('name')
+    parentProj.getByName(name)
+    name = check_name(name) # check name is valid
+    # and doesn't already exist
+
+    if parent is None or name is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+
+    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
+
+    # create the project:
+    proj = models.Project();
+
+########################################################################################
+TEST_STUFF = '''
+FP=http://0.0.0.0:5001
+# Create user:
+curl -i -X POST -H "Content-Type: application/json" -d '{"login":"kevin","password":"blueberry"}' $FP/fp/users
+
+# Test access:
+curl -i -u kevin:blueberry $FP/fp/projects
+
+'''
+
+API_REST = '''
+routes:
+
+projects { /<projName> }
+Get - returns ?
+Post - create
+
+
+trials { /<projName> } [ /<trialName> ]
+
+
+'''
 ########################################################################################
 
 
@@ -185,21 +292,6 @@ def _jsonErrorReturn(error=None):
     #resp.status_code = 500
     return resp
 
-# not used yet
-def userPasswordCheck(username, password):
-    if users.systemPasswordCheck(username, password):
-        return LOGIN_TYPE_SYSTEM
-    elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
-        # For ***REMOVED*** check, we should perhaps first check in a system database
-        # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
-        #
-        # OK, valid ***REMOVED*** user. Find project they have access to:
-        return LOGIN_TYPE_***REMOVED***
-    else:
-        return None
-
-
-
 
 @webRest.route('/restapi/login', methods=["POST"])
 def urlLogin():
@@ -240,12 +332,12 @@ def urlLogin():
     access = None
     dbname = None
     loginType = None
-    if users.systemPasswordCheck(username, password):
+    if fpsys.systemPasswordCheck(username, password):
         project = username
         access = websess.PROJECT_ACCESS_ALL
         dbname = models.dbName4Project(project)
         loginType = LOGIN_TYPE_SYSTEM
-    elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+    elif fpsys.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
         # For ***REMOVED*** check, we should perhaps first check in a system database
         # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
         #

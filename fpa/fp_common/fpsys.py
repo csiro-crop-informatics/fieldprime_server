@@ -13,7 +13,7 @@ import MySQLdb as mdb
 import ***REMOVED***
 
 import util
-from models import APPUSR, APPPWD          # circularity here, could move APP* to separate module
+from models import dbName4Project, APPUSR, APPPWD          # circularity here, could move APP* to separate module
 from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 from passlib.apps import custom_app_context as pwd_context
 
@@ -143,7 +143,7 @@ def getProjectDBname(projectName):
         return None
 
 
-def addUserToProject(ident, project, perms):
+def add***REMOVED***UserToProject(ident, project, perms):
 #-----------------------------------------------------------------------
 # Add user with given ident to specified project with specified permissions.
 # Note user db entry created if not already present.
@@ -178,7 +178,7 @@ def addUserToProject(ident, project, perms):
         # Insert or update user:
         # We don't really have to update, but in case name has changed in ***REMOVED*** we do.
         if userFpId is None:
-            cur.execute('insert user values (null, %s, %s)', (ident, ***REMOVED***Name))
+            cur.execute('insert user (login,name,login_type) values (%s,%s,%s)', (ident, ***REMOVED***Name, LOGIN_TYPE_***REMOVED***))
             userFpId = cur.lastrowid
         else:
             cur.execute('update user set name = %s where id = %s', (***REMOVED***Name, userFpId))
@@ -242,9 +242,110 @@ def addLocalUser(login, fullname, password):
     # check strings for bad stuff?
     try:
         con = getFpsysDbConnection()
-        qry = "insert user (login, name, password, login_type) values (%s,%s,%s,%s)"
+        qry = "insert user (login, name, passhash, login_type) values (%s,%s,%s,%s)"
         cur = con.cursor()
+        #print qry, login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL
         cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL))
+        con.commit()
+        con.close()
     except mdb.Error, e:
         return str(e)
     return None
+
+
+### Password Stuff: ####################################################################################
+
+def localPasswordCheck(user, password):
+#-----------------------------------------------------------------------
+# Validate 'system' user/password, returning boolean indicating success.
+# A system user/pass is a mysql user/pass.
+#
+    phash = ''
+    try:
+        con = getFpsysDbConnection()
+        qry = "select passhash from user where login = %s and login_type = %s"
+        cur = con.cursor()
+        cur.execute(qry, (user, LOGIN_TYPE_LOCAL))
+        resRow = cur.fetchone()
+        if resRow is None:
+            return None
+        phash = resRow[0]
+        return pwd_context.verify(password, phash)
+    except mdb.Error, e:
+        return None
+
+def systemPasswordCheck(user, password):
+#-----------------------------------------------------------------------
+# Validate 'system' user/password, returning boolean indicating success.
+# A system user/pass is a mysql user/pass.
+#
+    def dbName(username):
+    #-----------------------------------------------------------------------
+    # Map username to the database name.
+        return 'fp_' + username
+
+    try:
+        con = mdb.connect('localhost', dbName4Project(user), password, dbName(user));
+        con.close()
+        return True
+    except mdb.Error, e:
+        #util.flog('system password check failed')
+        return False
+
+def ***REMOVED***PasswordCheck(username, password):
+#-----------------------------------------------------------------------
+# Validate ***REMOVED*** user/password, returning boolean indicating success
+#
+#     if username == '***REMOVED***' and password == 'm':
+#         return True;
+    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
+    if not ***REMOVED***Server:
+        util.flog('Cannot connect to ***REMOVED*** server')
+        return False
+    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(username)
+    if ***REMOVED***User is None:
+        util.flog('The supplied username is unknown.')
+        return False
+    if not ***REMOVED***User.authenticate(password):
+        #util.flog('wrong ***REMOVED*** password')
+        return False
+    return True;
+
+def userPasswordCheck(username, password):
+# Return true if password OK, false if not, or None if something bad happened.
+    # Check if the username exists and get login type:
+    try:
+        con = getFpsysDbConnection()
+        qry = "select login_type, passhash from user where login = %s"
+        cur = con.cursor()
+        cur.execute(qry, (username,))
+        resRow = cur.fetchone()
+        if resRow is None:
+            return None
+        loginType = resRow[0]
+        phash = resRow[1]
+    except mdb.Error, e:
+        util.flog('Error in userPasswordCheck: {0}'.format(str(e)))
+        return None # what about error message?
+    if loginType == LOGIN_TYPE_LOCAL:
+        return pwd_context.verify(password, phash)
+    elif loginType == LOGIN_TYPE_SYSTEM:
+        return systemPasswordCheck(username, password)
+    elif loginType == LOGIN_TYPE_***REMOVED***:
+        return ***REMOVED***PasswordCheck(username, password)
+    else:
+        return None
+
+def OLDuserPasswordCheck(username, password):
+    if systemPasswordCheck(username, password):
+        return LOGIN_TYPE_SYSTEM
+    elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+        # For ***REMOVED*** check, we should perhaps first check in a system database
+        # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
+        #
+        # OK, valid ***REMOVED*** user. Find project they have access to:
+        return LOGIN_TYPE_***REMOVED***
+    elif localPasswordCheck(username, password):
+        return LOGIN_TYPE_LOCAL
+    else:
+        return None

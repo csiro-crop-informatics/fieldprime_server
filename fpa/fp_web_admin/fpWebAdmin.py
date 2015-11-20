@@ -1062,7 +1062,6 @@ def urlUsersPost(sess, projectName):
     if not userData:
         return Response('Bad or missing JSON')
     util.flog("ajaxData:\n" + json.dumps(userData))
-    print 'ajax ' + json.dumps(userData)
     # Go thru userData and process - it might be nice to try using
     # http CRUD/REST operations here. Identify a user in a project as resource
     # /project/<project>/user/<userid>. But for the moment we're doing it all here.
@@ -1072,7 +1071,7 @@ def urlUsersPost(sess, projectName):
     newUsers = userData.get('create')
     if newUsers is not None:
         for user, perms in newUsers.iteritems():
-            errmsg = fpsys.addUserToProject(user, sess.getProjectName(), perms)
+            errmsg = fpsys.add***REMOVED***UserToProject(user, sess.getProjectName(), perms)
             if errmsg is not None:
                 errMsgs.append(('create', user, errmsg))
     updateUsers = userData.get('update')
@@ -1121,7 +1120,7 @@ def urlUserDetails(sess, projectName):
             # MFK bug here: if we prompt with err message, the contact values are missing.
             currUser = sess.getUser()
             oldPassword = form.get("password")
-            if not users.systemPasswordCheck(sess.getProjectName(), oldPassword):
+            if not fpsys.systemPasswordCheck(sess.getProjectName(), oldPassword):
                 return logoutPage(sess, "Password is incorrect")
             newpassword1 = form.get("newpassword1")
             newpassword2 = form.get("newpassword2")
@@ -1580,9 +1579,9 @@ def passwordCheck(sess, password):
 # Check password is valid for current user/loginType
 #
     if sess.getLoginType() == LOGIN_TYPE_SYSTEM:
-        return users.systemPasswordCheck(sess.getUser(), password)
+        return fpsys.systemPasswordCheck(sess.getUser(), password)
     elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-        return users.***REMOVED***PasswordCheck(sess.getUser(), password)
+        return fpsys.***REMOVED***PasswordCheck(sess.getUser(), password)
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -1639,12 +1638,12 @@ def urlMain():
             access = None
             dbname = None
             loginType = None
-            if users.systemPasswordCheck(username, password):
+            if fpsys.systemPasswordCheck(username, password):
                 project = username
                 access = websess.PROJECT_ACCESS_ALL
                 dbname = models.dbName4Project(project)
                 loginType = LOGIN_TYPE_SYSTEM
-            elif users.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+            elif fpsys.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
                 # For ***REMOVED*** check, we should perhaps first check in a system database
                 # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
                 #
@@ -1688,7 +1687,7 @@ def urlMain():
 # For local testing:
 if __name__ == '__main__':
     from os.path import expanduser
-    app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/fpa/fp_web_admin/tmp2'
+    app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/wsessions'
     app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
     app.config['CATEGORY_IMAGE_FOLDER'] = expanduser("~") + '/proj/fpserver/catPhotos'

@@ -9,9 +9,9 @@ use fpsys;
 
 create table user(
   id       INT PRIMARY KEY AUTO_INCREMENT,
-  login	   VARCHAR(63) not null unique,
+  login	   VARCHAR(63) not null,
   name     VARCHAR(255),
-  password VARCHAR(255),
+  passhash VARCHAR(255),
   login_type INT,
   UNIQUE (login)
 );

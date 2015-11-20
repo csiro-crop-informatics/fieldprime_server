@@ -459,6 +459,10 @@ class Project(DeclarativeBase):
     trials = relationship('Trial')
     upProject = relationship('Project', remote_side=[id])
 
+#     def __init__(self, parent, name):
+#         self.project_id = projectId
+#         self.name = name
+
     def getName(self):
         return self.name
 
@@ -1271,6 +1275,7 @@ def _eng(obj):
 def dbName4Project(project):
 #-----------------------------------------------------------------------
 # Map project name to the database name.
+# NB - only valid for projects with own db. Should probably not be used now.
     return 'fp_' + project
 
 
@@ -1341,6 +1346,7 @@ def getProject(dbc, projectId):
 def getProjectByName(dbc, projectName):
 #-----------------------------------------------------------------------
 # Returns project object with given name if found, else None.
+# MFK - We should get by project and name
     return dbc.query(Project).filter(Project.name == projectName).one()
 
 @oneException2None
