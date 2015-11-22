@@ -56,11 +56,12 @@ def _getCsvLineAsArray(fobj):
     sline = StringIO.StringIO(line)
     try:
         ar = csv.reader(sline).next()
-    except Exception, e:
+    except csv.Error, e:
         #try:
         #   ar = csv.reader(StringIO.StringIO('n'.join(line.splitlines()))).next()
         #except Exception, e:
-            return str(e), line, None
+            #return str(e), line, None
+            return 'CSV file problem, note Mac files need to be converted to unix line endings', line, None
     return None, line, ar
 
 
@@ -71,7 +72,6 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
 # Returns dictionary, with either an 'error' key, or the above fields.
 #
     FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
-    print 'Name: {0}'.format(fobj.name)
 
     # NB - _getCsvLineAsArray fails on mac line ending files. Here are 2 potential ways
     # around this, but you would also need to fix the other readlines below.
@@ -98,7 +98,6 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
         if hdl in FIXED_ATTRIBUTES:
             fixIndex[hdl] = numFields
         elif hdl in attIndex.keys():
-            print 'headers' + str(hdrs)
             return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
         else:
             attIndex[hdl] = numFields
