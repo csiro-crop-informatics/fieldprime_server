@@ -39,6 +39,7 @@ class Result:
     def obj(self):
         return self.obj
 
+
 def _getCsvLineAsArray(fobj):
 # fobj should be a file object.
 # Returns tuple of errmsg, (None if no error), line (stripped of whitespace),
@@ -53,7 +54,14 @@ def _getCsvLineAsArray(fobj):
         return "Non ascii characters found in file", line, None
 
     sline = StringIO.StringIO(line)
-    return None, line, csv.reader(sline).next()
+    try:
+        ar = csv.reader(sline).next()
+    except Exception, e:
+        #try:
+        #   ar = csv.reader(StringIO.StringIO('n'.join(line.splitlines()))).next()
+        #except Exception, e:
+            return str(e), line, None
+    return None, line, ar
 
 
 def _parseNodeCSV(fobj, ind1name, ind2name):
@@ -63,6 +71,13 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
 # Returns dictionary, with either an 'error' key, or the above fields.
 #
     FIXED_ATTRIBUTES = [ind1name.lower(), ind2name.lower(), ATR_DES, ATR_BAR, ATR_LAT, ATR_LON]
+    print 'Name: {0}'.format(fobj.name)
+
+    # NB - _getCsvLineAsArray fails on mac line ending files. Here are 2 potential ways
+    # around this, but you would also need to fix the other readlines below.
+    #s = StringIO.StringIO(x, fobj.read().replace('\r\n', '\n').replace('\r','\n'))
+    #x = '\n'.join(fobj.read().splitlines())
+    #fobj = StringIO.StringIO(x)
 
     # Get headers,
     (errmsg, line, hdrs) = _getCsvLineAsArray(fobj)
@@ -83,6 +98,7 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
         if hdl in FIXED_ATTRIBUTES:
             fixIndex[hdl] = numFields
         elif hdl in attIndex.keys():
+            print 'headers' + str(hdrs)
             return {'error':"Error - Duplicate attribute name ({0}), aborting.".format(hd)}
         else:
             attIndex[hdl] = numFields
