@@ -26,6 +26,10 @@ html {
     min-height:100%;
 }
 
+.navbar.fpHeader {
+    min-height: 80px;
+}
+
 .fpFooter {
     position: absolute;
     bottom: 0;

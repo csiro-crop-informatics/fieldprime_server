@@ -37,7 +37,7 @@ fieldset{
  */
 .fpHeader {
     width: 100%;
-    height: 80px;
+    min-height: 80px;
     background: white;
     z-index: 1000;
     border-left: 1px solid #023;
