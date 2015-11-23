@@ -463,6 +463,9 @@ class Project(DeclarativeBase):
 #         self.project_id = projectId
 #         self.name = name
 
+#     def getURL(self):
+#         return 'https://***REMOVED***/fieldprime/projects/{0}'.format(self.id)
+
     def getName(self):
         return self.name
 

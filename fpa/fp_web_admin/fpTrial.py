@@ -497,7 +497,7 @@ def uploadScores(sess, scoresCsv, trl, i1name=None, i2name=None):
     fpDate = now.year * 10000 + now.month * 100 + now.day
     for ss in scoreSets:
         trt = ss['trait']
-        trlTrait = models.getTrialTrait(sess.db(), trl.getId(), trt.getId())
+        trlTrait = models.getTrialTrait(sess.db(), trl.getId(), trt.getId())   # trait existence checked in parse
         newti = trlTrait.addTraitInstance(fpDate, token.getId())
         newti.addData(ss['data'])
     return None

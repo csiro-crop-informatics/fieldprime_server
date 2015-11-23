@@ -21,11 +21,12 @@ from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMO
 import fpUtil
 import fp_common.util as util
 
+
+### Initialization: ####################################
 webRest = Blueprint('webRest', __name__)
+auth = HTTPBasicAuth()
 
-
-########################################################################################
-########################################################################################
+### Constants: #########################################
 
 API_PREFIX = '/fpv1/'
 
@@ -37,12 +38,6 @@ HTTP_UNAUTHORIZED = 401
 HTTP_NOT_FOUND = 404
 HTTP_SERVER_ERROR = 500
 
-# initialization
-
-
-# extensions
-auth = HTTPBasicAuth()
-
 
 def jsonErrorReturn(errmsg):
     return jsonify({'error':errmsg})
@@ -51,9 +46,7 @@ def jsonReturn(jo):
     return Response(json.dumps(jo), mimetype='application/json')
 
 
-
-# def verify_user_password(username, password):
-#     return pwd_context.verify(password, self.password_hash)
+### Authorization stuff: ########################################################
 
 def generate_auth_token(username, expiration=600):
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
@@ -73,7 +66,6 @@ def verify_auth_token(token):
 @auth.verify_password
 def verify_password(username_or_token, password):
     # first try to authenticate by token
-    print 'happy ' + username_or_token
     user = verify_auth_token(username_or_token)
     if not user:
         # try to authenticate with username/password
@@ -84,23 +76,15 @@ def verify_password(username_or_token, password):
     print 'user: %s' % user
     return True
 
-@webRest.route('/fp/token')
+### Access Points: ########################################################
+
+@webRest.route(API_PREFIX + 'token')
 @auth.login_required
 def get_auth_token():
     token = generate_auth_token(g.user, 600)
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
-# Old Way:
-# @webRest.route('/fp/newUser/<login>/fullname/<fullname>/password/<password>', methods=['GET'])
-# def newUser(login, fullname, password):
-# # Note no password required.
-#     # check user strings for bad stuff?
-#     errmsg = fpsys.addLocalUser(login, fullname, password)
-#     if errmsg is not None:
-#         return jsonErrorReturn(errmsg)
-#     return 'success'   # what should we return on success
-
-@webRest.route('/fp/users', methods=['POST'])
+@webRest.route(API_PREFIX + 'users', methods=['POST'])
 def new_user():
     login = request.json.get('login')
     password = request.json.get('password')
@@ -111,7 +95,6 @@ def new_user():
     if errmsg is not None:
         return jsonErrorReturn(errmsg)
     return json.dumps({'username': login}), HTTP_CREATED,
-
 #     # Check if user already exists. May not be necessary, we could instead
 #     # detect this as a failure of the db add operation
 #     if User.query.filter_by(username=username).first() is not None:
@@ -124,26 +107,39 @@ def new_user():
 #             {'Location': url_for('get_user', id=user.id, _external=True)})
 
 
-@webRest.route('/fp/grant/<login>/<permission>', methods=['GET'])
+@webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
 @auth.login_required
 def authUser(login, permission):
     pass
 
-@webRest.route('/fp/resource')
+@webRest.route(API_PREFIX + 'resource')
 @auth.login_required
 def get_resource():
     return jsonify({'data': 'Hello, %s!' % g.user})
 
-@webRest.route('/fp/projects', methods=['GET'])
+@webRest.route(API_PREFIX + 'projects', methods=['GET'])
 @auth.login_required
 def getProjects():
-    util.flog("in getProjects")
+    #util.flog("in getProjects")
     (plist, errmsg) = fpsys.getProjects(g.user)
     if errmsg:
         return jsonErrorReturn(errmsg)
     print len(plist)
     nplist = [p.name() for p in plist]
     return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
+
+@webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
+@auth.login_required
+def getProject(id):
+    util.flog("in getProject")
+    (plist, errmsg) = fpsys.getProjects(g.user)
+    if errmsg:
+        return jsonErrorReturn(errmsg)
+    print len(plist)
+    nplist = [p.name() for p in plist]
+    return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
+
+
 
 @webRest.route(API_PREFIX + 'projects/<path:path>', methods=['POST'])
 @auth.login_required
@@ -181,7 +177,7 @@ def createProject2():
     # get project
     name = request.json.get('name')
     parentProj.getByName(name)
-    name = check_name(name) # check name is valid
+    name = checkIdent(name) # check name is valid
     # and doesn't already exist
 
     if parent is None or name is None:
@@ -194,12 +190,16 @@ def createProject2():
 
 ########################################################################################
 TEST_STUFF = '''
-FP=http://0.0.0.0:5001
+FP=http://0.0.0.0:5001/fpv1
+
 # Create user:
-curl -i -X POST -H "Content-Type: application/json" -d '{"login":"kevin","password":"blueberry"}' $FP/fp/users
+curl -i -X POST -H "Content-Type: application/json" -d '{"login":"kevin","password":"blueberry"}' $FP/users
 
 # Test access:
-curl -i -u kevin:blueberry $FP/fp/projects
+curl -i -u kevin:blueberry $FP/projects
+
+# Get token:
+curl -u kevin:blueberry -i -X GET $FP/token
 
 '''
 
@@ -216,6 +216,7 @@ trials { /<projName> } [ /<trialName> ]
 
 '''
 ########################################################################################
+### Old stuff, but note some of it may be in use: ######################################
 
 
 def wr_check_session(func):
