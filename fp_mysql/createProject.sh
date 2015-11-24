@@ -30,8 +30,8 @@ create database if not exists $DBNAME;
 use $DBNAME;
 source fprime.create.tables.sql;
 grant all on $DBNAME.* to '$WEBUSER'@'localhost';
-insert project values (2, null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
 insert fpsys.project values (null, '$PROJNAME', '$DBNAME');
+insert project values ((select id from fpsys.project where dbname=database()), null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
 flush privileges;
 insert system (name, value) values ('contactName', '$CONTACT_NAME'), ('contactEmail', '$CONTACT_EMAIL');
 EOF

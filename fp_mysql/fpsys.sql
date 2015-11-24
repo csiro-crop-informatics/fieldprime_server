@@ -29,6 +29,6 @@ create table userProject(
   permissions  int default 0,
   unique (user_id, project_id),
   foreign key(user_id) references user(id) on delete cascade,
-  foreign key(project_id) references project(id) on delete cascade
+  foreign key(project_id) references project(id) on delete cascade on update cascade
 );
 

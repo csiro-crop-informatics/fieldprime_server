@@ -39,7 +39,7 @@ create table trial(
   site        text,
   year        text,
   acronym     text,
-  foreign key(project_id) references project(id) on delete cascade
+  foreign key(project_id) references project(id) on delete cascade on update cascade
 );
 
 --
@@ -192,7 +192,7 @@ create table trait(
   caption     VARCHAR(63) NOT NULL,
   description text NOT NULL,
   datatype    INT NOT NULL,
-  foreign key(project_id) references project(id) on delete cascade,
+  foreign key(project_id) references project(id) on delete cascade on update cascade,
   foreign key(trial_id) references trial(id) on delete cascade,
   unique (project_id, trial_id, caption)
 );
