@@ -796,7 +796,8 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
 #                 r += '{0}|'.format(note.note)
 #             r += '"'
 
-            r += SEP + util.quote('|'.join(node.getNotes()))
+            #r += SEP + util.quote('|'.join(node.getNotes()))
+            r += SEP + util.quote('|'.join([n.note for n in node.getNotes()]))
 
         # End the line:
         r += ROWEND
