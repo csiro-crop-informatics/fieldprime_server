@@ -8,11 +8,12 @@ create database fpsys;
 use fpsys;
 
 create table user(
-  id       INT PRIMARY KEY AUTO_INCREMENT,
-  login	   VARCHAR(63) not null,
-  name     VARCHAR(255),
-  passhash VARCHAR(255),
-  login_type INT,
+  id          int primary key auto_increment,
+  login	      varchar(63) not null,
+  name        varchar(255),
+  passhash    varchar(255),
+  login_type  int,
+  permissions int default 0,
   UNIQUE (login)
 );
 

@@ -336,16 +336,43 @@ def userPasswordCheck(username, password):
     else:
         return None
 
-def OLDuserPasswordCheck(username, password):
-    if systemPasswordCheck(username, password):
-        return LOGIN_TYPE_SYSTEM
-    elif ***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
-        # For ***REMOVED*** check, we should perhaps first check in a system database
-        # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
-        #
-        # OK, valid ***REMOVED*** user. Find project they have access to:
-        return LOGIN_TYPE_***REMOVED***
-    elif localPasswordCheck(username, password):
-        return LOGIN_TYPE_LOCAL
-    else:
-        return None
+class User:
+    USER_CREATE_PERMISSION = 0x1
+    def __init__(self, name, passhash, login_type, permissions):
+        self._name = name
+        self.passhash = passhash
+        self.login_type = login_type
+        self.permissions = permissions
+
+    @staticmethod
+    def getByLogin(ident):
+        try:
+            con = getFpsysDbConnection()
+            qry = "select id, name, passhash, login_type, permissions from user where login = %s"
+            cur = con.cursor()
+            cur.execute(qry, (ident,))
+            resRow = cur.fetchone()
+            if resRow is None:
+                return None
+            return User(resRow[0], resRow[1], resRow[2], resRow[3])
+        except mdb.Error, e:
+            util.flog('Error in User.getByLogin: {0}'.format(str(e)))
+            return None # what about error message?
+
+    def name(self):
+        return self._name
+    def passhash(self):
+        return self.passhash
+    def login_type(self):
+        return self.login_type
+    def hasCreatePermissions(self):
+        return bool(self.permissions & self.USER_CREATE_PERMISSION)
+
+    @staticmethod
+    def has_create_user_permissions(login):
+        usr = User.getByLogin(login)
+        print 'user name ' + usr.name()
+        if usr is None:
+            return False
+        return usr.hasCreatePermissions()
+

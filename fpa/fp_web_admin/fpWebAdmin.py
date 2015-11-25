@@ -90,14 +90,17 @@ def internalError(e):
 # due to some problem in code or database. We log the details. Possibly should
 # try to send an email (to me I guess) to raise the alarm..
 #
-    errmsg = 'Internal error:####################################\n{0}\nTraceback:\n{1}##########'.format(e, traceback.format_exc())
+    errmsg = '### Internal error:#################################\n'
+    # Get user and project names if available: NB must check references or lose error context, can't use try.
+    usr = proj = None
+    if hasattr(g, 'userName'):
+        usr = g.userName
+    if hasattr(g, 'projectName'):
+        proj = g.projectName
+    errmsg += 'User:{0} Project:{1}\n'.format(usr, proj)
+    errmsg += '{0}\n{1}##########'.format(e, traceback.format_exc())
     util.flog(errmsg)
     return make_response('FieldPrime: An error has occurred\n', 500)
-
-#@app.route('/crash', methods=['GET'])
-#def crashMe():
-#    x = 1 / 0
-#    return 'hallo world'
 
 
 def getMYSQLDBConnection(sess):
@@ -137,6 +140,11 @@ def dec_check_session(returnNoneSess=False):
         return inner
     return param_dec
 
+# @app.route('/crash', methods=['GET'])
+# @dec_check_session()
+# def crashMe(sess):
+#     x = 1 / 0
+#     return 'hallo world'
 
 def frontPage(sess, msg=''):
 #-----------------------------------------------------------------------

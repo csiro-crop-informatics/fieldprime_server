@@ -73,7 +73,6 @@ def verify_password(username_or_token, password):
         if check is None: return False
         else: user = username_or_token
     g.user = user
-    print 'user: %s' % user
     return True
 
 ### Access Points: ########################################################
@@ -85,27 +84,29 @@ def get_auth_token():
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
 @webRest.route(API_PREFIX + 'users', methods=['POST'])
+@auth.login_required
 def new_user():
+    # check permissions
+    print 'foo ' + g.user
+    if not fpsys.User.has_create_user_permissions(g.user):
+        return jsonErrorReturn("no user create permission"), HTTP_UNAUTHORIZED
+    print 'bar'
+    # check all details provided
     login = request.json.get('login')
     password = request.json.get('password')
     fullname = request.json.get('fullname')
-    if login is None or password is None:
+    if login is None or password is None or fullname is None:
         abort(HTTP_BAD_REQUEST)    # missing arguments
+
+    # check if user already exists
+    if fpsys.User.getByLogin(login) is not None:
+        return jsonErrorReturn("User with that login already exists"), HTTP_BAD_REQUEST
+
+    # create herm
     errmsg = fpsys.addLocalUser(login, fullname, password)
     if errmsg is not None:
         return jsonErrorReturn(errmsg)
     return json.dumps({'username': login}), HTTP_CREATED,
-#     # Check if user already exists. May not be necessary, we could instead
-#     # detect this as a failure of the db add operation
-#     if User.query.filter_by(username=username).first() is not None:
-#         abort(400)    # existing user
-#     user = User(username=username)
-#     user.hash_password(password)
-#     db.session.add(user)
-#     db.session.commit()
-#     return (json.dumps({'username': login}), 201,
-#             {'Location': url_for('get_user', id=user.id, _external=True)})
-
 
 @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
 @auth.login_required
