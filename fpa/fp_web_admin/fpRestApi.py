@@ -39,11 +39,11 @@ HTTP_NOT_FOUND = 404
 HTTP_SERVER_ERROR = 500
 
 
-def jsonErrorReturn(errmsg):
-    return jsonify({'error':errmsg})
+def jsonErrorReturn(errmsg, statusCode):
+    return Response(json.dumps({'error':errmsg}), status=statusCode, mimetype='application/json')
 
-def jsonReturn(jo):
-    return Response(json.dumps(jo), mimetype='application/json')
+def jsonReturn(jo, statusCode):
+    return Response(json.dumps(jo), status=statusCode, mimetype='application/json')
 
 
 ### Authorization stuff: ########################################################
@@ -70,64 +70,82 @@ def verify_password(username_or_token, password):
     if not user:
         # try to authenticate with username/password
         check = fpsys.userPasswordCheck(username_or_token, password)
-        if check is None: return False
+        print check
+        if not check: return False
         else: user = username_or_token
     g.user = user
     return True
 
 ### Access Points: ########################################################
 
-@webRest.route(API_PREFIX + 'token')
+@webRest.route(API_PREFIX + 'token', methods=['GET'])
 @auth.login_required
 def get_auth_token():
+#-------------------------------------------------------------------------------------------------
+# Returns, in a JSON object, a token for user.
+# The returned token may be used as a basic authentication username
+# for subsequent calls to the api (for up to 600 seconds).
+# This is in place of repeatedly sending the real username and password.
+# When using the token as the username, the password is not used, so any
+# value can be given.
+#
     token = generate_auth_token(g.user, 600)
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
 @webRest.route(API_PREFIX + 'users', methods=['POST'])
 @auth.login_required
 def new_user():
+#-------------------------------------------------------------------------------------------------
+# Create new user.
+# Authenticated user must have create user perms.
+# NB Currently can only create local user. Need to be able to create ***REMOVED***,
+# could have login_type parameter.
+#
     # check permissions
-    print 'foo ' + g.user
     if not fpsys.User.has_create_user_permissions(g.user):
-        return jsonErrorReturn("no user create permission"), HTTP_UNAUTHORIZED
-    print 'bar'
+        return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
     # check all details provided
     login = request.json.get('login')
-    password = request.json.get('password')
-    fullname = request.json.get('fullname')
-    if login is None or password is None or fullname is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
+    loginType = request.json.get('loginType')
+    if login is None or loginType is None:
+        return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
 
     # check if user already exists
     if fpsys.User.getByLogin(login) is not None:
-        return jsonErrorReturn("User with that login already exists"), HTTP_BAD_REQUEST
+        return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
 
-    # create herm
-    errmsg = fpsys.addLocalUser(login, fullname, password)
+    # create them
+    if loginType == LOGIN_TYPE_LOCAL:
+        password = request.json.get('password')
+        fullname = request.json.get('fullname')
+        if password is None or fullname is None:
+            return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
+        errmsg = fpsys.addLocalUser(login, fullname, password)
+    elif loginType == LOGIN_TYPE_***REMOVED***:
+        errmsg = fpsys.add***REMOVED***User(login)
+    else:
+        errmsg = 'Invalid loginType'
     if errmsg is not None:
-        return jsonErrorReturn(errmsg)
-    return json.dumps({'username': login}), HTTP_CREATED,
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    return jsonReturn({'username': login}, HTTP_CREATED)
+
+@webRest.route(API_PREFIX + 'projects', methods=['GET'])
+@auth.login_required
+def getProjects():
+    (plist, errmsg) = fpsys.getProjects(g.user)
+    if errmsg:
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    print len(plist)
+    nplist = [p.name() for p in plist]
+    return jsonReturn(nplist, HTTP_OK)  # return urls - do we need set Content-Type: application/json?
+
+###########################################################
 
 @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
 @auth.login_required
 def authUser(login, permission):
     pass
 
-@webRest.route(API_PREFIX + 'resource')
-@auth.login_required
-def get_resource():
-    return jsonify({'data': 'Hello, %s!' % g.user})
-
-@webRest.route(API_PREFIX + 'projects', methods=['GET'])
-@auth.login_required
-def getProjects():
-    #util.flog("in getProjects")
-    (plist, errmsg) = fpsys.getProjects(g.user)
-    if errmsg:
-        return jsonErrorReturn(errmsg)
-    print len(plist)
-    nplist = [p.name() for p in plist]
-    return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
 @auth.login_required
@@ -135,10 +153,10 @@ def getProject(id):
     util.flog("in getProject")
     (plist, errmsg) = fpsys.getProjects(g.user)
     if errmsg:
-        return jsonErrorReturn(errmsg)
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     print len(plist)
     nplist = [p.name() for p in plist]
-    return jsonReturn(nplist)  # return urls - do we need set Content-Type: application/json?
+    return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
 
 
 
@@ -193,8 +211,20 @@ def createProject2():
 TEST_STUFF = '''
 FP=http://0.0.0.0:5001/fpv1
 
-# Create user:
-curl -i -X POST -H "Content-Type: application/json" -d '{"login":"kevin","password":"blueberry"}' $FP/users
+# Need to have user, preferably local, in fpsys with create user permissions, eg mk:m
+mysql
+use fpsys
+insert user ... (use python to get passhash of 'm')
+
+# Create ***REMOVED*** user:
+curl -u mk:m -i -X POST -H "Content-Type: application/json" \
+     -d '{"login":"***REMOVED***","loginType":2}' $FP/users
+
+# Create Local user:
+curl -u mk:m -i -X POST -H "Content-Type: application/json" \
+     -d '{"login":"al","password":"a","fullname":"Al Ocal","loginType":3}' $FP/users
+
+# NB could first set mk in db without create user perms, and check get appropriate error.
 
 # Test access:
 curl -i -u kevin:blueberry $FP/projects

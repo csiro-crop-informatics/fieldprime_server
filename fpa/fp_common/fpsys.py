@@ -82,7 +82,6 @@ def getProjectUsers(project):
 #
     # Get project id:
     projId = _getProjectIdFromName(project)
-    #print 'projId' + projId
     if projId is None:
         return None, 'bad project name'
     try:
@@ -148,21 +147,25 @@ def add***REMOVED***UserToProject(ident, project, perms):
 # Add user with given ident to specified project with specified permissions.
 # Note user db entry created if not already present.
 # Returns error message on error or None
+# MFK Note overlap with add***REMOVED***User()
 #
-    # Check ***REMOVED*** user exists, and get name:
-    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-    if not ***REMOVED***Server:
-        return 'Cannot connect to ***REMOVED*** server'
-    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
-    if ***REMOVED***User is None:
-        return 'Unknown ident'
-    ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
+    try:
+        ***REMOVED***Name = ***REMOVED***.getUserName(ident)
+    except ***REMOVED***.Error, e:
+        return str(e)
+#     # Check ***REMOVED*** user exists, and get name:
+#     ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
+#     if not ***REMOVED***Server:
+#         return 'Cannot connect to ***REMOVED*** server'
+#     ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
+#     if ***REMOVED***User is None:
+#         return 'Unknown ident'
+#     ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
 
     # Get project id:
     projId = _getProjectIdFromName(project)
     if projId is None:
         return None, 'bad project name'
-    print 'here 1'
     try:
         con = getFpsysDbConnection()
         cur = con.cursor()
@@ -189,7 +192,6 @@ def add***REMOVED***UserToProject(ident, project, perms):
         con.close()
     except mdb.Error, e:
         return 'Failed user add'
-    print 'here 2'
     return None
 
 def updateUser(ident, project, perms):
@@ -236,6 +238,21 @@ def updateUser(ident, project, perms):
         return (None, 'Failed system login')
     return None
 
+def add***REMOVED***User(login):
+#-----------------------------------------------------------------------
+# Returns None on success, else error message.
+#
+    try:
+        ***REMOVED***Name = ***REMOVED***.getUserName(login)
+        con = getFpsysDbConnection()
+        qry = "insert user (login, name, login_type) values (%s,%s,%s)"
+        cur = con.cursor()
+        cur.execute(qry, (login, ***REMOVED***Name, LOGIN_TYPE_***REMOVED***))
+        con.commit()
+        con.close()
+    except (***REMOVED***.Error, mdb.Error) as e:
+        return str(e)
+    return None
 
 def addLocalUser(login, fullname, password):
 # Returns None on success, else error message.
@@ -244,7 +261,6 @@ def addLocalUser(login, fullname, password):
         con = getFpsysDbConnection()
         qry = "insert user (login, name, passhash, login_type) values (%s,%s,%s,%s)"
         cur = con.cursor()
-        #print qry, login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL
         cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL))
         con.commit()
         con.close()
@@ -338,11 +354,12 @@ def userPasswordCheck(username, password):
 
 class User:
     USER_CREATE_PERMISSION = 0x1
-    def __init__(self, name, passhash, login_type, permissions):
+    def __init__(self, id, name, passhash, login_type, permissions):
+        self._id = id
         self._name = name
-        self.passhash = passhash
-        self.login_type = login_type
-        self.permissions = permissions
+        self._passhash = passhash
+        self._login_type = login_type
+        self._permissions = permissions
 
     @staticmethod
     def getByLogin(ident):
@@ -354,7 +371,7 @@ class User:
             resRow = cur.fetchone()
             if resRow is None:
                 return None
-            return User(resRow[0], resRow[1], resRow[2], resRow[3])
+            return User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4])
         except mdb.Error, e:
             util.flog('Error in User.getByLogin: {0}'.format(str(e)))
             return None # what about error message?
@@ -362,16 +379,15 @@ class User:
     def name(self):
         return self._name
     def passhash(self):
-        return self.passhash
+        return self._passhash
     def login_type(self):
-        return self.login_type
+        return self._login_type
     def hasCreatePermissions(self):
-        return bool(self.permissions & self.USER_CREATE_PERMISSION)
+        return bool(self._permissions & self.USER_CREATE_PERMISSION)
 
     @staticmethod
     def has_create_user_permissions(login):
         usr = User.getByLogin(login)
-        print 'user name ' + usr.name()
         if usr is None:
             return False
         return usr.hasCreatePermissions()
