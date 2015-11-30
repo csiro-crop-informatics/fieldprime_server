@@ -44,6 +44,7 @@ import datapage as dp
 import websess
 from fpRestApi import webRest
 
+
 app = Flask(__name__)
 app.register_blueprint(webRest)
 
@@ -109,7 +110,7 @@ def getMYSQLDBConnection(sess):
 #
     try:
         projectDBname = models.dbName4Project(sess.getProjectName())
-        con = mdb.connect('localhost', models.APPUSR, models.APPPWD, projectDBname)
+        con = mdb.connect('localhost', models.fpDBUser(), models.fpPassword(), projectDBname)
         return con
     except mdb.Error:
         return None
@@ -1701,6 +1702,7 @@ if __name__ == '__main__':
     app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
     app.config['CATEGORY_IMAGE_FOLDER'] = expanduser("~") + '/proj/fpserver/catPhotos'
     app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + expanduser("~") + '/proj/fpserver/catPhotos'
+    app.config['FPPWFILE'] = expanduser("~") + '/proj/fpserver/fppw'
     LOGIN_TIMEOUT = 36000
 
     # Setup logging:

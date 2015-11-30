@@ -23,6 +23,8 @@ from const import *
 import util
 from functools import wraps
 
+from flask import current_app as app
+
 def oneException2None(func):
 #--------------------------------------------------------------------
 # Decorator used for sqlalchemy one() queries, which throw exceptions if
@@ -1282,8 +1284,28 @@ def dbName4Project(project):
     return 'fp_' + project
 
 
-APPUSR = 'fpwserver'
-APPPWD = 'fpws_g00d10ch'
+dbUser = None  # 'fpwserver'
+dbPass = None  # 'fpws_g00d10ch'
+def _getDBLoginDetails():
+#-------------------------------------------------------------------
+# Sets globals dbUser and dbPass from file
+    global dbUser, dbPass
+    if dbUser is not None:
+        return
+    pwfile = app.config['FPPWFILE']
+    with open(pwfile) as pwfile:
+        dbdetails = pwfile.readline().rstrip().split(':', 1)
+        dbUser = dbdetails[0]
+        dbPass = dbdetails[1]
+
+def fpPassword():
+    _getDBLoginDetails()
+    return dbPass
+
+def fpDBUser():
+    _getDBLoginDetails()
+    return dbUser
+
 import fpsys
 def getSysUserEngine(projectName):
 #-----------------------------------------------------------------------
@@ -1291,7 +1313,7 @@ def getSysUserEngine(projectName):
 # currently done in session module.
 #
     dbname = fpsys.getProjectDBname(projectName)
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
+    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpDBUser(), fpPassword(), dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
     return dbsess
@@ -1301,7 +1323,7 @@ def getDbConnection(dbname):
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(APPUSR, APPPWD, dbname))
+    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpDBUser(), fpPassword(), dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
     return dbsess

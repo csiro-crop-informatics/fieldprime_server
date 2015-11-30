@@ -13,12 +13,14 @@ import MySQLdb as mdb
 import ***REMOVED***
 
 import util
-from models import dbName4Project, APPUSR, APPPWD          # circularity here, could move APP* to separate module
+from models import dbName4Project, fpDBUser, fpPassword         # circularity here, could move APP* to separate module
 from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 from passlib.apps import custom_app_context as pwd_context
 
+
 def getFpsysDbConnection():
-    return mdb.connect('localhost', APPUSR, APPPWD, 'fpsys')
+    print 'user {0} pass {1}'.format(fpDBUser(), fpPassword())
+    return mdb.connect('localhost', fpDBUser(), fpPassword(), 'fpsys')
 
 
 def _getProjectIdFromName(projName):
