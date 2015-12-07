@@ -1274,8 +1274,8 @@ def htmlNumericScoreSetStats(data, name):
     '''
 
     # Boxplot after table:
-    oStats += '<h3>Boxplot:</h3>'
-    oStats += stats.htmlBoxplot(data)
+#     oStats += '<h3>Boxplot:</h3>'
+#     oStats += stats.htmlBoxplot(data)
 
     # Histogram(s):
     width = 900

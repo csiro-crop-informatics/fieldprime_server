@@ -19,7 +19,6 @@ from passlib.apps import custom_app_context as pwd_context
 
 
 def getFpsysDbConnection():
-    print 'user {0} pass {1}'.format(fpDBUser(), fpPassword())
     return mdb.connect('localhost', fpDBUser(), fpPassword(), 'fpsys')
 
 
