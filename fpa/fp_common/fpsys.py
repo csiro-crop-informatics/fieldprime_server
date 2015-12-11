@@ -87,7 +87,7 @@ def getProjectUsers(project):
         return None, 'bad project name'
     try:
         con = getFpsysDbConnection()
-        qry = 'select login, name, permissions from user join userProject on id = user_id where project_id = %s'
+        qry = 'select login, name, userProject.permissions from user join userProject on id = user_id where project_id = %s'
         cur = con.cursor()
         cur.execute(qry, (projId,))
         users = {}
