@@ -15,6 +15,7 @@
   </form>
 </fieldset>
 
+{% if passChange == True %}
 <fieldset><legend><h3>Reset Admin password</h3></legend>
   <form method="POST" action="{{url_for('urlUserDetails', projectName=g.projectName)}}?op=newpw">
     <p> The <i>Admin Password</i> is the password used to login to this web server to
@@ -28,6 +29,7 @@
     {% endif %}
   </form>
 </fieldset>
+{% endif %}
 
 <fieldset><legend><h3>Reset Scoring Devices Password</h3></legend>
   <form method="POST" action="{{url_for('urlUserDetails', projectName=g.projectName)}}?op=setAppPassword">

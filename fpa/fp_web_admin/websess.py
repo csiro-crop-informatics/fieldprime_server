@@ -4,6 +4,7 @@
 
 import sha, shelve, time, os
 import fp_common.models as models
+import fp_common.fpsys as fpsys
 
 #
 # Masks and functions for project permissions:
@@ -103,13 +104,21 @@ class WebSess(object):
     #------------------------------------------------------------------
         return self.data.get('projectAccess')
 
-    def setUser(self, user):
+    def setUserIdent(self, user):
     #------------------------------------------------------------------
-        self.data['user'] = user
+        self.data['userident'] = user
+
+    def getUserIdent(self):
+    #------------------------------------------------------------------
+        return self.data.get('userident')
 
     def getUser(self):
     #------------------------------------------------------------------
-        return self.data.get('user')
+    # Get user object (from fpsys) for current user. Or None if not possible.
+        ident = self.getUserIdent()
+        if ident is None:
+            return None
+        return fpsys.User.getByLogin(ident)
 
     def setLoginType(self, loginType):
     #------------------------------------------------------------------
@@ -121,7 +130,7 @@ class WebSess(object):
 
     def valid(self):
     #------------------------------------------------------------------
-        valid = self.data.get('user') and self._timeSinceUse() < self.mTimeout
+        valid = self.data.get('userident') and self._timeSinceUse() < self.mTimeout
         if valid:
             self.resetLastUseTime()
         return valid

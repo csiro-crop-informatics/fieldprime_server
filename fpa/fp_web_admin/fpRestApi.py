@@ -385,7 +385,7 @@ def urlLogin():
     util.fpLog(current_app, 'Login from user {0}'.format(username))
     sess = websess.WebSess(sessFileDir=current_app.config['SESS_FILE_DIR'])  # Create session object
     sess.resetLastUseTime()
-    sess.setUser(username)
+    sess.setUserIdent(username)
     sess.setProject(project, dbname, access)
     sess.setLoginType(loginType)
     return jsonify({'token':sess.sid()})

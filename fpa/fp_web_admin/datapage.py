@@ -89,8 +89,7 @@ def _dataNavigationContent(sess, trialId):
     # First row. User and user specific buttons:
     #
     # show current user:
-
-    r1c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUser()) + '</span>'
+    r1c1  = '<span>' + fpUtil.htmlLabelValue('User', sess.getUserIdent()) + '</span>'
     r1c1 += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
 
     # Test button, if you need one. Calls urlTest function
@@ -114,26 +113,19 @@ def _dataNavigationContent(sess, trialId):
 
     #---------------------------------------------------------------------------
     # Second row. Project and project specific buttons:
-    #
-    # There are currently 2 types of login, ***REMOVED***, and the project login.
-    # ***REMOVED*** users may have access rights to multiple project so they get
-    # a dropdown project selection. Project logins have access to a single
-    # project only, so they don't get a drop down.
-    if sess.getLoginType() != const.LOGIN_TYPE_SYSTEM:
-        # Make select of user's projects.
-        # Note we need to construct the URL for retrieving the project page in javascript,
-        # and hence cannot use url_for.
-        projList, errMsg = fpsys.getProjects(sess.getUser())
-        if errMsg or not projList:
-            return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUser(), errMsg)
-        currProj = sess.getProjectName()
-        r2c1 = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
-            lambda p: url_for('urlProject', project=p.projectName),
-            lambda p: p.projectName,
-            None if currProj is None else url_for('urlProject', project=currProj))
-    else:
-        # Show current project:
-        r2c1 = fpUtil.htmlLabelValue('Project', sess.getProjectName())
+
+    # Make select of user's projects.
+    # Note we need to construct the URL for retrieving the project page in javascript,
+    # and hence cannot use url_for.
+    projList, errMsg = fpsys.getProjects(sess.getUserIdent())
+    if errMsg or not projList:
+        return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUserIdent(), errMsg)
+    currProj = sess.getProjectName()
+    r2c1 = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
+        lambda p: url_for('urlProject', project=p.projectName),
+        lambda p: p.projectName,
+        None if currProj is None else url_for('urlProject', project=currProj))
+
     r2 = fpUtil.bsCol(r2c1, numCols=6)
 
     # Show project specific buttons:
@@ -148,6 +140,8 @@ def _dataNavigationContent(sess, trialId):
 
     nc += fpUtil.bsRow(r2)
 
+    #---------------------------------------------------------------------------
+    # Trial selector:
     if sess.getProjectName() is not None:
         # Add trial selector:
         if trialId is None or trialId >= 0:

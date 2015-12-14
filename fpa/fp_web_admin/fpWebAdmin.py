@@ -135,7 +135,7 @@ def dec_check_session(returnNoneSess=False):
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
                 return loginPage('Your session has timed out - please login again.')
-            g.userName = sess.getUser()
+            g.userName = sess.getUserIdent()
             g.projectName = sess.getProjectName()
             return func(sess, *args, **kwargs)
         return inner
@@ -574,7 +574,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
     con = getMYSQLDBConnection(sess)
     qry = 'select row, col, barcode from node where trial_id = %s order by id'
     cur = con.cursor()
-    cur.execute(qry, trialId)
+    cur.execute(qry, (trialId,))
     colRow = []
     colCol = []
     colBarcode = []
@@ -912,7 +912,7 @@ def urlDeleteTrial(sess, trialId):
             if not request.form.get('password'):
                  return getHtml('You must provide a password')
             # Check session password is still correct:
-            if not fpsys.userPasswordCheck(sess.getUser(), request.form.get('password')):
+            if not fpsys.userPasswordCheck(sess.getUserIdent(), request.form.get('password')):
                 return getHtml('Password is incorrect')
             # Require admin permissions for delete:
             if not sess.adminRights():
@@ -1100,12 +1100,16 @@ def urlUserDetails(sess, projectName):
         return badJuju(sess, 'Incorrect project name')
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
+    usr = sess.getUser()
+    if usr is None:
+        return badJuju(sess, 'No user found')
+    showPassChange = usr.allowPasswordChange()
 
     def theFormAgain(op=None, msg=None):
         cname = dal.getSystemValue(sess.db(), 'contactName') or ''
         cemail = dal.getSystemValue(sess.db(), 'contactEmail') or ''
         return dp.dataTemplatePage(sess, 'profile.html', contactName=cname, contactEmail=cemail,
-                    title="Admin", op=op, errMsg=msg,
+                    title="Admin", op=op, errMsg=msg, passChange=showPassChange,
                     usersHTML=manageUsersHTML(sess, msg if op is 'manageUser' else None))
 
     title = "Profile"
@@ -1118,17 +1122,18 @@ def urlUserDetails(sess, projectName):
             contactName = form.get('contactName')
             contactEmail = form.get('contactEmail')
             if not (contactName and contactEmail):
-                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields", title=title)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields",
+                                           passChange=showPassChange, title=title)
             else:
                 dal.setSystemValue(sess.db(), 'contactName', contactName)
                 dal.setSystemValue(sess.db(), 'contactEmail', contactEmail)
                 return dp.dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
-                           errMsg="Contact details saved", title=title)
+                           errMsg="Contact details saved", passChange=showPassChange, title=title)
 
         elif op == 'newpw' or op == 'setAppPassword':
             # Changing admin or app password:
             # MFK bug here: if we prompt with err message, the contact values are missing.
-            currUser = sess.getUser()
+            currUser = sess.getUserIdent()
             oldPassword = form.get("password")
             if not fpsys.systemPasswordCheck(sess.getProjectName(), oldPassword):
                 return logoutPage(sess, "Password is incorrect")
@@ -1137,7 +1142,8 @@ def urlUserDetails(sess, projectName):
             if not (oldPassword and newpassword1 and newpassword2):
                 return theFormAgain(op=op, msg="Please fill out all fields")
             if newpassword1 != newpassword2:
-                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.", title=title)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.",
+                                           passChange=showPassChange, title=title)
 
             # OK, all good, change their password:
             try:
@@ -1155,7 +1161,7 @@ def urlUserDetails(sess, projectName):
                     cur.execute("set password for %s@localhost = password(%s)", (models.dbName4Project(sess.getProjectName()), newpassword1))
                     msg = 'Admin password reset successfully'
                 elif op == 'setAppPassword':
-                    cur.execute("REPLACE system set name = 'appPassword', value = %s", newpassword1)
+                    cur.execute("REPLACE system set name = 'appPassword', value = %s", (newpassword1,))
                     con.commit()
                     msg = 'Scoring password reset successfully'
                 con.close()
@@ -1533,9 +1539,7 @@ def urlProject(sess, project):
 # the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
 #
     if project is not None:
-#         if sess.getLoginType() != LOGIN_TYPE_***REMOVED***:
-#             return badJuju(sess, 'Unexpected login type')
-        projList, errMsg = fpsys.getProjects(sess.getUser())
+        projList, errMsg = fpsys.getProjects(sess.getUserIdent())
         if errMsg is not None:
             return badJuju(sess, errMsg)
         elif not projList:
@@ -1626,32 +1630,15 @@ def urlMain():
             error = 'No password'
 
         if not error:
-            # Try fieldprime login, then ***REMOVED***:
-            # If it is a known user then what mysql user and password should we use?
-            # We should store the ***REMOVED*** user name in the session in case needed for any metadata,
-            # Or at least log their login.
-            #
-            # MFK we shouldn't need to store password if we switch to using system password.
-            # even for project accounts. The password is checked here and used to make the
-            # timestamped cookie.
-            #
-            project = None    # For either login type we need to set a project
-            access = None
-            dbname = None
-            loginType = None
-            if fpsys.userPasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
-                # For ***REMOVED*** check, we should perhaps first check in a system database
-                # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
-                #
-                # OK, valid ***REMOVED*** user. Find project they have access to:
-                #loginType = LOGIN_TYPE_***REMOVED***
+            # Check login details:
+            project = access = dbname = None
+            if fpsys.userPasswordCheck(username, password):
+                # OK, valid user. Find projects they have access to:
                 projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
                     error = errMsg
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
-                else:
-                    project = access = dbname = None
             else:
                 util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
@@ -1660,9 +1647,8 @@ def urlMain():
                 # Good to go, show the user front page, after adding cookie:
                 util.fpLog(app, 'Login from user {0}'.format(username))
                 sess.resetLastUseTime()
-                sess.setUser(username)
+                sess.setUserIdent(username)
                 sess.setProject(project, dbname, access)
-                sess.setLoginType(loginType)
                 g.userName = username
                 g.projectName = project
                 resp = make_response(frontPage(sess))

@@ -388,6 +388,8 @@ class User:
         return self._login_type
     def hasCreatePermissions(self):
         return bool(self._permissions & self.USER_CREATE_PERMISSION)
+    def allowPasswordChange(self):
+        return self._login_type == LOGIN_TYPE_MYSQL or self._login_type == LOGIN_TYPE_LOCAL
 
     @staticmethod
     def has_create_user_permissions(login):
