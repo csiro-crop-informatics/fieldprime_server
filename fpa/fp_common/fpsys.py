@@ -14,8 +14,9 @@ import ***REMOVED***
 
 import util
 from models import dbName4Project, fpDBUser, fpPassword         # circularity here, could move APP* to separate module
-from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
+from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
 from passlib.apps import custom_app_context as pwd_context
+from passlib.apps import mysql_context
 
 
 def getFpsysDbConnection():
@@ -350,6 +351,8 @@ def userPasswordCheck(username, password):
         return systemPasswordCheck(username, password)
     elif loginType == LOGIN_TYPE_***REMOVED***:
         return ***REMOVED***PasswordCheck(username, password)
+    elif loginType == LOGIN_TYPE_MYSQL:
+        return mysql_context.verify(password, phash)
     else:
         return None
 

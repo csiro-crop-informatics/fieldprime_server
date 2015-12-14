@@ -47,7 +47,7 @@ fi
 echo projname $PROJNAME
 echo name $CONTACT_NAME
 echo email $CONTACT_EMAIL
-exit 0
+#exit 0
 
 # Run Mysql script:
 $MYSQL -uSuperadm -p <<EOF

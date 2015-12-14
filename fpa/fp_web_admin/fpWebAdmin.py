@@ -912,7 +912,7 @@ def urlDeleteTrial(sess, trialId):
             if not request.form.get('password'):
                  return getHtml('You must provide a password')
             # Check session password is still correct:
-            if not passwordCheck(sess, request.form.get('password')):
+            if not fpsys.userPasswordCheck(sess.getUser(), request.form.get('password')):
                 return getHtml('Password is incorrect')
             # Require admin permissions for delete:
             if not sess.adminRights():
@@ -1533,8 +1533,8 @@ def urlProject(sess, project):
 # the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
 #
     if project is not None:
-        if sess.getLoginType() != LOGIN_TYPE_***REMOVED***:
-            return badJuju(sess, 'Unexpected login type')
+#         if sess.getLoginType() != LOGIN_TYPE_***REMOVED***:
+#             return badJuju(sess, 'Unexpected login type')
         projList, errMsg = fpsys.getProjects(sess.getUser())
         if errMsg is not None:
             return badJuju(sess, errMsg)
@@ -1583,15 +1583,6 @@ def badJsonJuju(sess, error=None):
 def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
-
-def passwordCheck(sess, password):
-#-----------------------------------------------------------------------
-# Check password is valid for current user/loginType
-#
-    if sess.getLoginType() == LOGIN_TYPE_SYSTEM:
-        return fpsys.systemPasswordCheck(sess.getUser(), password)
-    elif sess.getLoginType() == LOGIN_TYPE_***REMOVED***:
-        return fpsys.***REMOVED***PasswordCheck(sess.getUser(), password)
 
 
 @app.route('/', methods=["GET", "POST"])
@@ -1648,17 +1639,12 @@ def urlMain():
             access = None
             dbname = None
             loginType = None
-            if fpsys.systemPasswordCheck(username, password):
-                project = username
-                access = websess.PROJECT_ACCESS_ALL
-                dbname = models.dbName4Project(project)
-                loginType = LOGIN_TYPE_SYSTEM
-            elif fpsys.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
+            if fpsys.userPasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
                 # For ***REMOVED*** check, we should perhaps first check in a system database
                 # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
                 #
                 # OK, valid ***REMOVED*** user. Find project they have access to:
-                loginType = LOGIN_TYPE_***REMOVED***
+                #loginType = LOGIN_TYPE_***REMOVED***
                 projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
                     error = errMsg
