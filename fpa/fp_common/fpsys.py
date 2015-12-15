@@ -389,7 +389,27 @@ class User:
     def hasCreatePermissions(self):
         return bool(self._permissions & self.USER_CREATE_PERMISSION)
     def allowPasswordChange(self):
+    # As in show the password change form in the admin page - only appropriate for mysql or local.
         return self._login_type == LOGIN_TYPE_MYSQL or self._login_type == LOGIN_TYPE_LOCAL
+    
+    def changePassword(self, newPassword):
+    # Returns error message, or None for success.
+    # NB, this only allowed for mysql and local types, and note that mysql get converted
+    # to local types in the process (mysql only supported for historical users).
+        if not isinstance(newPassword, basestring): return 'Unexpected password type'
+        if len(newPassword) < 4: return 'password too short'
+        if not self.allowPasswordChange(): return 'Cannot change this password type'
+        try:
+            con = getFpsysDbConnection()
+            qry = "update user set passhash = %s, login_type = %s where id = %s"
+            cur = con.cursor()
+            cur.execute(qry, (pwd_context.encrypt(newPassword), LOGIN_TYPE_LOCAL, self._id))
+            con.commit()
+            con.close()
+        except mdb.Error, e:
+            util.flog('Error in User.changePassword: {0}'.format(str(e)))
+            return 'Error in User.changePassword: {0}'.format(str(e))
+        return None
 
     @staticmethod
     def has_create_user_permissions(login):

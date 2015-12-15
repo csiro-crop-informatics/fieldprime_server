@@ -1133,10 +1133,7 @@ def urlUserDetails(sess, projectName):
         elif op == 'newpw' or op == 'setAppPassword':
             # Changing admin or app password:
             # MFK bug here: if we prompt with err message, the contact values are missing.
-            currUser = sess.getUserIdent()
             oldPassword = form.get("password")
-            if not fpsys.systemPasswordCheck(sess.getProjectName(), oldPassword):
-                return logoutPage(sess, "Password is incorrect")
             newpassword1 = form.get("newpassword1")
             newpassword2 = form.get("newpassword2")
             if not (oldPassword and newpassword1 and newpassword2):
@@ -1146,28 +1143,14 @@ def urlUserDetails(sess, projectName):
                                            passChange=showPassChange, title=title)
 
             # OK, all good, change their password:
-            try:
-                # New way - get a connection for the system project user for changing the password.
-                # This to avoid having the fpwserver user needing ability to set passwords (access to mysql database).
-                # Ideally however, we should be able to have admin privileges for ***REMOVED*** users, so remembering the system
-                # user password is not compulsory.
-                usrname = models.dbName4Project(sess.getProjectName())
-                usrdb = usrname
-                con = mdb.connect('localhost', usrname, oldPassword, usrdb)
-
-                cur = con.cursor()
-                msg = ''
-                if op == 'newpw':
-                    cur.execute("set password for %s@localhost = password(%s)", (models.dbName4Project(sess.getProjectName()), newpassword1))
-                    msg = 'Admin password reset successfully'
-                elif op == 'setAppPassword':
-                    cur.execute("REPLACE system set name = 'appPassword', value = %s", (newpassword1,))
-                    con.commit()
-                    msg = 'Scoring password reset successfully'
-                con.close()
-                return frontPage(sess, msg)
-            except mdb.Error, e:
-                return logoutPage(sess, 'Unexpected error trying to change password')
+            currUser = sess.getUserIdent()
+            if not fpsys.userPasswordCheck(g.username, oldPassword):  
+                return logoutPage(sess, "Password is incorrect")
+            user = fpsys.User.getByLogin(currUser)
+            msg = user.changePassword(newpassword1)
+            if msg is None:
+                msg = 'Password reset successfully'
+            return frontPage(sess, msg)
         elif op == 'manageUsers':
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
@@ -1669,16 +1652,17 @@ def urlMain():
 # For local testing:
 if __name__ == '__main__':
     from os.path import expanduser
-    app.config['SESS_FILE_DIR'] = expanduser("~") + '/proj/fpserver/wsessions'
-    app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
-    app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
-    app.config['CATEGORY_IMAGE_FOLDER'] = expanduser("~") + '/proj/fpserver/catPhotos'
-    app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + expanduser("~") + '/proj/fpserver/catPhotos'
-    app.config['FPPWFILE'] = expanduser("~") + '/proj/fpserver/fppw'
+    FPROOT = expanduser("~") + '/proj/fpserver/'
+    app.config['SESS_FILE_DIR'] = FPROOT + '/wsessions'
+    app.config['PHOTO_UPLOAD_FOLDER'] = FPROOT + '/photos/'
+    app.config['FPLOG_FILE'] = FPROOT + '/fplog/fp.log'
+    app.config['CATEGORY_IMAGE_FOLDER'] = FPROOT + '/catPhotos'
+    app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + FPROOT + '/catPhotos'
+    app.config['FPPWFILE'] = FPROOT + '/fppw'
     LOGIN_TIMEOUT = 36000
 
     # Setup logging:
-    app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
+    app.config['FP_FLAG_DIR'] = FPROOT + '/fplog/'
     util.initLogging(app, True)  # Specify print log messages
 
     app.run(debug=True, threaded=True, host='0.0.0.0', port=5001)
