@@ -654,13 +654,18 @@ def hello_world():
 # For local testing:
 if __name__ == '__main__':
     from os.path import expanduser
-    app.config['PHOTO_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/photos/'
-    app.config['FPLOG_FILE'] = expanduser("~") + '/proj/fpserver/fplog/fp.log'
-    app.config['CRASH_REPORT_UPLOAD_FOLDER'] = expanduser("~") + '/proj/fpserver/crashReports/'
-
+    FPROOT = expanduser("~") + '/proj/fpserver/'
+    app.config['PHOTO_UPLOAD_FOLDER'] = FPROOT + '/photos/'
+    app.config['FPLOG_FILE'] = FPROOT + '/fplog/fp.log'
+    app.config['CRASH_REPORT_UPLOAD_FOLDER'] = FPROOT + '/crashReports/'
+    app.config['FPPWFILE'] = FPROOT + '/fppw'
     # Setup logging:
-    app.config['FP_FLAG_DIR'] = expanduser("~") + '/proj/fpserver/fplog/'
+    app.config['FP_FLAG_DIR'] = expanduser("~") + '/fplog/'
     util.initLogging(app, True)  # Specify print log messages
 
     app.run(debug=True, host='0.0.0.0')
+
+#############################################################################################
+
+
 

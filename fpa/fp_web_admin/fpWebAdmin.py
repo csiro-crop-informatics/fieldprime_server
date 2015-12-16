@@ -798,15 +798,9 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
         # Notes, as list separated by pipe symbols:
         # Also surrounded by quotes - this may be a problem, and are we doing this for text scores?
         # MFK - I think we do need quotes, but then presumable need to escape quotes within
+        # NB we also remove line ends.
         if showNotes:
-#             r += SEP + '"'
-#             tuNotes = node.getNotes()
-#             for note in tuNotes:
-#                 r += '{0}|'.format(note.note)
-#             r += '"'
-
-            #r += SEP + util.quote('|'.join(node.getNotes()))
-            r += SEP + util.quote('|'.join([n.note for n in node.getNotes()]))
+            r += SEP + util.removeLineEnds(util.quote('|'.join([n.note for n in node.getNotes()])))
 
         # End the line:
         r += ROWEND
@@ -1144,7 +1138,7 @@ def urlUserDetails(sess, projectName):
 
             # OK, all good, change their password:
             currUser = sess.getUserIdent()
-            if not fpsys.userPasswordCheck(g.username, oldPassword):  
+            if not fpsys.userPasswordCheck(g.userName, oldPassword):
                 return logoutPage(sess, "Password is incorrect")
             user = fpsys.User.getByLogin(currUser)
             msg = user.changePassword(newpassword1)

@@ -72,6 +72,12 @@ def quote(col):
         return ''
     return '"{}"'.format(str(col).replace('"', '""'))
 
+def removeLineEnds(txt):
+#-----------------------------------------------------------------------
+# Replace line ends with spaces
+    if txt is None:
+        return ''
+    return txt.replace('\n', ' ')
 
 ###  Logging: ##################################################################
 # We want a logging system that can be turned on or off by use of a flag file:
