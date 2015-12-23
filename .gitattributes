@@ -7,6 +7,13 @@ fp_mysql/fpsys.sql -text
 fp_mysql/new_fprime_user.sh -text
 fp_mysql/projects.sql -text
 fp_mysql/update.sql -text
+fpa/.dockerignore -text
+fpa/Dockerfile -text
+fpa/docker.wsgiPlusPylibs/.dockerignore -text
+fpa/docker.wsgiPlusPylibs/.whiskey/action_hooks/pre-build -text
+fpa/docker.wsgiPlusPylibs/Dockerfile -text
+fpa/docker.wsgiPlusPylibs/makefile -text
+fpa/docker.wsgiPlusPylibs/requirements.txt -text
 fpa/fp_app_api/__init__.py -text
 fpa/fp_app_api/fpApi.py -text
 fpa/fp_common/__init__.py -text
@@ -86,6 +93,7 @@ fpa/fp_web_admin/templates/uploadAttributes.html -text
 fpa/fp_web_admin/templates/uploadScores.html -text
 fpa/fp_web_admin/trialProperties.py -text
 fpa/fp_web_admin/websess.py -text
+fpa/makefile -text
 fpa/wsgi_adm_entry.py -text
 fpa/wsgi_app_entry.py -text
 misc/datareap.php -text
