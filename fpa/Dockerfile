@@ -3,4 +3,4 @@ WORKDIR /app
 ONBUILD COPY . /app
 EXPOSE 80
 ENTRYPOINT [ "mod_wsgi-docker-start" ]
-CMD [ "wsgi_adm_entry.py" ]
+CMD [ "--working-directory", "/app", "wsgi_adm_entry.py" ]
