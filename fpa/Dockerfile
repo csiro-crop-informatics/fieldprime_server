@@ -1,6 +1,6 @@
-FROM grahamdumpleton/mod-wsgi-docker:python-2.7-onbuild
+FROM mod-wsgi-fp-pylibs
 WORKDIR /app
-ONBUILD COPY . /app
+COPY . /app/
 EXPOSE 80
 ENTRYPOINT [ "mod_wsgi-docker-start" ]
 CMD [ "--working-directory", "/app", "wsgi_adm_entry.py" ]
