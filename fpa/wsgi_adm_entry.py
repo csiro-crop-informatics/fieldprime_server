@@ -6,8 +6,11 @@
 # which will be used by wsgi to service requests.
 #
 
+import os
+FP_ROOT = os.environ.get('FP_ROOT', '***REMOVED***/')
+
 #FP_ROOT = '/var/www/fieldprime/'
-FP_ROOT = '***REMOVED***/'
+#FP_ROOT = '***REMOVED***/'
 
 #
 # Check for server down flag file. If the flag is there, we export an application
@@ -32,7 +35,7 @@ else:
         sys.path.insert(0, FP_ROOT + 'fptest/fpa')
     from fp_web_admin import app as application
     from fp_common import util
-    application.config['SESS_FILE_DIR'] =  FP_ROOT + 'fpa/wsessions'
+    application.config['SESS_FILE_DIR'] =  FP_ROOT + 'wsessions'
     application.config['FP_FLAG_DIR'] =  flagdir
 
     # Setup logging:

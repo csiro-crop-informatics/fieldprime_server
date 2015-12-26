@@ -101,7 +101,7 @@ def internalError(e):
     errmsg += 'User:{0} Project:{1}\n'.format(usr, proj)
     errmsg += '{0}\n{1}##########'.format(e, traceback.format_exc())
     util.flog(errmsg)
-    return make_response('FieldPrime: An error has occurred\n', 500)
+    return make_response('FieldPrime: An error has occurred\n'+errmsg.replace('\n', '<br>'), 500)
 
 
 def getMYSQLDBConnection(sess):
