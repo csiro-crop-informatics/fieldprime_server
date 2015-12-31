@@ -11,3 +11,18 @@ bash :
 build :
 	docker build --tag fpadm .
 
+stop :
+	docker stop fpadm-running
+
+clean :
+	docker rm `docker ps -aq`
+#	docker rmi $$(docker images -q --filter "dangling=true")
+#
+
+sql :
+	docker run --name cmysql -e MYSQL_ROOT_PASSWORD=foo -d mysql:latest
+
+runs :
+	docker run --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm
+
+#	docker run --rm --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm

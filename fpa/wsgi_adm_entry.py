@@ -35,8 +35,6 @@ else:
         sys.path.insert(0, FP_ROOT + 'fptest/fpa')
     from fp_web_admin import app as application
     from fp_common import util
-    application.config['SESS_FILE_DIR'] =  FP_ROOT + 'wsessions'
-    application.config['FP_FLAG_DIR'] =  flagdir
 
     # Setup logging:
     util.initLogging(application)
