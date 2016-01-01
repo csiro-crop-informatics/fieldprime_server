@@ -5,7 +5,7 @@ RUN_NAME = c_$(IMAGE_NAME)
 
 
 run :
-	docker run -it --rm --name $(RUN_NAME) -e MYSQL_ROOT_PASSWORD=foo $(IMAGE_W_VER)
+	docker run -d -it --name $(RUN_NAME) -e MYSQL_ROOT_PASSWORD=foo $(IMAGE_W_VER)
 
 shell :
 	docker exec -it $(RUN_NAME) /bin/bash
@@ -13,23 +13,39 @@ shell :
 bash :
 	docker run -it --entrypoint=/bin/bash $(IMAGE_W_VER) -i
 
+setup.sql :
+	echo source fpsys.sql > $@
+	echo source fprime.sql >> $@
+	echo 'grant all on fpsys.* to fpwserver;' >> $@
+	echo "CREATE USER fpwserver@localhost IDENTIFIED BY 'bar';" >> $@
+	echo 'grant all on fpsys.* to fpwserver@localhost;' >> $@
+fprime.create.tables.sql :
+	cp ../$@ $@
+createProject.sh :
+	cp ../$@ $@
 fpsys.sql : ../fpsys.sql
 	cp $< $@
 fprime.sql : ../fprime.create.tables.sql
 	echo 'create database fp_mk;' > $@
 	echo 'use fp_mk;' >> $@
 	cat $< >> $@
-build : fprime.sql fpsys.sql
+build : fprime.sql fpsys.sql setup.sql createProject.sh fprime.create.tables.sql
 	docker build --tag $(IMAGE_W_VER) .
 
 stop :
 	docker stop $(RUN_NAME)
 
 clean :
-	rm fprime.sql fpsys.sql
+	rm fprime.sql fpsys.sql createProjects.sh setup.sql
+
+clean.con :
+	docker rm $(RUN_NAME)
 #	docker rm `docker ps -aq`
-#	docker rmi $$(docker images -q --filter "dangling=true")
-#
+
+clean.dangling.images :
+	docker rmi $$(docker images -q --filter "dangling=true")
+
+########################################################################
 
 sql :
 	docker run --name cmysql -e MYSQL_ROOT_PASSWORD=foo -d mysql:latest

@@ -25,4 +25,7 @@ sql :
 runs :
 	docker run --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm
 
+comp :
+	docker run --name fpadm-running --link c_fp_mysql:mysql -d -p 8000:80 fpadm
+
 #	docker run --rm --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm
