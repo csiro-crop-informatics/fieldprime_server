@@ -9,7 +9,7 @@
 
 __all__ = ['Trial', 'Node', 'Attribute', 'AttributeValue', 'Datum', 'Trait']
 
-
+import os
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.ext.declarative import declarative_base
@@ -1323,7 +1323,8 @@ def getDbConnection(dbname):
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpDBUser(), fpPassword(), dbname))
+    host = os.environ.get('MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    engine = create_engine('mysql://{0}:{1}@{2}/{3}'.format(fpDBUser(), fpPassword(), host, dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
     return dbsess

@@ -10,6 +10,7 @@
 #
 
 import MySQLdb as mdb
+import os
 import ***REMOVED***
 
 import util
@@ -20,7 +21,8 @@ from passlib.apps import mysql_context
 
 
 def getFpsysDbConnection():
-    return mdb.connect('localhost', fpDBUser(), fpPassword(), 'fpsys')
+    host = os.environ.get('MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
 
 
 def _getProjectIdFromName(projName):

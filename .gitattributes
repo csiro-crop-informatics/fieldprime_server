@@ -3,6 +3,8 @@ fp_mysql/createProject.sh -text
 fp_mysql/delete_fprime_user.sh -text
 fp_mysql/docker.mysql.primed/.dockerignore -text
 fp_mysql/docker.mysql.primed/Dockerfile -text
+fp_mysql/docker.mysql.primed/createProject.sh -text
+fp_mysql/docker.mysql.primed/init.sql -text
 fp_mysql/docker.mysql.primed/makefile -text
 fp_mysql/forEachDb.sh -text
 fp_mysql/fprime.create.tables.sql -text

@@ -5,5 +5,5 @@
 # is copied to the docker daemon.
 
 build :
-	docker build --tag mod-wsgi-fp-pylibs .
+	docker build --tag fp_wsgi_pylibs .
 

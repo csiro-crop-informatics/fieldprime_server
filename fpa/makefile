@@ -1,18 +1,21 @@
+IMAGE_NAME = fp_adm
+CONT_NAME = c_$(IMAGE_NAME)
+
 run :
-	docker run -it --rm --name fpadm-running -p 8000:80 fpadm
+	docker run -d --name $(CONT_NAME) -p 8000:80 $(IMAGE_NAME)
 
 shell :
-	docker exec -it fpadm-running mod_wsgi-docker-shell
+	docker exec -it $(CONT_NAME) mod_wsgi-docker-shell
 
 bash :
-	docker run -it --entrypoint=/bin/bash fpadm -i
+	docker run -it --entrypoint=/bin/bash $(IMAGE_NAME) -i
 
 # Make image with needed python libraries installed :
 build :
-	docker build --tag fpadm .
+	docker build --tag $(IMAGE_NAME) .
 
 stop :
-	docker stop fpadm-running
+	docker stop $(CONT_NAME)
 
 clean :
 	docker rm `docker ps -aq`
@@ -23,9 +26,10 @@ sql :
 	docker run --name cmysql -e MYSQL_ROOT_PASSWORD=foo -d mysql:latest
 
 runs :
-	docker run --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm
+	docker run --name $(CONT_NAME) --link cmysql:mysql -d -p 8000:80 $(IMAGE_NAME)
 
 comp :
-	docker run --name fpadm-running --link c_fp_mysql:mysql -d -p 8000:80 fpadm
+	docker run --name $(CONT_NAME) --link c_fp_mysql:mysql -d -p 8000:80 $(IMAGE_NAME)
 
-#	docker run --rm --name fpadm-running --link cmysql:mysql -d -p 8000:80 fpadm
+#	docker run --rm --name $(CONT_NAME) --link cmysql:mysql -d -p 8000:80 $(IMAGE_NAME)
+

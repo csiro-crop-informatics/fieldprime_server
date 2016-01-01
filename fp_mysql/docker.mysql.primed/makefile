@@ -36,7 +36,7 @@ stop :
 	docker stop $(RUN_NAME)
 
 clean :
-	rm fprime.sql fpsys.sql createProjects.sh setup.sql
+	rm fprime.sql fpsys.sql setup.sql fprime.create.tables.sql
 
 clean.con :
 	docker rm $(RUN_NAME)

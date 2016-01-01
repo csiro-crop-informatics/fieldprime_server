@@ -17,6 +17,7 @@ COPY fpsys.sql /fieldprime
 #COPY fprime.sql /fieldprime
 COPY fprime.create.tables.sql /fieldprime
 COPY createProject.sh /fieldprime
+COPY init.sql /fieldprime/
 
 # Create fieldprime server user, with password.  NOT VERY SECURE
 ENV MYSQL_USER=fpwserver MYSQL_PASSWORD=bar

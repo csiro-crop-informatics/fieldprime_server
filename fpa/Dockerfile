@@ -3,7 +3,7 @@
 #
 #
 
-FROM mod-wsgi-fp-pylibs
+FROM fp_wsgi_pylibs
 WORKDIR /app
 COPY . /app/
 RUN mkdir /app/fieldprime; \
