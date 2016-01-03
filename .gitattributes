@@ -99,6 +99,7 @@ fpa/fp_web_admin/templates/uploadScores.html -text
 fpa/fp_web_admin/trialProperties.py -text
 fpa/fp_web_admin/websess.py -text
 fpa/makefile -text
+fpa/server_args -text
 fpa/wsgi_adm_entry.py -text
 fpa/wsgi_app_entry.py -text
 misc/datareap.php -text
