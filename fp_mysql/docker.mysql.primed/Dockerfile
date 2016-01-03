@@ -9,15 +9,12 @@ FROM mysql:5.7.10
 RUN mkdir /fieldprime
 WORKDIR /fieldprime
 
-# Create fpsys and fp_mk databases:
-COPY setup.sql /docker-entrypoint-initdb.d
-#COPY fpsys.sql /docker-entrypoint-initdb.d
-#COPY fprime.sql /docker-entrypoint-initdb.d
 COPY fpsys.sql /fieldprime
-#COPY fprime.sql /fieldprime
 COPY fprime.create.tables.sql /fieldprime
 COPY createProject.sh /fieldprime
-COPY init.sql /fieldprime/
+
+# Setup script to run on container creation:
+COPY init.sql /docker-entrypoint-initdb.d
 
 # Create fieldprime server user, with password.  NOT VERY SECURE
 ENV MYSQL_USER=fpwserver MYSQL_PASSWORD=bar

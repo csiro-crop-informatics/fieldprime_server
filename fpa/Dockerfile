@@ -5,7 +5,20 @@
 
 FROM fp_wsgi_pylibs
 WORKDIR /app
-COPY . /app/
+
+# Copy in app source and other necessaries:
+#COPY . /app/
+COPY wsgi_adm_entry.py  /app/
+COPY wsgi_app_entry.py  /app/
+COPY fp_web_admin /app/fp_web_admin
+COPY fp_common /app/fp_common
+COPY fp_app_api /app/fp_app_api
+
+# Argument to be applied to mod_wsgi-express start command:
+#COPY server_args /app/.whiskey
+COPY sslStuff /app/sslStuff
+
+
 RUN mkdir /app/fieldprime; \
   mkdir /app/fieldprime/wsessions; \
   chown whiskey /app/fieldprime/wsessions; \

@@ -19,11 +19,6 @@ DBNAME=fp_$PROJNAME
 CONTACT_NAME=$2
 CONTACT_EMAIL=$3
 
-#echo projname $PROJNAME
-#echo name $CONTACT_NAME
-#echo email $CONTACT_EMAIL
-#exit 0
-
 # Run Mysql script:
 $MYSQL -uSuperadm -p <<EOF
 create database if not exists $DBNAME;
