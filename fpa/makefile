@@ -2,7 +2,7 @@ IMAGE_NAME = fp_adm
 CONT_NAME = c_$(IMAGE_NAME)
 
 run :
-	docker run --name $(CONT_NAME) --link c_fp_mysql:mysql -d -p 8000:80 $(IMAGE_NAME)
+	docker run --name $(CONT_NAME) --link c_fp_mysql:mysql -d -p 8000:80 -p 8443:443 $(IMAGE_NAME)
 
 shell :
 	docker exec -it $(CONT_NAME) mod_wsgi-docker-shell

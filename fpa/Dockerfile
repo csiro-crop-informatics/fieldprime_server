@@ -15,7 +15,7 @@ COPY fp_common /app/fp_common
 COPY fp_app_api /app/fp_app_api
 
 # Argument to be applied to mod_wsgi-express start command:
-#COPY server_args /app/.whiskey
+COPY server_args /app/.whiskey
 COPY sslStuff /app/sslStuff
 
 
