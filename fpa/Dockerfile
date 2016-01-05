@@ -20,13 +20,15 @@ COPY sslStuff /app/sslStuff
 
 
 RUN mkdir /app/fieldprime; \
-  mkdir /app/fieldprime/wsessions; \
-  chown whiskey /app/fieldprime/wsessions; \
-  mkdir /app/fieldprime/fplog; \
-  mkdir /app/fieldprime/photos; \
-  mkdir /app/fieldprime/categoryImages; \
-  mkdir /app/fieldprime/crashReports; \
-  echo fpwserver:bar > /app/fieldprime/fppw
+  cd /app/fieldprime; \
+  mkdir wsessions; \
+  mkdir fplog; \
+  touch fplog/dolog; \
+  mkdir photos; \
+  mkdir categoryImages; \
+  mkdir crashReports; \
+  echo fpwserver:bar > fppw; \
+  chown -R whiskey /app/fieldprime;
 
 #chmod 777 /app/fieldprime/wsessions; 
 # Should prob give permissions just to www-data, currently it seems wsgi script is run as user whiskey

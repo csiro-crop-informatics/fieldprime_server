@@ -1609,28 +1609,31 @@ def urlMain():
         if not error:
             # Check login details:
             project = access = dbname = None
-            if fpsys.userPasswordCheck(username, password):
+            authOK = fpsys.userPasswordCheck(username, password)
+            if authOK:
                 # OK, valid user. Find projects they have access to:
                 projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
                     error = errMsg
                 elif not projList:
                     error = 'No projects found for user {0}'.format(username)
+                else:
+                    # Good to go, show the user front page, after adding cookie:
+                    util.fpLog(app, 'Login from user {0}'.format(username))
+                    sess.resetLastUseTime()
+                    sess.setUserIdent(username)
+                    sess.setProject(project, dbname, access)
+                    g.userName = username
+                    g.projectName = project
+                    resp = make_response(frontPage(sess))
+                    resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
+                    return resp
+            elif authOK is None:
+                util.flog('Login failed attempt for user {0}'.format(username))
+                error = 'Login failed'
             else:
-                util.fpLog(app, 'Login failed attempt for user {0}'.format(username))
+                util.flog('Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
-
-            if not error:
-                # Good to go, show the user front page, after adding cookie:
-                util.fpLog(app, 'Login from user {0}'.format(username))
-                sess.resetLastUseTime()
-                sess.setUserIdent(username)
-                sess.setProject(project, dbname, access)
-                g.userName = username
-                g.projectName = project
-                resp = make_response(frontPage(sess))
-                resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
-                return resp
 
         # Error return
         return loginPage(error)

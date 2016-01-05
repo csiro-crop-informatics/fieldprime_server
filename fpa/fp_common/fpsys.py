@@ -341,6 +341,7 @@ def userPasswordCheck(username, password):
         cur.execute(qry, (username,))
         resRow = cur.fetchone()
         if resRow is None:
+            util.flog('Login attempt by unknown user: {0}'.format(username))
             return None
         loginType = resRow[0]
         phash = resRow[1]
@@ -356,6 +357,7 @@ def userPasswordCheck(username, password):
     elif loginType == LOGIN_TYPE_MYSQL:
         return mysql_context.verify(password, phash)
     else:
+        util.flog('Unexpected login type: {0}'.format(loginType))
         return None
 
 class User:
