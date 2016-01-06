@@ -211,10 +211,10 @@ class Trait(DeclarativeBase):
 
     def getNumScoreSets(self, trialId):
         dbc = Session.object_session(self)
-        return dbc.query(TraitInstance).filter(and_(TraitInstance.trait_id == self.id,
-                TraitInstance.trial_id == trialId)).group_by(
-                TraitInstance.seqNum, TraitInstance.token_id).count()
-
+        return dbc.query(TraitInstance.seqNum).filter(
+             and_(TraitInstance.trait_id == self.id, TraitInstance.trial_id == trialId)).group_by(
+                       TraitInstance.seqNum, TraitInstance.token_id).count()
+                   
     def getName(self):
         return self.caption
 
@@ -1313,10 +1313,7 @@ def getSysUserEngine(projectName):
 # currently done in session module.
 #
     dbname = fpsys.getProjectDBname(projectName)
-    engine = create_engine('mysql://{0}:{1}@localhost/{2}'.format(fpDBUser(), fpPassword(), dbname))
-    Session = sessionmaker(bind=engine)
-    dbsess = Session()
-    return dbsess
+    return getDbConnection(dbname)
 
 def getDbConnection(dbname):
 #-----------------------------------------------------------------------

@@ -33,6 +33,7 @@ RUN mkdir /app/fieldprime; \
 #chmod 777 /app/fieldprime/wsessions; 
 # Should prob give permissions just to www-data, currently it seems wsgi script is run as user whiskey
 
+ENV FP_RUNTIME docker
 ENV FP_ROOT /app/fieldprime/
 EXPOSE 80
 ENTRYPOINT [ "mod_wsgi-docker-start" ]

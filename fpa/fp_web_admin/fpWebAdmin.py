@@ -48,6 +48,17 @@ from fpRestApi import webRest
 app = Flask(__name__)
 app.register_blueprint(webRest)
 
+from fpAppWapi import appApi
+app.register_blueprint(appApi)
+
+#
+# The FieldPrime server can be run in various ways, and accordingly we may need to detect
+# part of the URL. The FP_RUNTIME environment var should be used to indicate what configuration
+# we are running as. An alternative would be to put the prefix itself in the environment.
+#
+FP_RUNTIME = os.environ.get('FP_RUNTIME', '')
+PREURL = '/fieldprime' if FP_RUNTIME == 'docker' else '/'
+
 #
 # Load flask config:
 # Note this is contained in a dedicated module in a separate package.
@@ -141,7 +152,7 @@ def dec_check_session(returnNoneSess=False):
         return inner
     return param_dec
 
-# @app.route('/crash', methods=['GET'])
+# @app.route(PREURL+'/crash', methods=['GET'])
 # @dec_check_session()
 # def crashMe(sess):
 #     x = 1 / 0
@@ -189,7 +200,7 @@ def htmlTrialTraitTable(trial):
     #xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
     return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False)
 
-@app.route('/test', methods=["GET"])
+@app.route(PREURL+'/test', methods=["GET"])
 @dec_check_session()
 def urlTest(sess):
     #return  dp.dataPageTest(sess, content=htmlTabScoreSets(sess, 1), title='foo', trialId=1)
@@ -263,7 +274,7 @@ def htmlTabNodeAttributes(sess, trialId):
 
     return out
 
-@app.route('/trialUpdate/<trialId>', methods=["POST"])
+@app.route(PREURL+'/trialUpdate/<trialId>', methods=["POST"])
 @dec_check_session()
 def urlTrialNameDetailPost(sess, trialId):
 #===========================================================================
@@ -502,7 +513,7 @@ def trialPage(sess, trialId):
     return dp.dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
 
 
-@app.route('/trial/<trialId>', methods=["GET"])
+@app.route(PREURL+'/trial/<trialId>', methods=["GET"])
 @dec_check_session()
 def urlTrial(sess, trialId):
 #===========================================================================
@@ -511,7 +522,7 @@ def urlTrial(sess, trialId):
     return trialPage(sess, trialId)
 
 
-@app.route('/downloadApp/', methods=['GET'])
+@app.route(PREURL+'/downloadApp/', methods=['GET'])
 @dec_check_session()
 def downloadApp(sess):
 #-----------------------------------------------------------------------
@@ -528,7 +539,7 @@ def downloadApp(sess):
     return dp.dataPage(sess, content=apkListHtml, title='Download App', trialId=-1)
 
 
-@app.route('/newTrial/', methods=["GET", "POST"])
+@app.route(PREURL+'/newTrial/', methods=["GET", "POST"])
 @dec_check_session()
 def urlNewTrial(sess):
 #===========================================================================
@@ -606,7 +617,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
             cur.close()
     return (hdrs, attValList)
 
-@app.route('/browseTrial/<trialId>/', methods=["GET", "POST"])
+@app.route(PREURL+'/browseTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
 def urlBrowseTrialAttributes(sess, trialId):
 #===========================================================================
@@ -807,7 +818,7 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
     return r
 
 
-@app.route('/trial/<trialId>/data/', methods=['GET'])
+@app.route(PREURL+'/trial/<trialId>/data/', methods=['GET'])
 @dec_check_session()
 def urlTrialDataWideTSV(sess, trialId):
     showGps = request.args.get("gps")
@@ -819,7 +830,7 @@ def urlTrialDataWideTSV(sess, trialId):
     out = getDataWideForm(trl, showTime, showUser, showGps, showNotes, showAttributes)
     return Response(out, content_type='text/plain')
 
-@app.route('/trial/<trialId>/data/browse', methods=['GET'])
+@app.route(PREURL+'/trial/<trialId>/data/browse', methods=['GET'])
 @dec_check_session()
 def urlTrialDataBrowse(sess, trialId):
 #---------------------------------------------------------------------------------------
@@ -866,7 +877,7 @@ def urlTrialDataBrowse(sess, trialId):
 #     });</script>''' % str(metas)
     return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
 
-@app.route('/trial/<trialId>/datalong/', methods=['GET'])
+@app.route(PREURL+'/trial/<trialId>/datalong/', methods=['GET'])
 @dec_check_session()
 def urlTrialDataLongForm(sess, trialId):
     showGps = request.args.get("gps")
@@ -877,7 +888,7 @@ def urlTrialDataLongForm(sess, trialId):
     out = trl.getDataLongForm(showTime, showUser, showGps, showAttributes)
     return Response(out, content_type='text/plain')
 
-@app.route('/deleteTrial/<trialId>/', methods=["GET", "POST"])
+@app.route(PREURL+'/deleteTrial/<trialId>/', methods=["GET", "POST"])
 @dec_check_session()
 def urlDeleteTrial(sess, trialId):
 #===========================================================================
@@ -919,7 +930,7 @@ def urlDeleteTrial(sess, trialId):
             # Do nothing:
             return frontPage(sess)
 
-@app.route('/trial/<trialId>/newTrait/', methods=["GET", "POST"])
+@app.route(PREURL+'/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()
 def urlNewTrait(sess, trialId):
 #===========================================================================
@@ -942,7 +953,7 @@ def urlNewTrait(sess, trialId):
         return trialPage(sess, trialId)
 
 
-@app.route('/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
+@app.route(PREURL+'/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @dec_check_session()
 def urlTraitDetails(sess, trialId, traitId):
 #===========================================================================
@@ -950,7 +961,7 @@ def urlTraitDetails(sess, trialId, traitId):
 #
     return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
 
-@app.route('/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
+@app.route(PREURL+'/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlUploadScores(sess, trialId):
     if request.method == 'GET':
@@ -965,7 +976,7 @@ def urlUploadScores(sess, trialId):
             return trialPage(sess, trialId)
 
 
-@app.route('/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
+@app.route(PREURL+'/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlAttributeUpload(sess, trialId):
     if request.method == 'GET':
@@ -979,7 +990,7 @@ def urlAttributeUpload(sess, trialId):
         else:
             return trialPage(sess, trialId)
 
-@app.route('/trial/<trialId>/attribute/<attId>/', methods=['GET'])
+@app.route(PREURL+'/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
 def urlAttributeDisplay(sess, trialId, attId):
     tua = dal.getAttribute(sess.db(), attId)
@@ -1025,7 +1036,7 @@ def manageUsersHTML(sess, msg=None):
     out = fpUtil.htmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
 
-@app.route('/project/<projectName>/user/<ident>', methods=['DELETE'])
+@app.route(PREURL+'/project/<projectName>/user/<ident>', methods=['DELETE'])
 @dec_check_session()
 def urlUserDelete(sess, projectName, ident):
     if not sess.adminRights() or projectName != sess.getProjectName():
@@ -1036,7 +1047,7 @@ def urlUserDelete(sess, projectName, ident):
     else:
         return jsonify({"status":"good"})
 
-@app.route('/project/<projectName>/users', methods=['GET'])
+@app.route(PREURL+'/project/<projectName>/users', methods=['GET'])
 @dec_check_session()
 def urlUsersGet(sess, projectName):
     if not sess.adminRights():
@@ -1052,7 +1063,7 @@ def urlUsersGet(sess, projectName):
     print json.dumps(retjson)
     return jsonify({'users':retjson})
 
-@app.route('/project/<projectName>/users', methods=['POST'])
+@app.route(PREURL+'/project/<projectName>/users', methods=['POST'])
 @dec_check_session()
 def urlUsersPost(sess, projectName):
     if not sess.adminRights():
@@ -1087,7 +1098,7 @@ def urlUsersPost(sess, projectName):
 
     return jsonify({"status":"ok", "errors":errMsgs})
 
-@app.route('/project/<projectName>/details/', methods=['GET', 'POST'])
+@app.route(PREURL+'/project/<projectName>/details/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlUserDetails(sess, projectName):
     if projectName != sess.getProjectName():
@@ -1154,7 +1165,7 @@ def urlUserDetails(sess, projectName):
 ### END USERS STUFF: ##################################################################################
 #######################################################################################################
 
-@app.route('/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
+@app.route(PREURL+'/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlSystemTraits(sess, projectName):
 #---------------------------------------------------------------------------
@@ -1171,7 +1182,7 @@ def urlSystemTraits(sess, projectName):
         return dp.dataPage(sess, title='System Traits', content=r, trialId=-1)
 
 
-@app.route('/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
+@app.route(PREURL+'/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
 @dec_check_session()
 def urlAddSysTrait2Trial(sess, trialId):
 #-------------------------------------------------------------------------------
@@ -1318,13 +1329,13 @@ def htmlNumericScoreSetStats(data, name):
 # Example of getting response from another URL:
 # NB to use, uncomment this and change the current
 # method to:
-# @app.route('/scoreSet2/<traitInstanceId>/', methods=['GET'])
+# @app.route(PREURL+'/scoreSet2/<traitInstanceId>/', methods=['GET'])
 # @dec_check_session()
 # def urlScoreSetTraitInstance2(sess, traitInstanceId):
 #
 #
 # import requests
-# @app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+# @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
 # @dec_check_session()
 # def urlScoreSetTraitInstance(sess, traitInstanceId):
 #     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
@@ -1333,7 +1344,7 @@ def htmlNumericScoreSetStats(data, name):
 #     cooky = {'sid':f}
 #     return requests.get(newurl, cookies=cooky).content
 
-@app.route('/scoreSet/<traitInstanceId>/', methods=['GET'])
+@app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
 def urlScoreSetTraitInstance(sess, traitInstanceId):
 #-------------------------------------------------------------------------------
@@ -1468,7 +1479,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
     return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.getProjectName(), ti.trial.name, traitInstanceId)
 
-@app.route("/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
+@app.route(PREURL+"/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
 @dec_check_session()
 def urlPhotoScoreSetArchive(sess, traitInstanceId):
 #--------------------------------------------------------------------
@@ -1484,7 +1495,7 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
     return resp
 
 
-@app.route("/trial/<trialId>/photo/<filename>", methods=['GET'])
+@app.route(PREURL+"/trial/<trialId>/photo/<filename>", methods=['GET'])
 @dec_check_session()
 def urlPhoto(sess, trialId, filename):
 # This is a way to provide images to authenticated user only.
@@ -1500,12 +1511,12 @@ def urlPhoto(sess, trialId, filename):
     return resp
 
 
-@app.route('/FieldPrime/user/<userName>/', methods=['GET'])
+@app.route(PREURL+'/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
     return frontPage(sess)
 
-@app.route('/FieldPrime/project/<project>/', methods=['GET'])
+@app.route(PREURL+'/FieldPrime/project/<project>/', methods=['GET'])
 @dec_check_session()
 def urlProject(sess, project):
 #-----------------------------------------------------------------------
@@ -1531,7 +1542,7 @@ def urlProject(sess, project):
             return badJuju(sess, 'no access to project')
 
 
-@app.route('/logout', methods=["GET"])
+@app.route(PREURL+'/logout', methods=["GET"])
 @dec_check_session()
 def urlLogout(sess):
     sess.close()
@@ -1559,14 +1570,14 @@ def badJsonJuju(sess, error=None):
     return resp
 
 
-@app.route('/info/<pagename>', methods=["GET"])
+@app.route(PREURL+'/info/<pagename>', methods=["GET"])
 @dec_check_session(True)
 def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
 
-@app.route('/', methods=["GET", "POST"])
+@app.route(PREURL+'/', methods=["GET", "POST"])
 def urlMain():
 #-----------------------------------------------------------------------
 # Entry point for FieldPrime web admin.

@@ -1,9 +1,12 @@
 # fpApi.py
 # Michael Kirk 2013
 #
+# This version a copy of fp_app_api/fpApi.py.
+# Aiming to make this a blueprint part of the web admin app,
+# so that there can be a single wsgi entry point.
 #
 
-from flask import Flask, request, Response, url_for
+from flask import Blueprint, Flask, request, Response, url_for
 import simplejson as json
 
 import os, sys, time, traceback
@@ -24,6 +27,9 @@ import fp_common.util as util
 
 
 ### SetUp: ######################################################################################
+
+appApi = Blueprint('appApi', __name__)
+
 if __name__ == '__main__':
     import os, sys, inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -88,7 +94,7 @@ def successResponse():
 
 def dec_get_trial(jsonReturn):
 #-------------------------------------------------------------------------------------------------
-# Decorator, for app.route functions with username and trialid parameters.
+# Decorator, for appApi.route functions with username and trialid parameters.
 # It is assumed there is a "request" variable in context. and this contains a password URL parameter "pw".
 # "pw" - Scoring Devices password configured on the client.
 # "ver" - client software version.
@@ -123,7 +129,7 @@ def dec_get_trial(jsonReturn):
         return inner
     return param_dec
 
-@app.route(API_PREFIX + '/user/<username>/', methods=['GET'])
+@appApi.route(API_PREFIX + '/user/<username>/', methods=['GET'])
 def trial_list(username):
 #-------------------------------------------------------------------------------------------------
 # Return JSON list of available trials for user.
@@ -147,7 +153,7 @@ def trial_list(username):
 
     trialList = []
     for t in trials:
-        url = url_for('get_trial', username=username, trialid=t.id, _external=True)
+        url = url_for('appApi.get_trial', username=username, trialid=t.id, _external=True)
         tdic = {'name':t.name, 'url':url}
         trialList.append(tdic)
 
@@ -155,8 +161,8 @@ def trial_list(username):
     dic = {'trials':trialList}
     return Response(json.dumps(dic), mimetype='application/json')
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
 @dec_get_trial(True)
 def get_trial(username, trl, dbc, token=None):
 #-------------------------------------------------------------------------------------------------
@@ -193,8 +199,8 @@ def get_trial(username, trl, dbc, token=None):
                                 # Currently used in upload of notes, but now we embed it in the uploadURL,
                                 # and the notes upload should switch to using that.
 
-    jtrl['adhocURL'] = url_for('create_adhoc', username=username, trialid=trl.id, _external=True)
-    jtrl['uploadURL'] = url_for('upload_trial_data', username=username, trialid=trl.id, token=token, _external=True)
+    jtrl['adhocURL'] = url_for('appApi.create_adhoc', username=username, trialid=trl.id, _external=True)
+    jtrl['uploadURL'] = url_for('appApi.upload_trial_data', username=username, trialid=trl.id, token=token, _external=True)
     # Add trial attributes from database:
     jprops = {}
     for tp in trl.trialProperties:
@@ -269,7 +275,7 @@ def get_trial(username, trl, dbc, token=None):
         jtrait['sysType'] = 0
 
         # Add the uploadURL:
-        jtrait['uploadURL'] = url_for('upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
+        jtrait['uploadURL'] = url_for('appApi.upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
                                       token=token, _external=True)
 
         #
@@ -296,7 +302,7 @@ def get_trial(username, trl, dbc, token=None):
 
         # Photo traits:
         elif trt.datatype == T_PHOTO:
-            jtrait['photoUploadURL'] = url_for('upload_photo', username=username, trialid=trl.id,
+            jtrait['photoUploadURL'] = url_for('appApi.upload_photo', username=username, trialid=trl.id,
                                                traitid=trt.id, token=token, _external=True)
 
         # Numeric traits (integer and decimal):
@@ -338,7 +344,7 @@ def get_trial(username, trl, dbc, token=None):
     return Response(json.dumps(jtrl), mimetype='application/json')
 
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/', methods=['POST'])
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
 def upload_trait_data(username, trial, dbc, traitid, token):
 #-------------------------------------------------------------------------------------------------
@@ -401,7 +407,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/photo/', methods=['POST'])
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/photo/', methods=['POST'])
 @dec_get_trial(False)
 def upload_photo(username, trial, dbc, traitid, token):
 #-------------------------------------------------------------------------------------------------
@@ -483,7 +489,7 @@ def upload_photo(username, trial, dbc, traitid, token):
     else:
         return serverErrorResponse('Failed photo upload : bad file')
 
-@app.route(API_PREFIX + '/crashReport', methods=['POST'])
+@appApi.route(API_PREFIX + '/crashReport', methods=['POST'])
 def upload_crash_report():
 #-------------------------------------------------------------------------------------------------
 # check file size?
@@ -527,7 +533,7 @@ def upload_crash_report():
 # used should still be able to access this func (since the URL will match). But now
 # we send out the URL for the new version.
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['POST'])
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['POST'])
 @dec_get_trial(False)
 #-------------------------------------------------------------------------------------------------
 def upload_trial_old_version(username, trial, dbc):
@@ -550,7 +556,7 @@ def upload_trial_old_version(username, trial, dbc):
     # All done, return success indicator:
     return successResponse()
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
 #-------------------------------------------------------------------------------------------------
 # This version should return JSON!
@@ -605,7 +611,7 @@ def upload_trial_data(username, trial, dbc, token):
     # All done, return success indicator:
     return successResponse()
 
-@app.route(API_PREFIX + '/user/<username>/trial/<trialid>/createAdHocTrait/', methods=['GET'])
+@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/createAdHocTrait/', methods=['GET'])
 @dec_get_trial(True)
 def create_adhoc(username, trl, dbc):
 #-------------------------------------------------------------------------------------------------
@@ -654,7 +660,7 @@ def error_404(msg):
 
 #############################################################################################
 
-@app.route(API_PREFIX + '/')
+@appApi.route(API_PREFIX + '/')
 def hello_world():
     return 'Hello Sailor!'
 
