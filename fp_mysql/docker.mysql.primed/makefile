@@ -3,9 +3,12 @@ IMAGE_NAME = fp_mysql
 IMAGE_W_VER = $(IMAGE_NAME)$(TAG)
 RUN_NAME = c_$(IMAGE_NAME)
 
+# Data container. Will use docker generated folder in /var/lib/docker/volumes, but you could use a dedicated non docker dir also.
+volumeImage :
+	docker run -v /var/lib/mysql --name c_fp_dbdata $(IMAGE_W_VER) echo "Data-only container for fpmysql"
 
 run :
-	docker run -d -it --name $(RUN_NAME) -e MYSQL_ROOT_PASSWORD=foo $(IMAGE_W_VER)
+	docker run -d -it --name $(RUN_NAME) --volumes-from c_fp_dbdata -e MYSQL_ROOT_PASSWORD=foo $(IMAGE_W_VER)
 
 shell :
 	docker exec -it $(RUN_NAME) /bin/bash
