@@ -31,3 +31,6 @@ clean :
 	docker rm `docker ps -aq`
 #	docker rmi $$(docker images -q --filter "dangling=true")
 
+test.fp :
+	curl https://***REMOVED***/fieldprime/
+

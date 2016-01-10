@@ -14,6 +14,7 @@ fp_mysql/projects.sql -text
 fp_mysql/update.sql -text
 fpa/.dockerignore -text
 fpa/Dockerfile -text
+fpa/docker-compose.yml -text
 fpa/docker.wsgiPlusPylibs/.dockerignore -text
 fpa/docker.wsgiPlusPylibs/.whiskey/action_hooks/pre-build -text
 fpa/docker.wsgiPlusPylibs/Dockerfile -text
