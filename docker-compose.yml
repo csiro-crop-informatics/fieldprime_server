@@ -1,0 +1,26 @@
+fp_adm:
+  build: fpa
+  ports:
+   - "8080:80"
+   - "8443:443"
+  links:
+   - fp_mysql
+
+fp_mysql:
+  build: fp_mysql/docker.mysql.primed
+  #image: fp_mysql
+#  volumes_from:
+#   - fp_dbdata
+  volumes:
+   - foo1:/var/lib/mysql
+  environment:
+   MYSQL_ROOT_PASSWORD: foo
+
+#fp_dbdata:
+#  image: fp_mysql:v1
+##  container_name: c_fp_dbdata
+#  command: echo "Data-only container for fpmysql"
+#  volumes:
+#   - /var/lib/mysql
+
+

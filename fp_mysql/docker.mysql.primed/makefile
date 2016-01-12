@@ -1,21 +1,25 @@
 TAG = :v1
-IMAGE_NAME = fp_mysql
-IMAGE_W_VER = $(IMAGE_NAME)$(TAG)
-RUN_NAME = c_$(IMAGE_NAME)
+IMAGE = fp_mysql
+IMAGE_W_VER = $(IMAGE)$(TAG)
+RUN_NAME = c_$(IMAGE)
 
 #
-# Data container. Will use docker generated folder in /var/lib/docker/volumes, but you could use a dedicated non docker dir also.
+# Data container. Will use docker generated folder in /var/lib/docker/volumes, but you could also use
+# a dedicated non docker dir.
 # Having a separate container Somewhat reduces the chance of accidentally deleting the database files.
 # NB, this will exit immediately, having created the persistent volume.
 #
 volumeImage :
-	docker run -v /var/lib/mysql --name c_fp_dbdata $(IMAGE_W_VER) echo "Data-only container for fpmysql"
+	docker run -v /var/lib/mysql --name c_fp_dbdata $(IMAGE) echo "Data-only container for fpmysql"
+
+dataVol :
+	docker volume create --name fp_dbdata
 
 #
 # Mysql server container. This has to be running for access to the database.
 #
 run :
-	docker run -d -it --name $(RUN_NAME) --volumes-from c_fp_dbdata -e MYSQL_ROOT_PASSWORD=foo $(IMAGE_W_VER)
+	docker run -d -it --name $(RUN_NAME) --volumes-from c_fp_dbdata -e MYSQL_ROOT_PASSWORD=foo $(IMAGE)
 
 # Attempt to try with host db directory, not tested, and probably not advisable if you use /var/lib/mysql independently.
 # When I tried, file ownerships were changed and a reinstall of mysql was required.
@@ -26,32 +30,25 @@ shell :
 	docker exec -it $(RUN_NAME) /bin/bash
 
 bash :
-	docker run -it --entrypoint=/bin/bash $(IMAGE_W_VER) -i
+	docker run -it --entrypoint=/bin/bash $(IMAGE) -i
 
-setup.sql :
-	echo source fpsys.sql > $@
-	echo source fprime.sql >> $@
-	echo 'grant all on fpsys.* to fpwserver;' >> $@
-	echo "CREATE USER fpwserver@localhost IDENTIFIED BY 'bar';" >> $@
-	echo 'grant all on fpsys.* to fpwserver@localhost;' >> $@
 fprime.create.tables.sql :
 	cp ../$@ $@
 createProject.sh :
 	cp ../$@ $@
 fpsys.sql : ../fpsys.sql
 	cp $< $@
-fprime.sql : ../fprime.create.tables.sql
-	echo 'create database fp_mk;' > $@
-	echo 'use fp_mk;' >> $@
-	cat $< >> $@
-build : fprime.sql fpsys.sql setup.sql createProject.sh fprime.create.tables.sql
-	docker build --tag $(IMAGE_W_VER) .
+build : fpsys.sql createProject.sh fprime.create.tables.sql
+	docker build --tag $(IMAGE) .
 
 stop :
 	docker stop $(RUN_NAME)
 
+stop.all :
+	docker stop `docker ps -q`
+
 clean :
-	rm fprime.sql fpsys.sql setup.sql fprime.create.tables.sql
+	rm fpsys.sql createProject.sh fprime.create.tables.sql
 clean.con :
 	docker rm $(RUN_NAME)
 clean.con.all :

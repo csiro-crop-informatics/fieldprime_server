@@ -1,4 +1,5 @@
 * text=auto !eol
+/docker-compose.yml -text
 fp_mysql/createProject.sh -text
 fp_mysql/delete_fprime_user.sh -text
 fp_mysql/docker.mysql.primed/.dockerignore -text
@@ -104,6 +105,7 @@ fpa/makefile -text
 fpa/server_args -text
 fpa/wsgi_adm_entry.py -text
 fpa/wsgi_app_entry.py -text
+/makefile -text
 misc/datareap.php -text
 misc/fp.conf -text
 misc/handy.sql -text

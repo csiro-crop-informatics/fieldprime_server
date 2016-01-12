@@ -21,7 +21,7 @@ from passlib.apps import mysql_context
 
 
 def getFpsysDbConnection():
-    host = os.environ.get('MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
     return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
 
 

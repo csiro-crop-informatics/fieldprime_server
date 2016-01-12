@@ -4,7 +4,10 @@
 #
 
 FROM fp_wsgi_pylibs
+MAINTAINER Michael Kirk <***REMOVED***>
+
 WORKDIR /app
+ARG FPWS_PW=fpwserver:bar
 
 # Copy in app source and other necessaries:
 #COPY . /app/
@@ -27,7 +30,8 @@ RUN mkdir /app/fieldprime; \
   mkdir photos; \
   mkdir categoryImages; \
   mkdir crashReports; \
-  echo fpwserver:bar > fppw; \
+  echo $FPWS_PW > fppw; \
+#  echo fpwserver:bar > fppw; \
   chown -R whiskey /app/fieldprime;
 
 #chmod 777 /app/fieldprime/wsessions; 

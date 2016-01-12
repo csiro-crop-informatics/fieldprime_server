@@ -12,7 +12,7 @@ bash :
 
 # Make image with needed python libraries installed :
 build :
-	docker build --tag $(IMAGE_NAME) .
+	docker build --build-arg FPWS_PW=fpwserver:secureBar --tag $(IMAGE_NAME) .
 
 stop :
 	docker stop $(CONT_NAME)
@@ -33,4 +33,8 @@ clean :
 
 test.fp :
 	curl https://***REMOVED***/fieldprime/
+
+# Sample backup example from Docker docs, not tried yet..
+backup :
+	docker run --volumes-from fp_dbdata -v $(pwd):/backup ubuntu tar cvf /backup/backup.tar /dbdata
 

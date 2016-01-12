@@ -9,9 +9,6 @@
 # Create fpsys database:
 source /fieldprime/fpsys.sql
 
-# Create default FieldPrime project database:
-#source /fieldprime/fprime.sql
-
 # Setup fpwserver user:
 grant all on *.* to fpwserver@'%' identified by 'bar';
 flush privileges;

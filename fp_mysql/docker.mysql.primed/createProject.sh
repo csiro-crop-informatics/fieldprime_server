@@ -19,12 +19,17 @@ DBNAME=fp_$PROJNAME
 CONTACT_NAME=$2
 CONTACT_EMAIL=$3
 
+#echo projname $PROJNAME
+#echo name $CONTACT_NAME
+#echo email $CONTACT_EMAIL
+#exit 0
+
 # Run Mysql script:
 $MYSQL -uSuperadm -p <<EOF
 create database if not exists $DBNAME;
 use $DBNAME;
 source fprime.create.tables.sql;
-grant all on $DBNAME.* to '$WEBUSER'@'%';
+grant all on $DBNAME.* to '$WEBUSER'@'localhost';
 insert fpsys.project (name, dbname) values ('$PROJNAME', '$DBNAME');
 insert project (id, up_id, name, contactName, contactEmail) values ((select id from fpsys.project where name='$PROJNAME'), null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
 flush privileges;
