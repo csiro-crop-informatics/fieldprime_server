@@ -57,7 +57,7 @@ app.register_blueprint(appApi)
 # we are running as. An alternative would be to put the prefix itself in the environment.
 #
 FP_RUNTIME = os.environ.get('FP_RUNTIME', '')
-PREURL = '/fieldprime' if FP_RUNTIME == 'docker' else '/'
+PREURL = '/fieldprime' if FP_RUNTIME == 'docker' else ''
 
 #
 # Load flask config:

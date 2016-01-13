@@ -660,7 +660,7 @@ def error_404(msg):
 
 #############################################################################################
 
-@appApi.route(API_PREFIX + '/')
+@appApi.route(API_PREFIX + '/xxx')
 def hello_world():
     return 'Hello Sailor!'
 

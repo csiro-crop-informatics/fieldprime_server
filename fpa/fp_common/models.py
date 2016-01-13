@@ -280,6 +280,8 @@ class TraitInstance(DeclarativeBase):
         return self.token.getDeviceId()
     def getTrialId(self):
         return self.trial_id
+    def getCreateDate(self):
+        return self.dayCreated
     def numData(self):
         session = Session.object_session(self)
         count = session.query(Datum).filter(Datum.traitInstance_id == self.id).count()
@@ -747,7 +749,7 @@ class Trial(DeclarativeBase):
         # Add headers:
         sep = '\t'
         metas = ''
-        out += "Trait\tfpScoreSetID\tfpNodeId\tsampleNum\tValue"
+        out += "Trait\tfpScoreSetID\tScoreSetCreationDate\tfpNodeId\tsampleNum\tValue"
         numCols = 5
         if showTime:
             out += '\tTime'
@@ -784,6 +786,7 @@ class Trial(DeclarativeBase):
             traitName = trait.getName()
             ssId = ss.getFPId()
             tis = ss.getInstances()
+            ssCreateDate = tis[0].getCreateDate() if len(tis) > 0 else None
             tiIdList = '('
             for ti in tis:
                 if len(tiIdList) > 1:
@@ -794,7 +797,7 @@ class Trial(DeclarativeBase):
             result = engine.execute(sql.format(valueField , tiIdList))
             nodeIdsIndex = 0;
             for row in result:
-                out += '{0}\t{1}'.format(traitName, ssId)
+                out += '{0}\t{1}\t{2}'.format(traitName, ssId, ssCreateDate)
                 for i in range(0, len(row)):
                     # Need to detect NA, this is where the value field (3rd column) is null
                     if i == 2:
