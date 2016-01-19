@@ -1,7 +1,9 @@
 # fpApi.py
 # Michael Kirk 2013
 #
-#
+# THIS CODE IS NOW DUPLICATED IN fp_web_admin/fpAppWappi  WE NEED TO USE THAT INSTEAD.
+# I THINK WE MAY BE ABLE TO JUST DIRECT EVERYTHING TO wsgi_adm_entry, since the urls (after
+# fprime or fieldprime do not overlap).
 
 from flask import Flask, request, Response, url_for
 import simplejson as json
