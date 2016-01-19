@@ -80,12 +80,6 @@ except ImportError:
 # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
 app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 
-# Import stats module, but note we need set env var first, we get value from app.config.
-# NB this fails if in local mode, in which case we don't need to set the env var.
-if __name__ != '__main__':
-    os.environ['MPLCONFIGDIR'] = app.config['MPLCONFIGDIR']
-import stats
-
 # Load the Data Access Layer Module (which must be named in the config):
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
