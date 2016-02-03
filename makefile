@@ -12,14 +12,14 @@ build :
 
 
 stop.all :
-        docker stop `docker ps -q`
+	docker stop `docker ps -q`
 
 clean :
-        rm fpsys.sql createProject.sh fprime.create.tables.sql
+	rm fpsys.sql createProject.sh fprime.create.tables.sql
 clean.con.all :
-        docker rm `docker ps -aq`
+	docker rm `docker ps -aq`
 clean.dangling.images :
-        docker rmi $$(docker images -q --filter "dangling=true")
+	docker rmi $$(docker images -q --filter "dangling=true")
 
 test.fp :
 	curl https://***REMOVED***/fieldprime/
