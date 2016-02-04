@@ -32,9 +32,10 @@ insert system (name, value) values ('contactName', @CONTACT_NAME), ('contactEmai
 #
 # Create user mk with access to default project:
 #
+#  '***REMOVED***',
 use fpsys
 insert user (login,name,passhash,login_type,permissions) values ('mk','m k',
-  '***REMOVED***',
+  '***REMOVED***', 
   3, 1);
 insert userProject values (1,1,1);
 
