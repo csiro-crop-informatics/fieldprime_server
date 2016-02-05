@@ -32,9 +32,10 @@ RUN mkdir /app/fieldprime; \
   mkdir crashReports; \
   echo $FPWS_PW > fppw; \
 #  echo fpwserver:bar > fppw; \
-  chown -R whiskey /app/fieldprime;
+  chown -R whiskey /app/fieldprime /app/fp_web_admin /app/fp_common;
 
-#chmod 777 /app/fieldprime/wsessions; 
+
+#chmod 777 /app/fieldprime/wsessions;
 # Should prob give permissions just to www-data, currently it seems wsgi script is run as user whiskey
 
 ENV FP_RUNTIME docker

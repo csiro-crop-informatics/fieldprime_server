@@ -214,7 +214,7 @@ class Trait(DeclarativeBase):
         return dbc.query(TraitInstance.seqNum).filter(
              and_(TraitInstance.trait_id == self.id, TraitInstance.trial_id == trialId)).group_by(
                        TraitInstance.seqNum, TraitInstance.token_id).count()
-                   
+
     def getName(self):
         return self.caption
 
@@ -542,6 +542,8 @@ class Trial(DeclarativeBase):
 
     def getId(self):
         return self.id
+
+    # MFK - make this getProperties and include, at least, barcode
     def getAttributes(self):
         return self.nodeAttributes
 

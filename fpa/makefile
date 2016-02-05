@@ -4,6 +4,9 @@ CONT_NAME = c_$(IMAGE_NAME)
 run :
 	docker run --name $(CONT_NAME) --link c_fp_mysql:mysql -d -p 8000:80 -p 8443:443 $(IMAGE_NAME)
 
+runnd :
+	docker run --name $(CONT_NAME) --link c_fp_mysql:mysql -p 8000:80 -p 8443:443 $(IMAGE_NAME)
+
 shell :
 	docker exec -it $(CONT_NAME) mod_wsgi-docker-shell
 
@@ -12,7 +15,7 @@ bash :
 
 # Make image with needed python libraries installed :
 build :
-	docker build --build-arg FPWS_PW=fpwserver:secureBar --tag $(IMAGE_NAME) .
+	docker build --build-arg FPWS_PW=fpwserver:bar --tag $(IMAGE_NAME) .
 
 stop :
 	docker stop $(CONT_NAME)

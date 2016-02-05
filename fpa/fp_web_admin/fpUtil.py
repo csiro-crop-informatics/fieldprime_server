@@ -148,11 +148,13 @@ def _htmlDataTableMagic(tableId, extraOptions=''):
             $(elId).DataTable( {
                 %s
                 "scrollX": true,
-                //"processing": true, // not clear this is doing anything..
+                "scrollY": "250px",
+                "paging": false,
+                // "pageLength":100,
+               //"processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
                 },
-                "pageLength":100,
                 "fnDrawCallback":function(){
                     $(elId).show();
                 },

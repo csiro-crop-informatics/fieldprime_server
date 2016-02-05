@@ -3,7 +3,7 @@
 class="active"
 {% endblock %}
 
-{% macro newsitem(txt, date, year, heading, author='Michael Kirk') -%}
+{% macro newsitem(txt, date, year, heading, author='Michael Kirk') %}
     <li>
         <div class="fpNewsDate">
             <p>
@@ -13,7 +13,7 @@ class="active"
         </div>
         <h2>{{ heading }}<span>{{ author }}</span></h2>
         <p>
-            {{ txt }}
+            {{ txt|safe }}
 
 
             <!-- If you need to link to more..
@@ -21,9 +21,7 @@ class="active"
             -->
         </p>
     </li>
-
-    <input type="{{ type }}" value="{{ value|e }}" name="{{ name }}">
-{%- endmacro %}
+{% endmacro %}
 
 {% block content %}
 	<div class="fpInfoText">
@@ -31,7 +29,17 @@ class="active"
 			<h1>News</h1>
 			<ul class="fpNewsList">
 
-                {{ newsitem('great new stuff', '03/2', '2016', 'Whoa!') }}
+                {{ newsitem('''
+                To make it easier to navigate quickly to an arbitrary node, the "Row" and "Column"
+                indicators in the scoring screen (just under the "Prev" and "Next" buttons) can now
+                be pressed to bring up a list of the other available Rows/Columns. Selecting from the
+                list will navigate straight to the selected node. (Note in your trials
+                Row and Column may have been assigned different names (eg "Range"/"Row"), but this
+                navigation method will still work).
+                <p>
+                To use this feature, please upgrade to the latest app version: 1.1.5.
+                ''',
+                 '03/2', '2016', 'Easy Navigation Option') }}
 
                 <li>
                     <div class="fpNewsDate">

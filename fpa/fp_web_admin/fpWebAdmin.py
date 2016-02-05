@@ -402,17 +402,17 @@ def htmlTabData(sess, trial):
     # Download wide format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataWideTSV", trialId=trial.id))
     dl +=     "<button>Download Trial Data - wide format</button></a><br />"
-    dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+    dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
     # Download long format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
     dl +=     "<button>Download Trial Data - long format</button></a><br />"
-    dl +=     "<span style='font-size: smaller;'>(browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)</span>"
+    dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
-    # View plain text tsv long format (why?):
-    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataWideTSV", trialId=trial.id))
-    dl +=     "<button>View tab separated score data</button></a><br />"
-    dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
+#     # View plain text tsv long format (why?):
+#     dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataWideTSV", trialId=trial.id))
+#     dl +=     "<button>View tab separated score data</button></a><br />"
+#     dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
 
     # View wide format as datatable:
     dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataBrowse", trialId=trial.id))
