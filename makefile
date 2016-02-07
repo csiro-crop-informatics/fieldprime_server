@@ -1,9 +1,6 @@
 fp_db_vol :
 	docker volume create --name fp_db_vol
 
-clean.volumes :
-	sudo ~/dev/docker-cleanup-volumes/docker-cleanup-volumes.sh
-
 up :
 	docker-compose up -d
 
@@ -20,6 +17,8 @@ clean.con.all :
 	docker rm `docker ps -aq`
 clean.dangling.images :
 	docker rmi $$(docker images -q --filter "dangling=true")
+clean.volumes :
+	docker volume rm $$(docker volume ls -qf dangling=true)
 
 test.fp :
 	curl https://***REMOVED***/fieldprime/
