@@ -27,3 +27,8 @@ test.fp :
 backup :
 	docker run --volumes-from fp_dbdata -v $(pwd):/backup ubuntu tar cvf /backup/backup.tar /dbdata
 
+# Compose stuff
+clean.comp.adm :
+	docker rm trunk_fp_adm_1
+	docker rmi trunk_fp_adm
+
