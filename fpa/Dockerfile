@@ -31,7 +31,6 @@ RUN mkdir /app/fieldprime; \
   mkdir categoryImages; \
   mkdir crashReports; \
   echo $FPWS_PW > fppw; \
-#  echo fpwserver:bar > fppw; \
   chown -R whiskey /app/fieldprime /app/fp_web_admin /app/fp_common;
 
 
