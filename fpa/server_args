@@ -1,1 +1,5 @@
 --https-port 443
+--https-only
+--ssl-certificate-file /app/sslStuff/server.crt
+--ssl-certificate-key-file /app/sslStuff/server.key
+--ssl-ca-certificate-file /app/sslStuff/ca.crt
