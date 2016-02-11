@@ -43,12 +43,10 @@ from fp_common.const import *
 import datapage as dp
 import websess
 from fpRestApi import webRest
-
+from fpAppWapi import appApi
 
 app = Flask(__name__)
 app.register_blueprint(webRest)
-
-from fpAppWapi import appApi
 app.register_blueprint(appApi)
 
 #

@@ -663,6 +663,9 @@ class Trial(DeclarativeBase):
             lastDayCreated = dayCreated
         return scoreSets
 
+    def getNodes(self):
+        return self.nodes
+    
     def getNodesSortedRowCol(self):
         # Return nodes for the specified trial, sorted by row/col
         dbc = Session.object_session(self)
@@ -1068,6 +1071,10 @@ class Node(DeclarativeBase):
                 AttributeValue.nodeAttribute_id == nodeAttributeId)
             ).one()
 
+    def getAttributeValues(self):
+        #MFK here we want to get TI values flagged for download as well, perhaps..
+        return self.attVals
+    
     def getNotes(self):
         dbc = Session.object_session(self)
         return dbc.query(NodeNote).filter(NodeNote.node_id == self.id).all()

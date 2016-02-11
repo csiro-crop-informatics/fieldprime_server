@@ -9,15 +9,13 @@
 from flask import Blueprint, Flask, request, Response, url_for
 import simplejson as json
 
-import os, sys, time, traceback
-from datetime import datetime
+import os, traceback
 from functools import wraps
 from werkzeug import secure_filename
-from jinja2 import Environment, FileSystemLoader
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
-    import os,sys,inspect
+    import sys, inspect
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir)
@@ -29,13 +27,6 @@ import fp_common.util as util
 ### SetUp: ######################################################################################
 
 appApi = Blueprint('appApi', __name__)
-
-if __name__ == '__main__':
-    import os, sys, inspect
-    currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parentdir = os.path.dirname(currentdir)
-    sys.path.insert(0, parentdir)
-
 app = Flask(__name__)
 try:
     app.config.from_object('fp_common.config')
@@ -164,7 +155,7 @@ def trial_list(username):
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
 @dec_get_trial(True)
-def get_trial(username, trl, dbc, token=None):
+def get_trial(username, trial, dbc, token=None):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
 #
@@ -185,7 +176,7 @@ def get_trial(username, trl, dbc, token=None):
 
     # Create new token if this is a new trial download:
     if token is None:
-        token = dal.Token.createNewToken(dbc, androidId, trl.id).tokenString()
+        token = dal.Token.createNewToken(dbc, androidId, trial.id).tokenString()
     else:
         # The token should be in the database, let's check:
         try:
@@ -194,76 +185,60 @@ def get_trial(username, trl, dbc, token=None):
             util.alertFieldPrimeAdmin(app, 'token ({0}) not found in database'.format(token))
 
     # Trial json object members:
-    jtrl = {'name':trl.name, 'site':trl.site, 'year':trl.year, 'acronym':trl.acronym}
+    jtrl = {'name':trial.name, 'site':trial.site, 'year':trial.year, 'acronym':trial.acronym}
     jtrl['serverToken'] = token # MFK This could and should be removed, once client doesn't need it anymore.
                                 # Currently used in upload of notes, but now we embed it in the uploadURL,
                                 # and the notes upload should switch to using that.
 
-    jtrl['adhocURL'] = url_for('appApi.create_adhoc', username=username, trialid=trl.id, _external=True)
-    jtrl['uploadURL'] = url_for('appApi.upload_trial_data', username=username, trialid=trl.id, token=token, _external=True)
+    jtrl['adhocURL'] = url_for('appApi.create_adhoc', username=username, trialid=trial.id, _external=True)
+    jtrl['uploadURL'] = url_for('appApi.upload_trial_data', username=username, trialid=trial.id, token=token, _external=True)
     # Add trial attributes from database:
     jprops = {}
-    for tp in trl.trialProperties:
+    for tp in trial.trialProperties:
         jprops[tp.name] = tp.value
     jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Node Attribute descriptors:
     attDefs = []
-    for att in trl.nodeAttributes:
-        tua = {}
-        tua['id'] = att.id
-        tua['name'] = att.name
-        tua['datatype'] = att.datatype
-        tua['func'] = att.func
+    for att in trial.nodeAttributes:
+        ad = {}
+        ad['id'] = att.id
+        ad['name'] = att.name
+        ad['datatype'] = att.datatype
+        ad['func'] = att.func
         if int(clientVersion) > 0:
-            attDefs.append(tua)
+            attDefs.append(ad)
         else:     # MFK - support for old clients, remove when all clients updated
             attDefs.append(att.name)
-    jtrl['attributes'] = attDefs
-    ### MFK
-    ### Note duplication here, we want to change 'attributes' to 'nodeAttributes', but need to continue
-    ### support for old clients which will look only for 'attributes'. Can remove the 'attributes' version
-    ### when all clients are updated.
-    ###
     jtrl['nodeAttributes'] = attDefs
 
+    #
     # Nodes:
+    #
     nodeList = []
-    tuNames = ["id", "row", "col", "description", "barcode"]
-    for ctu in trl.nodes:
+    nodePropertyNames = ["id", "row", "col", "description", "barcode"]
+    for nd in trial.getNodes():
         jnode = {}
-        # MFK - there is a problem here, the fixed names and the user provided
-        # attribute names are in the same name space. This is a problem if, for example
-        # there is a user provided 'id' attribute.
-        # Solution is probably to put user attributes inside an 'attVals':object kv pair
-        # but this change must be supported on the client.
-
-        # Trial unit attributes:
-        for n in tuNames:
-            jnode[n] = getattr(ctu, n)
-
-        # Attribute values:
-        if len(ctu.attVals) > 0:
-            if int(clientVersion) > 0:
-                atts = {}
-                for att in ctu.attVals:
-                    atts[att.nodeAttribute.name] = att.value
-                    jnode['attvals'] = atts
-            else:     # MFK - support for old clients, remove when all clients updated
-                for att in ctu.attVals:
-                    jnode[att.nodeAttribute.name] = att.value
-
-        # GPS location:
-        if ctu.latitude is not None and ctu.longitude is not None:
-            jloc = [ctu.latitude, ctu.longitude]
+        ### Node built in properties:
+        for n in nodePropertyNames:
+            jnode[n] = getattr(nd, n)
+        ### Attribute values:
+        attVals = nd.getPropertyValues()
+        if len(attVals) > 0:
+            atts = {}
+            for att in attVals:
+                atts[att.nodeAttribute.name] = att.value
+            jnode['attvals'] = atts
+        ### GPS location:
+        if nd.latitude is not None and nd.longitude is not None:
+            jloc = [nd.latitude, nd.longitude]
             jnode['location'] = jloc
-
         nodeList.append(jnode)
     jtrl['nodes'] = nodeList
 
     # Traits:
     traitList = []
-    for trt in trl.traits:
+    for trt in trial.traits:
         jtrait = {}
         # Fields common to all traits:
         jtrait['id'] = trt.id
@@ -275,13 +250,13 @@ def get_trial(username, trl, dbc, token=None):
         jtrait['sysType'] = 0
 
         # Add the uploadURL:
-        jtrait['uploadURL'] = url_for('appApi.upload_trait_data', username=username, trialid=trl.id, traitid=trt.id,
+        jtrait['uploadURL'] = url_for('appApi.upload_trait_data', username=username, trialid=trial.id, traitid=trt.id,
                                       token=token, _external=True)
 
         #
         # Barcode - NB we rely on the fact that there are (now) no sys traits on the client.
         #
-        trlTrt = dal.getTrialTrait(dbc, trl.id, trt.id)
+        trlTrt = dal.getTrialTrait(dbc, trial.id, trt.id)
         barcode = trlTrt.barcodeAtt_id
         if (barcode is not None):
             jtrait['barcodeAttId'] = barcode
@@ -302,7 +277,7 @@ def get_trial(username, trl, dbc, token=None):
 
         # Photo traits:
         elif trt.datatype == T_PHOTO:
-            jtrait['photoUploadURL'] = url_for('appApi.upload_photo', username=username, trialid=trl.id,
+            jtrait['photoUploadURL'] = url_for('appApi.upload_photo', username=username, trialid=trial.id,
                                                traitid=trt.id, token=token, _external=True)
 
         # Numeric traits (integer and decimal):
@@ -310,7 +285,7 @@ def get_trial(username, trl, dbc, token=None):
         # and they cause failure when converting to json for some reason, unless cast to float.
         elif trt.datatype == T_DECIMAL or trt.datatype == T_INTEGER:
             # get the trialTraitNumeric object, and send the contents
-            ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trl.id)
+            ttn = dal.GetTrialTraitNumericDetails(dbc, trt.id, trial.id)
             if ttn is not None:
                 val = {}
                 # min:
@@ -330,7 +305,7 @@ def get_trial(username, trl, dbc, token=None):
 
         # Text (string) traits:
         elif trt.datatype == T_STRING:
-            tts = dal.getTraitString(dbc, trt.id, trl.id)
+            tts = dal.getTraitString(dbc, trt.id, trial.id)
             if tts is not None:
                 val = {}
                 val['pattern'] = tts.pattern
@@ -648,21 +623,15 @@ def JsonErrorResponse(errMsg):
     return Response(json.dumps({'error':errMsg}), mimetype='application/json')
 
 
-#-------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------
-# Old stuff:
-
 def error_404(msg):
+#-------------------------------------------------------------------------------------------------
+# Not used ATM:
     response = Response(msg)
     response.status_code = 404
     return response
 
 
 #############################################################################################
-
-@appApi.route(API_PREFIX + '/xxx')
-def hello_world():
-    return 'Hello Sailor!'
 
 # For local testing:
 if __name__ == '__main__':
