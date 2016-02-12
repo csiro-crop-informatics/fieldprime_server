@@ -171,7 +171,7 @@ def get_trial(username, trial, dbc, token=None):
 
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
-    if int(clientVersion) < 400:
+    if int(clientVersion) < 450:
         return JsonErrorResponse('This client version ({0}) is too old. Please upgrade, or contact support for help'.format(clientVersion))
 
     # Create new token if this is a new trial download:
@@ -199,17 +199,27 @@ def get_trial(username, trial, dbc, token=None):
     jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Node Attribute descriptors:
+    # MFK we want to sent flagged trait instances here, might need to condition the change on
+    # app version.
+    # Notes from discussion with Chris:
+    # We want to be able to flag a score set as a (downloadable) attribute.
+    # Need server ui for this flag.
+    # User probably needs to choose a name for the ss as attribute. If the score set is multi valued
+    # these may have to become multiple attributes <name>.<sampleNo>
+    # Only an admin should be able to change this flag.
+    # It needs to be a fully fledged attribute on both app and server. Chris's need is to collect barcodes
+    # as a score and then have them downloadable as attributes for use in navigation.
+    # Questions:
+    #  Is there a single copy of the data? What happens if you use any functionality to modify either scoreSets
+    #  or attributes?
     attDefs = []
-    for att in trial.nodeAttributes:
+    for att in trial.getAttributes():
         ad = {}
         ad['id'] = att.id
         ad['name'] = att.name
         ad['datatype'] = att.datatype
         ad['func'] = att.func
-        if int(clientVersion) > 0:
-            attDefs.append(ad)
-        else:     # MFK - support for old clients, remove when all clients updated
-            attDefs.append(att.name)
+        attDefs.append(ad)
     jtrl['nodeAttributes'] = attDefs
 
     #
@@ -488,48 +498,6 @@ def upload_crash_report():
     else:
         return serverErrorResponse('Failed crash report upload')
 
-#
-# upload_trial_data()
-#
-# Test data:
-# https://***REMOVED***/owalboc/user/mk/trial/1/?pw=sec&andid=x
-# Content-Type : application/json
-# {"name":"josh", "serverToken":"tok",
-# "traitInstances":[{"trait_id":1,"dayCreated":2,"seqNum":1,"sampleNum":1,"data":[]}]}
-#
-# Currently only used for uploading node notes, since the traitInstances are
-# individually uploaded via the upload_trait_data().
-#
-# MFK - Ideally we would add the token to the URL, as has been done for upload_trait_data.
-# Have to be carefully however about breaking the protocol for devices out there with
-# the URL without a token..
-#
-# Note now have old_version. URLs sent and stored on client when this function was
-# used should still be able to access this func (since the URL will match). But now
-# we send out the URL for the new version.
-
-@appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['POST'])
-@dec_get_trial(False)
-#-------------------------------------------------------------------------------------------------
-def upload_trial_old_version(username, trial, dbc):
-    jtrial = request.json
-    util.flog("upload_trial:\n" + json.dumps(jtrial))
-
-    if not jtrial:
-        return Response('Bad or missing JSON')
-    try:
-        token = jtrial[jTrialUpload['serverToken']]
-    except Exception, e:
-        return Response('Missing field: ' + e.args[0])
-
-    if 'notes' in jtrial:   # We really should put these JSON names in a set of string constants somehow..
-        err = dal.addNodeNotes(dbc, token, jtrial[jTrialUpload['notes']])
-        if err is not None:
-            util.flog('addNodeNotes fail:{0}'.format(err))
-            return Response(err)
-
-    # All done, return success indicator:
-    return successResponse()
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
@@ -539,6 +507,11 @@ def upload_trial_old_version(username, trial, dbc):
 # And the format of the response differs between these two. Probably would be better
 # with separate urls.
 #
+# Note used to have old_version, where the token was in the json not the url, see svn history
+# for this code if necessary. Only relevant if old clients are still out there, but I think
+# not. URLs sent and stored on client when this function was
+# used should still be able to access this func (since the URL will match). But now
+# we send out the URL for the new version.
 def upload_trial_data(username, trial, dbc, token):
     jtrial = request.json
     if not jtrial:
