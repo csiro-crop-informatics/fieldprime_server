@@ -4,6 +4,7 @@
 --
 -- -----------------------------------------------------------------------------------------------------
 
+START TRANSACTION;
 
 --
 -- system
@@ -288,19 +289,29 @@ create table traitInstance(
   foreign key(token_id) references token(id) ON DELETE CASCADE
 );
 
--- MFK fk on delete handlers needed
--- create table scoreSet(
---   id	      INT PRIMARY KEY AUTO_INCREMENT,
---   trial_id    INT NOT NULL,
---   trait_id    INT NOT NULL,
---   dayCreated  INT NOT NULL,
---   seqNum      INT NOT NULL,
---   token_id    INT NOT NULL,
---   UNIQUE(trial_id, trait_id, seqNum, token_id),
---   FOREIGN KEY(trait_id) REFERENCES trait(id),
---   FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
---   FOREIGN KEY(token_id) REFERENCES token(id)
+-- create table newtraitInstance(
+--   id          INT PRIMARY KEY AUTO_INCREMENT,
+--   sset_id     INT NOT NULL,
+--   sampleNum   INT NOT NULL,
+--   UNIQUE KEY (sset_id, sampleNum),
+--   FOREIGN KEY(sset_id) REFERENCES scoreSet(id),
 -- );
+
+--
+-- scoreSet
+-- MFK fk trait_id should have on delete handler?
+# create table scoreSet(
+#  id	      INT PRIMARY KEY AUTO_INCREMENT,
+#  trial_id    INT NOT NULL,
+#  trait_id    INT NOT NULL,
+#  dayCreated  INT NOT NULL,
+#  seqNum      INT NOT NULL,
+#  token_id    INT NOT NULL,
+#  UNIQUE(trial_id, trait_id, seqNum, token_id),
+#  FOREIGN KEY(trait_id) REFERENCES trait(id),
+#  FOREIGN KEY(trial_id) REFERENCES trial(id) ON DELETE CASCADE,
+#  FOREIGN KEY(token_id) REFERENCES token(id) ON DELETE CASCADE
+# );
 
 
 --
@@ -331,4 +342,6 @@ create table deviceName(
   androidId  CHAR(16) PRIMARY KEY,
   nickName   VARCHAR(63)
 );
+
+COMMIT;
 

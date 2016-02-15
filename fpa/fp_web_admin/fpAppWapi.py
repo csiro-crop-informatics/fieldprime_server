@@ -233,7 +233,7 @@ def get_trial(username, trial, dbc, token=None):
         for n in nodePropertyNames:
             jnode[n] = getattr(nd, n)
         ### Attribute values:
-        attVals = nd.getPropertyValues()
+        attVals = nd.getAttributeValues()
         if len(attVals) > 0:
             atts = {}
             for att in attVals:

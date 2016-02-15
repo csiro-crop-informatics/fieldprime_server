@@ -245,7 +245,7 @@ def htmlTabNodeAttributes(sess, trialId):
 #----------------------------------------------------------------------------------------------------
 # Returns HTML for trial attributes.
 # MFK - improve this, showing type and number of values, also delete button? modify?
-    attList = dal.getTrial(sess.db(), trialId).nodeAttributes
+    attList = dal.getTrial(sess.db(), trialId).getAttributes()
     out = ''
     if len(attList) < 1:
         out += "No attributes found"
@@ -592,7 +592,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
     if not fixedOnly:
         # And add the other attributes:
         trl = dal.getTrial(sess.db(), trialId)
-        attList = trl.nodeAttributes
+        attList = trl.getAttributes()
         qry = """
             select a.value from node n left join attributeValue a
             on n.id = a.node_id and a.nodeAttribute_id = %s
@@ -652,7 +652,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     safeAppend(hdrs, dal.navIndexName(sess.db(), trialId, 1))
     if showAttributes:
         attValList = trl.getAttributeColumns(trl.getAttributes())  # Get all the att vals in advance
-        for tua in trl.nodeAttributes:
+        for tua in trl.getAttributes():
             safeAppend(hdrs, tua.name)
     for ti in tiList:
         tiName = "{0}_{1}.{2}.{3}".format(ti.trait.caption, ti.dayCreated, ti.seqNum, ti.sampleNum)
@@ -680,7 +680,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
 
         # Attribute Columns:
         if showAttributes:
-            for ind, tua in enumerate(trl.nodeAttributes):
+            for ind, tua in enumerate(trl.getAttributes()):
                 safeAppend(nrow, attValList[ind][nodeIndex])
 
         # Scores:
@@ -1152,7 +1152,67 @@ def urlUserDetails(sess, projectName):
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
             return badJuju(sess, 'Unexpected operation')
+        
+@app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
+@dec_check_session()
+def urlFPAdmin(sess):
+    usr = sess.getUser()
+    if usr is None:
+        return badJuju(sess, 'No user found')
+    if not usr.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
+        return badJuju(sess, 'No admin rights')
 
+    showPassChange = usr.allowPasswordChange()
+
+    def theFormAgain(op=None, msg=None):
+        return dp.dataTemplatePage(sess, 'admin.html', 
+                    title="Admin", op=op, errMsg=msg, passChange=showPassChange,
+                    usersHTML='hallo!')
+
+    title = "Administration"
+    if request.method == 'GET':
+        return theFormAgain()
+    if request.method == 'POST':
+        op = request.args.get('op')
+        form = request.form
+        if op == 'contact':
+            contactName = form.get('contactName')
+            contactEmail = form.get('contactEmail')
+            if not (contactName and contactEmail):
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields",
+                                           passChange=showPassChange, title=title)
+            else:
+                dal.setSystemValue(sess.db(), 'contactName', contactName)
+                dal.setSystemValue(sess.db(), 'contactEmail', contactEmail)
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
+                           errMsg="Contact details saved", passChange=showPassChange, title=title)
+
+        elif op == 'newpw' or op == 'setAppPassword':
+            # Changing admin or app password:
+            # MFK bug here: if we prompt with err message, the contact values are missing.
+            oldPassword = form.get("password")
+            newpassword1 = form.get("newpassword1")
+            newpassword2 = form.get("newpassword2")
+            if not (oldPassword and newpassword1 and newpassword2):
+                return theFormAgain(op=op, msg="Please fill out all fields")
+            if newpassword1 != newpassword2:
+                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.",
+                                           passChange=showPassChange, title=title)
+
+            # OK, all good, change their password:
+            currUser = sess.getUserIdent()
+            if not fpsys.userPasswordCheck(g.userName, oldPassword):
+                return logoutPage(sess, "Password is incorrect")
+            user = fpsys.User.getByLogin(currUser)
+            msg = user.changePassword(newpassword1)
+            if msg is None:
+                msg = 'Password reset successfully'
+            return frontPage(sess, msg)
+        elif op == 'manageUsers':
+            return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
+        else:
+            return badJuju(sess, 'Unexpected operation')
+        
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
 #######################################################################################################
@@ -1388,7 +1448,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     # Make list of urls for trial attributes:  MFK we should put urls for traitInstances as well
     nodeAtts = []
-    for nat in ti.trial.nodeAttributes:
+    for nat in ti.trial.getAttributes():
         nodeAtts.append(
             {"name":nat.name,
              "url":url_for('webRest.urlAttributeData', projectName=sess.getProjectName(), attId=nat.id),
@@ -1618,8 +1678,8 @@ def urlMain():
                 projList, errMsg = fpsys.getProjects(username)
                 if errMsg is not None:
                     error = errMsg
-                elif not projList:
-                    error = 'No projects found for user {0}'.format(username)
+#                 elif not projList:
+#                     error = 'No projects found for user {0}'.format(username)
                 else:
                     # Good to go, show the user front page, after adding cookie:
                     util.fpLog(app, 'Login from user {0}'.format(username))

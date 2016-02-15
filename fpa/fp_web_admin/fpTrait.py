@@ -186,7 +186,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         # Note it doesn't matter if a sysTrait, since the barcode is stored in trialTrait
         attSelector = '<select name="bcAttribute" id="bcAttribute">'
         attSelector += '<option value="none">&lt;Choose Attribute&gt;</option>'
-        atts = trial.nodeAttributes
+        atts = trial.getAttributes()
         for att in atts:
             attSelector += '<option value="{0}" {2}>{1}</option>'.format(
                 att.id, att.name, "selected='selected'" if att.id == trlTrt.barcodeAtt_id else "")

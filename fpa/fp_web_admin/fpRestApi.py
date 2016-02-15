@@ -65,12 +65,14 @@ def verify_auth_token(token):
 
 @auth.verify_password
 def verify_password(username_or_token, password):
+# Password check.
+# This is invoked by the auth.login_required decorator.
+#    
     # first try to authenticate by token
     user = verify_auth_token(username_or_token)
     if not user:
         # try to authenticate with username/password
         check = fpsys.userPasswordCheck(username_or_token, password)
-        print check
         if not check: return False
         else: user = username_or_token
     g.user = user
@@ -102,7 +104,7 @@ def new_user():
 # could have login_type parameter.
 #
     # check permissions
-    if not fpsys.User.has_create_user_permissions(g.user):
+    if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
     # check all details provided
     login = request.json.get('login')
@@ -160,7 +162,7 @@ def getProject(id):
 
 
 
-@webRest.route(API_PREFIX + 'projects/<path:path>', methods=['POST'])
+@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @auth.login_required
 def createProject(path):
     return 'You want path: %s' % path
@@ -180,6 +182,33 @@ def checkIdent(candidate):
     re.match('\w\w*')
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
+@auth.login_required
+def new_createProject():
+# Expects JSON object:
+#   parent : url for parent project. If missing root is used.
+#   name : project name, must be nice
+#   contactName :
+#   contactEmail :
+#
+    # top level dir called 'projects'? 'users'
+    parentUrl = request.json.get('parent')
+    parentProj = models.Project.getByUrl(parentUrl);
+
+    # get project
+    name = request.json.get('name')
+    parentProj.getByName(name)
+    name = checkIdent(name) # check name is valid
+    # and doesn't already exist
+
+    if parent is None or name is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+
+    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
+
+    # create the project:
+    proj = models.Project();
+
+@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
 @auth.login_required
 def createProject2():
 # Expects JSON object:
@@ -211,10 +240,17 @@ def createProject2():
 TEST_STUFF = '''
 FP=http://0.0.0.0:5001/fpv1
 
-# Need to have user, preferably local, in fpsys with create user permissions, eg mk:m
-mysql
-use fpsys
-insert user ... (use python to get passhash of 'm')
+#
+# NB we need to create an initial user with admin permissions (which can then use the REST
+# API to create other users):
+#
+# > mysql
+# mysql> use fpsys
+# mysql> insert user (login, name, passhash, login_type, permissions)
+#        values ('fpadmin', 'FieldPrime Administrator', <PASSHASH>, 3, 1); 
+# 
+# use python to get passhash of password.
+# 
 
 # Create ***REMOVED*** user:
 curl -u mk:m -i -X POST -H "Content-Type: application/json" \
@@ -230,22 +266,23 @@ curl -u mk:m -i -X POST -H "Content-Type: application/json" \
 curl -i -u kevin:blueberry $FP/projects
 
 # Get token:
+curl -u fpadmin:foo -i -X GET $FP/token
 curl -u kevin:blueberry -i -X GET $FP/token
 
 '''
 
-API_REST = '''
+# Document the REST API here?
+API_REST_DOCO = '''
 routes:
 
 projects { /<projName> }
 Get - returns ?
 Post - create
 
-
 trials { /<projName> } [ /<trialName> ]
 
-
 '''
+
 ########################################################################################
 ### Old stuff, but note some of it may be in use: ######################################
 

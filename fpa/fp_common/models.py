@@ -827,7 +827,7 @@ class Trial(DeclarativeBase):
     #---------------------------------------------------------------------------------------
     # Return named attribute, if it's in this trial
     #
-        for att in self.nodeAttributes:
+        for att in self.getAttributes():
             if att.name == name:
                 return att
         return None
@@ -900,7 +900,7 @@ class Trial(DeclarativeBase):
             outList.append(valList)
         return outList
 
-    def getAttributeColumns(self, attList, orderByNodeId=False):
+    def OLD_getAttributeColumns(self, attList, orderByNodeId=False):
     #-----------------------------------------------------------------------
     # Returns a list of columns one for each attribute in attList - each column
     # being an array of attribute values with one entry for each node in the trial.
@@ -908,6 +908,7 @@ class Trial(DeclarativeBase):
     # orderedby row/col by default, or node id if specified.
     # Missing values are given as the empty string.
     #
+    # MFK should push the attval retrieval off to NodeAttribute
         eng = _eng(self)
         qry = """
             select a.value from node n left join attributeValue a
@@ -921,6 +922,20 @@ class Trial(DeclarativeBase):
             for row in result:
                 valList.append("" if row[0] is None else row[0])
             attValList.append(valList)
+        return attValList
+    
+    def getAttributeColumns(self, attList, orderByNodeId=False):
+    #-----------------------------------------------------------------------
+    # Returns a list of columns one for each attribute in attList - each column
+    # being an array of attribute values with one entry for each node in the trial.
+    # The columns are in the same order as attList, and the column entries are
+    # orderedby row/col by default, or node id if specified.
+    # Missing values are given as the empty string.
+    #
+    # MFK should push the attval retrieval off to NodeAttribute
+        attValList = []
+        for att in attList:
+            attValList.append(att.getValues(orderByNodeId))
         return attValList
 
     def addNodeNotes(self, tokenStr, notes):
@@ -1054,10 +1069,11 @@ class Node(DeclarativeBase):
 
     #relation definitions
     trial = relation('Trial', primaryjoin='Node.trial_id==Trial.id')
-    nodeAttributes = relation('NodeAttribute', primaryjoin='Node.id==AttributeValue.node_id',
-        secondary=attributeValue, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
-    traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum,
-        secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
+# These seem not to be used:    
+#     nodeAttributes = relation('NodeAttribute', primaryjoin='Node.id==AttributeValue.node_id',
+#         secondary=attributeValue, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
+#     traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum,
+#         secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
     def getId(self):
@@ -1108,6 +1124,26 @@ class NodeAttribute(DeclarativeBase):
             .order_by(AttributeValue.node_id.asc()) \
             .all()
 
+    def getValues(self, orderByNodeId=False):
+    #-----------------------------------------------------------------------
+    # Returns an array of attribute values with one entry for each node in the trial.
+    # The entries are orderedby row/col by default, or node id if specified.
+    # Missing values are given as the empty string.
+    #
+    # MFK Node attributes not polymorphic, (should we rename this class nodeProperty?)
+    # Need to add "source" field.
+        eng = _eng(self)
+        qry = """
+            select a.value from node n left join attributeValue a
+            on n.id = a.node_id and a.nodeAttribute_id = {0}
+            where n.trial_id = {1}
+            order by """ + ('n.id' if orderByNodeId else 'row,col')
+        valList = []
+        result = eng.execute(qry.format(self.id , self.trial.getId()))  
+        for row in result:
+             valList.append("" if row[0] is None else row[0])
+        return valList
+    
     @oneException2None
     def getUniqueNodeIdFromValue(self, val):
         return _dbc(self).query(AttributeValue.node_id) \

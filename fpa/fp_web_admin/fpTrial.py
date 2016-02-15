@@ -216,7 +216,7 @@ def updateTrialFile(sess, trialCsv, trl, i1name=None, i2name=None):
     dbSess = sess.db()
     # Add (new) node attributes, create/fill attExists, nodeAtts:
     try:
-        currAtts = trl.nodeAttributes
+        currAtts = trl.getAttributes()
         nodeAtts = []
         attExists = []    # array of booleans indicating whether corresponding attIndex attribute exists already
         for attName in attIndex.keys():

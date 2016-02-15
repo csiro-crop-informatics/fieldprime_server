@@ -97,6 +97,8 @@ def _dataNavigationContent(sess, trialId):
 
     # Show non project specific buttons:
     r1c2 = '<div style="float:right">'
+    if fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
+        r1c2 += '<a href="{0}"><span class="fa fa-user"></span>Manage FP</a>'.format(url_for('urlFPAdmin'))
     r1c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
     r1c2 +=   '<a style="white-space:nowrap" href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
             '<span class="fa fa-question-circle"></span> App User Guide</a>'
@@ -118,7 +120,10 @@ def _dataNavigationContent(sess, trialId):
     # Note we need to construct the URL for retrieving the project page in javascript,
     # and hence cannot use url_for.
     projList, errMsg = fpsys.getProjects(sess.getUserIdent())
-    if errMsg or not projList:
+    if errMsg:
+        return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUserIdent(), errMsg)
+    if not projList:
+        return nc
         return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUserIdent(), errMsg)
     currProj = sess.getProjectName()
     r2c1 = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,

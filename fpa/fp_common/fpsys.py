@@ -22,6 +22,7 @@ from passlib.apps import mysql_context
 
 def getFpsysDbConnection():
     host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
     return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
 
 
@@ -361,7 +362,9 @@ def userPasswordCheck(username, password):
         return None
 
 class User:
-    USER_CREATE_PERMISSION = 0x1
+    PERMISSION_CREATE_USER = 0x1
+    PERMISSION_CREATE_PROJECT = 0x2
+    PERMISSION_OMNIPOTENCE = 0x4
     def __init__(self, id, name, passhash, login_type, permissions):
         self._id = id
         self._name = name
@@ -390,8 +393,8 @@ class User:
         return self._passhash
     def login_type(self):
         return self._login_type
-    def hasCreatePermissions(self):
-        return bool(self._permissions & self.USER_CREATE_PERMISSION)
+    def hasPermission(self, perm):
+        return bool(self._permissions & perm)
     def allowPasswordChange(self):
     # As in show the password change form in the admin page - only appropriate for mysql or local.
         return self._login_type == LOGIN_TYPE_MYSQL or self._login_type == LOGIN_TYPE_LOCAL
@@ -414,11 +417,12 @@ class User:
             util.flog('Error in User.changePassword: {0}'.format(str(e)))
             return 'Error in User.changePassword: {0}'.format(str(e))
         return None
-
+    
     @staticmethod
-    def has_create_user_permissions(login):
+    def sHasPermission(login, perm):
         usr = User.getByLogin(login)
         if usr is None:
             return False
-        return usr.hasCreatePermissions()
+        return bool(usr._permissions & perm)
+
 
