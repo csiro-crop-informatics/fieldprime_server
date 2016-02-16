@@ -1152,7 +1152,7 @@ def urlUserDetails(sess, projectName):
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
             return badJuju(sess, 'Unexpected operation')
-        
+
 @app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlFPAdmin(sess):
@@ -1165,7 +1165,7 @@ def urlFPAdmin(sess):
     showPassChange = usr.allowPasswordChange()
 
     def theFormAgain(op=None, msg=None):
-        return dp.dataTemplatePage(sess, 'admin.html', 
+        return dp.dataTemplatePage(sess, 'sp.html', generator='fplib.demoDivGen',
                     title="Admin", op=op, errMsg=msg, passChange=showPassChange,
                     usersHTML='hallo!')
 
@@ -1212,7 +1212,7 @@ def urlFPAdmin(sess):
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
             return badJuju(sess, 'Unexpected operation')
-        
+
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
 #######################################################################################################

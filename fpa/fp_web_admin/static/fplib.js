@@ -8,6 +8,14 @@
 var fplib = {};
 
 
+fplib.demoDivGen = function() {
+    var div = document.createElement('div');
+    var content = document.createTextNode("Hallo sailor!");
+    div.appendChild(content);
+    //elemDiv.style.cssText = 'position:absolute;width:100%;height:100%;opacity:0.3;z-index:100;background:#000;';
+    document.body.appendChild(div);
+};
+
 /*
  * getUrlData
  *

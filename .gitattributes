@@ -98,6 +98,7 @@ fpa/fp_web_admin/templates/newTrial.html -text
 fpa/fp_web_admin/templates/news.html -text
 fpa/fp_web_admin/templates/profile.html -text
 fpa/fp_web_admin/templates/sessError.html -text
+fpa/fp_web_admin/templates/sp.html -text
 fpa/fp_web_admin/templates/uploadAttributes.html -text
 fpa/fp_web_admin/templates/uploadScores.html -text
 fpa/fp_web_admin/trialProperties.py -text
