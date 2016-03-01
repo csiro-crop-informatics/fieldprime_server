@@ -25,6 +25,9 @@ from functools import wraps
 
 from flask import current_app as app
 
+DeclarativeBase = declarative_base()
+metadata = DeclarativeBase.metadata
+
 def oneException2None(func):
 #--------------------------------------------------------------------
 # Decorator used for sqlalchemy one() queries, which throw exceptions if
@@ -43,29 +46,7 @@ def oneException2None(func):
     return with_traps
 
 
-
-### sqlalchemy CONSTANTS: ######################################################################
-
-DeclarativeBase = declarative_base()
-metadata = DeclarativeBase.metadata
-
-attributeValue = Table(unicode(TABLE_ATTRIBUTE_VALUES), metadata,
-    Column(u'nodeAttribute_id', INTEGER(), ForeignKey('nodeAttribute.id'), primary_key=True, nullable=False),
-    Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False),
-    Column(unicode(AV_VALUE), TEXT(), nullable=False),
-)
-
-datum = Table(u'datum', metadata,
-    Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False),
-    Column(u'traitInstance_id', INTEGER(), ForeignKey('traitInstance.id'), nullable=False),
-    Column(u'timestamp', BigInteger(), primary_key=True, nullable=False),
-    Column(u'gps_long', Float(asdecimal=True)),
-    Column(u'gps_lat', Float(asdecimal=True)),
-    Column(u'userid', TEXT()),
-    #Column(u'notes', TEXT()),
-    Column(u'numValue', DECIMAL(precision=11, scale=3)),
-    Column(u'txtValue', TEXT()),
-)
+### sqlalchemy CLASSES: ######################################################################
 
 trialTrait = Table(u'trialTrait', metadata,
     Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False),
@@ -73,12 +54,9 @@ trialTrait = Table(u'trialTrait', metadata,
     Column(u'barcodeAtt_id', INTEGER(), ForeignKey('nodeAttribute.id'), nullable=True)
 )
 
-
-### sqlalchemy CLASSES: ######################################################################
-
 class TrialTrait(DeclarativeBase):
     __table__ = trialTrait
-    #relation definitions:
+    # relation definitions:
     barcodeAtt = relation('NodeAttribute', primaryjoin='TrialTrait.barcodeAtt_id==NodeAttribute.id')
 
     def addTraitInstance(self, dayCreated, tokenId):
@@ -103,14 +81,23 @@ class TrialTrait(DeclarativeBase):
         db.commit()
         return ti
 
+attributeValueTable = Table(unicode(TABLE_ATTRIBUTE_VALUES), metadata,
+    Column(u'nodeAttribute_id', INTEGER(), ForeignKey('nodeAttribute.id'), primary_key=True, nullable=False),
+    Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False),
+    Column(unicode(AV_VALUE), TEXT(), nullable=False),
+)
+
 
 class AttributeValue(DeclarativeBase):
-    __table__ = attributeValue
+    __table__ = attributeValueTable
 
-    #relation definitions
+    # relation definitions
     nodeAttribute = relation('NodeAttribute', primaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
     node = relation('Node', primaryjoin='AttributeValue.node_id==Node.id')
-
+    
+    def getNode(self):
+        return self.node
+    
     def setValueWithTypeUpdate(self, newVal):
     # Set the value, and if the val is not an integer, set the type to text.
     # NB by default datatypes are integer, if necessary fall back to decimal,
@@ -118,12 +105,27 @@ class AttributeValue(DeclarativeBase):
         self.value = newVal
         if not self.nodeAttribute.datatype == T_STRING and not util.isInt(newVal):
             self.nodeAttribute.datatype = T_DECIMAL if util.isNumeric(newVal) else T_STRING
+            
+    def getValueAsString(self):
+        return self.value
 
+
+datumTable = Table(u'datum', metadata,
+    Column(u'node_id', INTEGER(), ForeignKey('node.id'), primary_key=True, nullable=False),
+    Column(u'traitInstance_id', INTEGER(), ForeignKey('traitInstance.id'), nullable=False),
+    Column(u'timestamp', BigInteger(), primary_key=True, nullable=False),
+    Column(u'gps_long', Float(asdecimal=True)),
+    Column(u'gps_lat', Float(asdecimal=True)),
+    Column(u'userid', TEXT()),
+    # Column(u'notes', TEXT()),
+    Column(u'numValue', DECIMAL(precision=11, scale=3)),
+    Column(u'txtValue', TEXT()),
+)
 
 class Datum(DeclarativeBase):
-    __table__ = datum
+    __table__ = datumTable
 
-    #relation definitions
+    # relation definitions
     node = relation('Node', primaryjoin='Datum.node_id==Node.id')
     traitInstance = relation('TraitInstance', primaryjoin='Datum.traitInstance_id==TraitInstance.id')
 
@@ -141,7 +143,10 @@ class Datum(DeclarativeBase):
 
     def isNA(self):
         return self.txtValue is None and self.numValue is None
-
+    
+    def getNode(self):
+        return self.node
+    
     def getValue(self):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.
@@ -165,13 +170,27 @@ class Datum(DeclarativeBase):
         elif dtype == T_PHOTO:
             value = util.escapeHtml(self.txtValue)
 
-        #if dtype ==     T_LOCATION: value = d.txtValue
+        # if dtype ==     T_LOCATION: value = d.txtValue
 
         # Convert None to "NA"
         if value is None:
             value = "NA"
         return value
-
+    
+    def getValueAsString(self):
+    #------------------------------------------------------------------
+    # Return a value, how the value is stored/represented is type specific.
+    # NB if the database value is null, then "NA" is returned.
+    # NB - for text values, escapeHtml is applied first (to disable any html).
+    # Note this is similar to getValue() but possible more efficient (important
+    # if many calls) since we don't reference the traitInstance to work out the
+    # type, we just consider which (of numValue and txtValue) is not NULL, for
+    # at least one should be (ATTOW). Note both null indicates NA.
+    # Problem, however in disambiguating int and decimal.. so let's just do it the 
+    # lazy way.
+    #
+        return str(self.getValue())
+    
     def getTimeAsString(self):
         return util.epoch2dateTime(self.timestamp)
 
@@ -179,7 +198,7 @@ class Trait(DeclarativeBase):
     __tablename__ = 'trait'
     __table_args__ = {}
 
-    #column definitions
+    # column definitions
     caption = Column(u'caption', VARCHAR(length=63), nullable=False)
     description = Column(u'description', TEXT(), nullable=False)
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
@@ -187,10 +206,10 @@ class Trait(DeclarativeBase):
     project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'))
 
-    #relation definitions
+    # relation definitions
     trials = relation('Trial', primaryjoin='Trait.id==trialTrait.c.trait_id', secondary=trialTrait,
         secondaryjoin='trialTrait.c.trial_id==Trial.id')
-    categories = relation('TraitCategory')    # NB, only relevant for Categorical type
+    categories = relation('TraitCategory')  # NB, only relevant for Categorical type
 
     def __init__(self, caption, description, datatype, isProjectTrait, trialOrProjectId):
         self.caption = caption
@@ -238,13 +257,13 @@ class TraitCategory(DeclarativeBase):
     __tablename__ = 'traitCategory'
     __table_args__ = {}
 
-    #column definitions
+    # column definitions
     caption = Column(u'caption', TEXT(), nullable=False)
     imageURL = Column(u'imageURL', TEXT())
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     value = Column(u'value', INTEGER(), primary_key=True, nullable=False)
 
-    #relation definitions
+    # relation definitions
     trait = relation('Trait', primaryjoin='TraitCategory.trait_id==Trait.id')
 
     @staticmethod
@@ -252,7 +271,7 @@ class TraitCategory(DeclarativeBase):
     # Return dictionary providing value to caption map for specified trait.
     # The trait should be categorical, if not empty map will be returned, I think.
         cats = dbc.query(TraitCategory).filter(TraitCategory.trait_id == traitId).all()
-        #util.flog('num cats: {0}'.format(len(cats)))
+        # util.flog('num cats: {0}'.format(len(cats)))
         retMap = {}
         for cat in cats:
             retMap[cat.value] = cat.caption
@@ -269,15 +288,19 @@ class TraitInstance(DeclarativeBase):
         Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
     )
 
-    #relation definitions
+    # relation definitions
     trait = relation('Trait', primaryjoin='TraitInstance.trait_id==Trait.id')
     trial = relation('Trial', primaryjoin='TraitInstance.trial_id==Trial.id')
-    nodes = relation('Node', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datum,
+    nodes = relation('Node', primaryjoin='TraitInstance.id==Datum.traitInstance_id', secondary=datumTable,
                      secondaryjoin='Datum.node_id==Node.id')
     token = relation('Token', primaryjoin='TraitInstance.token_id==Token.id')
 
+    def getId(self):
+        return self.id
     def getDeviceId(self):
         return self.token.getDeviceId()
+    def getTrial(self):
+        return self.trial
     def getTrialId(self):
         return self.trial_id
     def getCreateDate(self):
@@ -311,15 +334,129 @@ class TraitInstance(DeclarativeBase):
             .all()
         if latestOnly:  # Remove all but newest element for each node
             llen = len(allResults)
-            for i in range(len(allResults)-1, 0, -1):
+            for i in range(len(allResults) - 1, 0, -1):
                 # i goes from last index to second, we compare node_id with previous element's in allResults
                 # and if the same delete the latter:
-                if allResults[i].node_id == allResults[i-1].node_id:
+                if allResults[i].node_id == allResults[i - 1].node_id:
                     del allResults[i]
         return allResults
+    
+    def getLatestDatumPerNodeAsString(self, quoteStrings=True, metadata=True, missingValue=""):
+    #-----------------------------------------------------------------------
+    # Returns an array of values, one for each node in the trial.
+    # Where the node has multiple datums in this ti, the latest one is returned.
+    # Iff metadata is true, then instead of single values a tuple is returned:
+    # (value, timestamp, userid, gps_lat, gps_long)
+    # Where there is no datums, the value is missingValue if metadata is false,
+    # (otherwise a tuple of ""s).
+    # Where the most recent value is NA, "NA" is returned.
+    #
+    # If quoteStrings is true, then string values are surrounded by double quotes,
+    # with internal double quotes converted to 2 double quotes.
+    # The values are ordered by row/col.
+    # Timestamp is given in readable form.
+    #
+    # NB we could pass in which metadata parameters are required, rather than getting all or none.
+    #
+    # If we often have to carry out retrievals like this, one for each node, then perhaps we could have
+    # function that takes what fields to select, then does the qry to get one row for each node, and then
+    # calls a passed function with each row.
+    #
+        quoteFunc = util.quote if quoteStrings else lambda x: x
+        eng = _eng(self)
+ 
+        # Set up sql query, this complicated due to need to get a value for every node
+        # (left join) and latest of potentially multiple datums (cool trick).
+        # NB we need at least one metadata field that is always not null (timestamp)
+        # to be able to disambiguate NA from missing.      
+        qry = """
+        select {0}
+        from node t
+          left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = {1}
+          left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
+        where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
+        order by row, col
+        """
+        datatype = self.trait.datatype
+        # If trait type is categorical then the values will be numbers which should be
+        # converted into names (via the traitCategory table), retrieve the map for the
+        # trait first:
+        if datatype == T_CATEGORICAL:
+            catMap = TraitCategory.getCategoricalTraitValue2NameMap(_dbc(self), self.trait_id)
+        else:
+            catMap = None
+            
+        valList = []
+        fields = 'd1.%s, d1.timestamp' % Datum.valueFieldName(self.trait.datatype)
+        if metadata:
+            fields += ', d1.userid, d1.gps_lat, d1.gps_long'
+        # print qry.format(fields, self.id, self.getId())
+        result = eng.execute(qry.format(fields, self.id, self.trial.getId()))
+        if metadata:
+            for row in result:
+                timestamp = row[1]
+                if timestamp is None:  # no datum record case
+                    valList.append(["", "", "", "", ""])
+                else:
+                    val = row[0]
+                    if val is None: val = "NA"
+                    elif datatype == T_CATEGORICAL:  # map value to name for categorical trait
+                        val = quoteFunc(catMap[int(val)])
+                    elif quoteStrings and (datatype == T_STRING or datatype == T_PHOTO):
+                        val = quoteFunc(val)
+                    elif datatype == T_INTEGER:
+                        val = str(int(val))
+                    valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
+        else:
+            for row in result:
+                timestamp = row[1]
+                if timestamp is None:  # no datum record case, so not NA
+                    valList.append(missingValue)
+                else:
+                    val = row[0]
+                    if val is None: val = "NA"
+                    elif datatype == T_CATEGORICAL:  # map value to name for categorical trait
+                        val = quoteFunc(catMap[int(val)])
+                    elif quoteStrings and (datatype == T_STRING or datatype == T_PHOTO):
+                        val = quoteFunc(val)
+                    elif datatype == T_INTEGER:
+                        val = str(int(val))
+                    elif datatype == T_DECIMAL:
+                        val = str(val)
+                    valList.append(val)
+        return valList
+    
+
     def getTrait(self):
         return self.trait
+    
+    def createAttribute(self, name):
+    # Create attribute for this ti, and write to db.
+    # Returns NodeAttribute on success, else None.
+        try:
+            db = _dbc(self)
+            att = NodeAttribute(name, self.getTrialId(), ti=self)
+            db.add(att)
+            db.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            util.flog('Error in TraitInstance.createAttribute: {0}'.format(str(e)))
+            return None
+        return att
 
+    def deleteAttribute(self):
+        try:
+            db = _dbc(self)
+            db.query(NodeAttribute).filter_by(func=self.getId()).delete()
+            db.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            return str(e)
+        return None
+        
+    @oneException2None
+    def getAttribute(self):
+    # Return the nodeAttribute associated with this ti, if there is one, else None.
+        return _dbc(self).query(NodeAttribute).filter(NodeAttribute.func == self.id).one()
+        
     def addData(self, aData):
     #-------------------------------------------------------------------------------------------------
     # Insert or update datum records for specified trait instance.
@@ -350,8 +487,8 @@ class TraitInstance(DeclarativeBase):
 
             # Note we use ignore because the same data items may be uploaded more than
             # once, and this should not cause the insert to fail.
-            insob = datum.insert().prefix_with("ignore")
-            _dbc(self).execute(insob, dlist)   # error checking?
+            insob = datumTable.insert().prefix_with("ignore")
+            _dbc(self).execute(insob, dlist)  # error checking?
             _dbc(self).commit()
             return None
         except Exception, e:
@@ -372,7 +509,7 @@ class TraitInstance(DeclarativeBase):
         # Construct list of dictionaries of values to insert:
         try:
             valueFieldName = Datum.valueFieldName(trtType)
-            ins = datum.insert().prefix_with('ignore').values({
+            ins = datumTable.insert().prefix_with('ignore').values({
                  DM_NODE_ID: nodeId,
                  DM_TRAITINSTANCE_ID : self.id,
                  DM_TIMESTAMP : timestamp,
@@ -390,9 +527,8 @@ class TraitInstance(DeclarativeBase):
             util.flog(e.message)
             return "An error occurred"
 
-# class TrialTraitNumeric
-# Validation information specific to a given trial/trait.
 class TrialTraitNumeric(DeclarativeBase):
+# Validation information specific to a given trial/trait.
     __tablename__ = 'trialTraitNumeric'
     max = Column(u'max', DECIMAL(precision=18, scale=9))
     min = Column(u'min', DECIMAL(precision=18, scale=9))
@@ -400,7 +536,7 @@ class TrialTraitNumeric(DeclarativeBase):
     trait_id = Column(u'trait_id', INTEGER(), ForeignKey('trait.id'), primary_key=True, nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
     def getMin(self):
-        return None if self.min is None else self.min.normalize()   # stripped of unnecessary zeroes
+        return None if self.min is None else self.min.normalize()  # stripped of unnecessary zeroes
     def getMax(self):
         return None if self.max is None else self.max.normalize()
 
@@ -419,7 +555,7 @@ class TraitString(DeclarativeBase):
 # make up a scoreSet
 #
 class ScoreSet():
-#class ScoreSet(DeclarativeBase):
+# class ScoreSet(DeclarativeBase):
 #     __tablename__ = 'scoreSet'
 #     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
 #     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
@@ -452,14 +588,14 @@ class Project(DeclarativeBase):
     __tablename__ = 'project'
     __table_args__ = {}
 
-    #column definitions:
-    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
+    # column definitions:
+    id = Column(u'id', INTEGER(), primary_key=True, nullable=False)  # MFK Shouldn't this be FK to fpsys.project?
     up_id = Column('up_id', INTEGER(), ForeignKey('project.id'))
     name = Column(u'name', VARCHAR(length=63), nullable=False)
     contactName = Column(u'contactName', TEXT())
     contactEmail = Column(u'contactEmail', TEXT())
 
-    #relation definitions:
+    # relation definitions:
     trials = relationship('Trial')
     upProject = relationship('Project', remote_side=[id])
 
@@ -472,6 +608,8 @@ class Project(DeclarativeBase):
 
     def getName(self):
         return self.name
+    def getId(self):
+        return self.id
 
     def path(self):
     #-----------------------------------------------------------------------
@@ -486,7 +624,7 @@ class Project(DeclarativeBase):
         session = Session.object_session(self)
         return session.query(Trait).filter(Trait.project_id == self.id).all()
 
-    def newTrial(self, name, site, year, acro): # see comment below , i1name=None, i2name=None):
+    def newTrial(self, name, site, year, acro):  # see comment below , i1name=None, i2name=None):
     # Creates new trial in the database with given details.
     # Raises DalError if this fails.
     #
@@ -508,7 +646,7 @@ class Project(DeclarativeBase):
 #                     session.add(TrialProperty(ntrial.id, INDEX_NAME_2, i2name))
 #                 session.commit()
         except sqlalchemy.exc.SQLAlchemyError as e:
-            session.rollback()   # This should ensure bad trial is not created in db
+            session.rollback()  # This should ensure bad trial is not created in db
             raise DalError("Database error ({0})".format(e.__str__()))
         return ntrial
 
@@ -517,7 +655,7 @@ class Trial(DeclarativeBase):
     __tablename__ = 'trial'
     __table_args__ = {}
 
-    #column definitions:
+    # column definitions:
     acronym = Column(u'acronym', TEXT())
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     project_id = Column(u'project_id', INTEGER(), ForeignKey('project.id'))
@@ -525,10 +663,10 @@ class Trial(DeclarativeBase):
     site = Column(u'site', TEXT())
     year = Column(u'year', TEXT())
 
-    #relation definitions:
+    # relation definitions:
     traits = relation('Trait', primaryjoin='Trial.id==trialTrait.c.trial_id', secondary=trialTrait, secondaryjoin='trialTrait.c.trait_id==Trait.id')
     nodeAttributes = relationship('NodeAttribute')
-    nodes = relationship('Node')
+    nodes = relationship('Node', order_by='Node.id')
     trialProperties = relationship('TrialProperty')
     project = relation('Project', primaryjoin='Trial.project_id==Project.id')
 
@@ -542,8 +680,10 @@ class Trial(DeclarativeBase):
 
     def getId(self):
         return self.id
-
-    # MFK - make this getProperties and include, at least, barcode
+    def getProject(self):
+        return self.project
+    
+    # MFK - make this getProperties (maybe not, we already use that word) and include, at least, barcode
     def getAttributes(self):
         return self.nodeAttributes
 
@@ -647,7 +787,7 @@ class Trial(DeclarativeBase):
         lastTraitId = -1
         lastTokenId = -1
         lastDayCreated = -1
-        for ti in tiList:   # Note we have assumptions about ordering in tiList here
+        for ti in tiList:  # Note we have assumptions about ordering in tiList here
             traitId = ti.trait_id
             seqNum = ti.seqNum
             tokenId = ti.token_id
@@ -715,7 +855,7 @@ class Trial(DeclarativeBase):
     #
         db = _dbc(self)
         # Determine if there is any score data:
-        numTis =  db.query(TraitInstance).filter(
+        numTis = db.query(TraitInstance).filter(
             and_(TraitInstance.trial_id == self.id, TraitInstance.trait_id == traitId)).count()
         if numTis <= 0:
             return False
@@ -723,10 +863,10 @@ class Trial(DeclarativeBase):
         # If system trait, delete the records associated with the trial ???
         trt = getTrait(db, traitId)
         if trt.trial_id is not None:
-            trt.delete()  #does this work
+            trt.delete()  # does this work
             db.commit()
             return True
-        if trt.project_id is not None: # this should be automatic
+        if trt.project_id is not None:  # this should be automatic
             pass
         return False
 
@@ -773,7 +913,7 @@ class Trial(DeclarativeBase):
             trlAttributes = self.getAttributes()
             for tua in trlAttributes:
                 out += sep + tua.name
-            nodes = self.getNodesSortedById()   # get list of node ids in same order as elements of attValList
+            nodes = self.getNodesSortedById()  # get list of node ids in same order as elements of attValList
             attValList = self.getAttributeColumns(trlAttributes, True)  # Get all the att vals in advance
         out += '\n'
 
@@ -812,7 +952,7 @@ class Trial(DeclarativeBase):
                 if showAttributes:
                     nodeId = long(row[0])
                     try:
-                        while nodeId > nodes[nodeIdsIndex].getId():    # MFK should check for index error
+                        while nodeId > nodes[nodeIdsIndex].getId():  # MFK should check for index error
                             nodeIdsIndex += 1
                     except IndexError:
                         return 'Unexpected Error: IndexError in getDataLongForm'
@@ -845,84 +985,20 @@ class Trial(DeclarativeBase):
                 return trt
         return None
 
-    def getDataColumns(self, tiList, quoteStrings=True):
+    def getDataColumns(self, tiList, quoteStrings=True, metadata=True):
     #-----------------------------------------------------------------------
-    # SQL query - this is a bit complicated:
     # Returns a list of lists of tuples. Each element in the top list is for one of the ti in tiList (in order).
     # The element for a ti is a list of tuples, for for each node in the trial, ordered by row/col.
     # NB, a tuple of empty strings will be used for nodes without a value.
     # The tuples are the most recent value and metadata for the node/ti in the trial
     # Timestamp is given in readable form.
-    #
-    # Note we can distinguish NA from not present as NA rows will have a non null value for any of the
-    # d1 fields that are always non null - eg timestamp.
-    # The values we need are the datum value (type appropriate) and the score metadata. There is a tuple
-    # for every node, and these are in row/col order.
-    #
-    # NB we could pass in which metadata parameters are required, rather than getting them all.
-    # Output is list of column, each a list of value data (value, timestamp, userid, lat, long)
-    #
-        quoteFunc = util.quote if quoteStrings else lambda x: x
-        eng = _eng(self)
-        qry = """
-        select d1.{0}, d1.timestamp, d1.userid, d1.gps_lat, d1.gps_long
-        from node t
-          left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = {1}
-          left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
-        where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
-        order by row, col
-        """
+    # 
+    # NB main work now done in getLatestDatumPerNodeAsString, perhaps this func no longer needed?
         outList = []
         for ti in tiList:
-            datatype = ti.trait.datatype
-            # If trait type is categorical then the values will be numbers which should be
-            # converted into names (via the traitCategory table), retrieve the map for the
-            # trait first:
-            if datatype == T_CATEGORICAL:
-                catMap = TraitCategory.getCategoricalTraitValue2NameMap(_dbc(self), ti.trait_id)
-            else:
-                catMap = None
-
-            valList = []
-            result = eng.execute(qry.format(Datum.valueFieldName(ti.trait.datatype), ti.id, self.getId()))
-            for row in result:
-                timestamp = row[1]
-                if timestamp is None:          # no datum record case
-                    valList.append(["","","","",""])
-                else:
-                    val = row[0]
-                    if val is None: val = "NA"
-                    elif datatype == T_CATEGORICAL:   # map value to name for categorical trait
-                        val = quoteFunc(catMap[int(val)])
-                    elif quoteStrings and (datatype == T_STRING or datatype == T_PHOTO):
-                        val = quoteFunc(val)
-                    valList.append([val, util.epoch2dateTime(timestamp), row[2], row[3], row[4]])
+            valList = ti.getLatestDatumPerNodeAsString(quoteStrings, metadata)
             outList.append(valList)
         return outList
-
-    def OLD_getAttributeColumns(self, attList, orderByNodeId=False):
-    #-----------------------------------------------------------------------
-    # Returns a list of columns one for each attribute in attList - each column
-    # being an array of attribute values with one entry for each node in the trial.
-    # The columns are in the same order as attList, and the column entries are
-    # orderedby row/col by default, or node id if specified.
-    # Missing values are given as the empty string.
-    #
-    # MFK should push the attval retrieval off to NodeAttribute
-        eng = _eng(self)
-        qry = """
-            select a.value from node n left join attributeValue a
-            on n.id = a.node_id and a.nodeAttribute_id = {0}
-            where n.trial_id = {1}
-            order by """ + ('n.id' if orderByNodeId else 'row,col')
-        attValList = []
-        for att in attList:
-            valList = []
-            result = eng.execute(qry.format(att.id , self.getId()))
-            for row in result:
-                valList.append("" if row[0] is None else row[0])
-            attValList.append(valList)
-        return attValList
     
     def getAttributeColumns(self, attList, orderByNodeId=False):
     #-----------------------------------------------------------------------
@@ -932,7 +1008,6 @@ class Trial(DeclarativeBase):
     # orderedby row/col by default, or node id if specified.
     # Missing values are given as the empty string.
     #
-    # MFK should push the attval retrieval off to NodeAttribute
         attValList = []
         for att in attList:
             attValList.append(att.getValues(orderByNodeId))
@@ -953,10 +1028,10 @@ class Trial(DeclarativeBase):
         try:
             dlist = []
             for n in notes:
-                nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')  # check int and valid id in trial
-                #nodeId = long(nodeId)
+                nodeId = n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')  # check int and valid id in trial
+                # nodeId = long(nodeId)
 
-                timestamp = n[jNotesUpload['timestamp']] # check valid
+                timestamp = n[jNotesUpload['timestamp']]  # check valid
                 userid = n[jNotesUpload['userid']]
                 note = n[jNotesUpload['note']]
                 newrec = {
@@ -971,7 +1046,7 @@ class Trial(DeclarativeBase):
             # Note we use ignore because the same data items may be uploaded more than
             # once, and this should not cause the insert to fail.
             insob = NodeNote.__table__.insert().prefix_with("ignore")
-            db.execute(insob, dlist)   # error checking?
+            db.execute(insob, dlist)  # error checking?
             db.commit()
             return None
         except Exception, e:
@@ -1032,7 +1107,7 @@ class TrialProperty(DeclarativeBase):
     __tablename__ = 'trialProperty'
     __table_args__ = {}
 
-    #column definitions:
+    # column definitions:
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), primary_key=True, nullable=False)
     name = Column(u'name', TEXT(), primary_key=True)
     value = Column(u'value', TEXT())
@@ -1057,7 +1132,7 @@ class Node(DeclarativeBase):
     __tablename__ = 'node'
     __table_args__ = {}
 
-    #column definitions
+    # column definitions
     barcode = Column(u'barcode', TEXT())
     col = Column(u'col', INTEGER(), nullable=False)
     description = Column(u'description', TEXT())
@@ -1067,12 +1142,12 @@ class Node(DeclarativeBase):
     longitude = Column(u'longitude', Float(asdecimal=False))
     latitude = Column(u'latitude', Float(asdecimal=False))
 
-    #relation definitions
+    # relation definitions
     trial = relation('Trial', primaryjoin='Node.trial_id==Trial.id')
 # These seem not to be used:    
 #     nodeAttributes = relation('NodeAttribute', primaryjoin='Node.id==AttributeValue.node_id',
-#         secondary=attributeValue, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
-#     traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datum,
+#         secondary=attributeValueTable, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
+#     traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datumTable,
 #         secondaryjoin='Datum.traitInstance_id==TraitInstance.id')
     attVals = relation('AttributeValue')
 
@@ -1087,62 +1162,112 @@ class Node(DeclarativeBase):
                 AttributeValue.nodeAttribute_id == nodeAttributeId)
             ).one()
 
-    def getAttributeValues(self):
-        #MFK here we want to get TI values flagged for download as well, perhaps..
-        return self.attVals
-    
     def getNotes(self):
         dbc = Session.object_session(self)
         return dbc.query(NodeNote).filter(NodeNote.node_id == self.id).all()
 
 
 class NodeAttribute(DeclarativeBase):
+# Node attributes are used in the following ways:
+# They are sent to the app (fpAppWapi) with trial definitions.
+# They are retrieved from the rest API for statistics.
+# They are shown in trial browse/download output.
+# They are shown in node attribute lists on server.
+# 
+# Node attributes can source the individual values from the attributeValue table,
+# or from a traitInstance.
+# 
+# Todo:
+# Perhaps create a NodeAttribute for every traitInstance.
+# Add a "downloadable" flag to explicitly record which attributes are sent to app.
+#
     __tablename__ = 'nodeAttribute'
     __table_args__ = {}
 
-    #column definitions
+    # column definitions
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     name = Column(u'name', VARCHAR(length=31), nullable=False)
     trial_id = Column(u'trial_id', INTEGER(), ForeignKey('trial.id'), nullable=False)
     datatype = Column(unicode(TUA_DATATYPE), INTEGER(), default=T_INTEGER, nullable=False)
     func = Column(unicode(TUA_FUNC), INTEGER(), default=0, nullable=False)
 
-    #relation definitions
+    # relation definitions
     trial = relation('Trial', primaryjoin='NodeAttribute.trial_id==Trial.id')
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
-        secondary=attributeValue, secondaryjoin='AttributeValue.node_id==Node.id')
+        secondary=attributeValueTable, secondaryjoin='AttributeValue.node_id==Node.id')
 
-    def __init__(self, name, trial_id):
+    def __init__(self, name, trial_id, ti=None):
         self.name = name
         self.trial_id = trial_id
+        if ti is not None:
+            self.func = ti.id
 
-    def getAttributeValues(self):
+    def fname(self):
+        return self.name;
+    
+    def setName(self, name):
+        try:
+            db = _dbc(self)
+            att = NodeAttribute(name, self.getTrialId, ti=self)
+            db.add(att)
+            db.commit
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            return None
+        return att
+
+    def isTraitInstance(self):
+        return self.func is not None and self.func > 0
+    
+    def getTraitInstance(self):
+        if self.isTraitInstance():
+            return getTraitInstance(_dbc(self), self.func)
+        else:
+            return None
+        
+    def getAttributeValues(self, latestOnly=True):
     #----------------------------------------------------
-    # Return the AttributeValues, sorted by node Id
-        return _dbc(self).query(AttributeValue) \
-            .filter(AttributeValue.nodeAttribute_id == self.id) \
-            .order_by(AttributeValue.node_id.asc()) \
-            .all()
+    # Returns a list of objects each representing one node with
+    # associated value. The object type is not fixed (ATTOW they
+    # will be AttributeValue or Datum), but they will have a
+    # getNode function returning a Node object, and a getValueAsString
+    # function. The object list is sorted by the contained by node Id.
+    #
+    # NB only returns attribute that exists (unlike getValues).
+    # For traitInstances only the latest value for each node is returned.
+    #
+        ti = self.getTraitInstance()
+        if ti is not None:
+            # return ti.getNodeValues()
+            return ti.getData(latestOnly)
+        else:
+            return _dbc(self).query(AttributeValue) \
+                .filter(AttributeValue.nodeAttribute_id == self.id) \
+                .order_by(AttributeValue.node_id.asc()) \
+                .all()
 
-    def getValues(self, orderByNodeId=False):
+    def getValues(self, orderByNodeId=False, missingValue=""):
     #-----------------------------------------------------------------------
     # Returns an array of attribute values with one entry for each node in the trial.
     # The entries are orderedby row/col by default, or node id if specified.
-    # Missing values are given as the empty string.
+    # Missing values are given as the empty string or as specified.
     #
-    # MFK Node attributes not polymorphic, (should we rename this class nodeProperty?)
+    # MFKNA Node attributes not polymorphic, (should we rename this class nodeProperty?)
     # Need to add "source" field.
-        eng = _eng(self)
-        qry = """
-            select a.value from node n left join attributeValue a
-            on n.id = a.node_id and a.nodeAttribute_id = {0}
-            where n.trial_id = {1}
-            order by """ + ('n.id' if orderByNodeId else 'row,col')
-        valList = []
-        result = eng.execute(qry.format(self.id , self.trial.getId()))  
-        for row in result:
-             valList.append("" if row[0] is None else row[0])
-        return valList
+        ti = self.getTraitInstance()
+        if ti is not None:  # This is a traitInstance attribute
+            return ti.getLatestDatumPerNodeAsString(quoteStrings=False, metadata=False, missingValue=missingValue)
+        else:  # Normal attribute
+            eng = _eng(self)  # pass this in?
+            qry = """
+                select a.value from node n left join attributeValue a
+                on n.id = a.node_id and a.nodeAttribute_id = {0}
+                where n.trial_id = {1}
+                order by """ + ('n.id' if orderByNodeId else 'row,col')
+            valList = []
+            result = eng.execute(qry.format(self.id , self.trial.getId()))  
+            for row in result:
+                valList.append(missingValue if row[0] is None else row[0])
+            return valList
     
     @oneException2None
     def getUniqueNodeIdFromValue(self, val):
@@ -1164,7 +1289,7 @@ class NodeNote(DeclarativeBase):
     __tablename__ = 'nodeNote'
     __table_args__ = {}
 
-    #column definitions:
+    # column definitions:
     id = Column(u'id', INTEGER(), primary_key=True, nullable=False)
     node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
     timestamp = Column(u'timestamp', BigInteger(), primary_key=True, nullable=False)
@@ -1172,7 +1297,7 @@ class NodeNote(DeclarativeBase):
     token_id = Column(u'token_id', INTEGER(), ForeignKey('token.id'), nullable=False)
     note = Column(u'note', TEXT())
 
-    #relation definitions:
+    # relation definitions:
     node = relation('Node', primaryjoin='NodeNote.node_id==Node.id')
     token = relation('Token', primaryjoin='NodeNote.token_id==Token.id')
 
@@ -1261,7 +1386,7 @@ class TokenNode(DeclarativeBase):
     localId = Column(u'localId', INTEGER(), unique=True, primary_key=True, nullable=False)
     node_id = Column(u'node_id', INTEGER(), ForeignKey('node.id'), nullable=False)
 
-    #relation definitions
+    # relation definitions
     token = relation('Token', primaryjoin='TokenNode.token_id==Token.id')
 
     def __init__(self, tokenId, localId, nodeId):
@@ -1276,7 +1401,7 @@ class TokenNode(DeclarativeBase):
     # Returns the id of the new Node, or the already existing one.
     # MFK should trial Id be determined by token?
         try:
-            tokNode =  dbc.query(TokenNode).filter(
+            tokNode = dbc.query(TokenNode).filter(
                 and_(TokenNode.token_id == tokenId, TokenNode.localId == localId)).one()
             return tokNode.node_id
         except NoResultFound:
@@ -1284,10 +1409,10 @@ class TokenNode(DeclarativeBase):
             newNode = Node()
             newNode.trial_id = trialId
             newNode.row = 0
-            newNode.col = TokenNode.numCreatedNodesForTrial(dbc, trialId)+1  # local node creation order in trial
+            newNode.col = TokenNode.numCreatedNodesForTrial(dbc, trialId) + 1  # local node creation order in trial
             # count local nodes for the trial and add one.
             dbc.add(newNode)
-            dbc.commit() # commit to get the id
+            dbc.commit()  # commit to get the id
 
             # Create TokenNode
             newtn = TokenNode(tokenId, localId, newNode.id)
@@ -1323,14 +1448,11 @@ def _eng(obj):
         return None
     return sess.get_bind()
 
-
-
 def dbName4Project(project):
 #-----------------------------------------------------------------------
 # Map project name to the database name.
 # NB - only valid for projects with own db. Should probably not be used now.
     return 'fp_' + project
-
 
 dbUser = None  # 'fpwserver'
 dbPass = None  # 'fpws_g00d10ch'
@@ -1369,6 +1491,7 @@ def getDbConnection(dbname):
 # currently done in session module.
 #
     host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    # print fpDBUser(), fpPassword(), host, dbname
     engine = create_engine('mysql://{0}:{1}@{2}/{3}'.format(fpDBUser(), fpPassword(), host, dbname))
     Session = sessionmaker(bind=engine)
     dbsess = Session()
@@ -1377,7 +1500,7 @@ def getDbConnection(dbname):
 # This should use alchemy and return connection
 def dbConnectAndAuthenticate(project, password):
 #-------------------------------------------------------------------------------------------------
-    dbc = getSysUserEngine(project)    # not sure how this returns error, test..
+    dbc = getSysUserEngine(project)  # not sure how this returns error, test..
     if dbc is None:
         return (None, 'Unknown user/database')
 
@@ -1439,7 +1562,7 @@ def getTrait(dbc, traitId):
 def getNode(dbc, nodeId):
 #-----------------------------------------------------------------------
 # Return node with the given id.
-    return dbc.query(Node).filter(Node.id==nodeId).one()
+    return dbc.query(Node).filter(Node.id == nodeId).one()
 
 
 def getTrialTrait(dbc, trialId, traitId):
@@ -1535,7 +1658,7 @@ def AddTraitInstanceData(dbc, tiID, trtType, aData):
             })
         # Note we use ignore because the same data items may be uploaded more than
         # once, and this should not cause the insert to fail.
-        insob = datum.insert().prefix_with("ignore")
+        insob = datumTable.insert().prefix_with("ignore")
         res = dbc.execute(insob, dlist)
         dbc.commit()
         return None
@@ -1557,7 +1680,7 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
     # Construct list of dictionaries of values to insert:
     try:
         valueFieldName = Datum.valueFieldName(trtType)
-        ins = datum.insert().prefix_with('ignore').values({
+        ins = datumTable.insert().prefix_with('ignore').values({
              DM_NODE_ID: nodeId,
              DM_TRAITINSTANCE_ID : tiID,
              DM_TIMESTAMP : timestamp,
@@ -1570,7 +1693,7 @@ def AddTraitInstanceDatum(dbc, tiID, trtType, nodeId, timestamp, userid, gpslat,
         dbc.commit()
         return None
     except Exception, e:
-        util.flog('AddTraitInstanceDatum: {0},{1},{2},{3},{4},{5}'.format(tiID,trtType,nodeId,timestamp, userid, gpslat))
+        util.flog('AddTraitInstanceDatum: {0},{1},{2},{3},{4},{5}'.format(tiID, trtType, nodeId, timestamp, userid, gpslat))
         util.flog(e.__doc__)
         util.flog(e.message)
         return "An error occurred"
@@ -1605,7 +1728,7 @@ def addNodeNotes(dbc, tokenStr, notes):
         return None
     for n in notes:
         try:
-            nodeId =  n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')
+            nodeId = n.get(jNotesUpload['node_id']) or n.get('trialUnit_id')
             qry += '({0}, {1}, "{2}", {3}, "{4}"),'.format(
                 nodeId, n[jNotesUpload['timestamp']],
                 n[jNotesUpload['userid']], tokenId, n[jNotesUpload['note']])
@@ -1617,7 +1740,7 @@ def addNodeNotes(dbc, tokenStr, notes):
         except Exception, e:
             return 'Error parsing note ' + e.args[0]
 
-    qry = qry[:-1] # Remove last comma
+    qry = qry[:-1]  # Remove last comma
     # call sql to do multi insert:
     dbc.bind.execute(qry)
     return None;
@@ -1640,7 +1763,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
 
     # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
     # and add to trialTrait?
-    if sysType == SYSTYPE_TRIAL: # If local, check there's no other trait local to the trial with the same caption:
+    if sysType == SYSTYPE_TRIAL:  # If local, check there's no other trait local to the trial with the same caption:
         # trial = GetTrialFromDBsess(sess, tid)
         # for x in trial.traits:
         #     if x.caption == caption:
@@ -1670,7 +1793,7 @@ def CreateTrait2(dbc, caption, description, vtype, sysType, vmin, vmax):
     dbc.commit()
     return ntrt, None
 
-#MFK these functions should probably be replace by method on trait.
+# MFK these functions should probably be replace by method on trait.
 # Something generic like get trial trait json details.
 def GetTrialTraitNumericDetails(dbc, trait_id, trial_id):
 # Return TrialTraitNumeric for specified trait/trial, or None if none exists.

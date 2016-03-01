@@ -89,17 +89,30 @@ def exit(sess=None):
     sys.exit()
 
 
-def htmlButtonLink(label, click):
-#-----------------------------------------------------------------------
-    return "<button style=\"color: red\" onClick=\"window.location='{0}'\">{1}</button>".format(click, label)
-
-
-def htmlButtonLink2(label, click):
-#-----------------------------------------------------------------------
-# This version has the button inside a form, sometimes (eg when within
-# a table cell), this seems to be necessary.
-    return "<input type='button' onclick=\"window.location.href='{0}'\" value='{1}' />".format(click, label)
-    #return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
+def htmlButtonLink(label, click, color='btn-primary'):
+#----------------------------------------------------------------------- 
+    return '''<button type="button" class="btn {2}"
+        onClick="window.location='{0}'">{1}</button>'''.format(click, label, color)
+        
+# def htmlButtonLink3(label, click):
+# #-----------------------------------------------------------------------
+# # This version has the button inside a form, sometimes (eg when within
+# # a table cell), this seems to be necessary.
+#     return "<input type='button' onclick=\"window.location.href='{0}'\" value='{1}' />".format(click, label)
+#     #return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
+        
+def htmlButton(label, id=None, click=None, color='btn-primary', type='button'):
+#----------------------------------------------------------------------- 
+# Standardized button format. Currently bootstrap.
+# Could have size parameter, which is class, eg btn-lg.
+#
+    out = '<button type="{0}" class="btn {1}"'.format(type, color)
+    if id is not None:
+        out += ' id="{0}"'.format(id)
+    if click is not None:
+        out += ' onclick="{0}"'.format(click)
+    out += '>{0}</button>'.format(label)
+    return out
 
 
 def _htmlDataTableMagic(tableId, extraOptions=''):
@@ -148,7 +161,7 @@ def _htmlDataTableMagic(tableId, extraOptions=''):
             $(elId).DataTable( {
                 %s
                 "scrollX": true,
-                "scrollY": "500px",
+                "scrollY": "50vh",
                 "paging": false,
                 //"pageLength":100,
                //"processing": true, // not clear this is doing anything..

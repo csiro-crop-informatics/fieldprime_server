@@ -134,6 +134,8 @@ def trial_list(username):
 # provided by the server, for example in the response to this URL we provide
 # the URLs for further interactions with the server.
 #
+# curl http://0.0.0.0:5001/user/mk/
+#
     password = request.args.get('pw', '')
     dbc, errMsg = dal.dbConnectAndAuthenticate(username, password)
     if dbc is None:
@@ -168,7 +170,8 @@ def get_trial(username, trial, dbc, token=None):
 # upload is POST only, and this one is GET only. A better solution perhaps would be to provide
 # an updateURL with the trial. Would have to add support on the client to use this.
 #
-
+# curl http://0.0.0.0:5001/user/mk/trial/1/?ver=500
+#
     androidId = request.args.get('andid', '')
     clientVersion = request.args.get('ver', '0')
     if int(clientVersion) < 450:
@@ -199,21 +202,10 @@ def get_trial(username, trial, dbc, token=None):
     jtrl[JTRL_TRIAL_PROPERTIES] = jprops
 
     # Node Attribute descriptors:
-    # MFK we want to sent flagged trait instances here, might need to condition the change on
-    # app version.
-    # Notes from discussion with Chris:
-    # We want to be able to flag a score set as a (downloadable) attribute.
-    # Need server ui for this flag.
-    # User probably needs to choose a name for the ss as attribute. If the score set is multi valued
-    # these may have to become multiple attributes <name>.<sampleNo>
-    # Only an admin should be able to change this flag.
-    # It needs to be a fully fledged attribute on both app and server. Chris's need is to collect barcodes
-    # as a score and then have them downloadable as attributes for use in navigation.
-    # Questions:
-    #  Is there a single copy of the data? What happens if you use any functionality to modify either scoreSets
-    #  or attributes?
     attDefs = []
-    for att in trial.getAttributes():
+    attributes = trial.getAttributes()
+    attValueLists = [att.getValues(orderByNodeId=False, missingValue=None) for att in attributes]
+    for att in attributes:
         ad = {}
         ad['id'] = att.id
         ad['name'] = att.name
@@ -222,23 +214,24 @@ def get_trial(username, trial, dbc, token=None):
         attDefs.append(ad)
     jtrl['nodeAttributes'] = attDefs
 
-    #
     # Nodes:
-    #
     nodeList = []
     nodePropertyNames = ["id", "row", "col", "description", "barcode"]
-    for nd in trial.getNodes():
+    for nodeIndex, nd in enumerate(trial.getNodes()):
         jnode = {}
         ### Node built in properties:
         for n in nodePropertyNames:
             jnode[n] = getattr(nd, n)
-        ### Attribute values:
-        attVals = nd.getAttributeValues()
-        if len(attVals) > 0:
-            atts = {}
-            for att in attVals:
-                atts[att.nodeAttribute.name] = att.value
+            
+        ### Attribute values:        
+        atts = {}
+        for attIndex, att in enumerate(attributes):
+            val = attValueLists[attIndex][nodeIndex]
+            if val is not None:
+                atts[attributes[attIndex].fname()] = val
+        if len(atts) > 0:
             jnode['attvals'] = atts
+            
         ### GPS location:
         if nd.latitude is not None and nd.longitude is not None:
             jloc = [nd.latitude, nd.longitude]

@@ -140,6 +140,10 @@ fieldset{
     padding: 10px 0;
 }
 
+/*
+*This is causing problems, and I'm not sure where it's needed.
+*Better surely to stick to bootstrap styles, for example.
+* Commented out 25/2/16, delete when clear nothing broke.
 button, input[type=submit], input[type=button] {
     color: white!important;
     background-color: #022C38;
@@ -148,6 +152,7 @@ button, input[type=submit], input[type=button] {
     border-radius: 5px;
     text-transform: capitalize;
 }
+*/
 
 /* fptable is used for:
  * Node Attributes table
@@ -422,6 +427,40 @@ table.fptable{
     margin-left:10px;
 }
 
+/*** popup form: */
+/*
+.fpPopup a.selected {
+  background-color:#1F75CC;
+  color:white;
+  z-index:100;
+}
+*/
+
+.fpPopup.messagepop {
+  background-color:#FFFFFF;
+  border:1px solid #999999;
+  cursor:default;
+  display:none;
+  margin-top: 15px;
+  position:absolute;
+  text-align:left;
+  width:394px;
+  z-index:50;
+  padding: 25px 25px 20px;
+}
+
+.fpPopup label {
+  display: block;
+  margin-bottom: 3px;
+  padding-left: 15px;
+  text-indent: -15px;
+}
+
+.fpPopup.messagepop p, .fpPopup.messagepop.div {
+  border-bottom: 1px solid #EFEFEF;
+  margin: 8px 0;
+  padding-bottom: 8px;
+}
 
 /*** Tabs: ********************************************************************/
 /* Now all done from java script, except the hover, which we don't really need

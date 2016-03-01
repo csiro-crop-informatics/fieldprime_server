@@ -87,6 +87,7 @@ fpa/fp_web_admin/static/lib/jquery.doubleScroll.js -text
 fpa/fp_web_admin/static/newTrait.js -text
 fpa/fp_web_admin/stats.py -text
 fpa/fp_web_admin/templates/about.html -text
+fpa/fp_web_admin/templates/admin.html -text
 fpa/fp_web_admin/templates/base.html -text
 fpa/fp_web_admin/templates/contact.html -text
 fpa/fp_web_admin/templates/dataPage.html -text

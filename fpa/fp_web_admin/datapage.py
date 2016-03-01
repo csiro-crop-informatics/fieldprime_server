@@ -119,7 +119,7 @@ def _dataNavigationContent(sess, trialId):
     # Make select of user's projects.
     # Note we need to construct the URL for retrieving the project page in javascript,
     # and hence cannot use url_for.
-    projList, errMsg = fpsys.getProjects(sess.getUserIdent())
+    projList, errMsg = fpsys.getUserProjects(sess.getUserIdent())
     if errMsg:
         return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUserIdent(), errMsg)
     if not projList:
@@ -127,9 +127,9 @@ def _dataNavigationContent(sess, trialId):
         return 'A problem occurred in finding projects for user {0}:{1}'.format(sess.getUserIdent(), errMsg)
     currProj = sess.getProjectName()
     r2c1 = selectorOfURLs('Project', '..Select Project..' if currProj is None else None, projList,
-        lambda p: url_for('urlProject', project=p.projectName),
-        lambda p: p.projectName,
-        None if currProj is None else url_for('urlProject', project=currProj))
+        lambda p: url_for('urlProject', projectName=p.projectName()),
+        lambda p: p.projectName(),
+        None if currProj is None else url_for('urlProject', projectName=currProj))
 
     r2 = fpUtil.bsCol(r2c1, numCols=6)
 

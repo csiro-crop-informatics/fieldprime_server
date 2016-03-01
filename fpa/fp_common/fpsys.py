@@ -102,16 +102,20 @@ def getProjectUsers(project):
         return (None, 'Failed system login')
 
 class UserProject:
-    def __init__(self, projectName, dbname, ident, access):
-        self.projectName = projectName
-        self.dbname = dbname
-        self.ident = ident
-        self.access = access
-
-    def name(self):
-        return self.projectName
-
-def getProjects(username):
+# Class to hold details of project with user.    
+    def __init__(self, projectId, projectName, dbname, ident, access):
+        self._projectId = projectId
+        self._projectName = projectName
+        self._dbname = dbname
+        self._ident = ident
+        self._access = access
+    def projectId(self): return self._projectId
+    def projectName(self): return self._projectName
+    def dbname(self): return self._dbname
+    def ident(self): return self._ident
+    def access(self): return self._access
+    
+def getUserProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.
 # Returns tuple, project dictionary and errorMessage (which will be None if no error).
@@ -119,13 +123,13 @@ def getProjects(username):
     try:
         con = getFpsysDbConnection()
         qry = """
-            select p.name, up.permissions, p.dbname from user u join userProject up
+            select p.id, p.name, up.permissions, p.dbname from user u join userProject up
             on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id"""
         cur = con.cursor()
         cur.execute(qry, (username,))
         userProjs = []
         for row in cur.fetchall():
-            np = UserProject(row[0], row[2], username, row[1])
+            np = UserProject(row[0], row[1], row[3], username, row[2])
             userProjs.append(np)
         return (userProjs, None)
     except mdb.Error, e:

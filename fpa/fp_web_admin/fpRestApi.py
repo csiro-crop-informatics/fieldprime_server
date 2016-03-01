@@ -45,6 +45,9 @@ def jsonErrorReturn(errmsg, statusCode):
 def jsonReturn(jo, statusCode):
     return Response(json.dumps(jo), status=statusCode, mimetype='application/json')
 
+def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
+    return jsonReturn({'success':msg}, statusCode)
+
 
 ### Authorization stuff: ########################################################
 
@@ -77,6 +80,28 @@ def verify_password(username_or_token, password):
         else: user = username_or_token
     g.user = user
     return True
+
+def wr_check_session(func):
+#-------------------------------------------------------------------------------------------------
+# NB - USED FOR WEB ADMIN PAGES, NOT REALLY DIRECT REST.
+# Decorator to check if in valid session.
+# Generates function that has session as first parameter.
+# If returnNoneSess is true, then the function is returned even if session is
+# invalid, but with None as the session parameter - this can be used for pages
+# that don't require a user to be logged in.
+# NB Derived from fpWebAdmin:dec_check_session.
+#
+    @wraps(func)
+    def inner(*args, **kwargs):
+        COOKIE_NAME = 'sid'
+# is this secure? what if sid not in cooky?
+        sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
+        if sid is not None:        
+            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
+        if sid is None or not sess.valid():  # Check if session is still valid
+            return {'error':'not logged in'}, 401
+        return func(sess, *args, **kwargs)
+    return inner
 
 ### Access Points: ########################################################
 
@@ -134,7 +159,7 @@ def new_user():
 @webRest.route(API_PREFIX + 'projects', methods=['GET'])
 @auth.login_required
 def getProjects():
-    (plist, errmsg) = fpsys.getProjects(g.user)
+    (plist, errmsg) = fpsys.getUserProjects(g.user)
     if errmsg:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     print len(plist)
@@ -153,7 +178,7 @@ def authUser(login, permission):
 @auth.login_required
 def getProject(id):
     util.flog("in getProject")
-    (plist, errmsg) = fpsys.getProjects(g.user)
+    (plist, errmsg) = fpsys.getUserProjects(g.user)
     if errmsg:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     print len(plist)
@@ -161,6 +186,64 @@ def getProject(id):
     return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
 
 
+### TraitInstance Attribute: ----------------------------------------------------------------
+# Note authentication problem: from the web page in the browser, we won't have login token.
+# Can we use the cookie? see wr_check_session.
+#
+
+def _checkTiAttributeStuff(sess, tiId):
+# Check permissions for ti attribute ops. If OK, returns the ti,
+# else returns error Response.    
+    # Check user has rights for this operation:
+    if not sess.adminRights():
+        return jsonErrorReturn('Requires project admin rights', HTTP_UNAUTHORIZED)
+    # Check ti is in project:
+    ti = models.getTraitInstance(sess.db(), tiId)
+    if ti is None:
+        return jsonErrorReturn('invalid trait instance', HTTP_BAD_REQUEST)
+    if ti.getTrial().getProject().getId() != sess.getProject().getId():
+        return jsonErrorReturn('invalid trait instance for project', HTTP_BAD_REQUEST)
+    return ti
+
+@webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['POST'])
+#@auth.login_required
+@wr_check_session
+def createTiAttribute(sess, tiId):
+    ti = _checkTiAttributeStuff(sess, tiId)
+    if not isinstance(ti, models.TraitInstance):
+        return ti
+    
+    # Get name proposed for attribute:
+    name = request.json.get('name')
+    if not name:
+        return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
+    
+    # check 
+    nodat = ti.getAttribute()
+    if nodat is None:
+        # Create it:
+        att = ti.createAttribute(name)
+        if att is None:
+            return jsonErrorReturn('Cannot create attribute, may be invalid name', HTTP_BAD_REQUEST)
+    else:
+        # Reset the name:
+        nodat.setName(name)  # error return
+                    
+    return jsonSuccessReturn("Attribute Created")
+
+@webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['DELETE'])
+@wr_check_session
+def deleteTiAttribute(sess, tiId):
+    ti = _checkTiAttributeStuff(sess, tiId)
+    if not isinstance(ti, models.TraitInstance):
+        return ti
+    errmsg = ti.deleteAttribute()
+    if errmsg is None:
+        return jsonSuccessReturn("Attribute Deleted")
+    else:
+        return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
+
+### Projects: ---------------------------------------------------------------------------------------
 
 @webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @auth.login_required
@@ -286,43 +369,26 @@ trials { /<projName> } [ /<trialName> ]
 ########################################################################################
 ### Old stuff, but note some of it may be in use: ######################################
 
-
-def wr_check_session(func):
-#-------------------------------------------------------------------------------------------------
-# Decorator to check if in valid session. If not, send the login page.
-# Generates function that has session as first parameter.
-# If returnNoneSess is true, then the function is returned even if session is
-# invalid, but with None as the session parameter - this can be used for pages
-# that don't require a user to be logged in.
-# NB Derived from fpWebAdmin:dec_check_session.
-    @wraps(func)
-    def inner(*args, **kwargs):
-        COOKIE_NAME = 'sid'
-        sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
-        sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
-        if not sess.valid():  # Check if session is still valid
-            return {'error':'not logged in'}, 401
-        return func(sess, *args, **kwargs)
-    return inner
-
-@webRest.route('/project/<projectName>/trial/<trialId>/slice/<tiId>', methods=['GET'])
-@wr_check_session
-def urlDataSlice(sess, projectName, trialId, tiId):
-    dic = {'a':1}
-    return Response(json.dumps(dic), mimetype='application/json')
-
 @webRest.route('/project/<projectName>/attribute/<attId>', methods=['GET'])
 @wr_check_session
 def urlAttributeData(sess, projectName, attId):
 #---------------------------------------------------------------------------------
 # Return nodeId:attValue pairs
 # These are sorted by node_id.
+# This is used in the admin web pages.
+#
     natt = models.getAttribute(sess.db(), attId)
     vals = natt.getAttributeValues()
     data = []
     for av in vals:
-        data.append([av.node_id, av.value])
+        data.append([av.getNode().getId(), av.getValueAsString()])
     return Response(json.dumps(data), mimetype='application/json')
+
+@webRest.route('/project/<projectName>/trial/<trialId>/slice/<tiId>', methods=['GET'])
+@wr_check_session
+def urlDataSlice(sess, projectName, trialId, tiId):
+    dic = {'a':1}
+    return Response(json.dumps(dic), mimetype='application/json')
 
 
 @webRest.route('/trial/<trialId>/trait/<traitId>', methods=['DELETE'])
@@ -354,6 +420,8 @@ def _jsonErrorReturn(error=None):
 #-----------------------------------------------------------------------
 # Close the session and return the message. Intended as a return for a HTTP request
 # after something bad (and possibly suspicious) has happened.
+# MFK Only used in urlLogin, should be jsonErrorReturn instead probably, if this
+# is used.
     message = {
             'error': 'An error occurred: ' + error
     }

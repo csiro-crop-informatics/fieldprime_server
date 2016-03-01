@@ -16,6 +16,32 @@ fplib.demoDivGen = function() {
     document.body.appendChild(div);
 };
 
+
+/*
+ * Ajax utility funcs
+ */
+fplib.ajax = {
+    // Error and Success handler for jquery .ajax().
+    // Assumes json format response (dataType='json').
+    jsonError : function (jqXHR, textStatus, errorThrown) {
+        if (jqXHR.responseJSON.hasOwnProperty("error"))
+            fplib.msg("An error occurred: " + jqXHR.responseJSON.error);
+        else
+            fplib.msg("An error occurred: " + textStatus + " " + errorThrown);
+    },
+    jsonSuccess : function(data, textStatus, jqXHR){ 
+        if (data.hasOwnProperty("success"))
+            fplib.msg(data.success);
+        if (data.hasOwnProperty("error"))
+            fplib.msg("An error occurred: " + data.error);
+    },
+    jsonSuccessReload : function(data, textStatus, jqXHR){
+        fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
+        window.location.reload();
+    },
+};
+
+
 /*
  * getUrlData
  *
@@ -711,5 +737,28 @@ fplib.fillUserTable = function () {
     };
 // error handling?
     $.getJSON(url, sfunc);
-}
+};
 
+/***************************************************************
+ * popup form
+ */
+fplib.popform = {};
+fplib.popform.deselect = function (e) {
+  $('.pop').fadeToggle(function() {
+    e.removeClass('selected');
+  });
+  return false;
+};
+
+fplib.popform.select = function() {
+    if($(this).hasClass('selected')) {
+      fplib.popform.deselect($(this));               
+    } else {
+      $(this).addClass('selected');
+      $('.pop').fadeToggle();
+    }
+    return false;
+};
+
+
+/***************************************************************/

@@ -52,6 +52,17 @@ class WebSess(object):
         self.data = shelve.open(self.sessFile, writeback=True)
         os.chmod(self.sessFile, 0660)
 
+# This needs looking at, the only way to test if a session exists seems to be
+# to create one, and then check if it's valid.
+#     @classmethod
+#     def retrieve(cls, sid):
+#         sess = WebSess(sid=sid)
+#         pass
+#     
+#     @staticmethod
+#     def sessionExists():
+#         pass
+        
     def close(self):
     #------------------------------------------------------------------
         sessFile = self.sessFile
@@ -75,11 +86,12 @@ class WebSess(object):
     #------------------------------------------------------------------
         return float(time.time() - float(self.data.get('lastvisit')))
 
-    def setProject(self, project, dbname, access):
+    def setProject(self, userProject):
     #------------------------------------------------------------------
-        self.data['projectName'] = project
-        self.data['dbname'] = dbname
-        self.data['projectAccess'] = access
+        self.data['id'] = userProject.projectId()
+        self.data['projectName'] = userProject.projectName()
+        self.data['dbname'] = userProject.dbname()
+        self.data['projectAccess'] = userProject.access()
         if hasattr(self, 'mDBsess'):
             del(self.mDBsess)
 

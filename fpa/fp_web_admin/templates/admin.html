@@ -1,0 +1,29 @@
+{% extends "dataPage.html" %}
+
+{% block dataContent %}
+<script>
+
+function myfunc(form) {
+    alert("Now we should create project: " + form.elements["pname"].value);
+    //event.preventDefault();
+    return false;
+}
+</script>
+
+<button type="button" class="btn btn-primary" onclick="fplib.popform.select()">Create Project</button>
+<div class="fpPopup messagepop pop">
+    <form method="post" id="new_message"  onsubmit="return myfunc(this)">
+        <p><label for="pname">New project name</label><input type="text" size="30" name="pname" id="pname" /></p>
+        <p><label for="body">Message</label><textarea rows="6" name="body" id="body" cols="35"></textarea></p>
+        <p><input type="submit" value="Send Message" name="commit" id="message_submit"/>
+        <button type="button" class="fpPopupClose btn btn-primary" onclick="fplib.popform.select()">Cancel</button>
+    </form>
+</div>
+
+<div>
+{{ usersHTML|safe }}
+</div>
+{% endblock %}
+
+
+

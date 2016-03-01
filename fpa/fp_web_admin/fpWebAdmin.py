@@ -186,7 +186,7 @@ def htmlTrialTraitTable(trial):
     for trt in trial.traits:
         trows.append([hsafe(trt.caption), hsafe(trt.description), TRAIT_TYPE_NAMES[trt.datatype],
              trt.getNumScoreSets(trial.id),
-             fpUtil.htmlButtonLink2("Details",
+             fpUtil.htmlButtonLink("Details",
                  url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
 
     #xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
@@ -236,9 +236,9 @@ def htmlTabScoreSets(sess, trialId):
         htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
     # Add button to upload scores:
     htm += '<p>'
-    htm += fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
+    htm += fpUtil.htmlButtonLink("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
     #htm += fpUtil.bsRow(fpUtil.bsCol(
-    #        fpUtil.htmlButtonLink2("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))))
+    #        fpUtil.htmlButtonLink("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))))
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
@@ -253,16 +253,16 @@ def htmlTabNodeAttributes(sess, trialId):
         hdrs = ["Name", "Datatype", "Values"]
         rows = []
         for att in attList:
-            valuesButton = fpUtil.htmlButtonLink2("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            valuesButton = fpUtil.htmlButtonLink("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
             rows.append([hsafe(att.name), TRAIT_TYPE_NAMES[att.datatype], valuesButton])
         out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpNodeAttributes', showFooter=False)
 
     # Add BROWSE button:
     out += '<p>'
-    out += fpUtil.htmlButtonLink2("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
+    out += fpUtil.htmlButtonLink("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.htmlButtonLink2("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.htmlButtonLink("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
 
     return out
 
@@ -271,6 +271,8 @@ def htmlTabNodeAttributes(sess, trialId):
 def urlTrialNameDetailPost(sess, trialId):
 #===========================================================================
 # Page for trial creation.
+# Should be REST URL, which it sort of it, but perhaps a PATCH?
+# Or just move to fpAppWapi
 #
     trialProperties.processPropertiesForm(sess, trialId, request.form)
     return "Trial Properties Updated on Server"
@@ -292,27 +294,25 @@ def htmlTabProperties(sess, trial):
 
     # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
-    extrasForm += '<p><input type="submit" id="extrasSubmit" value="Update Values">'   # Add submit button:
+    extrasForm += fpUtil.htmlButton("Save", id="extrasSubmit", color='btn-success', type='submit')
     r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, id='extras'))
     # JavaScript for AJAX form submission:
     r += '''
     <script>
-    $(document).ready(function() {
-        $("#extrasSubmit").click({url: "%s"}, fplib.extrasSubmit);
-    });
+    $(function() {$("#extrasSubmit").click({url: "%s"}, fplib.extrasSubmit);});
     </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
 
     # Add DELETE button if admin: ------------------------------------------------
     if sess.adminRights():
         r += '<p>'
-        r += fpUtil.htmlButtonLink2("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id))
+        r += fpUtil.htmlButtonLink("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id), color='btn-danger')
         r += '<p>'
     return r
 
 def htmlTabTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
-    createTraitButton = '<p>' + fpUtil.htmlButtonLink2("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
+    createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select System Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
@@ -406,11 +406,6 @@ def htmlTabData(sess, trial):
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
     dl +=     "<button>Download Trial Data - long format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
-
-#     # View plain text tsv long format (why?):
-#     dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")' onContextMenu='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataWideTSV", trialId=trial.id))
-#     dl +=     "<button>View tab separated score data</button></a><br />"
-#     dl +=     "<span style='font-size: smaller;'>Note data is TAB separated"
 
     # View wide format as datatable:
     dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataBrowse", trialId=trial.id))
@@ -642,7 +637,7 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     trl = dal.getTrial(sess.db(), trialId)
-    valCols = trl.getDataColumns(tiList, quoteStrings=False)                   # get the data for the instances
+    valCols = trl.getDataColumns(tiList, quoteStrings=False, metadata=True) # get the data for the instances
 
     # Headers:
     hdrs = []
@@ -985,16 +980,17 @@ def urlAttributeUpload(sess, trialId):
 @app.route(PREURL+'/trial/<trialId>/attribute/<attId>/', methods=['GET'])
 @dec_check_session()
 def urlAttributeDisplay(sess, trialId, attId):
-    tua = dal.getAttribute(sess.db(), attId)
-    out = "<b>Attribute</b> : {0}".format(tua.name)
-    out += "<br><b>Datatype</b> : " + TRAIT_TYPE_NAMES[tua.datatype]
+    natt = dal.getAttribute(sess.db(), attId)
+    out = "<b>Attribute</b> : {0}".format(natt.name)
+    out += "<br><b>Datatype</b> : " + TRAIT_TYPE_NAMES[natt.datatype]
     # Construct datatable:
     trl = dal.getTrial(sess.db(), trialId)  # MFK what is the cost of getting trial object?
     hdrs = ["fpNodeId", hsafe(trl.navIndexName(0)), hsafe(trl.navIndexName(1)), "Value"]
     rows = []
-    aVals = tua.getAttributeValues()
+    aVals = natt.getAttributeValues()
     for av in aVals:
-        rows.append([av.node.id, av.node.row, av.node.col, hsafe(av.value)])
+        node = av.getNode()
+        rows.append([node.id, node.row, node.col, hsafe(av.getValueAsString())])
     out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpAttValues', showFooter=False)
 
     return dp.dataPage(sess, content=out, title='Attribute', trialId=trialId)
@@ -1165,7 +1161,7 @@ def urlFPAdmin(sess):
     showPassChange = usr.allowPasswordChange()
 
     def theFormAgain(op=None, msg=None):
-        return dp.dataTemplatePage(sess, 'sp.html', generator='fplib.demoDivGen',
+        return dp.dataTemplatePage(sess, 'admin.html', generator='fplib.demoDivGen',
                     title="Admin", op=op, errMsg=msg, passChange=showPassChange,
                     usersHTML='hallo!')
 
@@ -1396,6 +1392,100 @@ def htmlNumericScoreSetStats(data, name):
 #     cooky = {'sid':f}
 #     return requests.get(newurl, cookies=cooky).content
 
+
+def tiAttributeHtml(ti):
+# Returns HTML segment for creating/deleting attribute version of the passed traitInstance.
+# We have two states (att present or not) and toggle to different divs for these.
+# Have buttons in each, either to create or delete. Create brings up bootstrap modal to
+# collect name.
+#
+    att = ti.getAttribute()
+    out = '''
+        <script>
+        function fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR) {
+            fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
+            var x = document.getElementById("fpTiAttName");
+            x.textContent = name;
+            fpToggleTiAttribute(false);
+        };
+        function fpCreateTiAttribute(name) {
+            $.ajax({
+                url:"%s",
+                type:"POST",
+                data:JSON.stringify({"name":name}),
+                dataType:"json",
+                contentType: "application/json",
+                error : fplib.ajax.jsonError,
+                success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
+            });
+        };
+        </script>''' % url_for('webRest.createTiAttribute', tiId=ti.getId())   
+    out += '''
+        <script>
+        function fpToggleTiAttribute(showCreate) {
+            var createDiv = document.getElementById("divCreateTiAttribute");
+            var deleteDiv = document.getElementById("divDeleteTiAttribute");
+            if (showCreate) {
+                createDiv.style.display = "inline";
+                deleteDiv.style.display = "none";
+            } else {
+                createDiv.style.display = "none";
+                deleteDiv.style.display = "inline";           
+            }        
+        }
+        function fpDeleteTiAttributeSuccess(data, textStatus, jqXHR) {
+            fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
+            fpToggleTiAttribute(true);
+        };
+        function fpDeleteTiAttribute(name) {
+            $.ajax({
+                url : "%s",
+                type : "DELETE",
+                dataType : "json",
+                error : fplib.ajax.jsonError,
+                success: fpDeleteTiAttributeSuccess
+            });
+        };
+        </script>''' % url_for('webRest.deleteTiAttribute', tiId=ti.getId())
+
+    # Create att div:
+    out += '''
+        <div id="divCreateTiAttribute" style="display:{0};">
+            <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#createAttModal">
+              Create Attribute
+            </button>
+            <!-- Modal -->
+            <div class="modal fade" id="createAttModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+              <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Create Attribute</h4>
+                  </div>
+                  <div class="modal-body">
+                    <label for="attname">New attribute name</label>
+                    <input type="text" size="30" name="attname" id="attname" />
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal"
+                       onclick="fpCreateTiAttribute(document.getElementById('attname').value)">Save changes</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        '''.format('inline' if (att is None) else 'none')
+
+    # Delete att div:
+    out += '''
+        <div id="divDeleteTiAttribute" style="display:{0}">
+            Attribute name : <span id=fpTiAttName>{1}</span>&nbsp;
+            <button type="button" class="btn btn-primary" onclick="fpDeleteTiAttribute()">Delete Attribute</button>
+        </div>'''.format('none' if att is None else 'inline', 'null' if att is None else att.fname())
+        
+    return out
+
 @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
 def urlScoreSetTraitInstance(sess, traitInstanceId):
@@ -1423,7 +1513,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                                                  url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
-
+        
     # Get data:
     hdrs = ('fpNodeId', trl.navIndexName(0), trl.navIndexName(1), 'Value', 'User', 'Time', 'Latitude', 'Longitude')
     rows = []
@@ -1471,6 +1561,10 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
         });
     </script>'''
     out += fpUtil.htmlFieldset(dtab, 'Data:')
+
+    # Attribute creation/deletion:
+    if typ in [T_INTEGER, T_DECIMAL, T_STRING, T_CATEGORICAL, T_DATE]:
+        out += fpUtil.htmlFieldset(tiAttributeHtml(ti), 'Attribute')
 
     # Stats:
     numDeleted = 0
@@ -1568,9 +1662,9 @@ def urlPhoto(sess, trialId, filename):
 def urlUserHome(sess, userName):
     return frontPage(sess)
 
-@app.route(PREURL+'/FieldPrime/project/<project>/', methods=['GET'])
+@app.route(PREURL+'/FieldPrime/project/<projectName>/', methods=['GET'])
 @dec_check_session()
-def urlProject(sess, project):
+def urlProject(sess, projectName):
 #-----------------------------------------------------------------------
 # URL handler for user choice from project list.
 #
@@ -1578,17 +1672,18 @@ def urlProject(sess, project):
 # and find what permissions they have. We can't just use the username and project from
 # the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
 #
-    if project is not None:
-        projList, errMsg = fpsys.getProjects(sess.getUserIdent())
+    if projectName is not None:
+        projList, errMsg = fpsys.getUserProjects(sess.getUserIdent())
         if errMsg is not None:
             return badJuju(sess, errMsg)
         elif not projList:
             return badJuju(sess, 'Unexpected project')
         else:
             for prj in projList:
-                if prj.projectName == project:
+                if prj.projectName() == projectName:
                     # All checks passed, set the project as specified:
-                    sess.setProject(prj.projectName, prj.dbname, prj.access)
+                    sess.setProject(prj)
+                    g.projectName = projectName
                     return frontPage(sess)
             # No access to this project - bad user!
             return badJuju(sess, 'no access to project')
@@ -1671,11 +1766,10 @@ def urlMain():
 
         if not error:
             # Check login details:
-            project = access = dbname = None
             authOK = fpsys.userPasswordCheck(username, password)
             if authOK:
                 # OK, valid user. Find projects they have access to:
-                projList, errMsg = fpsys.getProjects(username)
+                projList, errMsg = fpsys.getUserProjects(username)
                 if errMsg is not None:
                     error = errMsg
 #                 elif not projList:
@@ -1685,9 +1779,8 @@ def urlMain():
                     util.fpLog(app, 'Login from user {0}'.format(username))
                     sess.resetLastUseTime()
                     sess.setUserIdent(username)
-                    sess.setProject(project, dbname, access)
                     g.userName = username
-                    g.projectName = project
+                    #g.projectName = project
                     resp = make_response(frontPage(sess))
                     resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
                     return resp
@@ -1701,10 +1794,8 @@ def urlMain():
         # Error return
         return loginPage(error)
 
-    # Request method is 'GET':
+    # Request method is 'GET' - return login page:
     return urlInfoPage('fieldprime')
-
-
 
 
 ##############################################################################################################
