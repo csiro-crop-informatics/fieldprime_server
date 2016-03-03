@@ -341,7 +341,7 @@ class TraitInstance(DeclarativeBase):
                     del allResults[i]
         return allResults
     
-    def getLatestDatumPerNodeAsString(self, quoteStrings=True, metadata=True, missingValue=""):
+    def getLatestDatumPerNodeAsString(self, quoteStrings=True, metadata=True, missingValue="", orderByNodeId=False):
     #-----------------------------------------------------------------------
     # Returns an array of values, one for each node in the trial.
     # Where the node has multiple datums in this ti, the latest one is returned.
@@ -353,7 +353,7 @@ class TraitInstance(DeclarativeBase):
     #
     # If quoteStrings is true, then string values are surrounded by double quotes,
     # with internal double quotes converted to 2 double quotes.
-    # The values are ordered by row/col.
+    # The values are ordered by row/col, or node id if specified.
     # Timestamp is given in readable form.
     #
     # NB we could pass in which metadata parameters are required, rather than getting all or none.
@@ -375,8 +375,8 @@ class TraitInstance(DeclarativeBase):
           left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = {1}
           left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
         where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
-        order by row, col
-        """
+        order by 
+        """ + ('t.id' if orderByNodeId else 'row,col')
         datatype = self.trait.datatype
         # If trait type is categorical then the values will be numbers which should be
         # converted into names (via the traitCategory table), retrieve the map for the
@@ -804,6 +804,7 @@ class Trial(DeclarativeBase):
         return scoreSets
 
     def getNodes(self):
+    # Returns list of Nodes, sorted by node id.
         return self.nodes
     
     def getNodesSortedRowCol(self):
@@ -996,7 +997,7 @@ class Trial(DeclarativeBase):
     # NB main work now done in getLatestDatumPerNodeAsString, perhaps this func no longer needed?
         outList = []
         for ti in tiList:
-            valList = ti.getLatestDatumPerNodeAsString(quoteStrings, metadata)
+            valList = ti.getLatestDatumPerNodeAsString(quoteStrings=quoteStrings, metadata=metadata)
             outList.append(valList)
         return outList
     
@@ -1255,7 +1256,7 @@ class NodeAttribute(DeclarativeBase):
     # Need to add "source" field.
         ti = self.getTraitInstance()
         if ti is not None:  # This is a traitInstance attribute
-            return ti.getLatestDatumPerNodeAsString(quoteStrings=False, metadata=False, missingValue=missingValue)
+            return ti.getLatestDatumPerNodeAsString(quoteStrings=False, metadata=False, missingValue=missingValue, orderByNodeId=orderByNodeId)
         else:  # Normal attribute
             eng = _eng(self)  # pass this in?
             qry = """

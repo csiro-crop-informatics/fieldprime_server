@@ -204,7 +204,7 @@ def get_trial(username, trial, dbc, token=None):
     # Node Attribute descriptors:
     attDefs = []
     attributes = trial.getAttributes()
-    attValueLists = [att.getValues(orderByNodeId=False, missingValue=None) for att in attributes]
+    attValueLists = [att.getValues(orderByNodeId=True, missingValue=None) for att in attributes]  # NB node order must match that of trial.getNodes()
     for att in attributes:
         ad = {}
         ad['id'] = att.id

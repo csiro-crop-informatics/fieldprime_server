@@ -161,7 +161,7 @@ def _htmlDataTableMagic(tableId, extraOptions=''):
             $(elId).DataTable( {
                 %s
                 "scrollX": true,
-                "scrollY": "50vh",
+                "scrollY": "60vh",
                 "paging": false,
                 //"pageLength":100,
                //"processing": true, // not clear this is doing anything..
