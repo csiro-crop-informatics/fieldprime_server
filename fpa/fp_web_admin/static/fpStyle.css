@@ -151,8 +151,16 @@ button, input[type=submit], input[type=button] {
     border: 1px solid black;
     border-radius: 5px;
     text-transform: capitalize;
+}*/
+
+.fpButton  {
+    color: white!important;
+    background-color: #022C38;
+    padding: 5px;
+    border: 1px solid black;
+    border-radius: 5px;
+    text-transform: capitalize;
 }
-*/
 
 /* fptable is used for:
  * Node Attributes table

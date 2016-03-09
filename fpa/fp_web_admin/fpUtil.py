@@ -94,6 +94,13 @@ def htmlButtonLink(label, click, color='btn-primary'):
     return '''<button type="button" class="btn {2}"
         onClick="window.location='{0}'">{1}</button>'''.format(click, label, color)
         
+def htmlFpButtonLink(label, location, quoteLocation=True):
+#----------------------------------------------------------------------- 
+    if quoteLocation:
+        location = '\'{}\''.format(location)
+    return '''<button type="button" class="fpButton"
+        onClick="window.location={0}">{1}</button>'''.format(location, label)
+        
 # def htmlButtonLink3(label, click):
 # #-----------------------------------------------------------------------
 # # This version has the button inside a form, sometimes (eg when within
@@ -105,6 +112,7 @@ def htmlButton(label, id=None, click=None, color='btn-primary', type='button'):
 #----------------------------------------------------------------------- 
 # Standardized button format. Currently bootstrap.
 # Could have size parameter, which is class, eg btn-lg.
+# NB - malfunction is likely if there are double quotes in the click parameter.
 #
     out = '<button type="{0}" class="btn {1}"'.format(type, color)
     if id is not None:
@@ -162,9 +170,9 @@ def _htmlDataTableMagic(tableId, extraOptions=''):
                 %s
                 "scrollX": true,
                 "scrollY": "60vh",
+                "scrollCollapse": true,
                 "paging": false,
                 //"pageLength":100,
-               //"processing": true, // not clear this is doing anything..
                 "fnPreDrawCallback":function(){
                     $(elId).hide();
                 },

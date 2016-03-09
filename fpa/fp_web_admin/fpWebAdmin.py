@@ -399,17 +399,18 @@ def htmlTabData(sess, trial):
 
     # Download wide format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataWideTSV", trialId=trial.id))
-    dl +=     "<button>Download Trial Data - wide format</button></a><br />"
+    dl +=     "<button class='fpButton'>Download Trial Data - wide format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
     # Download long format:
     dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
-    dl +=     "<button>Download Trial Data - long format</button></a><br />"
+    dl +=     "<button class='fpButton'>Download Trial Data - long format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
     # View wide format as datatable:
-    dl += "<p><a href='dummy' onclick='this.href=addParams(\"{0}\")'>".format(url_for("urlTrialDataBrowse", trialId=trial.id))
-    dl +=     "<button>Browse Trial Data</button></a>"
+    loc = url_for("urlTrialDataBrowse", trialId=trial.id)
+    dl += "<p>" + fpUtil.htmlFpButtonLink("Browse Trial Data",
+         location='addParams(\'{0}\')'.format(loc), quoteLocation=False)
     return dl
 
 
