@@ -3,7 +3,7 @@ row,column,replicate,genotype,pedigree,description,barcode,rootstock,latitude,lo
 1,2,0,cabernet,french,mellow,2,AxR1,-35.278,149.1144,1,0
 1,3,0,riesling,german,austere,3,5BB Kober,-35.278,149.1144,2.2,1
 1,4,0,sangiovese,italian,cheeky,4,5BB Kober,-35.278,149.1144,-1,2
-2,1,0,grenache,spanish,warm,5,5C Teleki,-35.278,149.1144,4.3,3
+2,1,0,grenache,spanish,warm,5,5C Teleki,-35.278,149.1144,4.3,4
 2,2,0,viognier,german,stern,6,,-35.278,149.1144,2.1,4
 2,3,0,marsanne,french,musky,7,SO4,-35.278,149.1144,5.6,5
 2,4,0,roussane,french,approachable,8,SO4,-35.278,149.1144,0,6
