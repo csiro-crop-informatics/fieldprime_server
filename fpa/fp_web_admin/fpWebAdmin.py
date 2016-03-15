@@ -44,6 +44,7 @@ import datapage as dp
 import websess
 from fpRestApi import webRest
 from fpAppWapi import appApi
+import forms
 
 app = Flask(__name__)
 app.register_blueprint(webRest)
@@ -1168,47 +1169,27 @@ def urlFPAdmin(sess):
 
     title = "Administration"
     if request.method == 'GET':
-        return theFormAgain()
+        newProjFormElements = [
+            forms.formElement('Separate Database', 'Create database for this project',
+                        'nodeCreation', 'ncid',
+                        etype=forms.formElement.RADIO,
+                        typeSpecificData={'yes':'true', 'no':'false'}),
+            forms.formElement('Project Name', 'Name for new project',
+                       'projName', 'pnameId',
+                       etype=forms.formElement.TEXT),
+            forms.formElement('Contact', 'Name of contact person',
+                        'contName', 'contId', etype=forms.formElement.TEXT),
+            forms.formElement('Contact Email', 'Email address of contact person',
+                        'emailName', 'emailId', etype=forms.formElement.TEXT)
+        ]
+
+#         out = '<button type="button" class="btn btn-primary" onclick="fplib.popform.select()">Create Project</button>'
+#         out += forms.makeForm(newProjFormElements)
+        out = forms.makeModalForm('Create Project', newProjFormElements)
+        return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
+#         return theFormAgain()
     if request.method == 'POST':
-        op = request.args.get('op')
-        form = request.form
-        if op == 'contact':
-            contactName = form.get('contactName')
-            contactEmail = form.get('contactEmail')
-            if not (contactName and contactEmail):
-                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Please fill out all fields",
-                                           passChange=showPassChange, title=title)
-            else:
-                dal.setSystemValue(sess.db(), 'contactName', contactName)
-                dal.setSystemValue(sess.db(), 'contactEmail', contactEmail)
-                return dp.dataTemplatePage(sess, 'profile.html', op=op, contactName=contactName, contactEmail=contactEmail,
-                           errMsg="Contact details saved", passChange=showPassChange, title=title)
-
-        elif op == 'newpw' or op == 'setAppPassword':
-            # Changing admin or app password:
-            # MFK bug here: if we prompt with err message, the contact values are missing.
-            oldPassword = form.get("password")
-            newpassword1 = form.get("newpassword1")
-            newpassword2 = form.get("newpassword2")
-            if not (oldPassword and newpassword1 and newpassword2):
-                return theFormAgain(op=op, msg="Please fill out all fields")
-            if newpassword1 != newpassword2:
-                return dp.dataTemplatePage(sess, 'profile.html', op=op, errMsg="Versions of new password do not match.",
-                                           passChange=showPassChange, title=title)
-
-            # OK, all good, change their password:
-            currUser = sess.getUserIdent()
-            if not fpsys.userPasswordCheck(g.userName, oldPassword):
-                return logoutPage(sess, "Password is incorrect")
-            user = fpsys.User.getByLogin(currUser)
-            msg = user.changePassword(newpassword1)
-            if msg is None:
-                msg = 'Password reset successfully'
-            return frontPage(sess, msg)
-        elif op == 'manageUsers':
-            return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
-        else:
-            return badJuju(sess, 'Unexpected operation')
+        return badJuju(sess, 'I got POST:' + request.form['emailName'])
 
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
@@ -1420,7 +1401,7 @@ def tiAttributeHtml(ti):
                 success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
             });
         };
-        </script>''' % url_for('webRest.createTiAttribute', tiId=ti.getId())   
+        </script>''' % url_for('webRest.createTiAttribute', tiId=ti.getId())
     out += '''
         <script>
         function fpToggleTiAttribute(showCreate) {
@@ -1431,8 +1412,8 @@ def tiAttributeHtml(ti):
                 deleteDiv.style.display = "none";
             } else {
                 createDiv.style.display = "none";
-                deleteDiv.style.display = "inline";           
-            }        
+                deleteDiv.style.display = "inline";
+            }
         }
         function fpDeleteTiAttributeSuccess(data, textStatus, jqXHR) {
             fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
@@ -1484,7 +1465,7 @@ def tiAttributeHtml(ti):
             Attribute name : <span id=fpTiAttName>{1}</span>&nbsp;
             <button type="button" class="btn btn-primary" onclick="fpDeleteTiAttribute()">Delete Attribute</button>
         </div>'''.format('none' if att is None else 'inline', 'null' if att is None else att.fname())
-        
+
     return out
 
 @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
@@ -1514,7 +1495,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
                                                  url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
-        
+
     # Get data:
     hdrs = ('fpNodeId', trl.navIndexName(0), trl.navIndexName(1), 'Value', 'User', 'Time', 'Latitude', 'Longitude')
     rows = []
