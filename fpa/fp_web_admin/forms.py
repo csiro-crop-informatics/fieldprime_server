@@ -18,7 +18,7 @@ class formElement:
     TEXT = 1
     RADIO = 2
 
-    def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype=TEXT, typeSpecificData=None):
+    def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype=TEXT, typeSpecificData=None, default=None):
         self.prompt = prompt
         self.subPrompt = subPrompt
         self.ename = ename
@@ -26,6 +26,7 @@ class formElement:
         self.dbName = dbName if dbName is not None else ename
         self.etype = etype
         self.typeSpecificData = typeSpecificData
+        self.default=default
 
     def __wrapElement(self, element):
         return '''
@@ -57,6 +58,8 @@ class formElement:
                 '''.format(self.eid, self.ename,
                            ' value="{0}"'.format(value) if value is not None else '')
         elif self.etype == self.RADIO:
+            if value is None and self.default is not None:
+                value = self.default
             element += '<div class="uifDiv">'
             for key in self.typeSpecificData:
                 val = self.typeSpecificData[key]

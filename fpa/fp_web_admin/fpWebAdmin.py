@@ -16,7 +16,7 @@ from flask import Flask, request, Response, redirect, url_for, render_template, 
 from flask import jsonify
 import simplejson as json
 from functools import wraps
-
+import requests
 
 #
 # Local imports:
@@ -1171,16 +1171,16 @@ def urlFPAdmin(sess):
     if request.method == 'GET':
         newProjFormElements = [
             forms.formElement('Separate Database', 'Create database for this project',
-                        'nodeCreation', 'ncid',
+                        'ownDatabase', 'ncid',
                         etype=forms.formElement.RADIO,
-                        typeSpecificData={'yes':'true', 'no':'false'}),
+                        typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
             forms.formElement('Project Name', 'Name for new project',
-                       'projName', 'pnameId',
-                       etype=forms.formElement.TEXT),
+                       'projectName', 'pnameId',
+                       etype=forms.formElement.TEXT, typeSpecificData='foo'),
             forms.formElement('Contact', 'Name of contact person',
-                        'contName', 'contId', etype=forms.formElement.TEXT),
+                        'contactName', 'contId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
             forms.formElement('Contact Email', 'Email address of contact person',
-                        'emailName', 'emailId', etype=forms.formElement.TEXT)
+                        'contactEmail', 'emailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
         ]
 
 #         out = '<button type="button" class="btn btn-primary" onclick="fplib.popform.select()">Create Project</button>'
@@ -1188,8 +1188,23 @@ def urlFPAdmin(sess):
         out = forms.makeModalForm('Create Project', newProjFormElements)
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 #         return theFormAgain()
+
     if request.method == 'POST':
-        return badJuju(sess, 'I got POST:' + request.form['emailName'])
+        # login with token (via function), not cooky. Or is this better done from client?
+        frm = request.form
+        try:
+            payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
+                       'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase']}
+            newurl = url_for('webRest.urlCreateProject', _external=True)
+            print 'newurl:' + newurl
+            f = request.cookies.get('sid')
+            cooky = {'sid':f}
+            x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
+        except Exception, e:
+            return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
+        print x
+        # Here we need check return status and respond appropriately
+        return x
 
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
@@ -1355,25 +1370,6 @@ def htmlNumericScoreSetStats(data, name):
     oStats += scatters
     return oStats
 
-#
-# Example of getting response from another URL:
-# NB to use, uncomment this and change the current
-# method to:
-# @app.route(PREURL+'/scoreSet2/<traitInstanceId>/', methods=['GET'])
-# @dec_check_session()
-# def urlScoreSetTraitInstance2(sess, traitInstanceId):
-#
-#
-# import requests
-# @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
-# @dec_check_session()
-# def urlScoreSetTraitInstance(sess, traitInstanceId):
-#     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
-#     print 'newurl:' + newurl
-#     f = request.cookies.get('sid')
-#     cooky = {'sid':f}
-#     return requests.get(newurl, cookies=cooky).content
-
 
 def tiAttributeHtml(ti):
 # Returns HTML segment for creating/deleting attribute version of the passed traitInstance.
@@ -1467,6 +1463,26 @@ def tiAttributeHtml(ti):
         </div>'''.format('none' if att is None else 'inline', 'null' if att is None else att.fname())
 
     return out
+
+
+#
+# Example of getting response from another URL:
+# NB to use, uncomment this and change the current
+# method to:
+# @app.route(PREURL+'/scoreSet2/<traitInstanceId>/', methods=['GET'])
+# @dec_check_session()
+# def urlScoreSetTraitInstance2(sess, traitInstanceId):
+#
+#
+# import requests
+# @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
+# @dec_check_session()
+# def urlScoreSetTraitInstance(sess, traitInstanceId):
+#     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
+#     print 'newurl:' + newurl
+#     f = request.cookies.get('sid')
+#     cooky = {'sid':f}
+#     return requests.get(newurl, cookies=cooky).content
 
 @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
 @dec_check_session()
@@ -1676,6 +1692,17 @@ def urlProject(sess, projectName):
 def urlLogout(sess):
     sess.close()
     return redirect(url_for('urlMain'))
+
+def errorScreenInSession(sess, msg):
+#-----------------------------------------------------------------------
+# Show the message in red, with a warning that an error has occurred.
+# User remains logged in and error is show with usual page header/footer.
+# Intended as a return for a HTTP request after something bad, but not
+# suspicious or catastrophic, has occurred.
+# 
+    out = '<font color="red">Something bad has happened: {}<font>'.format(msg)
+    return dp.dataPage(sess, content=out, title='Error', trialId=-1)
+
 
 def badJuju(sess, msg):
 #-----------------------------------------------------------------------

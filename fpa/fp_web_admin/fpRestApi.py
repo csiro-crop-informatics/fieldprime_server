@@ -5,7 +5,7 @@
 # getting or setting data in json format.
 # see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask
 
-from flask import Blueprint, current_app, request, Response, jsonify, g, abort
+from flask import Blueprint, current_app, request, Response, jsonify, g, abort, make_response
 from flask.ext.httpauth import HTTPBasicAuth
 from functools import wraps
 import simplejson as json
@@ -81,6 +81,7 @@ def verify_password(username_or_token, password):
     g.user = user
     return True
 
+#goEasy = True
 def wr_check_session(func):
 #-------------------------------------------------------------------------------------------------
 # NB - USED FOR WEB ADMIN PAGES, NOT REALLY DIRECT REST.
@@ -99,9 +100,10 @@ def wr_check_session(func):
         if sid is not None:        
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
         if sid is None or not sess.valid():  # Check if session is still valid
-            return {'error':'not logged in'}, 401
-        return func(sess, *args, **kwargs)
+            return 'error: not logged in', 401
+        return func(sess, *args, **kwargs) #if not goEasy else func(None, *args, **kwargs)
     return inner
+
 
 ### Access Points: ########################################################
 
@@ -156,7 +158,7 @@ def new_user():
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     return jsonReturn({'username': login}, HTTP_CREATED)
 
-@webRest.route(API_PREFIX + 'projects', methods=['GET'])
+#@webRest.route(API_PREFIX + 'projects', methods=['GET'])
 @auth.login_required
 def getProjects():
     (plist, errmsg) = fpsys.getUserProjects(g.user)
@@ -209,6 +211,9 @@ def _checkTiAttributeStuff(sess, tiId):
 #@auth.login_required
 @wr_check_session
 def createTiAttribute(sess, tiId):
+# Create attribute for the TI specified in the URL. 
+# The attribute name must be present as a url parameter "name".
+#    
     ti = _checkTiAttributeStuff(sess, tiId)
     if not isinstance(ti, models.TraitInstance):
         return ti
@@ -245,9 +250,46 @@ def deleteTiAttribute(sess, tiId):
 
 ### Projects: ---------------------------------------------------------------------------------------
 
-@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
+@webRest.route(API_PREFIX + 'test', methods=['GET'])
+#@wr_check_session
+def urlTest():
+    return 'test return\n'
+
+
+@webRest.route(API_PREFIX + 'projects', methods=['POST'])
+@wr_check_session
+def urlCreateProject(sess):
+# Expects URL parameters:
+#   ownDatabase : 'true' or 'false', indicating whether separate database should be
+#                 created. Currently ignored and assumed true.
+#   projectName : name project - must be appropriate.
+#   contactName : Name of contact person
+#   contactEmail : email of contact person
+#
+  print 'in urlCreateProject'
+  try:
+    frm = request.form
+    projectName = frm['projectName']    # check if exists? or put in try?
+    contactName = frm['contactName']
+    contactEmail = frm['contactEmail']
+    ownDatabase = frm['ownDatabase']
+    return projectName + 'foo\n'
+    
+    # Note, perhaps we should use json input, in which case we would have:
+    # projectName = request.json.get('projectName')...
+    # top level dir called 'projects'? 'users'
+#     parentUrl = request.json.get('parent')
+#     parentProj = models.Project.getByUrl(parentUrl);
+
+    robj = { 'name':projectName, 'id':27}
+    return jsonReturn(robj, HTTP_CREATED)
+  except Exception, e:
+      return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+
+    
+#@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @auth.login_required
-def createProject(path):
+def old_createProject(path):
     return 'You want path: %s' % path
 
     # top level dir called 'projects'? 'users'
@@ -261,10 +303,11 @@ def createProject(path):
     # create the project:
     proj = models.Project();
 
+
 def checkIdent(candidate):
     re.match('\w\w*')
 
-@webRest.route(API_PREFIX + 'projects', methods=['POST'])
+#@webRest.route(API_PREFIX + 'projects', methods=['POST'])
 @auth.login_required
 def new_createProject():
 # Expects JSON object:
@@ -291,7 +334,7 @@ def new_createProject():
     # create the project:
     proj = models.Project();
 
-@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
+#@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
 @auth.login_required
 def createProject2():
 # Expects JSON object:
