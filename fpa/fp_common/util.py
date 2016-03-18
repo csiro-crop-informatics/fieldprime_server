@@ -6,6 +6,7 @@
 
 import time, sys
 import cgi
+import re
 
 def isInt(x):
     try:
@@ -20,6 +21,12 @@ def isNumeric(x):
         return True
     except ValueError:
         return False
+
+def isValidIdentifier(candidate):
+# Return boolean indicating whether candidate (assumed to be a string)
+# is a valid identifier. Where valid means starting with a letter or
+# underscore, followed by some number of letters, digits, or underscores.
+    return re.match("[_A-Za-z][_a-zA-Z0-9]*$", candidate) is not None
 
 def epoch2dateTime(timestamp):
 # Return readable date/time string from timestamp (assumed to be in milliseconds).

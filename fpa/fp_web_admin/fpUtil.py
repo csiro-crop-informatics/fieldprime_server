@@ -5,12 +5,8 @@
 #
 
 import sys
-import time
-from flask import url_for
 from cgi import escape
 
-import fp_common.models as models
-import MySQLdb as mdb
 
 ###  Constants: ################################################################
 
@@ -42,7 +38,7 @@ def htmlLabelValue(label, value):
     return '<label>{0}: &nbsp;</label>{1}'.format(label, value)
 
 
-def htmlForm(content, id=None, post=False, onsubmit='', multipart=False):
+def htmlForm(content, formId=None, post=False, onsubmit='', multipart=False):
 #-----------------------------------------------------------------------
 # Returns the content surrounded by html form tags.
 # NB content can be either a string, or a function returning one.
@@ -51,7 +47,7 @@ def htmlForm(content, id=None, post=False, onsubmit='', multipart=False):
     enctypePart = "enctype='multipart/form-data'" if multipart else ""
     methodPart = "method='{0}'".format('POST' if post else 'GET')
     submitPart = ' onsubmit="{0}"'.format(onsubmit) if onsubmit else ''
-    idPart = ' id="{0}"'.format(id) if id is not None else ''
+    idPart = ' id="{0}"'.format(formId) if formId is not None else ''
     return "<form {0} {1} {2} {3}>\n{4}</form>".format(methodPart, submitPart, enctypePart, idPart, contentPart)
 
 
@@ -70,8 +66,8 @@ def htmlDiv(content, divId=None):
 # NB content can be either a string, or a function returning one.
 #
     cont = content if isinstance(content, str) else content()
-    id = ' id="{0}"'.format(divId) if divId is not None else ''
-    return '<div{0}>{1}</div>'.format(id, cont)
+    did = ' id="{0}"'.format(divId) if divId is not None else ''
+    return '<div{0}>{1}</div>'.format(did, cont)
 
 def htmlHeaderFieldset(content, legend):
 #-----------------------------------------------------------------------
@@ -90,26 +86,26 @@ def exit(sess=None):
 
 
 def htmlButtonLink(label, click, color='btn-primary'):
-#----------------------------------------------------------------------- 
+#-----------------------------------------------------------------------
     return '''<button type="button" class="btn {2}"
         onClick="window.location='{0}'">{1}</button>'''.format(click, label, color)
-        
+
 def htmlFpButtonLink(label, location, quoteLocation=True):
-#----------------------------------------------------------------------- 
+#-----------------------------------------------------------------------
     if quoteLocation:
         location = '\'{}\''.format(location)
     return '''<button type="button" class="fpButton"
         onClick="window.location={0}">{1}</button>'''.format(location, label)
-        
+
 # def htmlButtonLink3(label, click):
 # #-----------------------------------------------------------------------
 # # This version has the button inside a form, sometimes (eg when within
 # # a table cell), this seems to be necessary.
 #     return "<input type='button' onclick=\"window.location.href='{0}'\" value='{1}' />".format(click, label)
 #     #return "<form><input type=button style=\"color:red\" onclick=\"window.location.href='{0}'\" value='{1}' /></form>".format(click, label)
-        
+
 def htmlButton(label, id=None, click=None, color='btn-primary', type='button'):
-#----------------------------------------------------------------------- 
+#-----------------------------------------------------------------------
 # Standardized button format. Currently bootstrap.
 # Could have size parameter, which is class, eg btn-lg.
 # NB - malfunction is likely if there are double quotes in the click parameter.
@@ -274,6 +270,4 @@ def bsCol(contents, size='sm', numCols=1, extra=None):
 #
     divclass = 'col-' + size + '-' + str(numCols)
     return '<div {2}class="{0}">{1}</div>'.format(divclass, contents, '' if extra is None else ' {0} '.format(extra))
-
-
 

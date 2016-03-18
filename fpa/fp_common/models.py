@@ -18,12 +18,13 @@ from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import time
 import decimal
 import MySQLdb as mdb
+from functools import wraps
+from flask import current_app as app
 
 from const import *
 import util
-from functools import wraps
+import fpsys
 
-from flask import current_app as app
 
 DeclarativeBase = declarative_base()
 metadata = DeclarativeBase.metadata
@@ -94,10 +95,10 @@ class AttributeValue(DeclarativeBase):
     # relation definitions
     nodeAttribute = relation('NodeAttribute', primaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
     node = relation('Node', primaryjoin='AttributeValue.node_id==Node.id')
-    
+
     def getNode(self):
         return self.node
-    
+
     def setValueWithTypeUpdate(self, newVal):
     # Set the value, and if the val is not an integer, set the type to text.
     # NB by default datatypes are integer, if necessary fall back to decimal,
@@ -105,7 +106,7 @@ class AttributeValue(DeclarativeBase):
         self.value = newVal
         if not self.nodeAttribute.datatype == T_STRING and not util.isInt(newVal):
             self.nodeAttribute.datatype = T_DECIMAL if util.isNumeric(newVal) else T_STRING
-            
+
     def getValueAsString(self):
         return self.value
 
@@ -143,10 +144,10 @@ class Datum(DeclarativeBase):
 
     def isNA(self):
         return self.txtValue is None and self.numValue is None
-    
+
     def getNode(self):
         return self.node
-    
+
     def getValue(self):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.
@@ -176,7 +177,7 @@ class Datum(DeclarativeBase):
         if value is None:
             value = "NA"
         return value
-    
+
     def getValueAsString(self):
     #------------------------------------------------------------------
     # Return a value, how the value is stored/represented is type specific.
@@ -186,11 +187,11 @@ class Datum(DeclarativeBase):
     # if many calls) since we don't reference the traitInstance to work out the
     # type, we just consider which (of numValue and txtValue) is not NULL, for
     # at least one should be (ATTOW). Note both null indicates NA.
-    # Problem, however in disambiguating int and decimal.. so let's just do it the 
+    # Problem, however in disambiguating int and decimal.. so let's just do it the
     # lazy way.
     #
         return str(self.getValue())
-    
+
     def getTimeAsString(self):
         return util.epoch2dateTime(self.timestamp)
 
@@ -340,7 +341,7 @@ class TraitInstance(DeclarativeBase):
                 if allResults[i].node_id == allResults[i - 1].node_id:
                     del allResults[i]
         return allResults
-    
+
     def getLatestDatumPerNodeAsString(self, quoteStrings=True, metadata=True, missingValue="", orderByNodeId=False):
     #-----------------------------------------------------------------------
     # Returns an array of values, one for each node in the trial.
@@ -364,18 +365,18 @@ class TraitInstance(DeclarativeBase):
     #
         quoteFunc = util.quote if quoteStrings else lambda x: x
         eng = _eng(self)
- 
+
         # Set up sql query, this complicated due to need to get a value for every node
         # (left join) and latest of potentially multiple datums (cool trick).
         # NB we need at least one metadata field that is always not null (timestamp)
-        # to be able to disambiguate NA from missing.      
+        # to be able to disambiguate NA from missing.
         qry = """
         select {0}
         from node t
           left join datum d1 on t.id = d1.node_id and d1.traitInstance_id = {1}
           left join datum d2 on d1.node_id = d2.node_id and d1.traitInstance_id = d2.traitInstance_id and d2.timestamp > d1.timestamp
         where t.trial_id = {2} and ((d2.timestamp is null and d1.traitInstance_id = {1}) or d1.timestamp is null)
-        order by 
+        order by
         """ + ('t.id' if orderByNodeId else 'row,col')
         datatype = self.trait.datatype
         # If trait type is categorical then the values will be numbers which should be
@@ -385,7 +386,7 @@ class TraitInstance(DeclarativeBase):
             catMap = TraitCategory.getCategoricalTraitValue2NameMap(_dbc(self), self.trait_id)
         else:
             catMap = None
-            
+
         valList = []
         fields = 'd1.%s, d1.timestamp' % Datum.valueFieldName(self.trait.datatype)
         if metadata:
@@ -425,11 +426,10 @@ class TraitInstance(DeclarativeBase):
                         val = str(val)
                     valList.append(val)
         return valList
-    
 
     def getTrait(self):
         return self.trait
-    
+
     def createAttribute(self, name):
     # Create attribute for this ti, and write to db.
     # Returns NodeAttribute on success, else None.
@@ -451,12 +451,12 @@ class TraitInstance(DeclarativeBase):
         except sqlalchemy.exc.SQLAlchemyError as e:
             return str(e)
         return None
-        
+
     @oneException2None
     def getAttribute(self):
     # Return the nodeAttribute associated with this ti, if there is one, else None.
         return _dbc(self).query(NodeAttribute).filter(NodeAttribute.func == self.id).one()
-        
+
     def addData(self, aData):
     #-------------------------------------------------------------------------------------------------
     # Insert or update datum records for specified trait instance.
@@ -606,6 +606,19 @@ class Project(DeclarativeBase):
 #     def getURL(self):
 #         return 'https://***REMOVED***/fieldprime/projects/{0}'.format(self.id)
 
+    def makeNewProject(self, projectName, ownDatabase, contactName, contactEmail):
+    # Returns new project object, which has been saved to the database, if all well.
+    # Otherwise returns a string error message.
+        # Check name validity, availability:
+        if not util.isValidIdentifier(projectName):
+            return 'Invalid project name'
+
+        # Check project name doesn't already exist:
+        if fpsys.getProjectDBname(projectName) is not None:
+            return 'Project with name {} already exists'.format(projectName)
+
+        return getDbConnection(dbname)
+
     def getName(self):
         return self.name
     def getId(self):
@@ -682,7 +695,7 @@ class Trial(DeclarativeBase):
         return self.id
     def getProject(self):
         return self.project
-    
+
     # MFK - make this getProperties (maybe not, we already use that word) and include, at least, barcode
     def getAttributes(self):
         return self.nodeAttributes
@@ -806,7 +819,7 @@ class Trial(DeclarativeBase):
     def getNodes(self):
     # Returns list of Nodes, sorted by node id.
         return self.nodes
-    
+
     def getNodesSortedRowCol(self):
         # Return nodes for the specified trial, sorted by row/col
         dbc = Session.object_session(self)
@@ -993,14 +1006,14 @@ class Trial(DeclarativeBase):
     # NB, a tuple of empty strings will be used for nodes without a value.
     # The tuples are the most recent value and metadata for the node/ti in the trial
     # Timestamp is given in readable form.
-    # 
+    #
     # NB main work now done in getLatestDatumPerNodeAsString, perhaps this func no longer needed?
         outList = []
         for ti in tiList:
             valList = ti.getLatestDatumPerNodeAsString(quoteStrings=quoteStrings, metadata=metadata)
             outList.append(valList)
         return outList
-    
+
     def getAttributeColumns(self, attList, orderByNodeId=False):
     #-----------------------------------------------------------------------
     # Returns a list of columns one for each attribute in attList - each column
@@ -1145,7 +1158,7 @@ class Node(DeclarativeBase):
 
     # relation definitions
     trial = relation('Trial', primaryjoin='Node.trial_id==Trial.id')
-# These seem not to be used:    
+# These seem not to be used:
 #     nodeAttributes = relation('NodeAttribute', primaryjoin='Node.id==AttributeValue.node_id',
 #         secondary=attributeValueTable, secondaryjoin='AttributeValue.nodeAttribute_id==NodeAttribute.id')
 #     traitInstances = relation('TraitInstance', primaryjoin='Node.id==Datum.node_id', secondary=datumTable,
@@ -1174,10 +1187,10 @@ class NodeAttribute(DeclarativeBase):
 # They are retrieved from the rest API for statistics.
 # They are shown in trial browse/download output.
 # They are shown in node attribute lists on server.
-# 
+#
 # Node attributes can source the individual values from the attributeValue table,
 # or from a traitInstance.
-# 
+#
 # Todo:
 # Perhaps create a NodeAttribute for every traitInstance.
 # Add a "downloadable" flag to explicitly record which attributes are sent to app.
@@ -1205,7 +1218,7 @@ class NodeAttribute(DeclarativeBase):
 
     def fname(self):
         return self.name;
-    
+
     def setName(self, name):
         try:
             db = _dbc(self)
@@ -1218,13 +1231,13 @@ class NodeAttribute(DeclarativeBase):
 
     def isTraitInstance(self):
         return self.func is not None and self.func > 0
-    
+
     def getTraitInstance(self):
         if self.isTraitInstance():
             return getTraitInstance(_dbc(self), self.func)
         else:
             return None
-        
+
     def getAttributeValues(self, latestOnly=True):
     #----------------------------------------------------
     # Returns a list of objects each representing one node with
@@ -1265,11 +1278,11 @@ class NodeAttribute(DeclarativeBase):
                 where n.trial_id = {1}
                 order by """ + ('n.id' if orderByNodeId else 'row,col')
             valList = []
-            result = eng.execute(qry.format(self.id , self.trial.getId()))  
+            result = eng.execute(qry.format(self.id , self.trial.getId()))
             for row in result:
                 valList.append(missingValue if row[0] is None else row[0])
             return valList
-    
+
     @oneException2None
     def getUniqueNodeIdFromValue(self, val):
         return _dbc(self).query(AttributeValue.node_id) \
@@ -1455,8 +1468,8 @@ def dbName4Project(project):
 # NB - only valid for projects with own db. Should probably not be used now.
     return 'fp_' + project
 
-dbUser = None  # 'fpwserver'
-dbPass = None  # 'fpws_g00d10ch'
+dbUser = None
+dbPass = None
 def _getDBLoginDetails():
 #-------------------------------------------------------------------
 # Sets globals dbUser and dbPass from file
@@ -1477,7 +1490,6 @@ def fpDBUser():
     _getDBLoginDetails()
     return dbUser
 
-import fpsys
 def getSysUserEngine(projectName):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,

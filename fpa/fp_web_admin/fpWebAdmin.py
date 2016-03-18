@@ -296,7 +296,7 @@ def htmlTabProperties(sess, trial):
     # Make separate (AJAX) form for extras: -----------------------------
     extrasForm = trialProperties.trialPropertyTable(sess, trial, False)
     extrasForm += fpUtil.htmlButton("Save", id="extrasSubmit", color='btn-success', type='submit')
-    r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, id='extras'))
+    r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, formId='extras'))
     # JavaScript for AJAX form submission:
     r += '''
     <script>
@@ -1699,7 +1699,7 @@ def errorScreenInSession(sess, msg):
 # User remains logged in and error is show with usual page header/footer.
 # Intended as a return for a HTTP request after something bad, but not
 # suspicious or catastrophic, has occurred.
-# 
+#
     out = '<font color="red">Something bad has happened: {}<font>'.format(msg)
     return dp.dataPage(sess, content=out, title='Error', trialId=-1)
 

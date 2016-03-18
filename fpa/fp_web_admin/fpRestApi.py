@@ -5,7 +5,7 @@
 # getting or setting data in json format.
 # see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask
 
-from flask import Blueprint, current_app, request, Response, jsonify, g, abort, make_response
+from flask import Blueprint, current_app, request, Response, jsonify, g, abort
 from flask.ext.httpauth import HTTPBasicAuth
 from functools import wraps
 import simplejson as json
@@ -70,7 +70,7 @@ def verify_auth_token(token):
 def verify_password(username_or_token, password):
 # Password check.
 # This is invoked by the auth.login_required decorator.
-#    
+#
     # first try to authenticate by token
     user = verify_auth_token(username_or_token)
     if not user:
@@ -97,7 +97,7 @@ def wr_check_session(func):
         COOKIE_NAME = 'sid'
 # is this secure? what if sid not in cooky?
         sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
-        if sid is not None:        
+        if sid is not None:
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
         if sid is None or not sess.valid():  # Check if session is still valid
             return 'error: not logged in', 401
@@ -195,7 +195,7 @@ def getProject(id):
 
 def _checkTiAttributeStuff(sess, tiId):
 # Check permissions for ti attribute ops. If OK, returns the ti,
-# else returns error Response.    
+# else returns error Response.
     # Check user has rights for this operation:
     if not sess.adminRights():
         return jsonErrorReturn('Requires project admin rights', HTTP_UNAUTHORIZED)
@@ -211,19 +211,19 @@ def _checkTiAttributeStuff(sess, tiId):
 #@auth.login_required
 @wr_check_session
 def createTiAttribute(sess, tiId):
-# Create attribute for the TI specified in the URL. 
+# Create attribute for the TI specified in the URL.
 # The attribute name must be present as a url parameter "name".
-#    
+#
     ti = _checkTiAttributeStuff(sess, tiId)
     if not isinstance(ti, models.TraitInstance):
         return ti
-    
+
     # Get name proposed for attribute:
     name = request.json.get('name')
     if not name:
         return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
-    
-    # check 
+
+    # check
     nodat = ti.getAttribute()
     if nodat is None:
         # Create it:
@@ -233,7 +233,7 @@ def createTiAttribute(sess, tiId):
     else:
         # Reset the name:
         nodat.setName(name)  # error return
-                    
+
     return jsonSuccessReturn("Attribute Created")
 
 @webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['DELETE'])
@@ -273,20 +273,34 @@ def urlCreateProject(sess):
     contactName = frm['contactName']
     contactEmail = frm['contactEmail']
     ownDatabase = frm['ownDatabase']
-    return projectName + 'foo\n'
-    
+    if ownDatabase == 'true':
+        ownDatabase = True
+    elif ownDatabase == 'false':
+        ownDatabase = False
+    else:
+        return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+
+    #return projectName + 'foo\n'
+
     # Note, perhaps we should use json input, in which case we would have:
     # projectName = request.json.get('projectName')...
     # top level dir called 'projects'? 'users'
 #     parentUrl = request.json.get('parent')
 #     parentProj = models.Project.getByUrl(parentUrl);
 
+
+    # Check permissions:
+
+    # Create the project:
+    proj = models.Project(projectName, ownDatabase, contactName, contactEmail);
+
+    # Return representation of the project, or a link to it?
     robj = { 'name':projectName, 'id':27}
     return jsonReturn(robj, HTTP_CREATED)
   except Exception, e:
       return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
 
-    
+
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @auth.login_required
 def old_createProject(path):
@@ -373,10 +387,10 @@ FP=http://0.0.0.0:5001/fpv1
 # > mysql
 # mysql> use fpsys
 # mysql> insert user (login, name, passhash, login_type, permissions)
-#        values ('fpadmin', 'FieldPrime Administrator', <PASSHASH>, 3, 1); 
-# 
+#        values ('fpadmin', 'FieldPrime Administrator', <PASSHASH>, 3, 1);
+#
 # use python to get passhash of password.
-# 
+#
 
 # Create ***REMOVED*** user:
 curl -u mk:m -i -X POST -H "Content-Type: application/json" \
