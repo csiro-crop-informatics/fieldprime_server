@@ -266,39 +266,42 @@ def urlCreateProject(sess):
 #   contactName : Name of contact person
 #   contactEmail : email of contact person
 #
-  print 'in urlCreateProject'
-  try:
-    frm = request.form
-    projectName = frm['projectName']    # check if exists? or put in try?
-    contactName = frm['contactName']
-    contactEmail = frm['contactEmail']
-    ownDatabase = frm['ownDatabase']
-    if ownDatabase == 'true':
-        ownDatabase = True
-    elif ownDatabase == 'false':
-        ownDatabase = False
-    else:
-        return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-
-    #return projectName + 'foo\n'
-
-    # Note, perhaps we should use json input, in which case we would have:
-    # projectName = request.json.get('projectName')...
-    # top level dir called 'projects'? 'users'
+# Note, perhaps we should use json input, in which case we would have:
+# projectName = request.json.get('projectName')...
+# top level dir called 'projects'? 'users'
 #     parentUrl = request.json.get('parent')
 #     parentProj = models.Project.getByUrl(parentUrl);
-
-
+#
+# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
+# We are using to get user ident, which hopefully is available from token or basic auth
+  
     # Check permissions:
+    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
+        return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
 
-    # Create the project:
-    proj = models.Project(projectName, ownDatabase, contactName, contactEmail);
+    try:
+        frm = request.form
+        projectName = frm['projectName']    # check if exists? or put in try?
+        contactName = frm['contactName']
+        contactEmail = frm['contactEmail']
+        ownDatabase = frm['ownDatabase']
+        if ownDatabase == 'true':
+            ownDatabase = True
+        elif ownDatabase == 'false':
+            ownDatabase = False
+        else:
+            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+    
+        # Create the project:
+        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail)
+        if not isinstance(proj, models.Project):
+            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
 
-    # Return representation of the project, or a link to it?
-    robj = { 'name':projectName, 'id':27}
-    return jsonReturn(robj, HTTP_CREATED)
-  except Exception, e:
-      return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+        # Return representation of the project, or a link to it?
+        robj = { 'name':projectName, 'id':27}
+        return jsonReturn(robj, HTTP_CREATED)
+    except Exception, e:
+          return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
 
 
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])

@@ -18,12 +18,12 @@ from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 import time
 import decimal
 import MySQLdb as mdb
-from functools import wraps
-from flask import current_app as app
 
 from const import *
 import util
-import fpsys
+from functools import wraps
+from flask import current_app as app
+#import fpsys
 
 
 DeclarativeBase = declarative_base()
@@ -583,7 +583,7 @@ class ScoreSet():
         if len(self.instances) <= 0:
             return ''
         return self.instances[0].getTrait()
-
+    
 class Project(DeclarativeBase):
     __tablename__ = 'project'
     __table_args__ = {}
@@ -606,18 +606,72 @@ class Project(DeclarativeBase):
 #     def getURL(self):
 #         return 'https://***REMOVED***/fieldprime/projects/{0}'.format(self.id)
 
-    def makeNewProject(self, projectName, ownDatabase, contactName, contactEmail):
+    @staticmethod
+    def makeNewProject(projectName, ownDatabase, contactName, contactEmail):
     # Returns new project object, which has been saved to the database, if all well.
     # Otherwise returns a string error message.
+    
+# create database if not exists $DBNAME;
+# use $DBNAME;
+# source fprime.create.tables.sql;
+# grant all on $DBNAME.* to '$WEBUSER'@'localhost';
+# insert fpsys.project (name, dbname) values ('$PROJNAME', '$DBNAME');
+# insert project (id, up_id, name, contactName, contactEmail) values ((select id from fpsys.project where name='$PROJNAME'), null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
+# flush privileges;
+# insert system (name, value) values ('contactName', '$CONTACT_NAME'), ('contactEmail', '$CONTACT_EMAIL');
+
+        if not ownDatabase:
+            return 'Shared databases not supported yet'
+        
         # Check name validity, availability:
         if not util.isValidIdentifier(projectName):
             return 'Invalid project name'
 
         # Check project name doesn't already exist:
-        if fpsys.getProjectDBname(projectName) is not None:
+        if Project.getProjectDBname(projectName) is not None:
             return 'Project with name {} already exists'.format(projectName)
 
-        return getDbConnection(dbname)
+        dbname = dbName4Project(projectName)
+        sql = 'create database {}; use {};'.format(dbname, dbname)
+        with open(app.config['FP_DB_CREATE_FILE']) as sqlfile:
+            sql += sqlfile.read()
+
+        sql += 'insert fpsys.project (name, dbname) values ("{}", "{}");'.format(projectName, dbname)
+        # does above return newly created id - or can we get it somehow?
+        sql += 'insert project (id, up_id, name, contactName, contactEmail) values ' + \
+        '((select id from fpsys.project where name="{}"), null, "{}", "{}", "{}");'.format(projectName, projectName, contactName, contactEmail)
+        sql += 'flush privileges;'
+# See if we can remove this - it's redundant and assumes single project per db:        
+        sql += 'insert system (name, value) values ("contactName", "{}"), ("contactEmail", "{}");'.format(contactName, contactEmail)
+        try:
+            con = getFpsysDbConnection() 
+            cur = con.cursor()
+            cur.execute(sql)
+            cur.close()
+            con.commit()  # not sure this is necessary
+            # How to check if succeeded?
+#             resRow = cur.fetchone()
+#             return None if resRow is None else resRow[0]
+
+            # 
+        except mdb.Error, e:
+            return 'Error creating project: ' + str(e)
+        return 'not even wrong'
+        
+    @staticmethod
+    def getProjectDBname(projectName):
+    #-----------------------------------------------------------------------
+    # Returns dbname for named project or None on error.
+    #
+        try:
+            con = getFpsysDbConnection()
+            qry = "select dbname from project where name = %s"
+            cur = con.cursor()
+            cur.execute(qry, (projectName,))
+            foo = cur.fetchone()
+            return None if foo is None else foo[0]
+        except mdb.Error, e:
+            return None
 
     def getName(self):
         return self.name
@@ -1495,7 +1549,7 @@ def getSysUserEngine(projectName):
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    dbname = fpsys.getProjectDBname(projectName)
+    dbname = Project.getProjectDBname(projectName)
     return getDbConnection(dbname)
 
 def getDbConnection(dbname):
@@ -1866,3 +1920,10 @@ def datatypeName(dtypeCode):
         return TRAIT_TYPE_NAMES[dtypeCode]
     except (IndexError, TypeError):
         return None
+    
+def getFpsysDbConnection():
+    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
+    return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
+
+

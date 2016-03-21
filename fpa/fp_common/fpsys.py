@@ -14,16 +14,10 @@ import os
 import ***REMOVED***
 
 import util
-from models import dbName4Project, fpDBUser, fpPassword         # circularity here, could move APP* to separate module
+from models import dbName4Project, fpDBUser, fpPassword, getFpsysDbConnection         # circularity here, could move APP* to separate module
 from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
 from passlib.apps import custom_app_context as pwd_context
 from passlib.apps import mysql_context
-
-
-def getFpsysDbConnection():
-    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
-    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
-    return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
 
 
 def _getProjectIdFromName(projName):
@@ -134,21 +128,6 @@ def getUserProjects(username):
         return (userProjs, None)
     except mdb.Error, e:
         return (None, 'Failed system login:' + str(e))
-
-
-def getProjectDBname(projectName):
-#-----------------------------------------------------------------------
-# Returns dbname for named project or None on error.
-#
-    try:
-        con = getFpsysDbConnection()
-        qry = "select dbname from project where name = %s"
-        cur = con.cursor()
-        cur.execute(qry, (projectName,))
-        foo = cur.fetchone()
-        return None if foo is None else foo[0]
-    except mdb.Error, e:
-        return None
 
 
 def add***REMOVED***UserToProject(ident, project, perms):

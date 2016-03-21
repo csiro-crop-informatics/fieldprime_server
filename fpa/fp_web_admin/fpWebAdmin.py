@@ -1819,6 +1819,7 @@ if __name__ == '__main__':
     app.config['CATEGORY_IMAGE_FOLDER'] = FPROOT + '/catPhotos'
     app.config['CATEGORY_IMAGE_URL_BASE'] = 'file://' + FPROOT + '/catPhotos'
     app.config['FPPWFILE'] = FPROOT + '/fppw'
+    app.config['FP_DB_CREATE_FILE'] = FPROOT + 'fprime.create.tables.sql'
     LOGIN_TIMEOUT = 36000
 
     # Setup logging:
