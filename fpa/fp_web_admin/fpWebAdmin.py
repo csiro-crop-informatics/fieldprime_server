@@ -1180,7 +1180,9 @@ def urlFPAdmin(sess):
             forms.formElement('Contact', 'Name of contact person',
                         'contactName', 'contId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
             forms.formElement('Contact Email', 'Email address of contact person',
-                        'contactEmail', 'emailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
+                        'contactEmail', 'emailId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('Project admin login', 'User to get admin access to the new project',
+                              'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
         ]
 
 #         out = '<button type="button" class="btn btn-primary" onclick="fplib.popform.select()">Create Project</button>'

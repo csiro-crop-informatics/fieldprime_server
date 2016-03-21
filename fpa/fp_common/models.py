@@ -607,7 +607,7 @@ class Project(DeclarativeBase):
 #         return 'https://***REMOVED***/fieldprime/projects/{0}'.format(self.id)
 
     @staticmethod
-    def makeNewProject(projectName, ownDatabase, contactName, contactEmail):
+    def makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin):
     # Returns new project object, which has been saved to the database, if all well.
     # Otherwise returns a string error message.
     
@@ -626,7 +626,10 @@ class Project(DeclarativeBase):
         # Check name validity, availability:
         if not util.isValidIdentifier(projectName):
             return 'Invalid project name'
-
+# check contactname, email, and adminLogin
+        if not util.isValidIdentifier(adminLogin):
+            return 'invalid login name'
+         
         # Check project name doesn't already exist:
         if Project.getProjectDBname(projectName) is not None:
             return 'Project with name {} already exists'.format(projectName)

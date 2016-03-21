@@ -285,6 +285,7 @@ def urlCreateProject(sess):
         contactName = frm['contactName']
         contactEmail = frm['contactEmail']
         ownDatabase = frm['ownDatabase']
+        adminLogin = frm['adminLogin']
         if ownDatabase == 'true':
             ownDatabase = True
         elif ownDatabase == 'false':
@@ -293,7 +294,7 @@ def urlCreateProject(sess):
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
     
         # Create the project:
-        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail)
+        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
         if not isinstance(proj, models.Project):
             return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
 
