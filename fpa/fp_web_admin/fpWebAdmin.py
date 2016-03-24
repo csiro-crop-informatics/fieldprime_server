@@ -1176,18 +1176,34 @@ def urlFPAdmin(sess):
                         typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
             forms.formElement('Project Name', 'Name for new project',
                        'projectName', 'pnameId',
-                       etype=forms.formElement.TEXT, typeSpecificData='foo'),
+                       etype=forms.formElement.TEXT),
             forms.formElement('Contact', 'Name of contact person',
-                        'contactName', 'contId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
+                        'contactName', 'contId', etype=forms.formElement.TEXT),
             forms.formElement('Contact Email', 'Email address of contact person',
-                        'contactEmail', 'emailId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
+                        'contactEmail', 'emailId', etype=forms.formElement.TEXT),
             forms.formElement('Project admin login', 'User to get admin access to the new project',
                               'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
         ]
+        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', newProjFormElements, 'createProjForm')))
 
-#         out = '<button type="button" class="btn btn-primary" onclick="fplib.popform.select()">Create Project</button>'
-#         out += forms.makeForm(newProjFormElements)
-        out = forms.makeModalForm('Create Project', newProjFormElements)
+        # Create user form:
+        #out += '<div style="margin-top:20px;">'
+        createUserFormElements = [
+            forms.formElement('Login Type', 'Specify user type',
+                        'ownDatabase', 'xncid',
+                        etype=forms.formElement.RADIO,
+                        typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
+            forms.formElement('Login ident', 'Login name',
+                       'projectName', 'xpnameId',
+                       etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('User Name', 'Full name of new user',
+                        'contactName', 'xcontId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('User Email', 'Email address of new user',
+                        'contactEmail', 'xemailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
+        ]
+        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements, 'createUserForm'),
+                                        topMargin='20px')
+        #out += '</div>'
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 #         return theFormAgain()
 

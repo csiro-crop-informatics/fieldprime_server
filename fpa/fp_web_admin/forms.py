@@ -77,10 +77,10 @@ def makeForm(formElements):
     out += '</table></form>'
     return out
 
-def makeModalForm(buttonLabel, formElements):
-    out = '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal">'
+def makeModalForm(buttonLabel, formElements, divId="myModal", action=None):
+    out = '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#{}">'.format(divId)
     out += '{}</button>'.format(buttonLabel)
-    out += '<div id="myModal" class="modal fade" role="dialog"><div class="modal-dialog"><div class="modal-content">'
+    out += '<div id="{}" class="modal fade" role="dialog"><div class="modal-dialog"><div class="modal-content">'.format(divId)
 
     # modal header:
     out += '''<div class="modal-header">
@@ -90,7 +90,7 @@ def makeModalForm(buttonLabel, formElements):
 
     # modal content:
     out += '<div class="modal-body">'
-    out += '<form method="post"><table class="userInputForm">'
+    out += '<form method="post" {}><table class="userInputForm">'.format("" if action is None else action)
     for el in formElements:
         out += el.htmlElement()
     out += '</table><input type="submit" value="Submit"></form>'

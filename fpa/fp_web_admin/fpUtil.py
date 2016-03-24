@@ -271,3 +271,13 @@ def bsCol(contents, size='sm', numCols=1, extra=None):
     divclass = 'col-' + size + '-' + str(numCols)
     return '<div {2}class="{0}">{1}</div>'.format(divclass, contents, '' if extra is None else ' {0} '.format(extra))
 
+def bsSingleColumnRow(contents, topMargin=None):
+#-----------------------------------------------------------------------
+# Return the contents wrapped as a single column row.
+# With the given topMargin (eg "20px") if specified.
+#
+    if topMargin is not None:
+        contents = '<div style="margin-top:{};">{}</div>'.format(topMargin, contents)
+    col = bsCol(contents)
+    return bsRow(col)
+
