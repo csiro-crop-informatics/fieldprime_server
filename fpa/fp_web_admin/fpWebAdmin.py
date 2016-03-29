@@ -45,6 +45,7 @@ import websess
 from fpRestApi import webRest
 from fpAppWapi import appApi
 import forms
+from const import *
 
 app = Flask(__name__)
 app.register_blueprint(webRest)
@@ -131,8 +132,7 @@ def dec_check_session(returnNoneSess=False):
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            COOKIE_NAME = 'sid'
-            sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
+            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
             if not sess.valid():  # Check if session is still valid
@@ -1154,20 +1154,33 @@ def urlUserDetails(sess, projectName):
 @app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlFPAdmin(sess):
+#     jscript = '''
+#         <script>
+#         function fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR) {
+#             fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
+#             var x = document.getElementById("fpTiAttName");
+#             x.textContent = name;
+#             fpToggleTiAttribute(false);
+#         };
+#         function fpCreateUser(name) {
+#             $.ajax({
+#                 url:"%s",
+#                 type:"POST",
+#                 data:JSON.stringify({"name":name}),
+#                 dataType:"json",
+#                 contentType: "application/json",
+#                 error : fplib.ajax.jsonError,
+#                 success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
+#             });
+#         };
+#         </script>''' % url_for('webRest.new_user', tiId=ti.getId())
+    
     usr = sess.getUser()
     if usr is None:
         return badJuju(sess, 'No user found')
     if not usr.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
         return badJuju(sess, 'No admin rights')
 
-    showPassChange = usr.allowPasswordChange()
-
-    def theFormAgain(op=None, msg=None):
-        return dp.dataTemplatePage(sess, 'admin.html', generator='fplib.demoDivGen',
-                    title="Admin", op=op, errMsg=msg, passChange=showPassChange,
-                    usersHTML='hallo!')
-
-    title = "Administration"
     if request.method == 'GET':
         newProjFormElements = [
             forms.formElement('Separate Database', 'Create database for this project',
@@ -1187,25 +1200,29 @@ def urlFPAdmin(sess):
         out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', newProjFormElements, 'createProjForm')))
 
         # Create user form:
-        #out += '<div style="margin-top:20px;">'
+        # Let's try do this with ajax from client direct to rest api.
+        # To obviate the client having to login let's pass a token - but it would
+        # have to be a token for the userid, not the server power user..
+        # Use the jQuery .submit function.
         createUserFormElements = [
             forms.formElement('Login Type', 'Specify user type',
-                        'ownDatabase', 'xncid',
+                        'fpcuLoginType', 'xncid',
                         etype=forms.formElement.RADIO,
                         typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
             forms.formElement('Login ident', 'Login name',
-                       'projectName', 'xpnameId',
+                       'fpcuIdent', 'xpnameId',
                        etype=forms.formElement.TEXT, typeSpecificData='foo'),
-            forms.formElement('User Name', 'Full name of new user',
-                        'contactName', 'xcontId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
+# specify this is a password field?                                  
+            forms.formElement('Password', 'Initial password for the new user',
+                       'fpcuPassword', 'fpcuPassword',
+                       etype=forms.formElement.TEXT, typeSpecificData='foo'),            forms.formElement('User Name', 'Full name of new user',
+                        'fpcuFullname', 'xcontId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
             forms.formElement('User Email', 'Email address of new user',
-                        'contactEmail', 'xemailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
+                        'fpcuEmail', 'xemailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
         ]
-        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements, 'createUserForm'),
+        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements, divId='createUserForm'),
                                         topMargin='20px')
-        #out += '</div>'
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
-#         return theFormAgain()
 
     if request.method == 'POST':
         # login with token (via function), not cooky. Or is this better done from client?
@@ -1215,14 +1232,37 @@ def urlFPAdmin(sess):
                        'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase']}
             newurl = url_for('webRest.urlCreateProject', _external=True)
             print 'newurl:' + newurl
-            f = request.cookies.get('sid')
-            cooky = {'sid':f}
+            f = request.cookies.get(NAME_COOKIE_SESSION)
+            cooky = {NAME_COOKIE_SESSION:f}
             x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
         except Exception, e:
             return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
         print x
         # Here we need check return status and respond appropriately
         return x
+    
+@app.route(PREURL+'/fpadmin/', methods=['POST'])
+@dec_check_session()
+def urlFPAdminCreateUser(sess):
+        # login with token (via function), not cooky. Or is this better done from client?
+        frm = request.form
+        try:
+            is***REMOVED***Login = frm['fpcuLoginType'] == 'true'
+            ident = frm['fpcuIdent']
+            fullname = frm['fpcuFullname']
+            email = frm['fpcuEmail']
+            payload = {'is***REMOVED***Login':is***REMOVED***Login, 'ident':ident, 'fullname':fullname, 'email':email}
+            newurl = url_for('webRest.urlCreateUser', _external=True)
+            print 'newurl:' + newurl
+            f = request.cookies.get(NAME_COOKIE_SESSION)
+            cooky = {NAME_COOKIE_SESSION:f}
+            x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
+        except Exception, e:
+            return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
+        print x
+        # Here we need check return status and respond appropriately
+        return x
+  
 
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
@@ -1750,6 +1790,13 @@ def urlInfoPage(sess, pagename):
     g.rootUrl = url_for('urlMain')
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
+def asyncGetToken(username, password):
+    try:
+        newurl = url_for('webRest.get_auth_token', _external=True)
+        jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
+    except Exception, e:
+        return 'getToken error: ' + str(e)
+    return jresp.token
 
 @app.route(PREURL+'/', methods=["GET", "POST"])
 def urlMain():
@@ -1777,8 +1824,7 @@ def urlMain():
 # Might want to change displayed url for some things eg the op to change password ends up displaying
 # the frontPage, but shows the URL for the op.
 #
-    COOKIE_NAME = 'sid'
-    sid = request.cookies.get(COOKIE_NAME)                # Get the session id from cookie (if there)
+    sid = request.cookies.get(NAME_COOKIE_SESSION)                # Get the session id from cookie (if there)
     sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR'])     # Create session object (may be existing session)
     g.rootUrl = url_for(sys._getframe().f_code.co_name)   # Set global variable accessible by templates (to the url for this func)
     g.userName = 'unknown'
@@ -1807,9 +1853,15 @@ def urlMain():
                     sess.resetLastUseTime()
                     sess.setUserIdent(username)
                     g.userName = username
-                    #g.projectName = project
                     resp = make_response(frontPage(sess))
-                    resp.set_cookie(COOKIE_NAME, sess.sid())      # Set the cookie
+                    resp.set_cookie(NAME_COOKIE_SESSION, sess.sid())      # Set the cookie
+                    
+                    # Create an authentication token for the user:           
+                    # How can we refresh token timeout the way we do for sessions?
+                    # Perhaps have to have it as a cookie and send back modified version each time. 
+#                     token = asyncGetToken(username, password)
+#                     resp.set_cookie(NAME_COOKIE_TOKEN, token)
+                    
                     return resp
             elif authOK is None:
                 util.flog('Login failed attempt for user {0}'.format(username))

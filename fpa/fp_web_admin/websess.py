@@ -29,9 +29,23 @@ def adminAccess(perms):
 # It also provides a database connection, which is generated on request, using the
 # stored username and password.
 #
+# WebSess objects store the following data:
+# data['id'] - fpsys.project.id
+# data['projectName'] - fpsys.project.name
+# data['dbname'] - fpsys.project.dbname
+# data['projectAccess'] - fpsys.userProject.permissions
+# data['lastvisit'] - timestamp of last use
+# data['userident'] - user ident
+# data['loginType'] - password validation method. Only used in fpRestApi.urlLogin, which is not currently used.
+#
+
+
 class WebSess(object):
+    
     def __init__(self, forceNew=False, sid=None, timeout=900, sessFileDir='/tmp'):
     #------------------------------------------------------------------
+    # Create WebSess instance, which has associated data object, which
+    # may be that created previously.
         self.mTimeout = timeout
         # set sid or create new one:
         if not forceNew and sid:

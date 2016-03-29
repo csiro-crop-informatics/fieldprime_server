@@ -20,7 +20,7 @@ import websess
 from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 import fpUtil
 import fp_common.util as util
-
+from const import *
 
 ### Initialization: ####################################
 webRest = Blueprint('webRest', __name__)
@@ -52,6 +52,9 @@ def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
 ### Authorization stuff: ########################################################
 
 def generate_auth_token(username, expiration=600):
+# Return a token for the specified username. This can be used
+# to authenticate as the user, for the specified expiration
+# time (which is in seconds).    
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
     return s.dumps({'id': username})
 
@@ -70,6 +73,7 @@ def verify_auth_token(token):
 def verify_password(username_or_token, password):
 # Password check.
 # This is invoked by the auth.login_required decorator.
+# If verification is successful, g.user is set.
 #
     # first try to authenticate by token
     user = verify_auth_token(username_or_token)
@@ -94,9 +98,8 @@ def wr_check_session(func):
 #
     @wraps(func)
     def inner(*args, **kwargs):
-        COOKIE_NAME = 'sid'
 # is this secure? what if sid not in cooky?
-        sid = request.cookies.get(COOKIE_NAME) # Get the session id from cookie (if there)
+        sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
         if sid is not None:
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
         if sid is None or not sess.valid():  # Check if session is still valid
@@ -121,6 +124,21 @@ def get_auth_token():
     token = generate_auth_token(g.user, 600)
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
+# @webRest.route(API_PREFIX + 'otherToken/<otherUserId>', methods=['GET'])
+# @auth.login_required
+# def get_other_auth_token(otherUserId):
+# #-------------------------------------------------------------------------------------------------
+# # Returns, in a JSON object, a token for user.
+# # The returned token may be used as a basic authentication username
+# # for subsequent calls to the api (for up to 600 seconds).
+# # This is in place of repeatedly sending the real username and password.
+# # When using the token as the username, the password is not used, so any
+# # value can be given.
+# #
+#     # Check authenticated user has power to create tokens for others.
+#     token = generate_auth_token(g.user, 600)
+#     return jsonify({'token': token.decode('ascii'), 'duration': 600})
+
 @webRest.route(API_PREFIX + 'users', methods=['POST'])
 @auth.login_required
 def new_user():
@@ -129,6 +147,11 @@ def new_user():
 # Authenticated user must have create user perms.
 # NB Currently can only create local user. Need to be able to create ***REMOVED***,
 # could have login_type parameter.
+# Expects json input with the following information:
+# . login
+# . loginType
+# . password
+# . fullname
 #
     # check permissions
     if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
@@ -379,6 +402,56 @@ def createProject2():
 
     # create the project:
     proj = models.Project();
+    
+### Users: ---------------------------------------------------------------------------------------
+
+# @webRest.route(API_PREFIX + 'users', methods=['POST'])
+# @wr_check_session
+def urlCreateUser(sess):
+# Expects URL parameters:
+#   ownDatabase : 'true' or 'false', indicating whether separate database should be
+#                 created. Currently ignored and assumed true.
+#   projectName : name project - must be appropriate.
+#   contactName : Name of contact person
+#   contactEmail : email of contact person
+#
+# Note, perhaps we should use json input, in which case we would have:
+# projectName = request.json.get('projectName')...
+# top level dir called 'projects'? 'users'
+#     parentUrl = request.json.get('parent')
+#     parentProj = models.Project.getByUrl(parentUrl);
+#
+# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
+# We are using to get user ident, which hopefully is available from token or basic auth
+  
+    # Check permissions:
+    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
+        return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
+
+    try:
+        frm = request.form
+        projectName = frm['projectName']    # check if exists? or put in try?
+        contactName = frm['contactName']
+        contactEmail = frm['contactEmail']
+        ownDatabase = frm['ownDatabase']
+        adminLogin = frm['adminLogin']
+        if ownDatabase == 'true':
+            ownDatabase = True
+        elif ownDatabase == 'false':
+            ownDatabase = False
+        else:
+            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+    
+        # Create the project:
+        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
+        if not isinstance(proj, models.Project):
+            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
+
+        # Return representation of the project, or a link to it?
+        robj = { 'name':projectName, 'id':27}
+        return jsonReturn(robj, HTTP_CREATED)
+    except Exception, e:
+          return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
 
 ########################################################################################
 TEST_STUFF = '''
@@ -428,7 +501,7 @@ trials { /<projName> } [ /<trialName> ]
 '''
 
 ########################################################################################
-### Old stuff, but note some of it may be in use: ######################################
+### Old stuff, but in use: #############################################################
 
 @webRest.route('/project/<projectName>/attribute/<attId>', methods=['GET'])
 @wr_check_session
@@ -444,6 +517,10 @@ def urlAttributeData(sess, projectName, attId):
     for av in vals:
         data.append([av.getNode().getId(), av.getValueAsString()])
     return Response(json.dumps(data), mimetype='application/json')
+
+
+########################################################################################
+### Old stuff, NOT in use: #############################################################
 
 @webRest.route('/project/<projectName>/trial/<trialId>/slice/<tiId>', methods=['GET'])
 @wr_check_session
