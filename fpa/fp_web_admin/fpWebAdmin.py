@@ -1205,22 +1205,19 @@ def urlFPAdmin(sess):
         # have to be a token for the userid, not the server power user..
         # Use the jQuery .submit function.
         createUserFormElements = [
-            forms.formElement('Login Type', 'Specify user type',
-                        'fpcuLoginType', 'xncid',
-                        etype=forms.formElement.RADIO,
-                        typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
-            forms.formElement('Login ident', 'Login name',
-                       'fpcuIdent', 'xpnameId',
-                       etype=forms.formElement.TEXT, typeSpecificData='foo'),
-# specify this is a password field?                                  
-            forms.formElement('Password', 'Initial password for the new user',
-                       'fpcuPassword', 'fpcuPassword',
-                       etype=forms.formElement.TEXT, typeSpecificData='foo'),            forms.formElement('User Name', 'Full name of new user',
-                        'fpcuFullname', 'xcontId', etype=forms.formElement.TEXT, typeSpecificData='foo'),
-            forms.formElement('User Email', 'Email address of new user',
-                        'fpcuEmail', 'xemailId', etype=forms.formElement.TEXT, typeSpecificData='foo')
+            forms.formElement('Login Type', 'Specify user type', 'fpcuLoginType', 'xncid',
+                              etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
+            forms.formElement('Login ident', 'Login name', 'fpcuIdent', 'xpnameId',
+                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('Password', 'Initial password for the new user', 'fpcuPassword', 'fpcuPassword',
+                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('User Name', 'Full name of new user', 'fpcuFullname', 'xcontId',
+                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
+            forms.formElement('User Email', 'Email address of new user', 'fpcuEmail', 'xemailId',
+                              etype=forms.formElement.TEXT, typeSpecificData='foo')
         ]
-        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements, divId='createUserForm'),
+        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements,
+                                                            divId='createUserForm', action=url_for('urlFPAdminCreateUser')),
                                         topMargin='20px')
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 
@@ -1244,24 +1241,25 @@ def urlFPAdmin(sess):
 @app.route(PREURL+'/fpadmin/', methods=['POST'])
 @dec_check_session()
 def urlFPAdminCreateUser(sess):
-        # login with token (via function), not cooky. Or is this better done from client?
-        frm = request.form
-        try:
-            is***REMOVED***Login = frm['fpcuLoginType'] == 'true'
-            ident = frm['fpcuIdent']
-            fullname = frm['fpcuFullname']
-            email = frm['fpcuEmail']
-            payload = {'is***REMOVED***Login':is***REMOVED***Login, 'ident':ident, 'fullname':fullname, 'email':email}
-            newurl = url_for('webRest.urlCreateUser', _external=True)
-            print 'newurl:' + newurl
-            f = request.cookies.get(NAME_COOKIE_SESSION)
-            cooky = {NAME_COOKIE_SESSION:f}
-            x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
-        except Exception, e:
-            return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
-        print x
-        # Here we need check return status and respond appropriately
-        return x
+    print 'in urlFPAdminCreateUser'
+    # login with token (via function), not cooky. Or is this better done from client?
+    frm = request.form
+    try:
+        is***REMOVED***Login = frm['fpcuLoginType'] == 'true'
+        ident = frm['fpcuIdent']
+        fullname = frm['fpcuFullname']
+        email = frm['fpcuEmail']
+        payload = {'is***REMOVED***Login':is***REMOVED***Login, 'ident':ident, 'fullname':fullname, 'email':email}
+        newurl = url_for('webRest.urlCreateUser', _external=True)
+        print 'newurl:' + newurl
+        f = request.cookies.get(NAME_COOKIE_SESSION)
+        cooky = {NAME_COOKIE_SESSION:f}
+        x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
+    except Exception, e:
+        return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
+    print x
+    # Here we need check return status and respond appropriately
+    return x
   
 
 #######################################################################################################
