@@ -54,7 +54,7 @@ def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
 def generate_auth_token(username, expiration=600):
 # Return a token for the specified username. This can be used
 # to authenticate as the user, for the specified expiration
-# time (which is in seconds).    
+# time (which is in seconds).
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
     return s.dumps({'id': username})
 
@@ -297,7 +297,7 @@ def urlCreateProject(sess):
 #
 # Not the use of sess in here - this is problematic as proper rest calls won't have a session.
 # We are using to get user ident, which hopefully is available from token or basic auth
-  
+
     # Check permissions:
     if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
         return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
@@ -309,17 +309,20 @@ def urlCreateProject(sess):
         contactEmail = frm['contactEmail']
         ownDatabase = frm['ownDatabase']
         adminLogin = frm['adminLogin']
+        print 'urlCreateProject'
         if ownDatabase == 'true':
             ownDatabase = True
         elif ownDatabase == 'false':
             ownDatabase = False
         else:
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-    
+        print 'urlCreateProject'
+
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
         if not isinstance(proj, models.Project):
             return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
+        print 'urlCreateProject'
 
         # Return representation of the project, or a link to it?
         robj = { 'name':projectName, 'id':27}
@@ -402,11 +405,11 @@ def createProject2():
 
     # create the project:
     proj = models.Project();
-    
+
 ### Users: ---------------------------------------------------------------------------------------
 
-# @webRest.route(API_PREFIX + 'users', methods=['POST'])
-# @wr_check_session
+@webRest.route(API_PREFIX + 'users', methods=['POST'])
+@wr_check_session
 def urlCreateUser(sess):
 # Expects URL parameters:
 #   ownDatabase : 'true' or 'false', indicating whether separate database should be
@@ -423,7 +426,7 @@ def urlCreateUser(sess):
 #
 # Not the use of sess in here - this is problematic as proper rest calls won't have a session.
 # We are using to get user ident, which hopefully is available from token or basic auth
-  
+
     # Check permissions:
     if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
         return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
@@ -441,7 +444,7 @@ def urlCreateUser(sess):
             ownDatabase = False
         else:
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-    
+
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
         if not isinstance(proj, models.Project):
@@ -451,7 +454,7 @@ def urlCreateUser(sess):
         robj = { 'name':projectName, 'id':27}
         return jsonReturn(robj, HTTP_CREATED)
     except Exception, e:
-          return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
+          return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
 
 ########################################################################################
 TEST_STUFF = '''

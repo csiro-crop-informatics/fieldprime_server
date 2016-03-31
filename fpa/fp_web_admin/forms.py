@@ -81,7 +81,7 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None):
 # Returns html for modal form. Initially only a button (with given label) is
 # visible. Pressing the button presents a modal form with the given elements.
 # If more than one form is to be used on a single page, they must each have unique divId.
-#    
+#
     out = '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#{}">'.format(divId)
     out += '{}</button>'.format(buttonLabel)
     out += '<div id="{}" class="modal fade" role="dialog"><div class="modal-dialog"><div class="modal-content">'.format(divId)
@@ -94,7 +94,8 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None):
 
     # modal content:
     out += '<div class="modal-body">'
-    out += '<form method="post" {}><table class="userInputForm">'.format("" if action is None else action)
+    out += '<form method="post" {}><table class="userInputForm">'.format(
+           "" if action is None else 'action="{}"'.format(action))
     for el in formElements:
         out += el.htmlElement()
     out += '</table><input type="submit" value="Submit"></form>'

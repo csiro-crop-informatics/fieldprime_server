@@ -1151,6 +1151,52 @@ def urlUserDetails(sess, projectName):
         else:
             return badJuju(sess, 'Unexpected operation')
 
+def formElements4ProjectManagement():
+# Html for modal form to create projects.
+    newProjFormElements = [
+        forms.formElement('Separate Database', 'Create database for this project',
+                    'ownDatabase', 'ncid',
+                    etype=forms.formElement.RADIO,
+                    typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
+        forms.formElement('Project Name', 'Name for new project',
+                   'projectName', 'pnameId',
+                   etype=forms.formElement.TEXT),
+        forms.formElement('Contact', 'Name of contact person',
+                    'contactName', 'contId', etype=forms.formElement.TEXT),
+        forms.formElement('Contact Email', 'Email address of contact person',
+                    'contactEmail', 'emailId', etype=forms.formElement.TEXT),
+        forms.formElement('Project admin login', 'User to get admin access to the new project',
+                          'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
+    ]
+    return fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', newProjFormElements, 'createProjForm')))
+
+
+def formElements4UserManagement():
+# Create user form:
+# Let's try do this with ajax from client direct to rest api.
+# To obviate the client having to login let's pass a token - but it would
+# have to be a token for the userid, not the server power user..
+# Use the jQuery .submit function.
+# Perhaps this function should just return the form elements list -
+# because we want to access the element ids without remembering and retyping them
+# (but may not be able to as these needed on receiving response, but could regenerate),
+# and also because the parameters to makeModalForm, and the presentation may need to vary.
+# Perhaps we just need a global variable
+    return [
+        forms.formElement('Login Type', 'Specify user type', 'fpcuLoginType', 'xncid',
+                          etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
+        forms.formElement('Login ident', 'Login name', 'fpcuIdent', 'xpnameId',
+                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
+        forms.formElement('Password', 'Initial password for the new user', 'fpcuPassword', 'fpcuPassword',
+                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
+        forms.formElement('User Name', 'Full name of new user', 'fpcuFullname', 'xcontId',
+                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
+        forms.formElement('User Email', 'Email address of new user', 'fpcuEmail', 'xemailId',
+                          etype=forms.formElement.TEXT, typeSpecificData='foo')
+    ]
+
+
+
 @app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
 @dec_check_session()
 def urlFPAdmin(sess):
@@ -1174,7 +1220,8 @@ def urlFPAdmin(sess):
 #             });
 #         };
 #         </script>''' % url_for('webRest.new_user', tiId=ti.getId())
-    
+
+    # Check permissions:
     usr = sess.getUser()
     if usr is None:
         return badJuju(sess, 'No user found')
@@ -1182,43 +1229,16 @@ def urlFPAdmin(sess):
         return badJuju(sess, 'No admin rights')
 
     if request.method == 'GET':
-        newProjFormElements = [
-            forms.formElement('Separate Database', 'Create database for this project',
-                        'ownDatabase', 'ncid',
-                        etype=forms.formElement.RADIO,
-                        typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
-            forms.formElement('Project Name', 'Name for new project',
-                       'projectName', 'pnameId',
-                       etype=forms.formElement.TEXT),
-            forms.formElement('Contact', 'Name of contact person',
-                        'contactName', 'contId', etype=forms.formElement.TEXT),
-            forms.formElement('Contact Email', 'Email address of contact person',
-                        'contactEmail', 'emailId', etype=forms.formElement.TEXT),
-            forms.formElement('Project admin login', 'User to get admin access to the new project',
-                              'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
-        ]
-        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', newProjFormElements, 'createProjForm')))
+        # Create project form:
+        projEls = formElements4ProjectManagement()
+        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', projEls, 'createProjForm')))
 
         # Create user form:
-        # Let's try do this with ajax from client direct to rest api.
-        # To obviate the client having to login let's pass a token - but it would
-        # have to be a token for the userid, not the server power user..
-        # Use the jQuery .submit function.
-        createUserFormElements = [
-            forms.formElement('Login Type', 'Specify user type', 'fpcuLoginType', 'xncid',
-                              etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
-            forms.formElement('Login ident', 'Login name', 'fpcuIdent', 'xpnameId',
-                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
-            forms.formElement('Password', 'Initial password for the new user', 'fpcuPassword', 'fpcuPassword',
-                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
-            forms.formElement('User Name', 'Full name of new user', 'fpcuFullname', 'xcontId',
-                              etype=forms.formElement.TEXT, typeSpecificData='foo'),
-            forms.formElement('User Email', 'Email address of new user', 'fpcuEmail', 'xemailId',
-                              etype=forms.formElement.TEXT, typeSpecificData='foo')
-        ]
-        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', createUserFormElements,
-                                                            divId='createUserForm', action=url_for('urlFPAdminCreateUser')),
-                                        topMargin='20px')
+        userEls = formElements4UserManagement()
+        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', userEls, divId='createUserForm',
+                                        action=url_for('urlFPAdminCreateUser')), topMargin='20px')
+
+
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 
     if request.method == 'POST':
@@ -1226,19 +1246,24 @@ def urlFPAdmin(sess):
         frm = request.form
         try:
             payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
-                       'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase']}
+                       'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase'], 'adminLogin':frm['adminLogin']}
             newurl = url_for('webRest.urlCreateProject', _external=True)
             print 'newurl:' + newurl
             f = request.cookies.get(NAME_COOKIE_SESSION)
             cooky = {NAME_COOKIE_SESSION:f}
-            x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
+            resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
+            respContent = resp.content
+            jresp = resp.json()
         except Exception, e:
-            return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
-        print x
+            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
+        if "error" in jresp:  # Make the json response a class, and use methods to detect/retrieve errors
+            return errorScreenInSession(sess, 'Error: ' + jresp["error"])
         # Here we need check return status and respond appropriately
-        return x
-    
-@app.route(PREURL+'/fpadmin/', methods=['POST'])
+        status = resp.status_code
+        print 'status: {}'.format(status)
+        return respContent
+
+@app.route(PREURL+'/fpadmin/users', methods=['POST'])
 @dec_check_session()
 def urlFPAdminCreateUser(sess):
     print 'in urlFPAdminCreateUser'
@@ -1254,13 +1279,16 @@ def urlFPAdminCreateUser(sess):
         print 'newurl:' + newurl
         f = request.cookies.get(NAME_COOKIE_SESSION)
         cooky = {NAME_COOKIE_SESSION:f}
-        x = requests.post(newurl, cookies=cooky, data=payload, timeout=5).content
+        resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
+        respContent = resp.content
     except Exception, e:
-        return errorScreenInSession(sess, 'A problem occurred in  project creation: ' + str(e))
-    print x
+        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + str(e))
+    if resp.status_code >= 300:
+        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + str(resp.status_code))
+    print resp
     # Here we need check return status and respond appropriately
-    return x
-  
+    return respContent
+
 
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
@@ -1853,13 +1881,13 @@ def urlMain():
                     g.userName = username
                     resp = make_response(frontPage(sess))
                     resp.set_cookie(NAME_COOKIE_SESSION, sess.sid())      # Set the cookie
-                    
-                    # Create an authentication token for the user:           
+
+                    # Create an authentication token for the user:
                     # How can we refresh token timeout the way we do for sessions?
-                    # Perhaps have to have it as a cookie and send back modified version each time. 
+                    # Perhaps have to have it as a cookie and send back modified version each time.
 #                     token = asyncGetToken(username, password)
 #                     resp.set_cookie(NAME_COOKIE_TOKEN, token)
-                    
+
                     return resp
             elif authOK is None:
                 util.flog('Login failed attempt for user {0}'.format(username))
