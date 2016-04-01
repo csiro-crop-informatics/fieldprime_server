@@ -30,15 +30,6 @@ auth = HTTPBasicAuth()
 
 API_PREFIX = '/fpv1/'
 
-# Http status codes:
-HTTP_OK = 200
-HTTP_CREATED = 201
-HTTP_BAD_REQUEST = 400
-HTTP_UNAUTHORIZED = 401
-HTTP_NOT_FOUND = 404
-HTTP_SERVER_ERROR = 500
-
-
 def jsonErrorReturn(errmsg, statusCode):
     return Response(json.dumps({'error':errmsg}), status=statusCode, mimetype='application/json')
 
@@ -48,6 +39,16 @@ def jsonReturn(jo, statusCode):
 def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
     return jsonReturn({'success':msg}, statusCode)
 
+def fprGetError(jsonResponse):
+# Returns the error message from the response, IF there was an error, else None.
+# This function intended to abstract the way we encode errors in the response,
+# all users of the rest api should use this to get errors. 
+    if "error" in jsonResponse:
+        return jsonResponse["error"]
+    return None
+
+def fprHasError(jsonResponse):
+    return "error" in jsonResponse
 
 ### Authorization stuff: ########################################################
 
@@ -99,6 +100,7 @@ def wr_check_session(func):
     @wraps(func)
     def inner(*args, **kwargs):
 # is this secure? what if sid not in cooky?
+        print 'wr_check_session'
         sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
         if sid is not None:
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
@@ -139,22 +141,9 @@ def get_auth_token():
 #     token = generate_auth_token(g.user, 600)
 #     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
-@webRest.route(API_PREFIX + 'users', methods=['POST'])
-@auth.login_required
-def new_user():
-#-------------------------------------------------------------------------------------------------
-# Create new user.
-# Authenticated user must have create user perms.
-# NB Currently can only create local user. Need to be able to create ***REMOVED***,
-# could have login_type parameter.
-# Expects json input with the following information:
-# . login
-# . loginType
-# . password
-# . fullname
-#
+def new_user_post_auth(userid):
     # check permissions
-    if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
+    if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
     # check all details provided
     login = request.json.get('login')
@@ -180,6 +169,50 @@ def new_user():
     if errmsg is not None:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     return jsonReturn({'username': login}, HTTP_CREATED)
+
+
+@webRest.route(API_PREFIX + 'users', methods=['POST'])
+@auth.login_required
+def new_user():
+#-------------------------------------------------------------------------------------------------
+# Create new user.
+# Authenticated user must have create user perms.
+# NB Currently can only create local user. Need to be able to create ***REMOVED***,
+# could have login_type parameter.
+# Expects json input with the following information:
+# . login
+# . loginType
+# . password
+# . fullname
+#
+    return new_user_post_auth(g.user)
+#     # check permissions
+#     if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
+#         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
+#     # check all details provided
+#     login = request.json.get('login')
+#     loginType = request.json.get('loginType')
+#     if login is None or loginType is None:
+#         return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
+# 
+#     # check if user already exists
+#     if fpsys.User.getByLogin(login) is not None:
+#         return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
+# 
+#     # create them
+#     if loginType == LOGIN_TYPE_LOCAL:
+#         password = request.json.get('password')
+#         fullname = request.json.get('fullname')
+#         if password is None or fullname is None:
+#             return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
+#         errmsg = fpsys.addLocalUser(login, fullname, password)
+#     elif loginType == LOGIN_TYPE_***REMOVED***:
+#         errmsg = fpsys.add***REMOVED***User(login)
+#     else:
+#         errmsg = 'Invalid loginType'
+#     if errmsg is not None:
+#         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+#     return jsonReturn({'username': login}, HTTP_CREATED)
 
 #@webRest.route(API_PREFIX + 'projects', methods=['GET'])
 @auth.login_required
@@ -278,6 +311,61 @@ def deleteTiAttribute(sess, tiId):
 def urlTest():
     return 'test return\n'
 
+### Users: ---------------------------------------------------------------------------------------
+
+@webRest.route(API_PREFIX + 'susers', methods=['POST'])
+@wr_check_session
+def urlCreateUser(sess):
+# Expects URL parameters:
+#   ownDatabase : 'true' or 'false', indicating whether separate database should be
+#                 created. Currently ignored and assumed true.
+#   projectName : name project - must be appropriate.
+#   contactName : Name of contact person
+#   contactEmail : email of contact person
+#
+# Note, perhaps we should use json input, in which case we would have:
+# projectName = request.json.get('projectName')...
+# top level dir called 'projects'? 'users'
+#     parentUrl = request.json.get('parent')
+#     parentProj = models.Project.getByUrl(parentUrl);
+#
+# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
+# We are using to get user ident, which hopefully is available from token or basic auth
+
+# see new_user!  it already works
+
+    return new_user_post_auth(sess.getUserIdent())
+
+    # Check permissions:
+    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
+        return jsonErrorReturn("No permission for user creation", HTTP_UNAUTHORIZED)
+
+    try:
+        frm = request.form
+        projectName = frm['projectName']    # check if exists? or put in try?
+        contactName = frm['contactName']
+        contactEmail = frm['contactEmail']
+        ownDatabase = frm['ownDatabase']
+        adminLogin = frm['adminLogin']
+        if ownDatabase == 'true':
+            ownDatabase = True
+        elif ownDatabase == 'false':
+            ownDatabase = False
+        else:
+            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
+
+        # Create the project:
+        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
+        if not isinstance(proj, models.Project):
+            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
+
+        # Return representation of the project, or a link to it?
+        robj = { 'name':projectName, 'id':27}
+        return jsonReturn(robj, HTTP_CREATED)
+    except Exception, e:
+          return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
+      
+### Projects: ---------------------------------------------------------------------------------------
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
 @wr_check_session
@@ -320,8 +408,11 @@ def urlCreateProject(sess):
 
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-        if not isinstance(proj, models.Project):
-            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
+#        if not isinstance(proj, models.Project): # return project json representation? Or URL?
+        if isinstance(proj, basestring):
+            return jsonErrorReturn(proj, HTTP_BAD_REQUEST)
+        else:
+            return jsonSuccessReturn("project created", HTTP_CREATED)
         print 'urlCreateProject'
 
         # Return representation of the project, or a link to it?
@@ -406,55 +497,6 @@ def createProject2():
     # create the project:
     proj = models.Project();
 
-### Users: ---------------------------------------------------------------------------------------
-
-@webRest.route(API_PREFIX + 'users', methods=['POST'])
-@wr_check_session
-def urlCreateUser(sess):
-# Expects URL parameters:
-#   ownDatabase : 'true' or 'false', indicating whether separate database should be
-#                 created. Currently ignored and assumed true.
-#   projectName : name project - must be appropriate.
-#   contactName : Name of contact person
-#   contactEmail : email of contact person
-#
-# Note, perhaps we should use json input, in which case we would have:
-# projectName = request.json.get('projectName')...
-# top level dir called 'projects'? 'users'
-#     parentUrl = request.json.get('parent')
-#     parentProj = models.Project.getByUrl(parentUrl);
-#
-# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
-# We are using to get user ident, which hopefully is available from token or basic auth
-
-    # Check permissions:
-    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
-        return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
-
-    try:
-        frm = request.form
-        projectName = frm['projectName']    # check if exists? or put in try?
-        contactName = frm['contactName']
-        contactEmail = frm['contactEmail']
-        ownDatabase = frm['ownDatabase']
-        adminLogin = frm['adminLogin']
-        if ownDatabase == 'true':
-            ownDatabase = True
-        elif ownDatabase == 'false':
-            ownDatabase = False
-        else:
-            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-
-        # Create the project:
-        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-        if not isinstance(proj, models.Project):
-            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
-
-        # Return representation of the project, or a link to it?
-        robj = { 'name':projectName, 'id':27}
-        return jsonReturn(robj, HTTP_CREATED)
-    except Exception, e:
-          return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
 
 ########################################################################################
 TEST_STUFF = '''

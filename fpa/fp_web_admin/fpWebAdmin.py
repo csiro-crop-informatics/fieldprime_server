@@ -15,7 +15,7 @@ import MySQLdb as mdb
 from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
 from flask import jsonify
 import simplejson as json
-from functools import wraps
+from functools import wraps, update_wrapper
 import requests
 
 #
@@ -42,7 +42,7 @@ import trialProperties
 from fp_common.const import *
 import datapage as dp
 import websess
-from fpRestApi import webRest
+from fpRestApi import webRest, fprGetError, fprHasError
 from fpAppWapi import appApi
 import forms
 from const import *
@@ -120,6 +120,14 @@ def getMYSQLDBConnection(sess):
     except mdb.Error:
         return None
 
+def nocache(f):
+# Decorator to and no-cache directive to response.
+# Probably a good idea to use when response contains authentication tokens.    
+    def new_func(*args, **kwargs):
+        resp = make_response(f(*args, **kwargs))
+        resp.cache_control.no_cache = True
+        return resp
+    return update_wrapper(new_func, f)
 
 def dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
@@ -1153,22 +1161,17 @@ def urlUserDetails(sess, projectName):
 
 def formElements4ProjectManagement():
 # Html for modal form to create projects.
-    newProjFormElements = [
-        forms.formElement('Separate Database', 'Create database for this project',
-                    'ownDatabase', 'ncid',
-                    etype=forms.formElement.RADIO,
-                    typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
-        forms.formElement('Project Name', 'Name for new project',
-                   'projectName', 'pnameId',
+    return [
+        forms.formElement('Separate Database', 'Create database for this project', 'ownDatabase', 'ncid',
+                    etype=forms.formElement.RADIO, typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
+        forms.formElement('Project Name', 'Name for new project', 'projectName', 'pnameId',
                    etype=forms.formElement.TEXT),
-        forms.formElement('Contact', 'Name of contact person',
-                    'contactName', 'contId', etype=forms.formElement.TEXT),
+        forms.formElement('Contact', 'Name of contact person', 'contactName', 'contId', etype=forms.formElement.TEXT),
         forms.formElement('Contact Email', 'Email address of contact person',
                     'contactEmail', 'emailId', etype=forms.formElement.TEXT),
         forms.formElement('Project admin login', 'User to get admin access to the new project',
                           'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
     ]
-    return fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', newProjFormElements, 'createProjForm')))
 
 
 def formElements4UserManagement():
@@ -1181,7 +1184,8 @@ def formElements4UserManagement():
 # because we want to access the element ids without remembering and retyping them
 # (but may not be able to as these needed on receiving response, but could regenerate),
 # and also because the parameters to makeModalForm, and the presentation may need to vary.
-# Perhaps we just need a global variable
+# This could be just a global variable, but by placing it in a function, I'm assuming
+# it will only get generated when needed.
     return [
         forms.formElement('Login Type', 'Specify user type', 'fpcuLoginType', 'xncid',
                           etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
@@ -1198,6 +1202,7 @@ def formElements4UserManagement():
 
 
 @app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
+@nocache
 @dec_check_session()
 def urlFPAdmin(sess):
 #     jscript = '''
@@ -1256,8 +1261,9 @@ def urlFPAdmin(sess):
             jresp = resp.json()
         except Exception, e:
             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
-        if "error" in jresp:  # Make the json response a class, and use methods to detect/retrieve errors
-            return errorScreenInSession(sess, 'Error: ' + jresp["error"])
+        if fprHasError(jresp):
+            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))        
+        
         # Here we need check return status and respond appropriately
         status = resp.status_code
         print 'status: {}'.format(status)
@@ -1277,17 +1283,19 @@ def urlFPAdminCreateUser(sess):
         payload = {'is***REMOVED***Login':is***REMOVED***Login, 'ident':ident, 'fullname':fullname, 'email':email}
         newurl = url_for('webRest.urlCreateUser', _external=True)
         print 'newurl:' + newurl
-        f = request.cookies.get(NAME_COOKIE_SESSION)
-        cooky = {NAME_COOKIE_SESSION:f}
+        cooky = {NAME_COOKIE_SESSION:request.cookies.get(NAME_COOKIE_SESSION)}
         resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
-        respContent = resp.content
+        hstatus = resp.status_code
+        if hstatus != 201:
+            return errorScreenInSession(sess, 'Unexpected response code in user creation: ' + str(hstatus))
+        jresp = resp.json()
     except Exception, e:
-        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + str(e))
-    if resp.status_code >= 300:
-        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + str(resp.status_code))
+        return errorScreenInSession(sess, 'An exception occurred in user creation: ' + str(e))
+    if fprHasError(jresp):
+        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))        
     print resp
     # Here we need check return status and respond appropriately
-    return respContent
+    return jresp
 
 
 #######################################################################################################

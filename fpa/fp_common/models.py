@@ -608,7 +608,7 @@ class Project(DeclarativeBase):
 
     @staticmethod
     def makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin):
-    # Returns new project object, which has been saved to the database, if all well.
+    # Returns new project object, which has been saved to the database, or None, if all well.
     # Otherwise returns a string error message.
     
 # create database if not exists $DBNAME;
@@ -623,10 +623,13 @@ class Project(DeclarativeBase):
         if not ownDatabase:
             return 'Shared databases not supported yet'
         
-        # Check name validity, availability:
+        # Check parameters validity:
         if not util.isValidIdentifier(projectName):
             return 'Invalid project name'
-# check contactname, email, and adminLogin
+        if not util.isValidName(contactName):
+            return 'Invalid contact name'
+        if not util.isValidEmail(contactEmail):
+            return 'Invalid contact email address'
         if not util.isValidIdentifier(adminLogin):
             return 'invalid login name'
          
@@ -655,11 +658,9 @@ class Project(DeclarativeBase):
             # How to check if succeeded?
 #             resRow = cur.fetchone()
 #             return None if resRow is None else resRow[0]
-
-            # 
         except mdb.Error, e:
             return 'Error creating project: ' + str(e)
-        return 'not even wrong'
+        return None
         
     @staticmethod
     def getProjectDBname(projectName):

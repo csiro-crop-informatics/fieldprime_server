@@ -75,6 +75,28 @@ fplib.getUrlData = function (url, sfunc) {
     }
 };
 
+/***
+ * setupAjaxForm
+ * Configure specified form to post the form data to the specified url on submit.
+ * 
+ */
+fplib.setupAjaxForm = function(formId, url, successFunc) {
+    var formSelector = "#" + formId;
+    $(formSelector).submit(function(e) {
+        $.ajax({
+               type: "POST",
+               url: url,
+               data: $(formSelector).serialize(), // serializes the form's elements.
+               success: function(data)
+               {
+                   alert(data);
+               }
+             });
+        e.preventDefault(); // avoid to execute the actual submit of the form.
+    });
+};
+
+
 /*
  * drawScatterPlot()
  * xdata and ydata are arrays of 2 element arrays - [<nodeId>, <value>],

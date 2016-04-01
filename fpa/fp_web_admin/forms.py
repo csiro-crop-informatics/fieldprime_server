@@ -77,10 +77,11 @@ def makeForm(formElements):
     out += '</table></form>'
     return out
 
-def makeModalForm(buttonLabel, formElements, divId="myModal", action=None):
+def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submitUrl=None):
 # Returns html for modal form. Initially only a button (with given label) is
 # visible. Pressing the button presents a modal form with the given elements.
 # If more than one form is to be used on a single page, they must each have unique divId.
+# If submitUrl, post form to this url on submit.
 #
     out = '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#{}">'.format(divId)
     out += '{}</button>'.format(buttonLabel)
@@ -92,6 +93,27 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None):
         <h4 class="modal-title">{}</h4>
       </div>'''.format(buttonLabel)
 
+    if submitUrl is not None:
+        out += '<script>fplib.setupAjaxForm({},{})</script>'.format('frm'+divId, submitUrl)
+# do we need success/error funcs? Can we have defaults? 
+# Note we are in abstraction already - no real reason to move script to library is there?
+# It's easier to format there, but in addition this is not specific to modal forms        
+        xout = '''<script>
+            $("#{0}").submit(function(e) {
+                var url = "path/to/your/script.php"; // the script where you handle the form input.
+                $.ajax({
+                       type: "POST",
+                       url: url,
+                       data: $("#idForm").serialize(), // serializes the form's elements.
+                       success: function(data)
+                       {
+                           alert(data); // show response from the php script.
+                       }
+                     });
+                e.preventDefault(); // avoid to execute the actual submit of the form.
+            });
+        </script>'''.format('frm'+divId)
+        
     # modal content:
     out += '<div class="modal-body">'
     out += '<form method="post" {}><table class="userInputForm">'.format(

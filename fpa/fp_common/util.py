@@ -28,6 +28,15 @@ def isValidIdentifier(candidate):
 # underscore, followed by some number of letters, digits, or underscores.
     return re.match("[_A-Za-z][_a-zA-Z0-9]*$", candidate) is not None
 
+def isValidEmail(email):
+# Return boolean indicating whether email looks like an email address.
+    return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None
+
+def isValidName(candidate):
+# Returns boolean.
+# Valid if starts with letter. Only contains letters, space, hyphen
+    return re.match("[A-Za-z ][\-a-zA-Z0-9]*$", candidate) is not None
+
 def epoch2dateTime(timestamp):
 # Return readable date/time string from timestamp (assumed to be in milliseconds).
 # A time of zero (presumably a default rather than real time) is returned as empty string.
