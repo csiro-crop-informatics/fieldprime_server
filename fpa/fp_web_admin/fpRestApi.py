@@ -42,7 +42,7 @@ def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
 def fprGetError(jsonResponse):
 # Returns the error message from the response, IF there was an error, else None.
 # This function intended to abstract the way we encode errors in the response,
-# all users of the rest api should use this to get errors. 
+# all users of the rest api should use this to get errors.
     if "error" in jsonResponse:
         return jsonResponse["error"]
     return None
@@ -141,13 +141,13 @@ def get_auth_token():
 #     token = generate_auth_token(g.user, 600)
 #     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
-def new_user_post_auth(userid):
+def new_user_post_auth(userid, params):
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
     # check all details provided
-    login = request.json.get('login')
-    loginType = request.json.get('loginType')
+    login = params.get('login')
+    loginType = params.get('loginType')
     if login is None or loginType is None:
         return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
 
@@ -156,9 +156,9 @@ def new_user_post_auth(userid):
         return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
 
     # create them
-    if loginType == LOGIN_TYPE_LOCAL:
-        password = request.json.get('password')
-        fullname = request.json.get('fullname')
+    if int(loginType) == LOGIN_TYPE_LOCAL:
+        password = params.get('password')
+        fullname = params.get('fullname')
         if password is None or fullname is None:
             return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
         errmsg = fpsys.addLocalUser(login, fullname, password)
@@ -167,7 +167,9 @@ def new_user_post_auth(userid):
     else:
         errmsg = 'Invalid loginType'
     if errmsg is not None:
+        print 'errmsg is not None'
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    print 'happy'
     return jsonReturn({'username': login}, HTTP_CREATED)
 
 
@@ -185,7 +187,13 @@ def new_user():
 # . password
 # . fullname
 #
-    return new_user_post_auth(g.user)
+
+#     login = request.json.get('login')
+#     loginType = request.json.get('loginType')
+#     password = request.json.get('password')
+#     fullname = request.json.get('fullname')
+    return new_user_post_auth(g.user, request.json)
+
 #     # check permissions
 #     if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
 #         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
@@ -194,11 +202,11 @@ def new_user():
 #     loginType = request.json.get('loginType')
 #     if login is None or loginType is None:
 #         return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
-# 
+#
 #     # check if user already exists
 #     if fpsys.User.getByLogin(login) is not None:
 #         return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-# 
+#
 #     # create them
 #     if loginType == LOGIN_TYPE_LOCAL:
 #         password = request.json.get('password')
@@ -334,7 +342,9 @@ def urlCreateUser(sess):
 
 # see new_user!  it already works
 
-    return new_user_post_auth(sess.getUserIdent())
+    print 'urlCreateUser'
+    #return jsonReturn({'a':'b'}, HTTP_CREATED)
+    return new_user_post_auth(sess.getUserIdent(), request.form)
 
     # Check permissions:
     if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
@@ -342,7 +352,7 @@ def urlCreateUser(sess):
 
     try:
         frm = request.form
-        projectName = frm['projectName']    # check if exists? or put in try?
+        projectName = frm.get['projectName']    # check if exists? or put in try?
         contactName = frm['contactName']
         contactEmail = frm['contactEmail']
         ownDatabase = frm['ownDatabase']
@@ -364,7 +374,7 @@ def urlCreateUser(sess):
         return jsonReturn(robj, HTTP_CREATED)
     except Exception, e:
           return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
-      
+
 ### Projects: ---------------------------------------------------------------------------------------
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])

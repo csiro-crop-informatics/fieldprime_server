@@ -122,7 +122,7 @@ def getMYSQLDBConnection(sess):
 
 def nocache(f):
 # Decorator to and no-cache directive to response.
-# Probably a good idea to use when response contains authentication tokens.    
+# Probably a good idea to use when response contains authentication tokens.
     def new_func(*args, **kwargs):
         resp = make_response(f(*args, **kwargs))
         resp.cache_control.no_cache = True
@@ -1187,11 +1187,11 @@ def formElements4UserManagement():
 # This could be just a global variable, but by placing it in a function, I'm assuming
 # it will only get generated when needed.
     return [
-        forms.formElement('Login Type', 'Specify user type', 'fpcuLoginType', 'xncid',
+        forms.formElement('Login Type', 'Specify user type', 'loginType', 'xncid',
                           etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
-        forms.formElement('Login ident', 'Login name', 'fpcuIdent', 'xpnameId',
+        forms.formElement('Login ident', 'Login name', 'login', 'xpnameId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
-        forms.formElement('Password', 'Initial password for the new user', 'fpcuPassword', 'fpcuPassword',
+        forms.formElement('Password', 'Initial password for the new user', 'password', 'fpcuPassword',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
         forms.formElement('User Name', 'Full name of new user', 'fpcuFullname', 'xcontId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
@@ -1242,8 +1242,6 @@ def urlFPAdmin(sess):
         userEls = formElements4UserManagement()
         out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', userEls, divId='createUserForm',
                                         action=url_for('urlFPAdminCreateUser')), topMargin='20px')
-
-
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 
     if request.method == 'POST':
@@ -1262,8 +1260,8 @@ def urlFPAdmin(sess):
         except Exception, e:
             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
         if fprHasError(jresp):
-            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))        
-        
+            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))
+
         # Here we need check return status and respond appropriately
         status = resp.status_code
         print 'status: {}'.format(status)
@@ -1276,26 +1274,32 @@ def urlFPAdminCreateUser(sess):
     # login with token (via function), not cooky. Or is this better done from client?
     frm = request.form
     try:
-        is***REMOVED***Login = frm['fpcuLoginType'] == 'true'
-        ident = frm['fpcuIdent']
+        is***REMOVED***Login = '3' #frm['loginType'] == 'true'
+        ident = frm['login']
         fullname = frm['fpcuFullname']
         email = frm['fpcuEmail']
-        payload = {'is***REMOVED***Login':is***REMOVED***Login, 'ident':ident, 'fullname':fullname, 'email':email}
+        payload = {'loginType':is***REMOVED***Login, 'login':ident, 'fullname':fullname,
+                    'password':frm['password'], 'email':email}
         newurl = url_for('webRest.urlCreateUser', _external=True)
         print 'newurl:' + newurl
         cooky = {NAME_COOKIE_SESSION:request.cookies.get(NAME_COOKIE_SESSION)}
         resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
         hstatus = resp.status_code
+        jresp = resp.json()
+        respContent = resp.content
         if hstatus != 201:
-            return errorScreenInSession(sess, 'Unexpected response code in user creation: ' + str(hstatus))
+            errmsg = 'Unexpected response code in user creation: '
+            if fprHasError(jresp):
+                errmsg = str(hstatus) + " : " + fprGetError(jresp)
+            return errorScreenInSession(sess, errmsg + str(hstatus))
         jresp = resp.json()
     except Exception, e:
         return errorScreenInSession(sess, 'An exception occurred in user creation: ' + str(e))
     if fprHasError(jresp):
-        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))        
+        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))
     print resp
     # Here we need check return status and respond appropriately
-    return jresp
+    return respContent
 
 
 #######################################################################################################
@@ -1829,8 +1833,9 @@ def asyncGetToken(username, password):
         newurl = url_for('webRest.get_auth_token', _external=True)
         jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
     except Exception, e:
-        return 'getToken error: ' + str(e)
-    return jresp.token
+        print 'getToken error: ' + str(e)
+        return None
+    return jresp["token"]
 
 @app.route(PREURL+'/', methods=["GET", "POST"])
 def urlMain():
@@ -1893,8 +1898,9 @@ def urlMain():
                     # Create an authentication token for the user:
                     # How can we refresh token timeout the way we do for sessions?
                     # Perhaps have to have it as a cookie and send back modified version each time.
-#                     token = asyncGetToken(username, password)
-#                     resp.set_cookie(NAME_COOKIE_TOKEN, token)
+                    token = asyncGetToken(username, password)
+                    if token is not None:
+                        resp.set_cookie(NAME_COOKIE_TOKEN, token)
 
                     return resp
             elif authOK is None:
