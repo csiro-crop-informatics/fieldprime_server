@@ -8,15 +8,6 @@
 var fplib = {};
 
 
-fplib.demoDivGen = function() {
-    var div = document.createElement('div');
-    var content = document.createTextNode("Hallo sailor!");
-    div.appendChild(content);
-    //elemDiv.style.cssText = 'position:absolute;width:100%;height:100%;opacity:0.3;z-index:100;background:#000;';
-    document.body.appendChild(div);
-};
-
-
 /*
  * Ajax utility funcs
  */
@@ -29,16 +20,83 @@ fplib.ajax = {
         else
             fplib.msg("An error occurred: " + textStatus + " " + errorThrown);
     },
-    jsonSuccess : function(data, textStatus, jqXHR){ 
+    
+    /* jsonSuccess
+     * For use as the "success" function in $.ajax calls.
+     * It assumes the data is a json object, if this has a "success" field
+     * then an alert is displayed with the value.
+     * If there is an "error" field, then an alert is displayed stating an
+     * error has occurred along with the value.
+     */ 
+    jsonSuccess : function(data, textStatus, jqXHR) {
         if (data.hasOwnProperty("success"))
             fplib.msg(data.success);
         if (data.hasOwnProperty("error"))
             fplib.msg("An error occurred: " + data.error);
     },
+    
+    
+    /* jsonSuccessReload
+     * For use as the "success" function in $.ajax calls.
+     * Same as jsonSuccess, but then initiates a window reload.
+     */ 
     jsonSuccessReload : function(data, textStatus, jqXHR){
         fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
         window.location.reload();
     },
+    
+        // // try to set onsubmit via js
+    // fplib.thing = function (formId, url) {
+    //     var formSelector = "#" + formId;
+    //     var token = fplib.readCookie('fptoken');
+    //     $.ajax({
+    //            type: "POST",
+    //            url: url,
+    //            username: token,
+    //            password: 'x',
+    //            data: $(formSelector).serialize(), // serializes the form's elements.
+    //            success: function(data){alert(data);}
+    //          });
+    //     //e.preventDefault(); // avoid to execute the actual submit of the form.
+    //     return false;
+    // };
+    // fplib.xx = function(formId) {
+    //     var form = document.getElementById(formId);
+    //     alert(form);
+    // };
+    // //object.onsubmit=function(){myScript};
+    // fplib.setupAjaxForm2 = function(formId, url, successFunc) {
+    //     var form = document.getElementById(formId);
+    //     form.onsubmit = function() {
+    //         return fplib.thing(formId, url);
+    //     };
+    // };
+    
+    /*
+     * setupAjaxForm
+     * Configure specified form to post the form data to the specified url on submit.
+     * NB - this is a parameterless function that returns the function, intended for
+     * calling from document.ready
+     */
+    setupAjaxForm : function(formId, url, successFunc) {
+        return function () {
+            var formSelector = "#" + formId;
+            $(formSelector).submit(function(e) {
+                // get token
+                var token = fplib.readCookie('fptoken');
+                $.ajax({
+                       type: "POST",
+                       url: url,
+                       username: token,
+                       password: 'x',
+                       data: $(formSelector).serialize(), // serializes the form's elements.
+                       success: fplib.ajax.jsonSuccess,
+                       error: fplib.ajax.jsonError
+                     });
+                e.preventDefault(); // avoid to execute the actual submit of the form.
+            });
+        };
+    }
 };
 
 
@@ -75,27 +133,19 @@ fplib.getUrlData = function (url, sfunc) {
     }
 };
 
-/***
- * setupAjaxForm
- * Configure specified form to post the form data to the specified url on submit.
- * 
+/*
+ * readCookie()
  */
-fplib.setupAjaxForm = function(formId, url, successFunc) {
-    var formSelector = "#" + formId;
-    $(formSelector).submit(function(e) {
-        $.ajax({
-               type: "POST",
-               url: url,
-               data: $(formSelector).serialize(), // serializes the form's elements.
-               success: function(data)
-               {
-                   alert(data);
-               }
-             });
-        e.preventDefault(); // avoid to execute the actual submit of the form.
-    });
+fplib.readCookie = function(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
 };
-
 
 /*
  * drawScatterPlot()

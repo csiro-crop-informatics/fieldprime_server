@@ -22,13 +22,15 @@ import fpUtil
 import fp_common.util as util
 from const import *
 
-### Initialization: ####################################
+### Initialization: ######################################################################
 webRest = Blueprint('webRest', __name__)
 auth = HTTPBasicAuth()
 
-### Constants: #########################################
+### Constants: ###########################################################################
 
 API_PREFIX = '/fpv1/'
+
+### Response functions: ##################################################################
 
 def jsonErrorReturn(errmsg, statusCode):
     return Response(json.dumps({'error':errmsg}), status=statusCode, mimetype='application/json')
@@ -50,7 +52,7 @@ def fprGetError(jsonResponse):
 def fprHasError(jsonResponse):
     return "error" in jsonResponse
 
-### Authorization stuff: ########################################################
+### Authorization stuff: #################################################################
 
 def generate_auth_token(username, expiration=600):
 # Return a token for the specified username. This can be used
@@ -64,8 +66,10 @@ def verify_auth_token(token):
     try:
         data = s.loads(token)
     except SignatureExpired:
+        print 'expired'
         return None    # valid token, but expired
     except BadSignature:
+        print 'bad sig'
         return None    # invalid token
     user = data['id']
     return user
@@ -76,6 +80,8 @@ def verify_password(username_or_token, password):
 # This is invoked by the auth.login_required decorator.
 # If verification is successful, g.user is set.
 #
+    print 'verify_password u:{} p:{}'.format(username_or_token, password)
+
     # first try to authenticate by token
     user = verify_auth_token(username_or_token)
     if not user:
@@ -109,8 +115,11 @@ def wr_check_session(func):
         return func(sess, *args, **kwargs) #if not goEasy else func(None, *args, **kwargs)
     return inner
 
+##########################################################################################
+### Access Points: #######################################################################
+##########################################################################################
 
-### Access Points: ########################################################
+### Authentication: #################################################################
 
 @webRest.route(API_PREFIX + 'token', methods=['GET'])
 @auth.login_required
@@ -141,118 +150,13 @@ def get_auth_token():
 #     token = generate_auth_token(g.user, 600)
 #     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
-def new_user_post_auth(userid, params):
-    # check permissions
-    if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
-        return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
-    # check all details provided
-    login = params.get('login')
-    loginType = params.get('loginType')
-    if login is None or loginType is None:
-        return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
-
-    # check if user already exists
-    if fpsys.User.getByLogin(login) is not None:
-        return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-
-    # create them
-    if int(loginType) == LOGIN_TYPE_LOCAL:
-        password = params.get('password')
-        fullname = params.get('fullname')
-        if password is None or fullname is None:
-            return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
-        errmsg = fpsys.addLocalUser(login, fullname, password)
-    elif loginType == LOGIN_TYPE_***REMOVED***:
-        errmsg = fpsys.add***REMOVED***User(login)
-    else:
-        errmsg = 'Invalid loginType'
-    if errmsg is not None:
-        print 'errmsg is not None'
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    print 'happy'
-    return jsonReturn({'username': login}, HTTP_CREATED)
+# @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
+# @auth.login_required
+# def authUser(login, permission):
+#     pass
 
 
-@webRest.route(API_PREFIX + 'users', methods=['POST'])
-@auth.login_required
-def new_user():
-#-------------------------------------------------------------------------------------------------
-# Create new user.
-# Authenticated user must have create user perms.
-# NB Currently can only create local user. Need to be able to create ***REMOVED***,
-# could have login_type parameter.
-# Expects json input with the following information:
-# . login
-# . loginType
-# . password
-# . fullname
-#
-
-#     login = request.json.get('login')
-#     loginType = request.json.get('loginType')
-#     password = request.json.get('password')
-#     fullname = request.json.get('fullname')
-    return new_user_post_auth(g.user, request.json)
-
-#     # check permissions
-#     if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_CREATE_USER):
-#         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
-#     # check all details provided
-#     login = request.json.get('login')
-#     loginType = request.json.get('loginType')
-#     if login is None or loginType is None:
-#         return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
-#
-#     # check if user already exists
-#     if fpsys.User.getByLogin(login) is not None:
-#         return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-#
-#     # create them
-#     if loginType == LOGIN_TYPE_LOCAL:
-#         password = request.json.get('password')
-#         fullname = request.json.get('fullname')
-#         if password is None or fullname is None:
-#             return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
-#         errmsg = fpsys.addLocalUser(login, fullname, password)
-#     elif loginType == LOGIN_TYPE_***REMOVED***:
-#         errmsg = fpsys.add***REMOVED***User(login)
-#     else:
-#         errmsg = 'Invalid loginType'
-#     if errmsg is not None:
-#         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-#     return jsonReturn({'username': login}, HTTP_CREATED)
-
-#@webRest.route(API_PREFIX + 'projects', methods=['GET'])
-@auth.login_required
-def getProjects():
-    (plist, errmsg) = fpsys.getUserProjects(g.user)
-    if errmsg:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    print len(plist)
-    nplist = [p.name() for p in plist]
-    return jsonReturn(nplist, HTTP_OK)  # return urls - do we need set Content-Type: application/json?
-
-###########################################################
-
-@webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
-@auth.login_required
-def authUser(login, permission):
-    pass
-
-
-@webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
-@auth.login_required
-def getProject(id):
-    util.flog("in getProject")
-    (plist, errmsg) = fpsys.getUserProjects(g.user)
-    if errmsg:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    print len(plist)
-    nplist = [p.name() for p in plist]
-    return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
-
-
-### TraitInstance Attribute: ----------------------------------------------------------------
+### TraitInstance Attribute: #################################################################
 # Note authentication problem: from the web page in the browser, we won't have login token.
 # Can we use the cookie? see wr_check_session.
 #
@@ -319,67 +223,94 @@ def deleteTiAttribute(sess, tiId):
 def urlTest():
     return 'test return\n'
 
-### Users: ---------------------------------------------------------------------------------------
+### Users: ####################################################################################
 
-@webRest.route(API_PREFIX + 'susers', methods=['POST'])
-@wr_check_session
-def urlCreateUser(sess):
-# Expects URL parameters:
-#   ownDatabase : 'true' or 'false', indicating whether separate database should be
-#                 created. Currently ignored and assumed true.
-#   projectName : name project - must be appropriate.
-#   contactName : Name of contact person
-#   contactEmail : email of contact person
+def new_user_post_auth(userid, params):
+#----------------------------------------------------------------------------------------------
+# Create a new user for requesting user with specified id.
+# It is assumed that this user has been authenticated.
+# params must have a get method which allows the retrieval
+# of the various inputs we need. This function is like this
+# so that it can be used whether the request came from either
+# a form submission or a post of json content.
 #
-# Note, perhaps we should use json input, in which case we would have:
-# projectName = request.json.get('projectName')...
-# top level dir called 'projects'? 'users'
-#     parentUrl = request.json.get('parent')
-#     parentProj = models.Project.getByUrl(parentUrl);
+    # check permissions
+    if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
+        return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
+    # check all details provided
+    login = params.get('login')
+    loginType = params.get('loginType')
+    if login is None or loginType is None:
+        return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
+
+    # check if user already exists
+    if fpsys.User.getByLogin(login) is not None:
+        return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
+
+    # create them
+    if int(loginType) == LOGIN_TYPE_LOCAL:
+        password = params.get('password')
+        fullname = params.get('fullname')
+        if password is None or fullname is None:
+            return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
+        errmsg = fpsys.addLocalUser(login, fullname, password)
+    elif loginType == LOGIN_TYPE_***REMOVED***:
+        errmsg = fpsys.add***REMOVED***User(login)
+    else:
+        errmsg = 'Invalid loginType'
+    if errmsg is not None:
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    return jsonSuccessReturn('User {} created'.format(login), HTTP_CREATED)
+
+@webRest.route(API_PREFIX + 'users', methods=['POST'])
+@auth.login_required
+def urlCreateUser():
+#----------------------------------------------------------------------------------------------
+# Create new user, from details provided in json.
+# Authenticated user must have create user perms.
+# NB Currently can only create local user. Need to be able to create ***REMOVED***,
+# could have login_type parameter.
+# Expects json input with the following information:
+# . login
+# . loginType
+# . password
+# . fullname
 #
-# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
-# We are using to get user ident, which hopefully is available from token or basic auth
+    if request.json is None and request.form is not None:
+        params = request.form
+    elif request.json is not None and request.form is None:
+        params = request.json
+    else:
+        jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+    return new_user_post_auth(g.user, params)
 
-# see new_user!  it already works
 
-    print 'urlCreateUser'
-    #return jsonReturn({'a':'b'}, HTTP_CREATED)
-    return new_user_post_auth(sess.getUserIdent(), request.form)
+### Projects: ############################################################################
 
-    # Check permissions:
-    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
-        return jsonErrorReturn("No permission for user creation", HTTP_UNAUTHORIZED)
+#@webRest.route(API_PREFIX + 'projects', methods=['GET'])
+@auth.login_required
+def getProjects():
+    (plist, errmsg) = fpsys.getUserProjects(g.user)
+    if errmsg:
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    print len(plist)
+    nplist = [p.name() for p in plist]
+    return jsonReturn(nplist, HTTP_OK)  # return urls - do we need set Content-Type: application/json?
 
-    try:
-        frm = request.form
-        projectName = frm.get['projectName']    # check if exists? or put in try?
-        contactName = frm['contactName']
-        contactEmail = frm['contactEmail']
-        ownDatabase = frm['ownDatabase']
-        adminLogin = frm['adminLogin']
-        if ownDatabase == 'true':
-            ownDatabase = True
-        elif ownDatabase == 'false':
-            ownDatabase = False
-        else:
-            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-
-        # Create the project:
-        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-        if not isinstance(proj, models.Project):
-            return jsonErrorReturn(proj, HTTP_SERVER_ERROR)
-
-        # Return representation of the project, or a link to it?
-        robj = { 'name':projectName, 'id':27}
-        return jsonReturn(robj, HTTP_CREATED)
-    except Exception, e:
-          return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
-
-### Projects: ---------------------------------------------------------------------------------------
+@webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
+@auth.login_required
+def getProject(id):
+    util.flog("in getProject")
+    (plist, errmsg) = fpsys.getUserProjects(g.user)
+    if errmsg:
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    print len(plist)
+    nplist = [p.name() for p in plist]
+    return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@wr_check_session
-def urlCreateProject(sess):
+@auth.login_required
+def urlCreateProject():
 # Expects URL parameters:
 #   ownDatabase : 'true' or 'false', indicating whether separate database should be
 #                 created. Currently ignored and assumed true.
@@ -395,19 +326,18 @@ def urlCreateProject(sess):
 #
 # Not the use of sess in here - this is problematic as proper rest calls won't have a session.
 # We are using to get user ident, which hopefully is available from token or basic auth
-
+#sess.getUserIdent()
     # Check permissions:
-    if not fpsys.User.sHasPermission(sess.getUserIdent(), fpsys.User.PERMISSION_OMNIPOTENCE):
+    if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_OMNIPOTENCE):
         return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
 
     try:
         frm = request.form
-        projectName = frm['projectName']    # check if exists? or put in try?
+        projectName = frm['projectName']
         contactName = frm['contactName']
         contactEmail = frm['contactEmail']
         ownDatabase = frm['ownDatabase']
         adminLogin = frm['adminLogin']
-        print 'urlCreateProject'
         if ownDatabase == 'true':
             ownDatabase = True
         elif ownDatabase == 'false':
@@ -415,6 +345,12 @@ def urlCreateProject(sess):
         else:
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
         print 'urlCreateProject'
+        
+        # Check admin user exists, get id:
+            # check if user already exists
+        adminUser = fpsys.User.getByLogin(adminLogin)
+        if adminUser is None:
+            return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
 
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
@@ -425,11 +361,16 @@ def urlCreateProject(sess):
             return jsonSuccessReturn("project created", HTTP_CREATED)
         print 'urlCreateProject'
 
+        # Add the adminUser to the project:
+        errmsg = fpsys.addUserToProject(adminUser.getId(), projectName, 1)  #MFK define and use constant
+        if errmsg is not None:
+            return jsonErrorReturn('project {} created, but could not add user {} ({})'.format(projectName,
+                adminLogin, errmsg))
+            
         # Return representation of the project, or a link to it?
-        robj = { 'name':projectName, 'id':27}
-        return jsonReturn(robj, HTTP_CREATED)
+        return jsonSuccessReturn('Project {} created'.format(projectName), HTTP_CREATED)
     except Exception, e:
-          return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
+        return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
 
 
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
@@ -507,6 +448,23 @@ def createProject2():
     # create the project:
     proj = models.Project();
 
+### Attributes: ##########################################################################
+
+@webRest.route('/project/<projectName>/attribute/<attId>', methods=['GET'])
+@wr_check_session
+def urlAttributeData(sess, projectName, attId):
+#---------------------------------------------------------------------------------
+# Return nodeId:attValue pairs
+# These are sorted by node_id.
+# This is used in the admin web pages.
+#
+    natt = models.getAttribute(sess.db(), attId)
+    vals = natt.getAttributeValues()
+    data = []
+    for av in vals:
+        data.append([av.getNode().getId(), av.getValueAsString()])
+    return Response(json.dumps(data), mimetype='application/json')
+
 
 ########################################################################################
 TEST_STUFF = '''
@@ -556,26 +514,8 @@ trials { /<projName> } [ /<trialName> ]
 '''
 
 ########################################################################################
-### Old stuff, but in use: #############################################################
-
-@webRest.route('/project/<projectName>/attribute/<attId>', methods=['GET'])
-@wr_check_session
-def urlAttributeData(sess, projectName, attId):
-#---------------------------------------------------------------------------------
-# Return nodeId:attValue pairs
-# These are sorted by node_id.
-# This is used in the admin web pages.
-#
-    natt = models.getAttribute(sess.db(), attId)
-    vals = natt.getAttributeValues()
-    data = []
-    for av in vals:
-        data.append([av.getNode().getId(), av.getValueAsString()])
-    return Response(json.dumps(data), mimetype='application/json')
-
-
-########################################################################################
 ### Old stuff, NOT in use: #############################################################
+########################################################################################
 
 @webRest.route('/project/<projectName>/trial/<trialId>/slice/<tiId>', methods=['GET'])
 @wr_check_session

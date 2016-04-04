@@ -128,6 +128,37 @@ def getUserProjects(username):
         return (userProjs, None)
     except mdb.Error, e:
         return (None, 'Failed system login:' + str(e))
+    
+def addUserToProject(userId, projectName, perms):
+#-----------------------------------------------------------------------
+# Add user with given id to specified project with specified permissions.
+# Note user db entry created if not already present.
+# Returns error message on error or None
+# MFK Note overlap with add***REMOVED***User()
+#
+    # Get project id:
+    projId = _getProjectIdFromName(projectName)
+    if projId is None:
+        return None, 'bad project name'
+    try:
+        con = getFpsysDbConnection()
+        cur = con.cursor()
+
+        # Check user isn't already in project:
+        qry = 'select user_id from userProject'
+        qry += ' where project_id = %s and user_id = %s'
+        cur.execute(qry, (projId, userId))
+        if cur.rowcount > 0:
+            return 'User already configured for this project'
+
+        # Insert into userProject table:
+        cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
+                    (userId, projId, perms))
+        con.commit()
+        con.close()
+    except mdb.Error, e:
+        return 'Failed user add'
+    return None
 
 
 def add***REMOVED***UserToProject(ident, project, perms):
@@ -370,6 +401,8 @@ class User:
             util.flog('Error in User.getByLogin: {0}'.format(str(e)))
             return None # what about error message?
 
+    def id(self):
+        return self._id
     def name(self):
         return self._name
     def passhash(self):

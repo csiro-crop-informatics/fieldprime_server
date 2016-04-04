@@ -93,35 +93,25 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submi
         <h4 class="modal-title">{}</h4>
       </div>'''.format(buttonLabel)
 
-    if submitUrl is not None:
-        out += '<script>fplib.setupAjaxForm({},{})</script>'.format('frm'+divId, submitUrl)
+    formId = 'frm' + divId
 # do we need success/error funcs? Can we have defaults? 
 # Note we are in abstraction already - no real reason to move script to library is there?
-# It's easier to format there, but in addition this is not specific to modal forms        
-        xout = '''<script>
-            $("#{0}").submit(function(e) {
-                var url = "path/to/your/script.php"; // the script where you handle the form input.
-                $.ajax({
-                       type: "POST",
-                       url: url,
-                       data: $("#idForm").serialize(), // serializes the form's elements.
-                       success: function(data)
-                       {
-                           alert(data); // show response from the php script.
-                       }
-                     });
-                e.preventDefault(); // avoid to execute the actual submit of the form.
-            });
-        </script>'''.format('frm'+divId)
+# It's easier to format there, but in addition this is not specific to modal forms  
         
     # modal content:
     out += '<div class="modal-body">'
-    out += '<form method="post" {}><table class="userInputForm">'.format(
+    out += '<form {} method="post" id="{}" {}><table class="userInputForm">'.format(
+           "" , #if submitUrl is None else 'onsubmit=\'return fplib.thing("{}","{}");\''.format(formId, submitUrl),
+           formId,
            "" if action is None else 'action="{}"'.format(action))
     for el in formElements:
         out += el.htmlElement()
     out += '</table><input type="submit" value="Submit"></form>'
     out += '</div>'
+
+    # Set up the ajax form submission if specified:
+    if submitUrl is not None:
+        out += '<script>$(fplib.ajax.setupAjaxForm("{}","{}"))</script>'.format(formId, submitUrl)
 
     # modal footer:
     out += '''<div class="modal-footer">

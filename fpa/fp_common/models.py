@@ -645,7 +645,8 @@ class Project(DeclarativeBase):
         sql += 'insert fpsys.project (name, dbname) values ("{}", "{}");'.format(projectName, dbname)
         # does above return newly created id - or can we get it somehow?
         sql += 'insert project (id, up_id, name, contactName, contactEmail) values ' + \
-        '((select id from fpsys.project where name="{}"), null, "{}", "{}", "{}");'.format(projectName, projectName, contactName, contactEmail)
+        '((select id from fpsys.project where name="{}"), null, "{}", "{}", "{}");'.format(projectName,
+            projectName, contactName, contactEmail)
         sql += 'flush privileges;'
 # See if we can remove this - it's redundant and assumes single project per db:        
         sql += 'insert system (name, value) values ("contactName", "{}"), ("contactEmail", "{}");'.format(contactName, contactEmail)

@@ -1159,8 +1159,16 @@ def urlUserDetails(sess, projectName):
         else:
             return badJuju(sess, 'Unexpected operation')
 
+#######################################################################################################
+### END USERS STUFF: ##################################################################################
+#######################################################################################################
+
+#######################################################################################################
+### FPADMIN STUFF: ####################################################################################
+#######################################################################################################
+
 def formElements4ProjectManagement():
-# Html for modal form to create projects.
+# Form elements for new project form.
     return [
         forms.formElement('Separate Database', 'Create database for this project', 'ownDatabase', 'ncid',
                     etype=forms.formElement.RADIO, typeSpecificData={'yes':'true', 'no':'false'}, default='true'),
@@ -1172,7 +1180,6 @@ def formElements4ProjectManagement():
         forms.formElement('Project admin login', 'User to get admin access to the new project',
                           'adminLogin', 'adminLoginId', etype=forms.formElement.TEXT)
     ]
-
 
 def formElements4UserManagement():
 # Create user form:
@@ -1188,44 +1195,22 @@ def formElements4UserManagement():
 # it will only get generated when needed.
     return [
         forms.formElement('Login Type', 'Specify user type', 'loginType', 'xncid',
-                          etype=forms.formElement.RADIO, typeSpecificData={'CSIRO ***REMOVED***':'true', 'FieldPrime':'false'}, default='true'),
+            etype=forms.formElement.RADIO,
+            typeSpecificData={'CSIRO ***REMOVED***':LOGIN_TYPE_***REMOVED***, 'FieldPrime':LOGIN_TYPE_LOCAL}, default=LOGIN_TYPE_LOCAL),
         forms.formElement('Login ident', 'Login name', 'login', 'xpnameId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
         forms.formElement('Password', 'Initial password for the new user', 'password', 'fpcuPassword',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
-        forms.formElement('User Name', 'Full name of new user', 'fpcuFullname', 'xcontId',
+        forms.formElement('User Name', 'Full name of new user', 'fullname', 'xcontId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
         forms.formElement('User Email', 'Email address of new user', 'fpcuEmail', 'xemailId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo')
     ]
 
-
-
-@app.route(PREURL+'/fpadmin/', methods=['GET', 'POST'])
-@nocache
+@app.route(PREURL+'/fpadmin/', methods=['GET'])
+@nocache  # This not needed? I was thinking of including tokens in urls in page, but now a cookie
 @dec_check_session()
 def urlFPAdmin(sess):
-#     jscript = '''
-#         <script>
-#         function fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR) {
-#             fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
-#             var x = document.getElementById("fpTiAttName");
-#             x.textContent = name;
-#             fpToggleTiAttribute(false);
-#         };
-#         function fpCreateUser(name) {
-#             $.ajax({
-#                 url:"%s",
-#                 type:"POST",
-#                 data:JSON.stringify({"name":name}),
-#                 dataType:"json",
-#                 contentType: "application/json",
-#                 error : fplib.ajax.jsonError,
-#                 success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
-#             });
-#         };
-#         </script>''' % url_for('webRest.new_user', tiId=ti.getId())
-
     # Check permissions:
     usr = sess.getUser()
     if usr is None:
@@ -1236,74 +1221,78 @@ def urlFPAdmin(sess):
     if request.method == 'GET':
         # Create project form:
         projEls = formElements4ProjectManagement()
-        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', projEls, 'createProjForm')))
+        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', projEls, divId='createProjForm',
+                  submitUrl=url_for('webRest.urlCreateProject', _external=True))))
 
         # Create user form:
         userEls = formElements4UserManagement()
         out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', userEls, divId='createUserForm',
-                                        action=url_for('urlFPAdminCreateUser')), topMargin='20px')
+                   #action=url_for('urlFPAdminCreateUser'),
+                   submitUrl=url_for('webRest.urlCreateUser', _external=True)
+                   ), topMargin='20px')
+        
         return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
 
-    if request.method == 'POST':
-        # login with token (via function), not cooky. Or is this better done from client?
-        frm = request.form
-        try:
-            payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
-                       'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase'], 'adminLogin':frm['adminLogin']}
-            newurl = url_for('webRest.urlCreateProject', _external=True)
-            print 'newurl:' + newurl
-            f = request.cookies.get(NAME_COOKIE_SESSION)
-            cooky = {NAME_COOKIE_SESSION:f}
-            resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
-            respContent = resp.content
-            jresp = resp.json()
-        except Exception, e:
-            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
-        if fprHasError(jresp):
-            return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))
+#     if request.method == 'POST':
+#         # login with token (via function), not cooky. Or is this better done from client?
+#         frm = request.form
+#         try:
+#             payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
+#                        'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase'], 'adminLogin':frm['adminLogin']}
+#             newurl = url_for('webRest.urlCreateProject', _external=True)
+#             print 'newurl:' + newurl
+#             f = request.cookies.get(NAME_COOKIE_SESSION)
+#             cooky = {NAME_COOKIE_SESSION:f}
+#             resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
+#             respContent = resp.content
+#             jresp = resp.json()
+#         except Exception, e:
+#             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
+#         if fprHasError(jresp):
+#             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))
+# 
+#         # Here we need check return status and respond appropriately
+#         status = resp.status_code
+#         print 'status: {}'.format(status)
+#         return respContent
 
-        # Here we need check return status and respond appropriately
-        status = resp.status_code
-        print 'status: {}'.format(status)
-        return respContent
-
-@app.route(PREURL+'/fpadmin/users', methods=['POST'])
-@dec_check_session()
-def urlFPAdminCreateUser(sess):
-    print 'in urlFPAdminCreateUser'
-    # login with token (via function), not cooky. Or is this better done from client?
-    frm = request.form
-    try:
-        is***REMOVED***Login = '3' #frm['loginType'] == 'true'
-        ident = frm['login']
-        fullname = frm['fpcuFullname']
-        email = frm['fpcuEmail']
-        payload = {'loginType':is***REMOVED***Login, 'login':ident, 'fullname':fullname,
-                    'password':frm['password'], 'email':email}
-        newurl = url_for('webRest.urlCreateUser', _external=True)
-        print 'newurl:' + newurl
-        cooky = {NAME_COOKIE_SESSION:request.cookies.get(NAME_COOKIE_SESSION)}
-        resp = requests.post(newurl, cookies=cooky, data=payload, timeout=5)
-        hstatus = resp.status_code
-        jresp = resp.json()
-        respContent = resp.content
-        if hstatus != 201:
-            errmsg = 'Unexpected response code in user creation: '
-            if fprHasError(jresp):
-                errmsg = str(hstatus) + " : " + fprGetError(jresp)
-            return errorScreenInSession(sess, errmsg + str(hstatus))
-        jresp = resp.json()
-    except Exception, e:
-        return errorScreenInSession(sess, 'An exception occurred in user creation: ' + str(e))
-    if fprHasError(jresp):
-        return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))
-    print resp
-    # Here we need check return status and respond appropriately
-    return respContent
-
+# @app.route(PREURL+'/fpadmin/users', methods=['POST'])
+# @dec_check_session()
+# def urlFPAdminCreateUser(sess):
+# # Working, but not used now as we do this from the client with ajax    
+#     print 'in urlFPAdminCreateUser'
+#     # login with token (via function), not cooky. Or is this better done from client?
+#     frm = request.form
+#     try:
+#         is***REMOVED***Login = '3' #frm['loginType'] == 'true'
+#         ident = frm['login']
+#         fullname = frm['fullname']
+#         email = frm['fpcuEmail']
+#         payload = {'loginType':is***REMOVED***Login, 'login':ident, 'fullname':fullname,
+#                     'password':frm['password'], 'email':email}
+#         newurl = url_for('webRest.urlCreateUser', _external=True)
+#         print 'newurl:' + newurl
+#         cooky = {NAME_COOKIE_SESSION:request.cookies.get(NAME_COOKIE_SESSION)}
+#         resp = requests.post(newurl, cookies=cooky, json=payload, timeout=5)
+#         hstatus = resp.status_code
+#         jresp = resp.json()
+#         respContent = resp.content
+#         if hstatus != 201:
+#             errmsg = 'Unexpected response code in user creation: '
+#             if fprHasError(jresp):
+#                 errmsg = str(hstatus) + " : " + fprGetError(jresp)
+#             return errorScreenInSession(sess, errmsg + str(hstatus))
+#         jresp = resp.json()
+#     except Exception, e:
+#         return errorScreenInSession(sess, 'An exception occurred in user creation: ' + str(e))
+#     if fprHasError(jresp):
+#         return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))
+#     print resp
+#     # Here we need check return status and respond appropriately
+#     return respContent
 
 #######################################################################################################
-### END USERS STUFF: ##################################################################################
+### END FPADMIN STUFF: ################################################################################
 #######################################################################################################
 
 @app.route(PREURL+'/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
