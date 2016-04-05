@@ -20,31 +20,31 @@ fplib.ajax = {
         else
             fplib.msg("An error occurred: " + textStatus + " " + errorThrown);
     },
-    
+
     /* jsonSuccess
      * For use as the "success" function in $.ajax calls.
      * It assumes the data is a json object, if this has a "success" field
      * then an alert is displayed with the value.
      * If there is an "error" field, then an alert is displayed stating an
      * error has occurred along with the value.
-     */ 
+     */
     jsonSuccess : function(data, textStatus, jqXHR) {
         if (data.hasOwnProperty("success"))
             fplib.msg(data.success);
         if (data.hasOwnProperty("error"))
             fplib.msg("An error occurred: " + data.error);
     },
-    
-    
+
+
     /* jsonSuccessReload
      * For use as the "success" function in $.ajax calls.
      * Same as jsonSuccess, but then initiates a window reload.
-     */ 
+     */
     jsonSuccessReload : function(data, textStatus, jqXHR){
         fplib.ajax.jsonSuccess(data, textStatus, jqXHR);
         window.location.reload();
     },
-    
+
         // // try to set onsubmit via js
     // fplib.thing = function (formId, url) {
     //     var formSelector = "#" + formId;
@@ -71,14 +71,17 @@ fplib.ajax = {
     //         return fplib.thing(formId, url);
     //     };
     // };
-    
+
     /*
      * setupAjaxForm
      * Configure specified form to post the form data to the specified url on submit.
      * NB - this is a parameterless function that returns the function, intended for
      * calling from document.ready
+     * divId - id of modal div
+     * formId - id of form
+     * url - post destination
      */
-    setupAjaxForm : function(formId, url, successFunc) {
+    setupAjaxForm : function(divId, formId, url) {
         return function () {
             var formSelector = "#" + formId;
             $(formSelector).submit(function(e) {
@@ -93,6 +96,7 @@ fplib.ajax = {
                        success: fplib.ajax.jsonSuccess,
                        error: fplib.ajax.jsonError
                      });
+                $(divId).modal('hide');
                 e.preventDefault(); // avoid to execute the actual submit of the form.
             });
         };
@@ -824,7 +828,7 @@ fplib.popform.deselect = function (e) {
 
 fplib.popform.select = function() {
     if($(this).hasClass('selected')) {
-      fplib.popform.deselect($(this));               
+      fplib.popform.deselect($(this));
     } else {
       $(this).addClass('selected');
       $('.pop').fadeToggle();

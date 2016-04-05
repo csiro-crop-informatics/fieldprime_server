@@ -94,10 +94,11 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submi
       </div>'''.format(buttonLabel)
 
     formId = 'frm' + divId
-# do we need success/error funcs? Can we have defaults? 
+# do we need success/error funcs? Can we have defaults?
 # Note we are in abstraction already - no real reason to move script to library is there?
-# It's easier to format there, but in addition this is not specific to modal forms  
-        
+# It's easier to format there, but in addition this is not specific to modal forms
+
+
     # modal content:
     out += '<div class="modal-body">'
     out += '<form {} method="post" id="{}" {}><table class="userInputForm">'.format(
@@ -111,7 +112,7 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submi
 
     # Set up the ajax form submission if specified:
     if submitUrl is not None:
-        out += '<script>$(fplib.ajax.setupAjaxForm("{}","{}"))</script>'.format(formId, submitUrl)
+        out += '<script>$(fplib.ajax.setupAjaxForm("{}","{}","{}"))</script>'.format(divId, formId, submitUrl)
 
     # modal footer:
     out += '''<div class="modal-footer">

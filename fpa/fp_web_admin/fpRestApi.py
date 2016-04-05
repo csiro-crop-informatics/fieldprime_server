@@ -80,14 +80,14 @@ def verify_password(username_or_token, password):
 # This is invoked by the auth.login_required decorator.
 # If verification is successful, g.user is set.
 #
-    print 'verify_password u:{} p:{}'.format(username_or_token, password)
-
     # first try to authenticate by token
     user = verify_auth_token(username_or_token)
     if not user:
         # try to authenticate with username/password
         check = fpsys.userPasswordCheck(username_or_token, password)
-        if not check: return False
+        if not check:
+            print 'verify_password failed'
+            return False
         else: user = username_or_token
     g.user = user
     return True
@@ -345,7 +345,7 @@ def urlCreateProject():
         else:
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
         print 'urlCreateProject'
-        
+
         # Check admin user exists, get id:
             # check if user already exists
         adminUser = fpsys.User.getByLogin(adminLogin)
@@ -366,7 +366,7 @@ def urlCreateProject():
         if errmsg is not None:
             return jsonErrorReturn('project {} created, but could not add user {} ({})'.format(projectName,
                 adminLogin, errmsg))
-            
+
         # Return representation of the project, or a link to it?
         return jsonSuccessReturn('Project {} created'.format(projectName), HTTP_CREATED)
     except Exception, e:
