@@ -89,6 +89,12 @@ dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 ###  FUNCTIONS: #############################################################################
 #############################################################################################
 
+@app.errorhandler(401)
+def custom_401(error):
+    print 'in custom_401'
+    return Response('<Why access is denied string goes here...>', 401)
+                    #, {'WWWAuthenticate':'Basic realm="Login Required"'})
+
 @app.errorhandler(500)
 def internalError(e):
 #-------------------------------------------------------------------------------

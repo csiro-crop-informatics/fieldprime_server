@@ -538,15 +538,19 @@ def upload_trial_data(username, trial, dbc, token):
         # MFK - make this an array of objects, preferably same format as sent server to client.
         clientLocalIds = jtrial[JTRL_NODES_ARRAY]
         serverIds = []
+        serverRows = []
+        serverCols = []
         # We have to return array of server ids to replace the passed in local ids.
         # We need to record the local ids so as to be idempotent.
         tokenObj = dal.Token.getOrCreateToken(dbc, token, trial.id)
         for newid in clientLocalIds:
             #print 'new id: {0}'.format(newid)
             # Create node, or get it if it already exists:
-            nodeId = dal.TokenNode.getOrCreateClientNode(dbc, tokenObj.id, newid, trial.id)
-            serverIds.append(nodeId)
-        returnObj = {'nodeIds':serverIds}
+            node = dal.TokenNode.getOrCreateClientNode(dbc, tokenObj.id, newid, trial.id)
+            serverIds.append(node.getId())
+            serverRows.append(node.getRow())
+            serverCols.append(node.getCol())
+        returnObj = {'nodeIds':serverIds, 'nodeRows':serverRows, 'nodeCols':serverCols}
         return Response(json.dumps(returnObj), mimetype='application/json')  # prob need ob
 
     # All done, return success indicator:

@@ -1226,6 +1226,10 @@ class Node(DeclarativeBase):
 
     def getId(self):
         return self.id
+    def getRow(self):
+        return self.row
+    def getCol(self):
+        return self.col
 
     @oneException2None
     def getAttributeValue(self, nodeAttributeId):
@@ -1491,7 +1495,7 @@ class TokenNode(DeclarativeBase):
             newtn = TokenNode(tokenId, localId, newNode.id)
             dbc.add(newtn)
             dbc.commit()
-            return newNode.id
+            return newNode
 
     @staticmethod
     def numCreatedNodesForTrial(dbc, trialId):

@@ -15,7 +15,7 @@ fplib.ajax = {
     // Error and Success handler for jquery .ajax().
     // Assumes json format response (dataType='json').
     jsonError : function (jqXHR, textStatus, errorThrown) {
-        if (jqXHR.responseJSON.hasOwnProperty("error"))
+        if (jqXHR.hasOwnProperty("responseJSON") && jqXHR.responseJSON.hasOwnProperty("error"))
             fplib.msg("An error occurred: " + jqXHR.responseJSON.error);
         else
             fplib.msg("An error occurred: " + textStatus + " " + errorThrown);
@@ -33,6 +33,8 @@ fplib.ajax = {
             fplib.msg(data.success);
         if (data.hasOwnProperty("error"))
             fplib.msg("An error occurred: " + data.error);
+        if (!data.hasOwnProperty("success") && !data.hasOwnProperty("error"))
+            fplib.msg("No status indicator");
     },
 
 
@@ -84,19 +86,26 @@ fplib.ajax = {
     setupAjaxForm : function(divId, formId, url) {
         return function () {
             var formSelector = "#" + formId;
+            var divSelector = "#" + divId;
             $(formSelector).submit(function(e) {
                 // get token
                 var token = fplib.readCookie('fptoken');
                 $.ajax({
                        type: "POST",
                        url: url,
-                       username: token,
-                       password: 'x',
+                       //username: token,
+                       //password: 'x',
+                       statusCode: {
+                        401: function() {
+                                alert( "401" );
+                            }
+                        },
+                       headers: {"Authorization": "Basic " + btoa(token + ":x")},
                        data: $(formSelector).serialize(), // serializes the form's elements.
                        success: fplib.ajax.jsonSuccess,
                        error: fplib.ajax.jsonError
                      });
-                $(divId).modal('hide');
+                $(divSelector).modal('hide');
                 e.preventDefault(); // avoid to execute the actual submit of the form.
             });
         };

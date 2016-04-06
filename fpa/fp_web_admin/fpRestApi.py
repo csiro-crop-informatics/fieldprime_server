@@ -6,7 +6,7 @@
 # see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask
 
 from flask import Blueprint, current_app, request, Response, jsonify, g, abort
-from flask.ext.httpauth import HTTPBasicAuth
+from flask.ext.httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from functools import wraps
 import simplejson as json
 from passlib.apps import custom_app_context as pwd_context
@@ -24,7 +24,12 @@ from const import *
 
 ### Initialization: ######################################################################
 webRest = Blueprint('webRest', __name__)
-auth = HTTPBasicAuth()
+# auth = HTTPBasicAuth()
+# auth = HTTPTokenAuth(scheme='token')
+
+basic_auth = HTTPBasicAuth()
+token_auth = HTTPTokenAuth('Bearer')
+multi_auth = MultiAuth(basic_auth, token_auth)
 
 ### Constants: ###########################################################################
 
@@ -52,6 +57,12 @@ def fprGetError(jsonResponse):
 def fprHasError(jsonResponse):
     return "error" in jsonResponse
 
+@webRest.errorhandler(401)
+def custom_401(error):
+    print 'in custom_401'
+    return Response('<Why access is denied string goes here...>', 401)
+                    #, {'WWWAuthenticate':'Basic realm="Login Required"'})
+
 ### Authorization stuff: #################################################################
 
 def generate_auth_token(username, expiration=600):
@@ -74,13 +85,14 @@ def verify_auth_token(token):
     user = data['id']
     return user
 
-@auth.verify_password
+@basic_auth.verify_password
 def verify_password(username_or_token, password):
 # Password check.
-# This is invoked by the auth.login_required decorator.
+# This is invoked by the basic_auth.login_required decorator.
 # If verification is successful, g.user is set.
 #
     # first try to authenticate by token
+    print 'in verify_password u:{} p:{}'.format(username_or_token, password)
     user = verify_auth_token(username_or_token)
     if not user:
         # try to authenticate with username/password
@@ -88,9 +100,20 @@ def verify_password(username_or_token, password):
         if not check:
             print 'verify_password failed'
             return False
+#             g.user = 'xxxx'
+#             return True
         else: user = username_or_token
     g.user = user
     return True
+
+@token_auth.verify_token
+def verify_token(token):
+    user = verify_auth_token(token)
+    if not user:
+        return False
+    g.user = user
+    return True
+
 
 #goEasy = True
 def wr_check_session(func):
@@ -122,7 +145,7 @@ def wr_check_session(func):
 ### Authentication: #################################################################
 
 @webRest.route(API_PREFIX + 'token', methods=['GET'])
-@auth.login_required
+@basic_auth.login_required
 def get_auth_token():
 #-------------------------------------------------------------------------------------------------
 # Returns, in a JSON object, a token for user.
@@ -136,7 +159,7 @@ def get_auth_token():
     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
 # @webRest.route(API_PREFIX + 'otherToken/<otherUserId>', methods=['GET'])
-# @auth.login_required
+# @basic_auth.login_required
 # def get_other_auth_token(otherUserId):
 # #-------------------------------------------------------------------------------------------------
 # # Returns, in a JSON object, a token for user.
@@ -151,7 +174,7 @@ def get_auth_token():
 #     return jsonify({'token': token.decode('ascii'), 'duration': 600})
 
 # @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
-# @auth.login_required
+# @basic_auth.login_required
 # def authUser(login, permission):
 #     pass
 
@@ -176,7 +199,7 @@ def _checkTiAttributeStuff(sess, tiId):
     return ti
 
 @webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['POST'])
-#@auth.login_required
+#@basic_auth.login_required
 @wr_check_session
 def createTiAttribute(sess, tiId):
 # Create attribute for the TI specified in the URL.
@@ -263,7 +286,7 @@ def new_user_post_auth(userid, params):
     return jsonSuccessReturn('User {} created'.format(login), HTTP_CREATED)
 
 @webRest.route(API_PREFIX + 'users', methods=['POST'])
-@auth.login_required
+@token_auth.login_required
 def urlCreateUser():
 #----------------------------------------------------------------------------------------------
 # Create new user, from details provided in json.
@@ -276,6 +299,9 @@ def urlCreateUser():
 # . password
 # . fullname
 #
+    if g.user == 'xxxx':
+        print 'here goeth'
+        return Response('<Why access is denied string goes here...>', 401)
     if request.json is None and request.form is not None:
         params = request.form
     elif request.json is not None and request.form is None:
@@ -288,7 +314,7 @@ def urlCreateUser():
 ### Projects: ############################################################################
 
 #@webRest.route(API_PREFIX + 'projects', methods=['GET'])
-@auth.login_required
+@basic_auth.login_required
 def getProjects():
     (plist, errmsg) = fpsys.getUserProjects(g.user)
     if errmsg:
@@ -298,7 +324,7 @@ def getProjects():
     return jsonReturn(nplist, HTTP_OK)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
-@auth.login_required
+@basic_auth.login_required
 def getProject(id):
     util.flog("in getProject")
     (plist, errmsg) = fpsys.getUserProjects(g.user)
@@ -309,7 +335,7 @@ def getProject(id):
     return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@auth.login_required
+@basic_auth.login_required
 def urlCreateProject():
 # Expects URL parameters:
 #   ownDatabase : 'true' or 'false', indicating whether separate database should be
@@ -374,7 +400,7 @@ def urlCreateProject():
 
 
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
-@auth.login_required
+@basic_auth.login_required
 def old_createProject(path):
     return 'You want path: %s' % path
 
@@ -394,7 +420,7 @@ def checkIdent(candidate):
     re.match('\w\w*')
 
 #@webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@auth.login_required
+@basic_auth.login_required
 def new_createProject():
 # Expects JSON object:
 #   parent : url for parent project. If missing root is used.
@@ -421,7 +447,7 @@ def new_createProject():
     proj = models.Project();
 
 #@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
-@auth.login_required
+@basic_auth.login_required
 def createProject2():
 # Expects JSON object:
 #   parent : url for parent project. If missing root is used.
