@@ -100,7 +100,8 @@ fplib.ajax = {
                                 alert( "401" );
                             }
                         },
-                       headers: {"Authorization": "Basic " + btoa(token + ":x")},
+                       //headers: {"Authorization": "Basic " + btoa(token + ":x")},
+                       headers: {"Authorization": "fptoken " + token},
                        data: $(formSelector).serialize(), // serializes the form's elements.
                        success: fplib.ajax.jsonSuccess,
                        error: fplib.ajax.jsonError

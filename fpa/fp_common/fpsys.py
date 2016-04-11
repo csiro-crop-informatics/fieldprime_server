@@ -96,7 +96,10 @@ def getProjectUsers(project):
         return (None, 'Failed system login')
 
 class UserProject:
-# Class to hold details of project with user.    
+# Class to hold details of project with user.
+    PERMISSION_VIEW = 0 # i.e. they have access to the project
+    PERMISSION_ADMIN = 0x1
+
     def __init__(self, projectId, projectName, dbname, ident, access):
         self._projectId = projectId
         self._projectName = projectName
@@ -109,6 +112,27 @@ class UserProject:
     def ident(self): return self._ident
     def access(self): return self._access
     
+    @staticmethod
+    def getUserProject(username, projectId):
+    # Returns UserProject, None, or error string.
+        try:
+            con = getFpsysDbConnection()
+            qry = """
+                select p.id, p.name, up.permissions, p.dbname from user u join userProject up
+                on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id
+                where up.project_id = %d"""
+            cur = con.cursor()
+            cur.execute(qry, (username, projectId))
+            if cur.rowcount != 1:
+                return None
+            row = cur.fetchone()
+            return UserProject(row[0], row[1], row[3], username, row[2])
+        except mdb.Error, e:
+            return 'Failed getUserProject:' + str(e)
+        
+    
+
+
 def getUserProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.
@@ -273,14 +297,14 @@ def add***REMOVED***User(login):
         return str(e)
     return None
 
-def addLocalUser(login, fullname, password):
+def addLocalUser(login, fullname, password, email):
 # Returns None on success, else error message.
     # check strings for bad stuff?
     try:
         con = getFpsysDbConnection()
-        qry = "insert user (login, name, passhash, login_type) values (%s,%s,%s,%s)"
+        qry = "insert user (login, name, passhash, login_type, email) values (%s,%s,%s,%s,%s)"
         cur = con.cursor()
-        cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL))
+        cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL, email))
         con.commit()
         con.close()
     except mdb.Error, e:

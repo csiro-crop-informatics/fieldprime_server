@@ -30,9 +30,18 @@ def isValidIdentifier(candidate):
 
 def isValidEmail(email):
 # Return boolean indicating whether email looks like an email address.
-    return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None
+    if isinstance(email, basestring):
+        return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None
+    else:
+        return False
 
 def isValidName(candidate):
+# Returns boolean.
+# Valid if starts with letter. Only contains letters, space, hyphen
+    return re.match("[A-Za-z][ \-a-zA-Z0-9]*$", candidate) is not None
+
+def isValidPassword(candidate):
+# Need to write this    
 # Returns boolean.
 # Valid if starts with letter. Only contains letters, space, hyphen
     return re.match("[A-Za-z ][\-a-zA-Z0-9]*$", candidate) is not None

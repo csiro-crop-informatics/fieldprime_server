@@ -147,6 +147,7 @@ def dec_check_session(returnNoneSess=False):
         @wraps(func)
         def inner(*args, **kwargs):
             sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
+            token = request.cookies.get(NAME_COOKIE_TOKEN)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
             if not sess.valid():  # Check if session is still valid
@@ -1209,8 +1210,8 @@ def formElements4UserManagement():
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
         forms.formElement('User Name', 'Full name of new user', 'fullname', 'xcontId',
                           etype=forms.formElement.TEXT, typeSpecificData='foo'),
-        forms.formElement('User Email', 'Email address of new user', 'fpcuEmail', 'xemailId',
-                          etype=forms.formElement.TEXT, typeSpecificData='foo')
+        forms.formElement('User Email', 'Email address of new user', 'userEmail', 'xemailId',
+                          etype=forms.formElement.TEXT, typeSpecificData='foo@fi.fi')
     ]
 
 @app.route(PREURL+'/fpadmin/', methods=['GET'])
