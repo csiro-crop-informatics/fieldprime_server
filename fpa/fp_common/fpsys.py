@@ -11,14 +11,23 @@
 
 import MySQLdb as mdb
 import os
-import ***REMOVED***
-
-import util
-from models import dbName4Project, fpDBUser, fpPassword, getFpsysDbConnection         # circularity here, could move APP* to separate module
-from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
 from passlib.apps import custom_app_context as pwd_context
 from passlib.apps import mysql_context
 
+import ***REMOVED***
+import util
+from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
+#from models import getFpsysDbConnection         # circularity here, could move APP* to separate module
+import models
+
+    
+def getFpsysDbConnection():
+#-----------------------------------------------------------------------
+# Get mysql connection to fpsys database.
+#
+    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
+    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
+    return mdb.connect(host, models.fpDBUser(), models.fpPassword(), 'fpsys')
 
 def _getProjectIdFromName(projName):
 #-----------------------------------------------------------------------
@@ -120,8 +129,9 @@ class UserProject:
             qry = """
                 select p.id, p.name, up.permissions, p.dbname from user u join userProject up
                 on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id
-                where up.project_id = %d"""
+                where up.project_id = %s"""
             cur = con.cursor()
+            #print 'types {} {}'.format(type(username), type(projectId))
             cur.execute(qry, (username, projectId))
             if cur.rowcount != 1:
                 return None
@@ -130,8 +140,6 @@ class UserProject:
         except mdb.Error, e:
             return 'Failed getUserProject:' + str(e)
         
-    
-
 
 def getUserProjects(username):
 #-----------------------------------------------------------------------
@@ -344,7 +352,7 @@ def systemPasswordCheck(user, password):
         return 'fp_' + username
 
     try:
-        con = mdb.connect('localhost', dbName4Project(user), password, dbName(user));
+        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
         con.close()
         return True
     except mdb.Error, e:
@@ -398,6 +406,8 @@ def userPasswordCheck(username, password):
     else:
         util.flog('Unexpected login type: {0}'.format(loginType))
         return None
+    
+### Users: ############################################################################
 
 class User:
     PERMISSION_CREATE_USER = 0x1
@@ -465,4 +475,61 @@ class User:
             return False
         return bool(usr._permissions & perm)
 
+### Projects: ############################################################################
 
+class Project():
+    def __init__(self, projId, name, dbName):
+        self._id = projId
+        self._name = name
+        self._dbName = dbName
+        
+    def id(self):
+        return self._id
+    def name(self):
+        return self._name
+    def dbName(self):
+        return self._dbName    
+    
+    @staticmethod
+    def getById(pid):
+    # Return project instance or None or errormsg
+    # Could be change to get by id or name easily enough..
+        try:
+            con = getFpsysDbConnection()
+            qry = "select id, name, dbname from project where id = %s"
+            cur = con.cursor()
+            cur.execute(qry, (pid,))
+            resRow = cur.fetchone()
+            if resRow is None:
+                return None
+            return Project(resRow[0], resRow[1], resRow[2])
+        except mdb.Error, e:
+            errmsg = 'Error in Project.getById: {0}'.format(str(e))
+            util.flog(errmsg)
+            return errmsg
+
+    @staticmethod
+    def getModelProjectById(pid):
+    # Returns object/None/errorString
+        fpsysProj = Project.getById(pid)
+        if not isinstance(fpsysProj, Project):
+            return fpsysProj
+        dbc = models.getDbConnection(fpsysProj.dbName())
+        mproj = models.getProjectByName(dbc, fpsysProj.name())
+        return mproj
+        
+def getProjectDBname(projectName):
+#-----------------------------------------------------------------------
+# Returns dbname for named project or None on error.
+#
+    try:
+        con = getFpsysDbConnection()
+        qry = "select dbname from project where name = %s"
+        cur = con.cursor()
+        cur.execute(qry, (projectName,))
+        foo = cur.fetchone()
+        return None if foo is None else foo[0]
+    except mdb.Error, e:
+        return None
+
+##########################################################################################

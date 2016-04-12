@@ -23,7 +23,7 @@ from const import *
 import util
 from functools import wraps
 from flask import current_app as app
-#import fpsys
+import fpsys
 
 
 DeclarativeBase = declarative_base()
@@ -610,6 +610,7 @@ class Project(DeclarativeBase):
     def makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin):
     # Returns new project object, which has been saved to the database, or None, if all well.
     # Otherwise returns a string error message.
+    # Should probably move the relevant bits of this out to fpsys.
     
 # create database if not exists $DBNAME;
 # use $DBNAME;
@@ -634,7 +635,7 @@ class Project(DeclarativeBase):
             return 'invalid login name'
          
         # Check project name doesn't already exist:
-        if Project.getProjectDBname(projectName) is not None:
+        if fpsys.getProjectDBname(projectName) is not None:
             return 'Project with name {} already exists'.format(projectName)
 
         dbname = dbName4Project(projectName)
@@ -651,7 +652,7 @@ class Project(DeclarativeBase):
 # See if we can remove this - it's redundant and assumes single project per db:        
         sql += 'insert system (name, value) values ("contactName", "{}"), ("contactEmail", "{}");'.format(contactName, contactEmail)
         try:
-            con = getFpsysDbConnection() 
+            con = fpsys.getFpsysDbConnection() 
             cur = con.cursor()
             cur.execute(sql)
             cur.close()
@@ -662,21 +663,6 @@ class Project(DeclarativeBase):
         except mdb.Error, e:
             return 'Error creating project: ' + str(e)
         return None
-        
-    @staticmethod
-    def getProjectDBname(projectName):
-    #-----------------------------------------------------------------------
-    # Returns dbname for named project or None on error.
-    #
-        try:
-            con = getFpsysDbConnection()
-            qry = "select dbname from project where name = %s"
-            cur = con.cursor()
-            cur.execute(qry, (projectName,))
-            foo = cur.fetchone()
-            return None if foo is None else foo[0]
-        except mdb.Error, e:
-            return None
 
     def getName(self):
         return self.name
@@ -902,6 +888,20 @@ class Trial(DeclarativeBase):
 
     def navIndexNames(self):
         return (self.navIndexName(0), self.navIndexName(1))
+    
+    def setNavIndexNames(self, index1Name, index2Name):
+    # Set nav index names, if None, these get default values. Otherwise they
+    # must be valid identifiers.
+    # Return None or errmsg.
+        db = _dbc(self)
+        if index1Name is None: index1Name = INDEX_NAME_1_DEFAULT
+        if index2Name is None: index2Name = INDEX_NAME_2_DEFAULT
+        if not util.isValidIdentifier(index1Name): return 'Invalid row alias'
+        if not util.isValidIdentifier(index1Name): return 'Invalid row alias'
+        db.merge(TrialProperty(self.getId(), INDEX_NAME_1, index1Name))
+        db.merge(TrialProperty(self.getId(), INDEX_NAME_2, index2Name))
+        db.commit()
+        return None
 
     @staticmethod
     def getTraitInstancesForTrial(dbc, trialID):
@@ -1143,6 +1143,13 @@ class Trial(DeclarativeBase):
 #             except Exception, e:
 #                 return 'Error parsing note ' + e.args[0]
 
+    def setTrialProperty(self, key, value):
+        db = _dbc(self)
+        newProp = TrialProperty(self.getId(), key, value)
+        newProp = db.merge(newProp)
+        db.commit()
+
+        
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers
 # of this function may not already have a trial instance, just a trialId.
@@ -1154,7 +1161,7 @@ def navIndexName(dbc, trialId, indexOrder):
                     and_(TrialProperty.trial_id == trialId, TrialProperty.name == indexName)
                     ).one().value
     except NoResultFound:
-        return ['Row', 'Column'][indexOrder]
+        return [INDEX_NAME_1_DEFAULT, INDEX_NAME_2_DEFAULT][indexOrder]
     else:
         return val
 
@@ -1558,7 +1565,7 @@ def getSysUserEngine(projectName):
 # This should be called once only and the result stored,
 # currently done in session module.
 #
-    dbname = Project.getProjectDBname(projectName)
+    dbname = fpsys.getProjectDBname(projectName)
     return getDbConnection(dbname)
 
 def getDbConnection(dbname):
@@ -1929,10 +1936,6 @@ def datatypeName(dtypeCode):
         return TRAIT_TYPE_NAMES[dtypeCode]
     except (IndexError, TypeError):
         return None
-    
-def getFpsysDbConnection():
-    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
-    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
-    return mdb.connect(host, fpDBUser(), fpPassword(), 'fpsys')
+
 
 

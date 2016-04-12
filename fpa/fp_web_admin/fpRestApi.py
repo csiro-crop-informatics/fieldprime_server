@@ -115,6 +115,7 @@ def verify_password(username_or_token, password):
 #             return True
         else: user = username_or_token
     g.user = user
+    g.newToken = generate_auth_token(user)
     return True
 
 @token_auth.verify_token
@@ -125,6 +126,7 @@ def verify_token(notoken):
 #
     mkdbg(notoken)
     token = request.cookies.get(NAME_COOKIE_TOKEN)
+    if token is None: return False
     mkdbg('verify_token token: {}'.format(token))
     user = verify_auth_token(token)
     if not user:
@@ -358,10 +360,10 @@ def wrap_api_func(func):
     def inner(*args, **kwargs):
         if request.json is None and request.form is not None:
             params = request.form
-        elif request.json is not None and request.form is None:
+        elif request.json is not None: # and request.form is None:   Note if both json and form, we use json only
             params = request.json
         else:
-            jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+            return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
         ret = func(g.user, params, *args, **kwargs)
         ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
         return ret
@@ -655,9 +657,25 @@ def createProject2():
 ### Trials: ############################################################################
 
 # Todo trial delete
+TEST_trial = '''
+FP=http://0.0.0.0:5001/fpv1
 
+# Get token:
+curl -u fpadmin:foo -i -X GET $FP/token
+
+# Create trial:
+curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
+     -d '{"trialName":"testCreateTrial"}' $FP/projects/1/trials
+     
+curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
+     -d '{"trialName":"testCreateTrial2", "trialYear":2016, "trialSite":"yonder", "trialAcronym":"123",
+     "nodeCreation":"false", "rowAlias":"range", "colAlias":"run"}' $FP/projects/1/trials 
+
+     
+'''
+    
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['POST'])
-@token_auth.login_required
+@multi_auth.login_required
 @wrap_api_func
 def urlCreateTrial(userid, params, projId):
 # Paramaters can be form or json.    
@@ -670,11 +688,13 @@ def urlCreateTrial(userid, params, projId):
 #   rowAlias : text
 #   colAlias : text
 #   
+# If successful, returns in the json the URL for the created trial.
 #
     # Check permissions:
     # We should have trial creation permissions, but this should be project specific
     # preferably with inheritance
     # At least need to check user has access to project
+    mkdbg('urlCreateTrial({}, {})'.format(userid, projId))
     userProj = fpsys.UserProject.getUserProject(userid, projId)
     if userProj is None:
         return jsonErrorReturn("No project access for user", HTTP_UNAUTHORIZED)
@@ -683,57 +703,34 @@ def urlCreateTrial(userid, params, projId):
     elif not isinstance(userProj, fpsys.UserProject):
         return jsonErrorReturn("Error in trial creation", HTTP_SERVER_ERROR)
 
-    try: # not sure we need try anymore..
-        trialName = params.get('trialName')
-        trialYear = params.get('trialYear')
-        trialSite = params.get('trialSite')
-        trialAcronym = params.get('trialAcronym')
-        nodeCreation = params.get('nodeCreation')
-        rowAlias = params.get('rowAlias')
-        colAlias = params.get('colAlias')
+    trialName = params.get('trialName')
+    trialYear = params.get('trialYear')
+    trialSite = params.get('trialSite')
+    trialAcronym = params.get('trialAcronym')
+    nodeCreation = params.get('nodeCreation')
+    rowAlias = params.get('rowAlias')
+    colAlias = params.get('colAlias')
         
-        # check trial name provided and valid format:
-        if trialName is None or not util.isValidIdentifier(trialName):
-            return jsonErrorReturn("Invalid trial name", HTTP_BAD_REQUEST)        
+    # check trial name provided and valid format:
+    if trialName is None or not util.isValidIdentifier(trialName):
+        return jsonErrorReturn("Invalid trial name", HTTP_BAD_REQUEST)        
 
-        # check trial doesn't already exist:
-        # Need to get project first, as this will identify the database
-        # Trick this - see websess. Probably need class Project in fpsys, getting details from
-        # fpsys projects and within db project class
-#         if ownDatabase == 'true':
-#             ownDatabase = True
-#         elif ownDatabase == 'false':
-#             ownDatabase = False
-#         else:
-#             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-#         print 'urlCreateProject xxxx'
-# 
-#         # Check admin user exists, get id:
-#             # check if user already exists
-#         adminUser = fpsys.User.getByLogin(adminLogin)
-#         if adminUser is None:
-#             return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
-# 
-#         # Create the project:
-#         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-# #        if not isinstance(proj, models.Project): # return project json representation? Or URL?
-#         if isinstance(proj, basestring):
-#             return jsonErrorReturn(proj, HTTP_BAD_REQUEST)
-# #         else:
-# #             return jsonSuccessReturn("project created", HTTP_CREATED)
-#         print 'urlCreateProject nnnnn'
-# 
-#         # Add the adminUser to the project:
-#         print 'admin: {} pname {}'.format(adminUser.id(), projectName)
-#         errmsg = fpsys.addUserToProject(adminUser.id(), projectName, 1)  #MFK define and use constant
-#         if errmsg is not None:
-#             return jsonErrorReturn('project {} created, but could not add user {} ({})'.format(projectName,
-#                 adminLogin, errmsg))
-# 
-#         # Return representation of the project, or a link to it?
-#         return jsonSuccessReturn('Project {} created'.format(projectName), HTTP_CREATED)
-#     except Exception, e:
-#         return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
+    # check trial doesn't already exist:
+    # Need to get project first, as this will identify the database
+    # Tricky this - see websess. Probably need class Project in fpsys, getting details from
+    # fpsys projects and within db project class
+    proj = fpsys.Project.getModelProjectById(projId)
+    if proj is None:
+        return jsonErrorReturn("Error retrieving project in trial creation", HTTP_SERVER_ERROR)
+    try:
+        trial = proj.newTrial(trialName, trialSite, trialYear, trialAcronym)
+    except models.DalError as e:
+        return jsonErrorReturn("Error creating trial creation: {}".format(e.__str__()), HTTP_BAD_REQUEST)
+
+    trial.setTrialProperty('nodeCreation', nodeCreation)
+    trial.setNavIndexNames(rowAlias, colAlias)
+    
+    return jsonSuccessReturn('Trial {} created'.format(trialName), HTTP_CREATED)
 
 
 ### Attributes: ##########################################################################
