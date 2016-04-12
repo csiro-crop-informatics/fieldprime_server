@@ -32,7 +32,6 @@ if __name__ == '__main__':
 import fpTrait
 import fp_common.models as models    # why both this and dal!?
 import fp_common.util as util
-import fp_common.users as users
 import fpTrial
 import fpUtil
 from fpUtil import hsafe

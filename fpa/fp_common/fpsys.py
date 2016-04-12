@@ -131,7 +131,6 @@ class UserProject:
                 on u.id = up.user_id and u.login = %s join project p on p.id = up.project_id
                 where up.project_id = %s"""
             cur = con.cursor()
-            #print 'types {} {}'.format(type(username), type(projectId))
             cur.execute(qry, (username, projectId))
             if cur.rowcount != 1:
                 return None

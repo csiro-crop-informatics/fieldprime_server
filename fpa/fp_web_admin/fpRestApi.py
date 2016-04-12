@@ -18,7 +18,6 @@ from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSign
 import re
 
 import fp_common.models as models
-import fp_common.users as users
 import fp_common.fpsys as fpsys
 import websess
 from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
