@@ -6,7 +6,9 @@
 # see http://blog.miguelgrinberg.com/post/restful-authentication-with-flask, or more
 # recent and better, find the github page for flask_httpauth
 #
-# Todo - long term time out, or numUses value for token. To limit damage from stolen token.
+# Todo:
+# - long term time out, or numUses value for token. To limit damage from stolen token.
+# - If we create userProject in wrap_api, update original funcs to use it.
 #
 
 from flask import Blueprint, current_app, request, Response, jsonify, g, abort
@@ -64,13 +66,34 @@ def fprGetError(jsonResponse):
 def fprHasError(jsonResponse):
     return "error" in jsonResponse
 
-@webRest.errorhandler(401)
-def custom_401(error):
-    print 'in custom_401'
-    return Response('<Why access is denied string goes here...>', 401)
-                    #, {'WWWAuthenticate':'Basic realm="Login Required"'})
+# @webRest.errorhandler(401)
+# def custom_401(error):
+#     print 'in custom_401'
+#     return Response('<Why access is denied string goes here...>', 401)
+#                     #, {'WWWAuthenticate':'Basic realm="Login Required"'})
 
-### Authorization stuff: #################################################################
+
+### Authentication: ######################################################################
+
+@webRest.route(API_PREFIX + 'token', methods=['GET'])
+@basic_auth.login_required
+def get_auth_token():
+#-------------------------------------------------------------------------------------------------
+# Returns, in a JSON object, a token for user.
+# The returned token may be used as a basic authentication username
+# for subsequent calls to the api (for up to 600 seconds).
+# This is in place of repeatedly sending the real username and password.
+# When using the token as the username, the password is not used, so any
+# value can be given.
+#
+    token = generate_auth_token(g.user)
+    return jsonify({'token': token.decode('ascii'), 'duration': 600})
+
+# @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
+# @basic_auth.login_required
+# def authUser(login, permission):
+#     pass
+
 
 def generate_auth_token(username, expiration=600):
 # Return a token for the specified username. This can be used
@@ -96,26 +119,44 @@ def verify_auth_token(token):
     return user
 
 @basic_auth.verify_password
-def verify_password(username_or_token, password):
+def verify_password(user, password):
 # Password check.
 # This is invoked by the basic_auth.login_required decorator.
-# If verification is successful, g.user is set.
+# If verification is successful:
+#    g.user is set to the user login
+#    g.newToken is set to a new authentication token
 #
+# MFK We should remove the token checking here, unless it is useful?
     # first try to authenticate by token
-    mkdbg('verify_password: u:{} p:{}'.format(username_or_token, password))
-    user = verify_auth_token(username_or_token)
-    if not user:
-        # try to authenticate with username/password
-        check = fpsys.userPasswordCheck(username_or_token, password)
-        if not check:
-            mkdbg('verify_password: fpsys.userPasswordCheck failed')
-            return False
+    #mkdbg('verify_password: u:{} p:{}'.format(user, password))
+    # try to authenticate with username/password
+    check = fpsys.userPasswordCheck(user, password)
+    if not check:
+        mkdbg('verify_password: fpsys.userPasswordCheck failed')
+        return False
 #             g.user = 'xxxx'
-#             return True
-        else: user = username_or_token
+#             return True    
     g.user = user
     g.newToken = generate_auth_token(user)
     return True
+
+#     # Old way, take user/password, or token as user
+#def verify_password(username_or_token, password):
+#     # first try to authenticate by token
+#     mkdbg('verify_password: u:{} p:{}'.format(username_or_token, password))
+#     user = verify_auth_token(username_or_token)
+#     if not user:
+#         # try to authenticate with username/password
+#         check = fpsys.userPasswordCheck(username_or_token, password)
+#         if not check:
+#             mkdbg('verify_password: fpsys.userPasswordCheck failed')
+#             return False
+# #             g.user = 'xxxx'
+# #             return True
+#         else: user = username_or_token
+#     g.user = user
+#     g.newToken = generate_auth_token(user)
+#     return True
 
 @token_auth.verify_token
 def verify_token(notoken):
@@ -161,199 +202,19 @@ def wr_check_session(func):
         return func(sess, *args, **kwargs) #if not goEasy else func(None, *args, **kwargs)
     return inner
 
+
 ##########################################################################################
 ### Access Points: #######################################################################
 ##########################################################################################
 
-### Authentication: #################################################################
-
-@webRest.route(API_PREFIX + 'token', methods=['GET'])
-@basic_auth.login_required
-def get_auth_token():
-#-------------------------------------------------------------------------------------------------
-# Returns, in a JSON object, a token for user.
-# The returned token may be used as a basic authentication username
-# for subsequent calls to the api (for up to 600 seconds).
-# This is in place of repeatedly sending the real username and password.
-# When using the token as the username, the password is not used, so any
-# value can be given.
-#
-    token = generate_auth_token(g.user)
-    return jsonify({'token': token.decode('ascii'), 'duration': 600})
-
-# @webRest.route(API_PREFIX + 'otherToken/<otherUserId>', methods=['GET'])
-# @basic_auth.login_required
-# def get_other_auth_token(otherUserId):
-# #-------------------------------------------------------------------------------------------------
-# # Returns, in a JSON object, a token for user.
-# # The returned token may be used as a basic authentication username
-# # for subsequent calls to the api (for up to 600 seconds).
-# # This is in place of repeatedly sending the real username and password.
-# # When using the token as the username, the password is not used, so any
-# # value can be given.
-# #
-#     # Check authenticated user has power to create tokens for others.
-#     token = generate_auth_token(g.user, 600)
-#     return jsonify({'token': token.decode('ascii'), 'duration': 600})
-
-# @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
-# @basic_auth.login_required
-# def authUser(login, permission):
-#     pass
-
-
-### TraitInstance Attribute: #################################################################
-# Note authentication problem: from the web page in the browser, we won't have login token.
-# Can we use the cookie? see wr_check_session.
-#
-
-def _checkTiAttributeStuff(sess, tiId):
-# Check permissions for ti attribute ops. If OK, returns the ti,
-# else returns error Response.
-    # Check user has rights for this operation:
-    if not sess.adminRights():
-        return jsonErrorReturn('Requires project admin rights', HTTP_UNAUTHORIZED)
-    # Check ti is in project:
-    ti = models.getTraitInstance(sess.db(), tiId)
-    if ti is None:
-        return jsonErrorReturn('invalid trait instance', HTTP_BAD_REQUEST)
-    if ti.getTrial().getProject().getId() != sess.getProject().getId():
-        return jsonErrorReturn('invalid trait instance for project', HTTP_BAD_REQUEST)
-    return ti
-
-@webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['POST'])
-#@basic_auth.login_required
-@wr_check_session
-def createTiAttribute(sess, tiId):
-# Create attribute for the TI specified in the URL.
-# The attribute name must be present as a url parameter "name".
-#
-    ti = _checkTiAttributeStuff(sess, tiId)
-    if not isinstance(ti, models.TraitInstance):
-        return ti
-
-    # Get name proposed for attribute:
-    name = request.json.get('name')
-    if not name:
-        return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
-
-    # check
-    nodat = ti.getAttribute()
-    if nodat is None:
-        # Create it:
-        att = ti.createAttribute(name)
-        if att is None:
-            return jsonErrorReturn('Cannot create attribute, may be invalid name', HTTP_BAD_REQUEST)
-    else:
-        # Reset the name:
-        nodat.setName(name)  # error return
-
-    return jsonSuccessReturn("Attribute Created")
-
-@webRest.route(API_PREFIX + 'ti/<int:tiId>/attribute', methods=['DELETE'])
-@wr_check_session
-def deleteTiAttribute(sess, tiId):
-    ti = _checkTiAttributeStuff(sess, tiId)
-    if not isinstance(ti, models.TraitInstance):
-        return ti
-    errmsg = ti.deleteAttribute()
-    if errmsg is None:
-        return jsonSuccessReturn("Attribute Deleted")
-    else:
-        return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
-
-### Projects: ---------------------------------------------------------------------------------------
-
-@webRest.route(API_PREFIX + 'test', methods=['GET'])
-#@wr_check_session
-def urlTest():
-    return 'test return\n'
-
-### Users: ####################################################################################
-
-def new_user_post_auth(userid, params):
-#----------------------------------------------------------------------------------------------
-# Create a new user for requesting user with specified id.
-# It is assumed that this user has been authenticated.
-# params must have a get method which allows the retrieval
-# of the various inputs we need. This function is like this
-# so that it can be used whether the request came from either
-# a form submission or a post of json content.
-#
-# Could merge this back into urlCreateUser now as disambiguation
-# of input source happens there.
-#
-    # check permissions
-    if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
-        return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
-    
-    # check all details provided (should be infra)
-    login = params.get('login')
-    loginType = params.get('loginType')
-    if login is None or loginType is None:
-        return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
-
-    # check if user already exists
-    if fpsys.User.getByLogin(login) is not None:
-        return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-
-    # create them
-    if int(loginType) == LOGIN_TYPE_LOCAL:
-        password = params.get('password')
-        fullname = params.get('fullname')
-        email = params.get('userEmail')
-        # Validation - should be by infrastructure..
-        if password is None or fullname is None:
-            return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)        
-        if not util.isValidName(fullname):
-            return jsonErrorReturn('Invalid user name', HTTP_BAD_REQUEST)
-        if not util.isValidPassword(password):
-            return jsonErrorReturn('Invalid password', HTTP_BAD_REQUEST)
-        print 'email:{}'.format(email)
-        if not util.isValidEmail(email):
-            return jsonErrorReturn("Invalid email address", HTTP_BAD_REQUEST)
-        errmsg = fpsys.addLocalUser(login, fullname, password, email)
-    elif loginType == LOGIN_TYPE_***REMOVED***:
-        errmsg = fpsys.add***REMOVED***User(login)
-    else:
-        errmsg = 'Invalid loginType'
-    if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    return jsonSuccessReturn('User {} created'.format(login), HTTP_CREATED)
-
-#@webRest.route(API_PREFIX + 'users', methods=['POST'])
-@token_auth.login_required
-def OLD_urlCreateUser():
-#----------------------------------------------------------------------------------------------
-# Create new user, from details provided in json.
-# Authenticated user must have create user perms.
-# NB Currently can only create local user. Need to be able to create ***REMOVED***,
-# could have login_type parameter.
-# Expects json input with the following information:
-# . login
-# . loginType
-# . password
-# . fullname
-#
-
-#     if g.user == 'xxxx': # hack to solve browser authentication prob..
-#         print 'here goeth'
-#         return Response('<Why access is denied string goes here...>', 401)
-    if request.json is None and request.form is not None:
-        params = request.form
-    elif request.json is not None and request.form is None:
-        params = request.json
-    else:
-        jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
-    ret = new_user_post_auth(g.user, params)
-    ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
-    return ret
-
 def wrap_api_func(func):
 #-------------------------------------------------------------------------------------------------
+# Get parameters dictionary from request (assumed to be in context), pass this and the user
+# to func. Resets token cookie, with g.newToken, assumed to be set (perhaps we should be doing that here).
 # func should return a response.
 # request is assumed to be available
 # func should have first params: userid, params.
+# If there is a parameter 'projId' in **kwargs, then g.userProject is set.
 #
     @wraps(func)
     def inner(*args, **kwargs):
@@ -363,15 +224,81 @@ def wrap_api_func(func):
             params = request.json
         else:
             return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+        if 'projId' in kwargs:
+            g.userProject = fpsys.UserProject.getUserProject(g.user, kwargs['projId'])
         ret = func(g.user, params, *args, **kwargs)
         ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
         return ret
     return inner
 
-@webRest.route(API_PREFIX + 'users', methods=['POST'])
-@token_auth.login_required
+
+### TraitInstance Attribute: #################################################################
+
+def _checkTiAttributeStuff(projId, tiId):
+#----------------------------------------------------------------------------------------------
+# Check permissions for ti attribute ops. If OK, returns the ti,
+# else returns error Response.
+    # Check user has rights for this operation:
+    up = g.userProject #fpsys.UserProject.getUserProject(g.user, projId)
+    if not up.hasPermission(fpsys.UserProject.PERMISSION_ADMIN):
+        return jsonErrorReturn('Requires project admin rights', HTTP_UNAUTHORIZED)
+    
+    # Check ti is in project:
+    ti = models.getTraitInstance(models.getDbConnection(up.dbname()), tiId)
+    if ti is None:
+        return jsonErrorReturn('invalid trait instance', HTTP_BAD_REQUEST)
+    if ti.getTrial().getProject().getId() != projId:
+        return jsonErrorReturn('invalid trait instance for project', HTTP_BAD_REQUEST)
+    return ti
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/ti/<int:tiId>/attribute', methods=['POST'])
+@multi_auth.login_required
 @wrap_api_func
-#def NEW_new_user_post_auth(userid, params):
+def createTiAttribute(userid, params, projId, tiId):
+#----------------------------------------------------------------------------------------------
+# Create attribute for the TI specified in the URL.
+# The attribute name must be present as a url parameter "name".
+#
+    ti = _checkTiAttributeStuff(projId, tiId)
+    if not isinstance(ti, models.TraitInstance):
+        return ti
+
+    # Get name proposed for attribute:
+    name = request.json.get('name')
+    if not name:
+        return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
+
+    # Create or rename attribute for the ti:
+    tiAtt = ti.getAttribute()
+    if tiAtt is None:
+        # Create it:
+        att = ti.createAttribute(name)
+        if att is None:
+            return jsonErrorReturn('Cannot create attribute, may be invalid name', HTTP_BAD_REQUEST)
+    else:
+        # Reset the name:
+        tiAtt.setName(name)  # error return
+    return jsonSuccessReturn("Attribute Created")
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/ti/<int:tiId>/attribute', methods=['DELETE'])
+@multi_auth.login_required
+@wrap_api_func
+def deleteTiAttribute(userid, params, projId, tiId):
+#----------------------------------------------------------------------------------------------
+    ti = _checkTiAttributeStuff(projId, tiId)
+    if not isinstance(ti, models.TraitInstance):
+        return ti
+    errmsg = ti.deleteAttribute()
+    if errmsg is None:
+        return jsonSuccessReturn("Attribute Deleted")
+    else:
+        return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
+
+### Users: ####################################################################################
+
+@webRest.route(API_PREFIX + 'users', methods=['POST'])
+@multi_auth.login_required
+@wrap_api_func
 def urlCreateUser(userid, params):
 #----------------------------------------------------------------------------------------------
 # Create a new user for requesting user with specified id.
@@ -388,43 +315,47 @@ def urlCreateUser(userid, params):
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
     
-    # check all details provided (should be infra)
-    login = params.get('login')
-    loginType = params.get('loginType')
-    if login is None or loginType is None:
-        return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
-
-    # check if user already exists
-    if fpsys.User.getByLogin(login) is not None:
-        return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-
-    # create them
-    if int(loginType) == LOGIN_TYPE_LOCAL:
-        password = params.get('password')
-        fullname = params.get('fullname')
-        email = params.get('userEmail')
-        # Validation - should be by infrastructure..
-        if password is None or fullname is None:
-            return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)        
-        if not util.isValidName(fullname):
-            return jsonErrorReturn('Invalid user name', HTTP_BAD_REQUEST)
-        if not util.isValidPassword(password):
-            return jsonErrorReturn('Invalid password', HTTP_BAD_REQUEST)
-        if not util.isValidEmail(email):
-            return jsonErrorReturn("Invalid email address", HTTP_BAD_REQUEST)
-        errmsg = fpsys.addLocalUser(login, fullname, password, email)
-    elif loginType == LOGIN_TYPE_***REMOVED***:
-        errmsg = fpsys.add***REMOVED***User(login)
-    else:
-        errmsg = 'Invalid loginType'
-    if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    return jsonSuccessReturn('User {} created'.format(login), HTTP_CREATED)
+    try:
+        # check all details provided (should be infra)
+        login = params.get('login')
+        loginType = params.get('loginType')
+        if login is None or loginType is None:
+            return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
+        loginType = int(loginType)
+        
+        # check if user already exists
+        if fpsys.User.getByLogin(login) is not None:
+            return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
+    
+        # create them
+        if loginType == LOGIN_TYPE_LOCAL:
+            password = params.get('password')
+            fullname = params.get('fullname')
+            email = params.get('userEmail')
+            # Validation - should be by infrastructure..
+            if password is None or fullname is None:
+                return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)        
+            if not util.isValidName(fullname):
+                return jsonErrorReturn('Invalid user name', HTTP_BAD_REQUEST)
+            if not util.isValidPassword(password):
+                return jsonErrorReturn('Invalid password', HTTP_BAD_REQUEST)
+            if not util.isValidEmail(email):
+                return jsonErrorReturn("Invalid email address", HTTP_BAD_REQUEST)
+            errmsg = fpsys.addLocalUser(login, fullname, password, email)
+        elif loginType == LOGIN_TYPE_***REMOVED***:
+            errmsg = fpsys.add***REMOVED***User(login)
+        else:
+            errmsg = 'Invalid loginType'
+        if errmsg is not None:
+            return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+        return jsonSuccessReturn('User {} created'.format(login), HTTP_CREATED)
+    except Exception, e:
+        return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
 
 ### Projects: ############################################################################
 
-#@webRest.route(API_PREFIX + 'projects', methods=['GET'])
-@basic_auth.login_required
+@webRest.route(API_PREFIX + 'projects', methods=['GET'])
+@multi_auth.login_required
 def getProjects():
     (plist, errmsg) = fpsys.getUserProjects(g.user)
     if errmsg:
@@ -434,7 +365,7 @@ def getProjects():
     return jsonReturn(nplist, HTTP_OK)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects/<int:id>', methods=['GET'])
-@basic_auth.login_required
+@multi_auth.login_required
 def getProject(id):
     util.flog("in getProject")
     (plist, errmsg) = fpsys.getUserProjects(g.user)
@@ -445,7 +376,7 @@ def getProject(id):
     return jsonReturn(nplist, HTTP_BAD_REQUEST)  # return urls - do we need set Content-Type: application/json?
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@token_auth.login_required
+@multi_auth.login_required
 @wrap_api_func
 def urlCreateProject(userid, params):
 # Expects URL parameters:
@@ -480,10 +411,8 @@ def urlCreateProject(userid, params):
             ownDatabase = False
         else:
             return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-        print 'urlCreateProject xxxx'
 
-        # Check admin user exists, get id:
-            # check if user already exists
+        # Check admin user exists:
         adminUser = fpsys.User.getByLogin(adminLogin)
         if adminUser is None:
             return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
@@ -495,7 +424,6 @@ def urlCreateProject(userid, params):
             return jsonErrorReturn(proj, HTTP_BAD_REQUEST)
 #         else:
 #             return jsonSuccessReturn("project created", HTTP_CREATED)
-        print 'urlCreateProject nnnnn'
 
         # Add the adminUser to the project:
         print 'admin: {} pname {}'.format(adminUser.id(), projectName)
@@ -511,73 +439,6 @@ def urlCreateProject(userid, params):
 
 
 
-
-
-#@webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@basic_auth.login_required
-def OLD_urlCreateProject():
-# Expects URL parameters:
-#   ownDatabase : 'true' or 'false', indicating whether separate database should be
-#                 created. Currently ignored and assumed true.
-#   projectName : name project - must be appropriate.
-#   contactName : Name of contact person
-#   contactEmail : email of contact person
-#
-# Note, perhaps we should use json input, in which case we would have:
-# projectName = request.json.get('projectName')...
-# top level dir called 'projects'? 'users'
-#     parentUrl = request.json.get('parent')
-#     parentProj = models.Project.getByUrl(parentUrl);
-#
-# Not the use of sess in here - this is problematic as proper rest calls won't have a session.
-# We are using to get user ident, which hopefully is available from token or basic auth
-#sess.getUserIdent()
-    # Check permissions:
-    if not fpsys.User.sHasPermission(g.user, fpsys.User.PERMISSION_OMNIPOTENCE):
-        return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
-
-    try:
-        frm = request.form
-        projectName = frm['projectName']
-        contactName = frm['contactName']
-        contactEmail = frm['contactEmail']
-        ownDatabase = frm['ownDatabase']
-        adminLogin = frm['adminLogin']
-        if ownDatabase == 'true':
-            ownDatabase = True
-        elif ownDatabase == 'false':
-            ownDatabase = False
-        else:
-            return jsonErrorReturn('Problem in REST create project', HTTP_BAD_REQUEST)
-        print 'urlCreateProject'
-
-        # Check admin user exists, get id:
-            # check if user already exists
-        adminUser = fpsys.User.getByLogin(adminLogin)
-        if adminUser is None:
-            return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
-
-        # Create the project:
-        proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-#        if not isinstance(proj, models.Project): # return project json representation? Or URL?
-        if isinstance(proj, basestring):
-            return jsonErrorReturn(proj, HTTP_BAD_REQUEST)
-        else:
-            return jsonSuccessReturn("project created", HTTP_CREATED)
-        print 'urlCreateProject'
-
-        # Add the adminUser to the project:
-        errmsg = fpsys.addUserToProject(adminUser.getId(), projectName, 1)  #MFK define and use constant
-        if errmsg is not None:
-            return jsonErrorReturn('project {} created, but could not add user {} ({})'.format(projectName,
-                adminLogin, errmsg))
-
-        # Return representation of the project, or a link to it?
-        return jsonSuccessReturn('Project {} created'.format(projectName), HTTP_CREATED)
-    except Exception, e:
-        return jsonErrorReturn('Problem in REST create project: ' + str(e), HTTP_BAD_REQUEST)
-
-
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @basic_auth.login_required
 def old_createProject(path):
@@ -590,7 +451,6 @@ def old_createProject(path):
         abort(HTTP_BAD_REQUEST)    # missing arguments
 
     # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-
     # create the project:
     proj = models.Project();
 
@@ -598,60 +458,6 @@ def old_createProject(path):
 def checkIdent(candidate):
     re.match('\w\w*')
 
-#@webRest.route(API_PREFIX + 'projects', methods=['POST'])
-@basic_auth.login_required
-def new_createProject():
-# Expects JSON object:
-#   parent : url for parent project. If missing root is used.
-#   name : project name, must be nice
-#   contactName :
-#   contactEmail :
-#
-    # top level dir called 'projects'? 'users'
-    parentUrl = request.json.get('parent')
-    parentProj = models.Project.getByUrl(parentUrl);
-
-    # get project
-    name = request.json.get('name')
-    parentProj.getByName(name)
-    name = checkIdent(name) # check name is valid
-    # and doesn't already exist
-
-    if parent is None or name is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
-
-    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-
-    # create the project:
-    proj = models.Project();
-
-#@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
-@basic_auth.login_required
-def createProject2():
-# Expects JSON object:
-#   parent : url for parent project. If missing root is used.
-#   name : project name, must be nice
-#   contactName :
-#   contactEmail :
-#
-
-    # top level dir called 'projects'? 'users'
-    parentUrl = request.json.get('parent')
-    parentProj = models.Project.getByUrl(parentUrl);
-
-    # get project
-    name = request.json.get('name')
-    parentProj.getByName(name)
-    name = checkIdent(name) # check name is valid
-    # and doesn't already exist
-
-    if parent is None or name is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
-
-    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-
-    # create the project:
-    proj = models.Project();
 
 ### Trials: ############################################################################
 
@@ -677,7 +483,7 @@ curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateTrial(userid, params, projId):
-# Paramaters can be form or json.    
+# Parameters can be form or json.    
 # Expects following parameters - all optional bar trialName.
 #   trialName : name project - must be appropriate.
 #   trialYear : text
@@ -731,24 +537,34 @@ def urlCreateTrial(userid, params, projId):
     
     return jsonSuccessReturn('Trial {} created'.format(trialName), HTTP_CREATED)
 
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['GET'])
+@multi_auth.login_required
+@wrap_api_func
+def urlGetTrial(userid, params, projId):
+    # check user has access to project
+    
+    pass
 
 ### Attributes: ##########################################################################
 
-@webRest.route('/project/<projectName>/attribute/<attId>', methods=['GET'])
-@wr_check_session
-def urlAttributeData(sess, projectName, attId):
+@webRest.route('/projects/<int:projId>/attributes/<int:attId>', methods=['GET'])
+@multi_auth.login_required
+@wrap_api_func
+def urlAttributeData(userid, params, projId, attId):
 #---------------------------------------------------------------------------------
 # Return nodeId:attValue pairs
 # These are sorted by node_id.
 # This is used in the admin web pages.
 #
-    natt = models.getAttribute(sess.db(), attId)
+
+# MFK check user has access to project!  This was done by default in old method, but not in new
+# could perhaps check in wrap_api_func.
+    natt = models.getAttribute(models.getDbConnection(fpsys.getProjectDBname(projId)), attId)
     vals = natt.getAttributeValues()
     data = []
     for av in vals:
         data.append([av.getNode().getId(), av.getValueAsString()])
     return Response(json.dumps(data), mimetype='application/json')
-
 
 ########################################################################################
 TEST_STUFF = '''
@@ -800,12 +616,6 @@ trials { /<projName> } [ /<trialName> ]
 ########################################################################################
 ### Old stuff, NOT in use: #############################################################
 ########################################################################################
-
-@webRest.route('/project/<projectName>/trial/<trialId>/slice/<tiId>', methods=['GET'])
-@wr_check_session
-def urlDataSlice(sess, projectName, trialId, tiId):
-    dic = {'a':1}
-    return Response(json.dumps(dic), mimetype='application/json')
 
 
 @webRest.route('/trial/<trialId>/trait/<traitId>', methods=['DELETE'])
@@ -912,3 +722,25 @@ def urlLogin():
     sess.setLoginType(loginType)
     return jsonify({'token':sess.sid()})
 
+#@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
+@basic_auth.login_required
+def createProject2():
+# Expects JSON object:
+#   parent : url for parent project. If missing root is used.
+#   name : project name, must be nice
+#   contactName :
+#   contactEmail :
+#
+    # top level dir called 'projects'? 'users'
+    parentUrl = request.json.get('parent')
+    parentProj = models.Project.getByUrl(parentUrl);
+    # get project
+    name = request.json.get('name')
+    parentProj.getByName(name)
+    name = checkIdent(name) # check name is valid
+    # and doesn't already exist
+    if parent is None or name is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
+    # create the project:
+    proj = models.Project();

@@ -1462,7 +1462,7 @@ def htmlNumericScoreSetStats(data, name):
     return oStats
 
 
-def tiAttributeHtml(ti):
+def tiAttributeHtml(sess, ti):
 # Returns HTML segment for creating/deleting attribute version of the passed traitInstance.
 # We have two states (att present or not) and toggle to different divs for these.
 # Have buttons in each, either to create or delete. Create brings up bootstrap modal to
@@ -1488,7 +1488,7 @@ def tiAttributeHtml(ti):
                 success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
             });
         };
-        </script>''' % url_for('webRest.createTiAttribute', tiId=ti.getId())
+        </script>''' % url_for('webRest.createTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
     out += '''
         <script>
         function fpToggleTiAttribute(showCreate) {
@@ -1515,7 +1515,7 @@ def tiAttributeHtml(ti):
                 success: fpDeleteTiAttributeSuccess
             });
         };
-        </script>''' % url_for('webRest.deleteTiAttribute', tiId=ti.getId())
+        </script>''' % url_for('webRest.deleteTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
 
     # Create att div:
     out += '''
@@ -1630,7 +1630,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     for nat in ti.trial.getAttributes():
         nodeAtts.append(
             {"name":nat.name,
-             "url":url_for('webRest.urlAttributeData', projectName=sess.getProjectName(), attId=nat.id),
+             "url":url_for('webRest.urlAttributeData', projId=sess.getProjectId(), attId=nat.id),
              "datatype":nat.datatype})
 
     # Embed the data as JSON in the page (with id "ssdata"):
@@ -1653,7 +1653,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     # Attribute creation/deletion:
     if typ in [T_INTEGER, T_DECIMAL, T_STRING, T_CATEGORICAL, T_DATE]:
-        out += fpUtil.htmlFieldset(tiAttributeHtml(ti), 'Attribute')
+        out += fpUtil.htmlFieldset(tiAttributeHtml(sess, ti), 'Attribute')
 
     # Stats:
     numDeleted = 0

@@ -139,7 +139,9 @@ class UserProject:
         except mdb.Error, e:
             return 'Failed getUserProject:' + str(e)
         
-
+    def hasPermission(self, perm):
+        return bool(self._access & perm)
+    
 def getUserProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.
@@ -517,15 +519,23 @@ class Project():
         mproj = models.getProjectByName(dbc, fpsysProj.name())
         return mproj
         
-def getProjectDBname(projectName):
+def getProjectDBname(projectSpecifier):
 #-----------------------------------------------------------------------
-# Returns dbname for named project or None on error.
+# Returns dbname for project identified by either strint name or int id - r None on error.
 #
+    # work out if we have a project name or id:
+    if isinstance(projectSpecifier, basestring):
+        specifier = 'name'
+    elif isinstance(projectSpecifier, int):
+        specifier = 'id'
+    else:
+        return None
+    
     try:
         con = getFpsysDbConnection()
-        qry = "select dbname from project where name = %s"
+        qry = "select dbname from project where {} = %s".format(specifier)
         cur = con.cursor()
-        cur.execute(qry, (projectName,))
+        cur.execute(qry, (projectSpecifier,))
         foo = cur.fetchone()
         return None if foo is None else foo[0]
     except mdb.Error, e:

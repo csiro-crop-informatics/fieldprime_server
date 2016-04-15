@@ -1,5 +1,5 @@
-# fpApi.py
-# Michael Kirk 2013
+# fpAppWapi.py
+# Michael Kirk 2013-2016
 #
 # This version a copy of fp_app_api/fpApi.py.
 # Aiming to make this a blueprint part of the web admin app,

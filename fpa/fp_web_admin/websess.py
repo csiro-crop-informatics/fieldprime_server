@@ -113,6 +113,10 @@ class WebSess(object):
     #------------------------------------------------------------------
         return self.data.get('projectName')
 
+    def getProjectId(self):
+    #------------------------------------------------------------------
+        return self.data.get('id')
+
     def getProject(self):
     #------------------------------------------------------------------
     # Return project object, or None.
