@@ -740,6 +740,14 @@ class Trial(DeclarativeBase):
         return self.id
     def getProject(self):
         return self.project
+    def getName(self):
+        return self.name
+    def getSite(self):
+        return self.site
+    def getYear(self):
+        return self.year
+    def getAcronym(self):
+        return self.acronym
 
     # MFK - make this getProperties (maybe not, we already use that word) and include, at least, barcode
     def getAttributes(self):
@@ -1148,6 +1156,9 @@ class Trial(DeclarativeBase):
         newProp = TrialProperty(self.getId(), key, value)
         newProp = db.merge(newProp)
         db.commit()
+        
+    def getTrialProperty(self, key):
+        return TrialProperty.getPropertyValue(_dbc(self), self.getId(), key)
 
         
 def navIndexName(dbc, trialId, indexOrder):
@@ -1201,8 +1212,6 @@ class TrialProperty(DeclarativeBase):
     @staticmethod
     @oneException2None
     def getPropertyValue(dbc, trialId, propName):
-    # Return dictionary providing value to caption map for specified trait.
-    # The trait should be categorical, if not empty map will be returned, I think.
         return dbc.query(TrialProperty).filter(
                 and_(TrialProperty.trial_id == trialId, TrialProperty.name == propName)
                 ).one().value

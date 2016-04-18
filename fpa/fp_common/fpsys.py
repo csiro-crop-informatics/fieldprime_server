@@ -142,6 +142,12 @@ class UserProject:
     def hasPermission(self, perm):
         return bool(self._access & perm)
     
+    def hasAdminRights(self):
+        return self.hasPermission(self.PERMISSION_ADMIN)
+    
+    def db(self):
+        return models.getDbConnection(self.dbname())
+    
 def getUserProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.

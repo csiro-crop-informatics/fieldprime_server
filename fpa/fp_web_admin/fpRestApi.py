@@ -11,7 +11,7 @@
 # - If we create userProject in wrap_api, update original funcs to use it.
 #
 
-from flask import Blueprint, current_app, request, Response, jsonify, g, abort
+from flask import Blueprint, current_app, request, Response, jsonify, g, abort, url_for
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from functools import wraps
 import simplejson as json
@@ -45,15 +45,39 @@ def mkdbg(msg):
 API_PREFIX = '/fpv1/'
 
 ### Response functions: ##################################################################
+#^
+#: API responses are in json format. Each response is a JSON object, which may contain 
+#: the following fields:
+#: success : indicates operation succeeded, value is informational string.
+#: error : indicates operation failed, value is informational string 
+#:     NB each response should contain either a success or error field.
+#: url : resource url, eg url of newly created resource.
+#: data : JSON object or array, eg requested data
+#$
+
+def apiResponse(succeeded, statusCode, msg=None, data=None, url=None):
+#-----------------------------------------------------------------------------------------
+# Return standard format json object for the API. This may contain the following fields.
+# success : Mandatory, string indication of success
+#    
+    obj = {}
+    if succeeded:
+        obj['success'] = msg if msg is not None else 'ok'
+    else:
+        obj['error'] = msg if msg is not None else 'error'
+    if url is not None: obj['url'] = url
+    if data is not None: obj['data'] = data 
+    return Response(json.dumps(obj), status=statusCode, mimetype='application/json')
 
 def jsonErrorReturn(errmsg, statusCode):
-    return Response(json.dumps({'error':errmsg}), status=statusCode, mimetype='application/json')
+    return apiResponse(False, statusCode)
 
 def jsonReturn(jo, statusCode):
     return Response(json.dumps(jo), status=statusCode, mimetype='application/json')
 
 def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
-    return jsonReturn({'success':msg}, statusCode)
+    return apiResponse(True, statusCode)
+
 
 def fprGetError(jsonResponse):
 # Returns the error message from the response, IF there was an error, else None.
@@ -214,7 +238,9 @@ def wrap_api_func(func):
 # func should return a response.
 # request is assumed to be available
 # func should have first params: userid, params.
-# If there is a parameter 'projId' in **kwargs, then g.userProject is set.
+# If there is a parameter 'projId' in **kwargs, then g.userProject is set. Unless the
+# user doesn't have at least view access to the project, in which case authorization error
+# is returned.
 #
     @wraps(func)
     def inner(*args, **kwargs):
@@ -224,8 +250,16 @@ def wrap_api_func(func):
             params = request.json
         else:
             return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+        
         if 'projId' in kwargs:
-            g.userProject = fpsys.UserProject.getUserProject(g.user, kwargs['projId'])
+            # Check permissions and get UserProject object:
+            up = fpsys.UserProject.getUserProject(g.user, kwargs['projId'])
+            if up is None:
+                return jsonErrorReturn('No access for user {} to project'.format(g.user), HTTP_UNAUTHORIZED)
+            if isinstance(up, basestring):
+                return jsonErrorReturn('Unexpected error: {}'.format(up), HTTP_SERVER_ERROR)
+            g.userProject = up
+
         ret = func(g.user, params, *args, **kwargs)
         ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
         return ret
@@ -476,6 +510,12 @@ curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
      -d '{"trialName":"testCreateTrial2", "trialYear":2016, "trialSite":"yonder", "trialAcronym":"123",
      "nodeCreation":"false", "rowAlias":"range", "colAlias":"run"}' $FP/projects/1/trials 
 
+TRIAL_URL=<url from create>
+# Get Trial:
+curl -u fpadmin:foo -i $TRIAL_URL
+
+# Delete Trial:
+curl -u fpadmin:foo -i -X DELETE $TRIAL_URL
      
 '''
     
@@ -534,15 +574,75 @@ def urlCreateTrial(userid, params, projId):
 
     trial.setTrialProperty('nodeCreation', nodeCreation)
     trial.setNavIndexNames(rowAlias, colAlias)
-    
-    return jsonSuccessReturn('Trial {} created'.format(trialName), HTTP_CREATED)
+    return apiResponse(True, HTTP_CREATED, msg='Trial {} created'.format(trialName),
+            url=url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()))
+
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
-def urlGetTrial(userid, params, projId):
+def urlGetTrial(userid, params, projId, trialId):
     # check user has access to project
+    trial = models.getTrial(g.userProject.db(), trialId)
+    returnJson = { # perhaps we should have trial.getJson()
+        "name":trial.getName(),
+        "year":trial.getYear(),
+        "site":trial.getSite(),
+        "acronym":trial.getAcronym(),
+        "nodeCreation":trial.getTrialProperty('nodeCreation'),
+        "rowAlias":trial.navIndexName(0),
+        "colAlias":trial.navIndexName(1)
+    }
+    return apiResponse(True, HTTP_OK, data=returnJson)
     
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['DELETE'])
+@multi_auth.login_required
+@wrap_api_func
+def urlDeleteTrial(userid, params, projId, trialId):
+    # Need project admin access to delete
+    if not g.userProject.hasAdminRights():
+        return jsonErrorReturn('No administration access', HTTP_UNAUTHORIZED)
+    models.Trial.delete(g.userProject.db(), trialId)
+    return jsonSuccessReturn("Trial Deleted", HTTP_OK)
+    
+    
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes', methods=['POST'])
+@multi_auth.login_required
+@wrap_api_func
+def urlCreateNode(userid, params, projId, trialId):
+#-----------------------------------------------------------------------------------------
+# MFK, could have complex object, including attributes, or could have everything atomic,
+# and have separate access point to create attributes and add values to them.
+# Or we could have both, eventually. Separately is better I think. Reduces risk of
+# unintentionally create new attributes by mistyping names, and allows defining the type
+# of an attribute prior to loading values.
+#
+#
+#
+#^
+#: API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes'
+#: Input JSON object:
+#: {
+#:   // MANDATORY fields:
+#:   index1 : <positive integer>
+#:   index2 : <positive integer>
+#: 
+#:   // OPTIONAL fields:
+#:   description : <string>, optional
+#:   barcode : <string>
+#:   latitude : <number>
+#:   longitude : <number>
+#:   attributes : Array of {<string:attribute name>:<string:attribute value>}  MFK or should we do these separately?
+#: }
+#: 
+#: Success Response:
+#: Status code: HTTP_CREATED
+#: url: <new node url>
+#: data: absent
+#$
+    # Check permissions:
+    
+    # Check node with specified indicies doesn't already exist.
     pass
 
 ### Attributes: ##########################################################################
@@ -556,9 +656,7 @@ def urlAttributeData(userid, params, projId, attId):
 # These are sorted by node_id.
 # This is used in the admin web pages.
 #
-
-# MFK check user has access to project!  This was done by default in old method, but not in new
-# could perhaps check in wrap_api_func.
+    # NB, check that user has access to project is done in wrap_api_func.
     natt = models.getAttribute(models.getDbConnection(fpsys.getProjectDBname(projId)), attId)
     vals = natt.getAttributeValues()
     data = []

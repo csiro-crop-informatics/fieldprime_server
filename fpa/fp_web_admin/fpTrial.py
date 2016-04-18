@@ -148,7 +148,6 @@ def _parseNodeCSV(fobj, ind1name, ind2name):
     return {'numFields':numFields, 'fixIndex':fixIndex, 'attIndex':attIndex}
 
 
-
 def uploadTrialFile(sess, uploadFile, tname, tsite, tyear, tacro, i1name, i2name):
 #-----------------------------------------------------------------------
 # Handle submitted create trial form.
