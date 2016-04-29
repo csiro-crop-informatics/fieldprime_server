@@ -43,10 +43,10 @@ API_PREFIX = '/fpv1/'
 
 ### Response functions: ##################################################################
 #^-----------------------------------
-#: API responses are in json format. Each response is a JSON object, which may contain 
+#: API responses are in json format. Each response is a JSON object, which may contain
 #: the following fields:
 #: success : indicates operation succeeded, value is informational string.
-#: error : indicates operation failed, value is informational string 
+#: error : indicates operation failed, value is informational string
 #:     NB each response should contain either a success or error field.
 #: url : resource url, eg url of newly created resource.
 #: data : JSON object or array, eg requested data
@@ -56,14 +56,14 @@ def apiResponse(succeeded, statusCode, msg=None, data=None, url=None):
 #-----------------------------------------------------------------------------------------
 # Return standard format json object for the API. This may contain the following fields.
 # success : Mandatory, string indication of success
-#    
+#
     obj = {}
     if succeeded:
         obj['success'] = msg if msg is not None else 'ok'
     else:
         obj['error'] = msg if msg is not None else 'error'
     if url is not None: obj['url'] = url
-    if data is not None: obj['data'] = data 
+    if data is not None: obj['data'] = data
     return Response(json.dumps(obj), status=statusCode, mimetype='application/json')
 
 def jsonErrorReturn(errmsg, statusCode):
@@ -117,7 +117,7 @@ def urlGetToken():
     retObj = {'token': token.decode('ascii'), 'duration': 600}
     #retObj = jsonify({'token': token.decode('ascii'), 'duration': 600})
     return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
-    
+
 # @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
 # @basic_auth.login_required
 # def authUser(login, permission):
@@ -134,7 +134,7 @@ def generate_auth_token(username, expiration=600):
     return token
 
 def verify_auth_token(token):
-# MFK need to pass back expired indication somehow    
+# MFK need to pass back expired indication somehow
     s = Serializer(current_app.config['SECRET_KEY'])
     try:
         data = s.loads(token)
@@ -216,7 +216,7 @@ def wrap_api_func(func):
             params = request.json
         else:
             return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
-        
+
         if 'projId' in kwargs:
             # Check permissions and get UserProject object:
             try:
@@ -245,7 +245,7 @@ def _checkTiAttributeStuff(projId, tiId):
     up = g.userProject
     if up is None or not up.hasPermission(fpsys.UserProject.PERMISSION_ADMIN):
         return jsonErrorReturn('Requires project admin rights', HTTP_UNAUTHORIZED)
-    
+
     # Check ti is in project:
     ti = models.getTraitInstance(models.getDbConnection(up.dbname()), tiId)
     if ti is None:
@@ -312,17 +312,17 @@ def urlCreateUser(userid, params):
 #:   'password': ,
 #:   'fullname': ,
 #:   'loginType': ,
-#:   'email': 
+#:   'email':
 #: }
 #: Success Response:
 #:   Status code: HTTP_CREATED
 #:   url: <new user url>
-#:   
-#$   
+#:
+#$
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
-    
+
     try:
         # check all details provided (should be infra)
         login = params.get('ident')
@@ -330,11 +330,11 @@ def urlCreateUser(userid, params):
         if login is None or loginType is None:
             return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
         loginType = int(loginType)
-        
+
         # check if user already exists
         if fpsys.User.getByLogin(login) is not None:
             return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
-    
+
         # create them
         if loginType == LOGIN_TYPE_LOCAL:
             password = params.get('password')
@@ -342,7 +342,7 @@ def urlCreateUser(userid, params):
             email = params.get('email')
             # Validation - should be by infrastructure..
             if password is None or fullname is None:
-                return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)        
+                return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
             if not util.isValidName(fullname):
                 return jsonErrorReturn('Invalid user name', HTTP_BAD_REQUEST)
             if not util.isValidPassword(password):
@@ -360,7 +360,7 @@ def urlCreateUser(userid, params):
                 url=url_for('webRest.urlGetUser', ident=login, _external=True))
     except Exception, e:
         return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
-    
+
 @webRest.route(API_PREFIX + 'users', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
@@ -378,7 +378,7 @@ def urlGetUsers(userid, params):
 #:       'email':<user email>
 #:     }
 #:   ]
-#$   
+#$
     # Check permissions:
     if not g.user.omnipotent():
         return jsonErrorReturn("No permission", HTTP_UNAUTHORIZED)
@@ -392,7 +392,7 @@ def urlGetUsers(userid, params):
                  'ident':u.getIdent()
                  } for u in users]
     return apiResponse(True, HTTP_OK, data=retUsers)
-    
+
 @webRest.route(API_PREFIX + 'users/<ident>', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
@@ -407,11 +407,11 @@ def urlGetUser(userid, params, ident):
 #:     'fullname':<user name>,
 #:     'email':<user email>,
 #:   }
-#$   
+#$
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_CREATE_USER) and userid != ident:
         return jsonErrorReturn("no permission to access user", HTTP_UNAUTHORIZED)
-        
+
     user = fpsys.User.getByLogin(ident)
     if user is None:
         return jsonErrorReturn("Cannot access user", HTTP_BAD_REQUEST)
@@ -429,7 +429,7 @@ def urlDeleteUser(userid, params, ident):
 #: Input: none
 #: Success Response:
 #:   Status code: HTTP_OK
-#$   
+#$
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER) and userid != ident:
         return jsonErrorReturn("no permission to delete user", HTTP_UNAUTHORIZED)
@@ -450,7 +450,7 @@ def urlUpdateUser(userid, params, ident):
 #: Input: {
 #:   'oldPassword': ,
 #:   'fullname': ,
-#:   'email': 
+#:   'email':
 #:   'password': ,
 #: }
 #: All input fields optional other than oldPassword which must correctly specify the
@@ -458,43 +458,43 @@ def urlUpdateUser(userid, params, ident):
 #: self modification cannot be effected with token authorization alone.
 #: Success Response:
 #:   Status code: HTTP_CREATED
-#$   
+#$
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_CREATE_USER):
         if userid != ident:
             return jsonErrorReturn("no user update permission", HTTP_UNAUTHORIZED)
         oldPass = params.get('oldPassword')
         if oldPass is None or not fpsys.localPasswordCheck(ident, oldPass):
-            return jsonErrorReturn("Invalid current password", HTTP_UNAUTHORIZED)                
-        
+            return jsonErrorReturn("Invalid current password", HTTP_UNAUTHORIZED)
+
     try:
         user = fpsys.User.getByLogin(ident)
         if user is None:
             return jsonErrorReturn("user not found", HTTP_NOT_FOUND)
         if user.getLoginType() != LOGIN_TYPE_LOCAL:
             return jsonErrorReturn("Cannot update non-local users", HTTP_UNAUTHORIZED)
-                    
+
         password = params.get('password')
         if password is not None and util.isValidPassword(password):
             errmsg = user.setPassword(password) # should be exception
             if errmsg is not None:
-                return jsonErrorReturn('Problem updating password: ' +  errmsg, HTTP_BAD_REQUEST)            
-            
+                return jsonErrorReturn('Problem updating password: ' +  errmsg, HTTP_BAD_REQUEST)
+
         fullname = params.get('fullname')
         if fullname is not None:
             user.setName(fullname)
         email = params.get('email')
         if email is not None:
             user.setEmail(email)
-        
-        if fullname is not None or email is not None:       
+
+        if fullname is not None or email is not None:
             errmsg = user.save()
             if errmsg is not None:
                 return jsonErrorReturn('Problem in updateUser: ' +  errmsg, HTTP_BAD_REQUEST)
         return apiResponse(True, HTTP_OK)
     except Exception, e:
         return jsonErrorReturn('Problem in updateUser: ' + str(e), HTTP_BAD_REQUEST)
-    
+
 
 ### Projects: ############################################################################
 
@@ -502,7 +502,7 @@ def urlUpdateUser(userid, params, ident):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetProjects(userid, params):
-# MFK maybe restrict contact details to admin?    
+# MFK maybe restrict contact details to admin?
 #^-----------------------------------
 #: GET: API_PREFIX + projects
 #: Gets projects accessible to calling user.
@@ -517,7 +517,7 @@ def urlGetProjects(userid, params):
 #:       //'contactEmail':<user email>
 #:     }
 #:   ]
-#$   
+#$
     (plist, errmsg) = fpsys.getUserProjects(g.userName)
     if errmsg:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
@@ -541,7 +541,7 @@ def urlGetProject(userid, params, projId):
 #:       'projectName':<user url>
 #:     }
 #:   ]
-#$   
+#$
     if g.userProject is None:
         return jsonErrorReturn('no permissions', HTTP_UNAUTHORIZED)
     ret = {'projectName':g.userProject.getProjectName()}
@@ -553,7 +553,7 @@ def urlGetProject(userid, params, projId):
 def urlCreateProject(userid, params):
 #-----------------------------------------------------------------------------------------
 # TODO: Perhaps rather than contact name and email, we should require an FP user ident,
-# this should be just be the adminLogin.    
+# this should be just be the adminLogin.
 #^-----------------------------------
 #: POST: API_PREFIX + 'projects'
 #: Access: Requesting user needs create omnipotenct permissions.
@@ -571,7 +571,7 @@ def urlCreateProject(userid, params):
 #:   Status code: HTTP_CREATED
 #:   url: <url of created project>
 #:
-#$   
+#$
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
         return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
@@ -620,22 +620,22 @@ def urlCreateProject(userid, params):
 
 def getCheckProjectsParams(params):
     pxo = {}
-    
+
     projectName = params.get('projectName')
     if projectName is not None and not util.isValidIdentifier(projectName):
         raise FPRestException('Invalid project name')
     pxo['projectName'] = projectName
-    
+
     contactName = params.get('contactName')
     if contactName is not None and not util.isValidName(contactName):
         raise FPRestException('Invalid contact name')
     pxo['contactName'] = contactName
-    
+
     contactEmail = params.get('contactEmail')
     if contactEmail is not None and not util.isValidEmail(contactEmail):
         raise FPRestException('Invalid email')
     pxo['contactEmail'] = contactEmail
-    
+
     adminLogin = params.get('adminLogin')
     if adminLogin is not None:
         adminUser = fpsys.User.getByLogin(adminLogin)
@@ -664,7 +664,7 @@ def urlUpdateProject(userid, params, xprojId):
 #: }
 #: Success Response:
 #:   Status code: HTTP_OK
-#$   
+#$
     try:
         # Check permissions:
         userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
@@ -674,11 +674,11 @@ def urlUpdateProject(userid, params, xprojId):
         pxo = getCheckProjectsParams(params)
     except Exception, e:
         return jsonErrorReturn('Problem project update: ' + str(e), HTTP_BAD_REQUEST)
-    
+
     # now update stuff:
     # Need to update name in both fpsys and project database.
     # Other details in project database.
-    
+
     # get fpsys proj obj:
     sysProj = fpsys.Project.getById(xprojId)
     if sysProj is None:
@@ -688,7 +688,7 @@ def urlUpdateProject(userid, params, xprojId):
     lproj = models.Project.getById(sysProj.db(), xprojId)
     if lproj is None:
         return jsonErrorReturn('Cannot get project', HTTP_SERVER_ERROR)
-        
+
     if pxo['projectName'] is not None:
         sysProj.setName(pxo['projectName'])
         errmsg = sysProj.saveName()
@@ -714,7 +714,7 @@ def urlDeleteProject(userid, params, xprojId):
 #: Input: none
 #: Success Response:
 #:   Status code: HTTP_OK
-#$   
+#$
     # check permissions
     if not g.user.omnipotent():
         return jsonErrorReturn("no permission to delete project", HTTP_UNAUTHORIZED)
@@ -731,32 +731,33 @@ def urlAddProjectUser(userid, params, xprojId):
 #^
 #: POST: API_PREFIX + 'projects/<id>/users/<ident>
 #: Requesting user needs omnipotence permissions or admin access to project.
+#: NB can be used to update user permissions for the project.
 #: Input: {
 #:   "ident":<ident>,
 #:   "admin":<boolean>
 #: }
 #: Success Response:
 #:   Status code: HTTP_OK
-#$   
+#$
     # check permissions
-    userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
-    if userProject is None and not g.user.omnipotent():
+    if not g.user.omnipotent():
+        userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
+        if userProject is None or not userProject.hasAdminRights():
             return jsonErrorReturn('No permissions', HTTP_UNAUTHORIZED)
 
     ident = params.get('ident')
-# check user exists:
+    admin = params.get('admin')
 
-#     if ident is not None and not util.isValidIdentifier(projectName):
-#         raise FPRestException('Invalid project name')
-#     pxo['projectName'] = projectName
-#     
-#     contactName = params.get('contactName')
-#     if contactName is not None and not util.isValidName(contactName):
-#         raise FPRestException('Invalid contact name')
-#     pxo['contactName'] = contactName
-    
-    
-    fpsys.addUserToProject(ident, projectName, perms)
+    # check user exists:
+    user = fpsys.User.getByLogin(ident)
+    if user is None:
+        return jsonErrorReturn("Unknown user ({}) does not exist".format(ident), HTTP_BAD_REQUEST)
+
+    # Add the adminUser to the project:
+    errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), xprojId, 1 if admin else 0)
+    if errmsg is not None:
+        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+    return apiResponse(True, HTTP_OK)
 
 #@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
 @basic_auth.login_required
@@ -786,10 +787,10 @@ curl -u fpadmin:foo -i -X GET $FP/token
 # Create trial:
 curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
      -d '{"trialName":"testCreateTrial"}' $FP/projects/1/trials
-     
+
 curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
      -d '{"trialName":"testCreateTrial2", "trialYear":2016, "trialSite":"yonder", "trialAcronym":"123",
-     "nodeCreation":"false", "rowAlias":"range", "colAlias":"run"}' $FP/projects/1/trials 
+     "nodeCreation":"false", "rowAlias":"range", "colAlias":"run"}' $FP/projects/1/trials
 
 TRIAL_URL=<url from create>
 # Get Trial:
@@ -797,14 +798,14 @@ curl -u fpadmin:foo -i $TRIAL_URL
 
 # Delete Trial:
 curl -u fpadmin:foo -i -X DELETE $TRIAL_URL
-     
+
 '''
-    
+
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['POST'])
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateTrial(userid, params, projId):
-# Parameters can be form or json.    
+# Parameters can be form or json.
 # Expects following parameters - all optional bar trialName.
 #   trialName : name project - must be appropriate.
 #   trialYear : text
@@ -813,7 +814,7 @@ def urlCreateTrial(userid, params, projId):
 #   nodeCreation : 'true' or 'false'
 #   rowAlias : text
 #   colAlias : text
-#   
+#
 # If successful, returns in the json the URL for the created trial.
 #
     # Check permissions:
@@ -836,10 +837,10 @@ def urlCreateTrial(userid, params, projId):
     nodeCreation = params.get('nodeCreation')
     rowAlias = params.get('rowAlias')
     colAlias = params.get('colAlias')
-        
+
     # check trial name provided and valid format:
     if trialName is None or not util.isValidIdentifier(trialName):
-        return jsonErrorReturn("Invalid trial name", HTTP_BAD_REQUEST)        
+        return jsonErrorReturn("Invalid trial name", HTTP_BAD_REQUEST)
 
     # check trial doesn't already exist:
     # Need to get project first, as this will identify the database
@@ -875,7 +876,7 @@ def urlGetTrial(userid, params, projId, trialId):
         "colAlias":trial.navIndexName(1)
     }
     return apiResponse(True, HTTP_OK, data=returnJson)
-    
+
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['DELETE'])
 @multi_auth.login_required
 @wrap_api_func
@@ -885,8 +886,8 @@ def urlDeleteTrial(userid, params, projId, trialId):
         return jsonErrorReturn('No administration access', HTTP_UNAUTHORIZED)
     models.Trial.delete(g.userProject.db(), trialId)
     return jsonSuccessReturn("Trial Deleted", HTTP_OK)
-    
-    
+
+
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes', methods=['POST'])
 @multi_auth.login_required
 @wrap_api_func
@@ -907,7 +908,7 @@ def urlCreateNode(userid, params, projId, trialId):
 #:   // MANDATORY fields:
 #:   index1 : <positive integer>
 #:   index2 : <positive integer>
-#: 
+#:
 #:   // OPTIONAL fields:
 #:   description : <string>, optional
 #:   barcode : <string>
@@ -915,14 +916,14 @@ def urlCreateNode(userid, params, projId, trialId):
 #:   longitude : <number>
 #:   attributes : Array of {<string:attribute name>:<string:attribute value>}  MFK or should we do these separately?
 #: }
-#: 
+#:
 #: Success Response:
 #: Status code: HTTP_CREATED
 #: url: <new node url>
 #: data: absent
 #$
     # Check permissions:
-    
+
     # Check node with specified indicies doesn't already exist.
     pass
 
@@ -994,17 +995,21 @@ curl $AUTH -X PUT -H "Content-Type: application/json" \
 curl -umk:secret $FP/users/testu1 | prj
 
 # Delete user:
-curl $AUTH -XDELETE $FP/users/testu1 
+curl $AUTH -XDELETE $FP/users/testu1
 
 ### Project tests: =======================================================================
 
 # Create:
 curl $AUTH -X POST -H "Content-Type: application/json" \
     -d '{"projectName":"testProj", "contactName":"js bach", "contactEmail":"bach@harmony.org", "adminLogin":"al"}' $FP/projects
-    
+
 # Update
 curl $AUTH -X PUT -H "Content-Type: application/json" \
     -d '{"name":"newName", "contactName":"booboo", "contactEmail":"gonty@riff.raff"}' $FP/projects/1
+
+# add user
+curl $AUTH -X POST -H "Content-Type: application/json" \
+    -d '{"ident":"fpadmin", "admin":true}' $FP/projects/
 
 # Delete:
 curl $AUTH -X DELETE $FP/projects/1
@@ -1168,7 +1173,7 @@ def urlLogin():
 
 def checkIdent(candidate):
     re.match('\w\w*')
-    
+
 #@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
 @basic_auth.login_required
 def createProject2():

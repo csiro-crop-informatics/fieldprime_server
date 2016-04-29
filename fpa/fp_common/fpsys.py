@@ -119,7 +119,7 @@ class UserProject:
         self._access = access
     def projectId(self): return self._projectId
     def getProjectId(self): return self._projectId
-    
+
     def projectName(self): return self._projectName
     def getProjectName(self): return self._projectName
     def dbname(self): return self._dbname
@@ -145,19 +145,19 @@ class UserProject:
             return UserProject(row[0], row[1], row[3], username, row[2])
         except mdb.Error, e:
             raise FPSysException('Failed getUserProject:' + str(e))
-        
+
     def hasPermission(self, perm):
         return bool(self._access & perm)
-    
+
     def hasAdminRights(self):
         return self.hasPermission(self.PERMISSION_ADMIN)
-    
+
     def db(self):
         return models.getDbConnection(self.dbname())
-    
+
     def getModelProject(self):
         return models.Project.getById(self.db(), self.getProjectId())
-    
+
 def getUserProjects(username):
 #-----------------------------------------------------------------------
 # Get project available to specified user - this should be a valid ***REMOVED*** user.
@@ -177,7 +177,36 @@ def getUserProjects(username):
         return (userProjs, None)
     except mdb.Error, e:
         return (None, 'Failed system login:' + str(e))
-    
+
+def addOrUpdateUserProjectById(userId, projId, perms):
+#-----------------------------------------------------------------------
+# Add user with given id to specified project with specified permissions.
+# Note user db entry created if not already present.
+# Returns error message on error or None
+# MFK Note overlap with add***REMOVED***User()
+#
+    try:
+        con = getFpsysDbConnection()
+        cur = con.cursor()
+
+        # Check user isn't already in project:
+        qry = 'select user_id from userProject'
+        qry += ' where project_id = %s and user_id = %s'
+        cur.execute(qry, (projId, userId))
+        if cur.rowcount > 0:
+            # Update:
+            cur.execute('update userProject set permissions = %s where user_id = %s and project_id = %s',
+                        (perms, userId, projId))
+        else:
+            # Insert into userProject table:
+            cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
+                        (userId, projId, perms))
+        con.commit()
+        con.close()
+    except mdb.Error, e:
+        return 'Failed user add ({})'.format(e)
+    return None
+
 def addUserToProject(userId, projectName, perms):
 #-----------------------------------------------------------------------
 # Add user with given id to specified project with specified permissions.
@@ -425,14 +454,14 @@ def userPasswordCheck(username, password):
     else:
         util.flog('Unexpected login type: {0}'.format(loginType))
         return None
-    
+
 ### Users: ############################################################################
 
 class User:
 # In memory instance of fpsys.user.
 # NB, we don't include passhash for security reasons, but could retrieve
 # it on demand (not required attow).
-#    
+#
     PERMISSION_CREATE_USER = 0x1
     PERMISSION_CREATE_PROJECT = 0x2
     PERMISSION_OMNIPOTENCE = 0x4
@@ -454,19 +483,19 @@ class User:
         if util.isValidName(name):
             self._name = name
         else:
-            raise FPSysException("invalid name")       
+            raise FPSysException("invalid name")
     def getEmail(self):
         return self._email
     def setEmail(self, email):
         if util.isValidEmail(email):
             self._email = email
         else:
-            raise FPSysException("invalid email address")        
+            raise FPSysException("invalid email address")
 #     def passhash(self):
-#         return self._passhash       
+#         return self._passhash
     def getLoginType(self):
         return self._login_type
-    
+
     def hasPermission(self, perm):
         return bool(self._permissions & perm)
     def allowPasswordChange(self):
@@ -504,7 +533,7 @@ class User:
         except mdb.Error:
             util.flog('Error in User.getAll')
             return None
-        
+
     def setPassword(self, newPassword):
     # Returns error message, or None for success.
     # NB, this only allowed for mysql and local types, and note that mysql get converted
@@ -523,7 +552,7 @@ class User:
             util.flog('Error in User.setPassword: {0}'.format(str(e)))
             return 'Error in User.setPassword: {0}'.format(str(e))
         return None
-    
+
     def save(self):
     # Update database with current values for name, email. FOR LOCAL users only.
     # Returns None on success else error message
@@ -545,14 +574,14 @@ class User:
 
     def omnipotent(self):
         return self._permissions & self.PERMISSION_OMNIPOTENCE
-    
+
     @staticmethod
     def sHasPermission(login, perm):
         usr = User.getByLogin(login)
         if usr is None:
             return False
         return bool(usr._permissions & perm)
-    
+
     @staticmethod
     def delete(ident):
     # Returns None on success else error message.
@@ -574,7 +603,7 @@ class User:
             return "User not found"
         else:
             return "Unexpected error, multiple deletes occurred"
-    
+
 
 ### Projects: ############################################################################
 
@@ -583,18 +612,18 @@ class Project():
         self._id = projId
         self._name = name
         self._dbName = dbName
-        
+
     def getId(self):
         return self._id
-    
+
     def getName(self):
         return self._name
     def setName(self, name):
         self._name = name
-        
+
     def dbName(self):
         return self._dbName
-    
+
     def db(self):
         return models.getDbConnection(self.dbName())
 
@@ -615,7 +644,7 @@ class Project():
             errmsg = 'Error updating project: {0}'.format(str(e))
             util.flog(errmsg)
             return errmsg
-    
+
     @staticmethod
     def getById(pid):
     # Return project instance or None or errormsg
@@ -643,7 +672,7 @@ class Project():
         dbc = models.getDbConnection(fpsysProj.dbName())
         mproj = models.Project.getByName(dbc, fpsysProj.name())
         return mproj
-        
+
     @staticmethod
     def delete(projId):
     # Delete specified project.
@@ -653,13 +682,13 @@ class Project():
         if not isinstance(proj, Project):
             return "Cannot find project"
         dbname = proj.dbName()
-        
+
         # delete within database first:
         dbc = proj.db()
         models.Project.delete(dbc, projId)
         count = models.Project.countProjects(dbc)
         dbc.close()
-        
+
         # delete from fpsys:
         try:
             con = getFpsysDbConnection()
@@ -680,11 +709,11 @@ class Project():
             errmsg = 'Error in Project.getById: {0}'.format(str(e))
             util.flog(errmsg)
             return errmsg
-        
+
         # remove database if no other projects in it:
         #return "NOT IMPLEMENTED"
         return None
-    
+
 def getProjectDBname(projectSpecifier):
 #-----------------------------------------------------------------------
 # Returns dbname for project identified by either strint name or int id - r None on error.
@@ -696,7 +725,7 @@ def getProjectDBname(projectSpecifier):
         specifier = 'id'
     else:
         return None
-    
+
     try:
         con = getFpsysDbConnection()
         qry = "select dbname from project where {} = %s".format(specifier)
@@ -712,6 +741,6 @@ def fpSetupG(g, userIdent=None, projectName=None):
     g.user = None if userIdent is None else User.getByLogin(userIdent)
     g.projectName = projectName
     g.userProject = None # this has to be set explicitly at the moment
-    
+
 
 ##########################################################################################
