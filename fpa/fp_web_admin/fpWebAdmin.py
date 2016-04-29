@@ -41,7 +41,7 @@ import trialProperties
 from fp_common.const import *
 import datapage as dp
 import websess
-from fpRestApi import webRest, fprGetError, fprHasError
+from fpRestApi import webRest, fprGetError, fprHasError, fprData
 from fpAppWapi import appApi
 import forms
 from const import *
@@ -142,6 +142,8 @@ def dec_check_session(returnNoneSess=False):
 # invalid, but with None as the session parameter - this can be used for pages
 # that don't require a user to be logged in.
 #
+# MFK - we need to remove the use of sess here, can get user from token
+# project will have to be set subsequently when it is known (eg from url).
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
@@ -153,8 +155,7 @@ def dec_check_session(returnNoneSess=False):
                 if returnNoneSess:
                     return func(None, *args, **kwargs)
                 return loginPage('Your session has timed out - please login again.')
-            g.userName = sess.getUserIdent()
-            g.projectName = sess.getProjectName()
+            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
             return func(sess, *args, **kwargs)
         return inner
     return param_dec
@@ -1156,7 +1157,7 @@ def urlUserDetails(sess, projectName):
             if not fpsys.userPasswordCheck(g.userName, oldPassword):
                 return logoutPage(sess, "Password is incorrect")
             user = fpsys.User.getByLogin(currUser)
-            msg = user.changePassword(newpassword1)
+            msg = user.setPassword(newpassword1)
             if msg is None:
                 msg = 'Password reset successfully'
             return frontPage(sess, msg)
@@ -1199,18 +1200,19 @@ def formElements4UserManagement():
 # and also because the parameters to makeModalForm, and the presentation may need to vary.
 # This could be just a global variable, but by placing it in a function, I'm assuming
 # it will only get generated when needed.
+#
     return [
         forms.formElement('Login Type', 'Specify user type', 'loginType', 'xncid',
             etype=forms.formElement.RADIO,
             typeSpecificData={'CSIRO ***REMOVED***':LOGIN_TYPE_***REMOVED***, 'FieldPrime':LOGIN_TYPE_LOCAL}, default=LOGIN_TYPE_LOCAL),
-        forms.formElement('Login ident', 'Login name', 'login', 'xpnameId',
-                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
+        forms.formElement('Login ident', 'Login name', 'ident', 'xpnameId',
+                          etype=forms.formElement.TEXT),
         forms.formElement('Password', 'Initial password for the new user', 'password', 'fpcuPassword',
-                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
+                          etype=forms.formElement.TEXT),
         forms.formElement('User Name', 'Full name of new user', 'fullname', 'xcontId',
-                          etype=forms.formElement.TEXT, typeSpecificData='foo'),
-        forms.formElement('User Email', 'Email address of new user', 'userEmail', 'xemailId',
-                          etype=forms.formElement.TEXT, typeSpecificData='foo@fi.fi')
+                          etype=forms.formElement.TEXT),
+        forms.formElement('User Email', 'Email address of new user', 'email', 'xemailId',
+                          etype=forms.formElement.TEXT)
     ]
 
 @app.route(PREURL+'/fpadmin/', methods=['GET'])
@@ -1224,25 +1226,19 @@ def urlFPAdmin(sess):
     if not usr.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
         return badJuju(sess, 'No admin rights')
 
-    if request.method == 'GET':
-        # Create project form:
-        projEls = formElements4ProjectManagement()
-        out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', projEls, divId='createProjForm',
-                  submitUrl=url_for('webRest.urlCreateProject', _external=True))))
-
-        # Create user form:
-        userEls = formElements4UserManagement()
-        out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', userEls, divId='createUserForm',
-                   #action=url_for('urlFPAdminCreateUser'),
-                   submitUrl=url_for('webRest.urlCreateUser', _external=True)
-                   ), topMargin='20px')
+    # Get projects, show as list:
+    newurl = url_for('webRest.urlGetProjects', _external=True)
+    token = request.cookies.get(NAME_COOKIE_TOKEN)
+    headers = {"Authorization": "fptoken " + token}
+    resp = requests.get(newurl, timeout=5, headers=headers)
+    #print 'status {}'.format(resp.status_code)
+    try:
+        jresp = resp.json()
+    except Exception as e:
+        pass
+        #print 'exception: {}'.format(e)
         
-        return dp.dataPage(sess, title='System Traits', content=out, trialId=-1)
-
-#     if request.method == 'POST':
-#         # login with token (via function), not cooky. Or is this better done from client?
-#         frm = request.form
-#         try:
+#        try:
 #             payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
 #                        'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase'], 'adminLogin':frm['adminLogin']}
 #             newurl = url_for('webRest.urlCreateProject', _external=True)
@@ -1254,48 +1250,20 @@ def urlFPAdmin(sess):
 #             jresp = resp.json()
 #         except Exception, e:
 #             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
-#         if fprHasError(jresp):
-#             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + fprGetError(jresp))
-# 
-#         # Here we need check return status and respond appropriately
-#         status = resp.status_code
-#         print 'status: {}'.format(status)
-#         return respContent
 
-# @app.route(PREURL+'/fpadmin/users', methods=['POST'])
-# @dec_check_session()
-# def urlFPAdminCreateUser(sess):
-# # Working, but not used now as we do this from the client with ajax    
-#     print 'in urlFPAdminCreateUser'
-#     # login with token (via function), not cooky. Or is this better done from client?
-#     frm = request.form
-#     try:
-#         is***REMOVED***Login = '3' #frm['loginType'] == 'true'
-#         ident = frm['login']
-#         fullname = frm['fullname']
-#         email = frm['fpcuEmail']
-#         payload = {'loginType':is***REMOVED***Login, 'login':ident, 'fullname':fullname,
-#                     'password':frm['password'], 'email':email}
-#         newurl = url_for('webRest.urlCreateUser', _external=True)
-#         print 'newurl:' + newurl
-#         cooky = {NAME_COOKIE_SESSION:request.cookies.get(NAME_COOKIE_SESSION)}
-#         resp = requests.post(newurl, cookies=cooky, json=payload, timeout=5)
-#         hstatus = resp.status_code
-#         jresp = resp.json()
-#         respContent = resp.content
-#         if hstatus != 201:
-#             errmsg = 'Unexpected response code in user creation: '
-#             if fprHasError(jresp):
-#                 errmsg = str(hstatus) + " : " + fprGetError(jresp)
-#             return errorScreenInSession(sess, errmsg + str(hstatus))
-#         jresp = resp.json()
-#     except Exception, e:
-#         return errorScreenInSession(sess, 'An exception occurred in user creation: ' + str(e))
-#     if fprHasError(jresp):
-#         return errorScreenInSession(sess, 'A problem occurred in user creation: ' + fprGetError(jresp))
-#     print resp
-#     # Here we need check return status and respond appropriately
-#     return respContent
+    # Create project form:
+    projEls = formElements4ProjectManagement()
+    out = fpUtil.bsRow(fpUtil.bsCol(forms.makeModalForm('Create Project', projEls, divId='createProjForm',
+              submitUrl=url_for('webRest.urlCreateProject', _external=True))))
+
+    # Create user form:
+    userEls = formElements4UserManagement()
+    out += fpUtil.bsSingleColumnRow(forms.makeModalForm('Create User', userEls, divId='createUserForm',
+               #action=url_for('urlFPAdminCreateUser'),
+               submitUrl=url_for('webRest.urlCreateUser', _external=True)
+               ), topMargin='20px')
+    
+    return dp.dataPage(sess, title='Administration', content=out, trialId=-1)
 
 #######################################################################################################
 ### END FPADMIN STUFF: ################################################################################
@@ -1488,7 +1456,7 @@ def tiAttributeHtml(sess, ti):
                 success: function(data, textStatus, jqXHR) {fpCreateTiAttributeSuccess(name, data, textStatus, jqXHR)}
             });
         };
-        </script>''' % url_for('webRest.createTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
+        </script>''' % url_for('webRest.urlCreateTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
     out += '''
         <script>
         function fpToggleTiAttribute(showCreate) {
@@ -1515,7 +1483,7 @@ def tiAttributeHtml(sess, ti):
                 success: fpDeleteTiAttributeSuccess
             });
         };
-        </script>''' % url_for('webRest.deleteTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
+        </script>''' % url_for('webRest.urlDeleteTiAttribute', projId=sess.getProjectId(), tiId=ti.getId())
 
     # Create att div:
     out += '''
@@ -1771,7 +1739,8 @@ def urlProject(sess, projectName):
             for prj in projList:
                 if prj.projectName() == projectName:
                     # All checks passed, set the project as specified:
-                    sess.setProject(prj)
+                    sess.setProject(prj)  # slowly getting rid of uses of sess, remove when done
+                    g.userProject = prj
                     g.projectName = projectName
                     return frontPage(sess)
             # No access to this project - bad user!
@@ -1825,12 +1794,12 @@ def urlInfoPage(sess, pagename):
 
 def asyncGetToken(username, password):
     try:
-        newurl = url_for('webRest.get_auth_token', _external=True)
+        newurl = url_for('webRest.urlGetToken', _external=True)
         jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
     except Exception, e:
         print 'getToken error: ' + str(e)
         return None
-    return jresp["token"]
+    return fprData(jresp)["token"]
 
 @app.route(PREURL+'/', methods=["GET", "POST"])
 def urlMain():
@@ -1886,7 +1855,7 @@ def urlMain():
                     util.fpLog(app, 'Login from user {0}'.format(username))
                     sess.resetLastUseTime()
                     sess.setUserIdent(username)
-                    g.userName = username
+                    fpsys.fpSetupG(g, userIdent=username)
                     resp = make_response(frontPage(sess))
                     resp.set_cookie(NAME_COOKIE_SESSION, sess.sid())      # Set the cookie
 

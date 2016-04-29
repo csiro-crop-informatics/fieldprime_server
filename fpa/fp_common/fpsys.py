@@ -20,7 +20,9 @@ from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL,
 #from models import getFpsysDbConnection         # circularity here, could move APP* to separate module
 import models
 
-    
+class FPSysException(Exception):
+    pass
+
 def getFpsysDbConnection():
 #-----------------------------------------------------------------------
 # Get mysql connection to fpsys database.
@@ -116,14 +118,17 @@ class UserProject:
         self._ident = ident
         self._access = access
     def projectId(self): return self._projectId
+    def getProjectId(self): return self._projectId
+    
     def projectName(self): return self._projectName
+    def getProjectName(self): return self._projectName
     def dbname(self): return self._dbname
     def ident(self): return self._ident
     def access(self): return self._access
-    
+
     @staticmethod
     def getUserProject(username, projectId):
-    # Returns UserProject, None, or error string.
+    # Returns UserProject, None, or raises FPSysException.
         try:
             con = getFpsysDbConnection()
             qry = """
@@ -135,9 +140,11 @@ class UserProject:
             if cur.rowcount != 1:
                 return None
             row = cur.fetchone()
+            cur.close()
+            con.close()
             return UserProject(row[0], row[1], row[3], username, row[2])
         except mdb.Error, e:
-            return 'Failed getUserProject:' + str(e)
+            raise FPSysException('Failed getUserProject:' + str(e))
         
     def hasPermission(self, perm):
         return bool(self._access & perm)
@@ -147,6 +154,9 @@ class UserProject:
     
     def db(self):
         return models.getDbConnection(self.dbname())
+    
+    def getModelProject(self):
+        return models.Project.getById(self.db(), self.getProjectId())
     
 def getUserProjects(username):
 #-----------------------------------------------------------------------
@@ -196,7 +206,7 @@ def addUserToProject(userId, projectName, perms):
         con.commit()
         con.close()
     except mdb.Error, e:
-        return 'Failed user add'
+        return 'Failed user add ({})'.format(e)
     return None
 
 
@@ -394,6 +404,8 @@ def userPasswordCheck(username, password):
         cur = con.cursor()
         cur.execute(qry, (username,))
         resRow = cur.fetchone()
+        cur.close()
+        con.close()
         if resRow is None:
             util.flog('Login attempt by unknown user: {0}'.format(username))
             return None
@@ -417,46 +429,83 @@ def userPasswordCheck(username, password):
 ### Users: ############################################################################
 
 class User:
+# In memory instance of fpsys.user.
+# NB, we don't include passhash for security reasons, but could retrieve
+# it on demand (not required attow).
+#    
     PERMISSION_CREATE_USER = 0x1
     PERMISSION_CREATE_PROJECT = 0x2
     PERMISSION_OMNIPOTENCE = 0x4
-    def __init__(self, id, name, passhash, login_type, permissions):
+    def __init__(self, id, ident, name, login_type, permissions, email):
         self._id = id
+        self._ident = ident
         self._name = name
-        self._passhash = passhash
         self._login_type = login_type
         self._permissions = permissions
+        self._email = email
 
-    @staticmethod
-    def getByLogin(ident):
-        try:
-            con = getFpsysDbConnection()
-            qry = "select id, name, passhash, login_type, permissions from user where login = %s"
-            cur = con.cursor()
-            cur.execute(qry, (ident,))
-            resRow = cur.fetchone()
-            if resRow is None:
-                return None
-            return User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4])
-        except mdb.Error, e:
-            util.flog('Error in User.getByLogin: {0}'.format(str(e)))
-            return None # what about error message?
-
-    def id(self):
+    def getId(self):
         return self._id
-    def name(self):
+    def getIdent(self):
+        return self._ident
+    def getName(self):
         return self._name
-    def passhash(self):
-        return self._passhash
-    def login_type(self):
+    def setName(self, name):
+        if util.isValidName(name):
+            self._name = name
+        else:
+            raise FPSysException("invalid name")       
+    def getEmail(self):
+        return self._email
+    def setEmail(self, email):
+        if util.isValidEmail(email):
+            self._email = email
+        else:
+            raise FPSysException("invalid email address")        
+#     def passhash(self):
+#         return self._passhash       
+    def getLoginType(self):
         return self._login_type
+    
     def hasPermission(self, perm):
         return bool(self._permissions & perm)
     def allowPasswordChange(self):
     # As in show the password change form in the admin page - only appropriate for mysql or local.
         return self._login_type == LOGIN_TYPE_MYSQL or self._login_type == LOGIN_TYPE_LOCAL
-    
-    def changePassword(self, newPassword):
+
+    @staticmethod
+    def getByLogin(ident):
+    # Return list of all Users, or None on error.
+        try:
+            con = getFpsysDbConnection()
+            qry = "select id, login, name, login_type, permissions, email from user where login = %s"
+            cur = con.cursor()
+            cur.execute(qry, (ident,))
+            resRow = cur.fetchone()
+            if resRow is None:
+                return None
+            return User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4], resRow[5])
+        except mdb.Error, e:
+            util.flog('Error in User.getByLogin: {0}'.format(str(e)))
+            return None # what about error message?
+
+    @staticmethod
+    def getAll():
+    # Return list of all Users, or None on error.
+        try:
+            con = getFpsysDbConnection()
+            qry = "select id, login, name, login_type, permissions, email from user"
+            cur = con.cursor()
+            cur.execute(qry)
+            users = []
+            for resRow in cur:
+                users.append(User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4], resRow[5]))
+            return users
+        except mdb.Error:
+            util.flog('Error in User.getAll')
+            return None
+        
+    def setPassword(self, newPassword):
     # Returns error message, or None for success.
     # NB, this only allowed for mysql and local types, and note that mysql get converted
     # to local types in the process (mysql only supported for historical users).
@@ -467,13 +516,35 @@ class User:
             con = getFpsysDbConnection()
             qry = "update user set passhash = %s, login_type = %s where id = %s"
             cur = con.cursor()
-            cur.execute(qry, (pwd_context.encrypt(newPassword), LOGIN_TYPE_LOCAL, self._id))
+            cur.execute(qry, (pwd_context.encrypt(newPassword), LOGIN_TYPE_LOCAL, self.getId()))
             con.commit()
             con.close()
         except mdb.Error, e:
-            util.flog('Error in User.changePassword: {0}'.format(str(e)))
-            return 'Error in User.changePassword: {0}'.format(str(e))
+            util.flog('Error in User.setPassword: {0}'.format(str(e)))
+            return 'Error in User.setPassword: {0}'.format(str(e))
         return None
+    
+    def save(self):
+    # Update database with current values for name, email. FOR LOCAL users only.
+    # Returns None on success else error message
+    # NB, password is done separately.
+    #
+        if self.getLoginType() != LOGIN_TYPE_LOCAL:
+            return "Operation not allowed for non-local user"
+        try:
+            con = getFpsysDbConnection()
+            qry = "update user set name=%s, email=%s where id = %s"
+            cur = con.cursor()
+            cur.execute(qry, (self.getName(), self.getEmail(), self.getId()))
+            con.commit()
+            con.close()
+        except mdb.Error, e:
+            util.flog('Error in User.save: {0}'.format(str(e)))
+            return 'Error in User.save: {0}'.format(str(e))
+        return None
+
+    def omnipotent(self):
+        return self._permissions & self.PERMISSION_OMNIPOTENCE
     
     @staticmethod
     def sHasPermission(login, perm):
@@ -481,6 +552,29 @@ class User:
         if usr is None:
             return False
         return bool(usr._permissions & perm)
+    
+    @staticmethod
+    def delete(ident):
+    # Returns None on success else error message.
+        rows = 0;
+        try:
+            con = getFpsysDbConnection()
+            qry = "delete from user where login = %s"
+            cur = con.cursor()
+            cur.execute(qry, (ident,))
+            rows = cur.rowcount
+            con.commit()
+            con.close()
+        except mdb.Error, e:
+            util.flog('Error in User.delete: {0}'.format(str(e)))
+            return 'Error in User.delete: {0}'.format(str(e))
+        if rows == 1:
+            return None
+        elif rows == 0:
+            return "User not found"
+        else:
+            return "Unexpected error, multiple deletes occurred"
+    
 
 ### Projects: ############################################################################
 
@@ -490,12 +584,37 @@ class Project():
         self._name = name
         self._dbName = dbName
         
-    def id(self):
+    def getId(self):
         return self._id
-    def name(self):
+    
+    def getName(self):
         return self._name
+    def setName(self, name):
+        self._name = name
+        
     def dbName(self):
-        return self._dbName    
+        return self._dbName
+    
+    def db(self):
+        return models.getDbConnection(self.dbName())
+
+    def saveName(self):
+    # Save the current name to database.
+    # Returns None on success, else an error message.
+        try:
+            con = getFpsysDbConnection()
+            qry = "update project set name = %s where id = %s"
+            cur = con.cursor()
+            cur.execute(qry, (self._name, self._id))
+#             if cur.rowcount != 1:
+#                 return 'Error updating project {} {} {}'.format(cur.rowcount,self._name, self._id)
+            con.commit()
+            con.close()
+            return None
+        except mdb.Error, e:
+            errmsg = 'Error updating project: {0}'.format(str(e))
+            util.flog(errmsg)
+            return errmsg
     
     @staticmethod
     def getById(pid):
@@ -522,9 +641,50 @@ class Project():
         if not isinstance(fpsysProj, Project):
             return fpsysProj
         dbc = models.getDbConnection(fpsysProj.dbName())
-        mproj = models.getProjectByName(dbc, fpsysProj.name())
+        mproj = models.Project.getByName(dbc, fpsysProj.name())
         return mproj
         
+    @staticmethod
+    def delete(projId):
+    # Delete specified project.
+    # If project has own database, with no other projects in it, then delete
+    # database, and records in fpsys.
+        proj = Project.getById(projId)
+        if not isinstance(proj, Project):
+            return "Cannot find project"
+        dbname = proj.dbName()
+        
+        # delete within database first:
+        dbc = proj.db()
+        models.Project.delete(dbc, projId)
+        count = models.Project.countProjects(dbc)
+        dbc.close()
+        
+        # delete from fpsys:
+        try:
+            con = getFpsysDbConnection()
+            cur = con.cursor()
+            cur.execute("delete from project where id = %s", (projId,))
+            con.commit()
+            cur.close()
+            con.close()
+            # If no projects left in database, delete the database:
+            if count == 0:
+                con = getFpsysDbConnection()
+                cur = con.cursor()
+                cur.execute("drop database {}".format(dbname))
+                con.commit()
+                cur.close()
+                con.close()
+        except mdb.Error, e:
+            errmsg = 'Error in Project.getById: {0}'.format(str(e))
+            util.flog(errmsg)
+            return errmsg
+        
+        # remove database if no other projects in it:
+        #return "NOT IMPLEMENTED"
+        return None
+    
 def getProjectDBname(projectSpecifier):
 #-----------------------------------------------------------------------
 # Returns dbname for project identified by either strint name or int id - r None on error.
@@ -546,5 +706,12 @@ def getProjectDBname(projectSpecifier):
         return None if foo is None else foo[0]
     except mdb.Error, e:
         return None
+
+def fpSetupG(g, userIdent=None, projectName=None):
+    g.userName = userIdent
+    g.user = None if userIdent is None else User.getByLogin(userIdent)
+    g.projectName = projectName
+    g.userProject = None # this has to be set explicitly at the moment
+    
 
 ##########################################################################################

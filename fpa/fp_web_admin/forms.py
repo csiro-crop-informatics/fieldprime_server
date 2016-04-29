@@ -16,9 +16,14 @@
 class formElement:
     # Supported element types:
     TEXT = 1
-    RADIO = 2
+    PASSWORD = 2
+    RADIO = 3
 
-    def __init__(self, prompt, subPrompt, ename, eid, dbName=None, etype=TEXT, typeSpecificData=None, default=None):
+    def __init__(self, prompt=None, subPrompt=None,
+                 ename=None, eid=None, dbName=None,
+                 etype=TEXT,
+                 typeSpecificData=None,
+                 default=None):
         self.prompt = prompt
         self.subPrompt = subPrompt
         self.ename = ename
@@ -27,7 +32,7 @@ class formElement:
         self.etype = etype
         self.typeSpecificData = typeSpecificData
         self.default=default
-
+        
     def __wrapElement(self, element):
         return '''
             <tr>
@@ -57,6 +62,13 @@ class formElement:
                    <input type="text" id='{0}' name="{1}" {2}>
                 '''.format(self.eid, self.ename,
                            ' value="{0}"'.format(value) if value is not None else '')
+        if self.etype == self.PASSWORD:
+            if value is None and self.typeSpecificData is not None:
+                value = self.typeSpecificData
+            element = '''
+                   <input type="password" id='{0}' name="{1}" {2}>
+                '''.format(self.eid, self.ename,
+                           ' value="{0}"'.format(value) if value is not None else '')
         elif self.etype == self.RADIO:
             if value is None and self.default is not None:
                 value = self.default
@@ -77,21 +89,25 @@ def makeForm(formElements):
     out += '</table></form>'
     return out
 
-def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submitUrl=None):
+def makeModalForm(buttonLabel, formElements, divId="myModal", action=None,
+                  submitUrl=None, method="POST", show='button'):
 # Returns html for modal form. Initially only a button (with given label) is
 # visible. Pressing the button presents a modal form with the given elements.
 # If more than one form is to be used on a single page, they must each have unique divId.
 # If submitUrl, post form to this url on submit.
 #
-    out = '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#{}">'.format(divId)
-    out += '{}</button>'.format(buttonLabel)
+# Might be better to return a pair, link/button, and the dialog div, so caller can control placement
+    out = ''
+    if show == 'button':
+        out += '<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#{}">'.format(divId)
+        out += '{}</button>'.format(buttonLabel)
     out += '<div id="{}" class="modal fade" role="dialog"><div class="modal-dialog"><div class="modal-content">'.format(divId)
 
     # modal header:
     out += '''<div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <button type="button" class="close" data-dismiss="modal" data-target="#{}">&times;</button>
         <h4 class="modal-title">{}</h4>
-      </div>'''.format(buttonLabel)
+      </div>'''.format(divId, buttonLabel)
 
     formId = 'frm' + divId
 # do we need success/error funcs? Can we have defaults?
@@ -112,7 +128,8 @@ def makeModalForm(buttonLabel, formElements, divId="myModal", action=None, submi
 
     # Set up the ajax form submission if specified:
     if submitUrl is not None:
-        out += '<script>$(fplib.ajax.setupAjaxForm("{}","{}","{}"))</script>'.format(divId, formId, submitUrl)
+        out += '<script>$(fplib.ajax.setupAjaxForm("{}","{}","{}","{}"))</script>'.format(
+                divId, formId, submitUrl, method)
 
     # modal footer:
     out += '''<div class="modal-footer">

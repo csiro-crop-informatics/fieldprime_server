@@ -29,6 +29,9 @@ import fpsys
 DeclarativeBase = declarative_base()
 metadata = DeclarativeBase.metadata
 
+class DalError(Exception):
+    pass
+
 def oneException2None(func):
 #--------------------------------------------------------------------
 # Decorator used for sqlalchemy one() queries, which throw exceptions if
@@ -599,44 +602,67 @@ class Project(DeclarativeBase):
     trials = relationship('Trial')
     upProject = relationship('Project', remote_side=[id])
 
-#     def __init__(self, parent, name):
-#         self.project_id = projectId
-#         self.name = name
-
-#     def getURL(self):
-#         return 'https://***REMOVED***/fieldprime/projects/{0}'.format(self.id)
+    def getName(self):
+        return self.name
+    def setName(self, name):
+        self.name = name
+    def getId(self):
+        return self.id
+    
+    def setContactName(self, name):
+        self.contactName = name        
+    def setContactEmail(self, email):
+        self.contactEmail = email
+    def save(self):
+        dbc = Session.object_session(self)
+        dbc.commit()
+        
+    @staticmethod
+    def delete(dbc, projId):
+    #-----------------------------------------------------------------------
+    # Delete specified project from the DB.
+        dbc.query(Project).filter(Project.id == projId).delete()
+        dbc.commit()
+        return None
+        
+    @staticmethod
+    def countProjects(dbc):
+        return dbc.query(Project).count()
+    
+    @staticmethod
+    @oneException2None
+    def getById(dbc, projectId):
+    #-----------------------------------------------------------------------
+    # Returns project object with given id if found, else None.
+        return dbc.query(Project).filter(Project.id == projectId).one()
+    
+    @staticmethod
+    @oneException2None
+    def getByName(dbc, projectName):
+    #-----------------------------------------------------------------------
+    # Returns project object with given name if found, else None.
+        return dbc.query(Project).filter(Project.name == projectName).one()
 
     @staticmethod
     def makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin):
-    # Returns new project object, which has been saved to the database, or None, if all well.
-    # Otherwise returns a string error message.
+    # Create new database/project. Returns new project obj on success else error message.
     # Should probably move the relevant bits of this out to fpsys.
-    
-# create database if not exists $DBNAME;
-# use $DBNAME;
-# source fprime.create.tables.sql;
-# grant all on $DBNAME.* to '$WEBUSER'@'localhost';
-# insert fpsys.project (name, dbname) values ('$PROJNAME', '$DBNAME');
-# insert project (id, up_id, name, contactName, contactEmail) values ((select id from fpsys.project where name='$PROJNAME'), null, '$PROJNAME', '$CONTACT_NAME', '$CONTACT_EMAIL');
-# flush privileges;
-# insert system (name, value) values ('contactName', '$CONTACT_NAME'), ('contactEmail', '$CONTACT_EMAIL');
-
+   
         if not ownDatabase:
-            return 'Shared databases not supported yet'
+            raise DalError('Shared databases not supported yet')
         
         # Check parameters validity:
         if not util.isValidIdentifier(projectName):
-            return 'Invalid project name'
+            raise DalError('Invalid project name')
         if not util.isValidName(contactName):
-            return 'Invalid contact name'
+            raise DalError('Invalid contact name')
         if not util.isValidEmail(contactEmail):
-            return 'Invalid contact email address'
+            raise DalError('Invalid xcontact email address')
         if not util.isValidIdentifier(adminLogin):
-            return 'invalid login name'
-         
+            raise DalError('invalid login name')
         # Check project name doesn't already exist:
         if fpsys.getProjectDBname(projectName) is not None:
-            return 'Project with name {} already exists'.format(projectName)
+            raise DalError('Project with name {} already exists'.format(projectName))
 
         dbname = dbName4Project(projectName)
         sql = 'create database {}; use {};'.format(dbname, dbname)
@@ -661,13 +687,12 @@ class Project(DeclarativeBase):
 #             resRow = cur.fetchone()
 #             return None if resRow is None else resRow[0]
         except mdb.Error, e:
-            return 'Error creating project: ' + str(e)
-        return None
-
-    def getName(self):
-        return self.name
-    def getId(self):
-        return self.id
+            raise DalError('Error creating project: ' + str(e))
+        
+        dbc = getDbConnection(dbname)
+        proj = Project.getByName(dbc, projectName)
+        #dbc.close()
+        return proj
 
     def path(self):
     #-----------------------------------------------------------------------
@@ -1496,7 +1521,7 @@ class TokenNode(DeclarativeBase):
         try:
             tokNode = dbc.query(TokenNode).filter(
                 and_(TokenNode.token_id == tokenId, TokenNode.localId == localId)).one()
-            return tokNode.node_id
+            return getNode(dbc, tokNode.node_id)
         except NoResultFound:
             # Make new node
             newNode = Node()
@@ -1521,9 +1546,6 @@ class TokenNode(DeclarativeBase):
 ###  Functions:  ##################################################################################################
 
 gdbg = True
-
-class DalError(Exception):
-    pass
 
 def _dbc(obj):
 #------------------------------------------------------------------------
@@ -1577,17 +1599,27 @@ def getSysUserEngine(projectName):
     dbname = fpsys.getProjectDBname(projectName)
     return getDbConnection(dbname)
 
+gdbc = None
 def getDbConnection(dbname):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
 # currently done in session module.
-#
+# MFK Note have had some problems with sql operations block on sleeping processes.
+# Three separate things fixed it:
+# . The use of poolclass=sqlalchemy.pool.NullPool commented out below.
+# . Calling close on the session after using it.
+# . Ensuring only one session by use of global var gdbc.
+# I'm sticking with this last method for the moment.
+    global gdbc
+    if gdbc is not None:
+        return gdbc
     host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
     # print fpDBUser(), fpPassword(), host, dbname
-    engine = create_engine('mysql://{0}:{1}@{2}/{3}'.format(fpDBUser(), fpPassword(), host, dbname))
+    engine = create_engine('mysql://{0}:{1}@{2}/{3}'.format(fpDBUser(), fpPassword(), host, dbname))#,
+                            #poolclass=sqlalchemy.pool.NullPool)
     Session = sessionmaker(bind=engine)
-    dbsess = Session()
-    return dbsess
+    gdbc = Session()
+    return gdbc
 
 # This should use alchemy and return connection
 def dbConnectAndAuthenticate(project, password):
@@ -1621,26 +1653,11 @@ def getTrial(dbc, trialID):
 # Returns trial object with given id if found, else None.
     return dbc.query(Trial).filter(Trial.id == trialID).one()
 
-
-@oneException2None
-def getProject(dbc, projectId):
-#-----------------------------------------------------------------------
-# Returns project object with given id if found, else None.
-    return dbc.query(Project).filter(Project.id == projectId).one()
-
-@oneException2None
-def getProjectByName(dbc, projectName):
-#-----------------------------------------------------------------------
-# Returns project object with given name if found, else None.
-# MFK - We should get by project and name
-    return dbc.query(Project).filter(Project.name == projectName).one()
-
 @oneException2None
 def getTraitInstance(dbc, traitInstance_id):
 #-----------------------------------------------------------------------
 # Returns traitInstance object with given id if found, else None.
     return dbc.query(TraitInstance).filter(TraitInstance.id == traitInstance_id).one()
-
 
 def getTrait(dbc, traitId):
 #-------------------------------------------------------------------------------------------------

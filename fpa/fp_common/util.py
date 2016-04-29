@@ -7,6 +7,7 @@
 import time, sys
 import cgi
 import re
+from functools import wraps
 
 def isInt(x):
     try:
@@ -22,24 +23,34 @@ def isNumeric(x):
     except ValueError:
         return False
 
+def falseIfNotString(func):
+    @wraps(func)
+    def new_func(candidate):
+        if isinstance(candidate, basestring):
+            return func(candidate)
+        else:
+            return False
+    return new_func
+    
+@falseIfNotString
 def isValidIdentifier(candidate):
 # Return boolean indicating whether candidate (assumed to be a string)
 # is a valid identifier. Where valid means starting with a letter or
 # underscore, followed by some number of letters, digits, or underscores.
     return re.match("[_A-Za-z][_a-zA-Z0-9]*$", candidate) is not None
 
+@falseIfNotString
 def isValidEmail(email):
 # Return boolean indicating whether email looks like an email address.
-    if isinstance(email, basestring):
-        return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None
-    else:
-        return False
+    return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None
 
+@falseIfNotString
 def isValidName(candidate):
 # Returns boolean.
 # Valid if starts with letter. Only contains letters, space, hyphen
     return re.match("[A-Za-z][ \-a-zA-Z0-9]*$", candidate) is not None
 
+@falseIfNotString
 def isValidPassword(candidate):
 # Need to write this    
 # Returns boolean.

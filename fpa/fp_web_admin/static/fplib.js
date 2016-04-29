@@ -83,7 +83,8 @@ fplib.ajax = {
      * formId - id of form
      * url - post destination
      */
-    setupAjaxForm : function(divId, formId, url) {
+    setupAjaxForm : function(divId, formId, url, method) {
+        method = typeof method !== 'undefined' ? method : "POST";
         return function () {
             var formSelector = "#" + formId;
             var divSelector = "#" + divId;
@@ -91,7 +92,7 @@ fplib.ajax = {
                 // get token
                 var token = fplib.readCookie('fptoken');
                 $.ajax({
-                       type: "POST",
+                       type: method,
                        url: url,
                        //username: token,
                        //password: 'x',

@@ -124,7 +124,7 @@ class WebSess(object):
     # a reference to the db (in that there is a reference in here,
     # and this is not the models module. But it really is quite neat.
     #
-        return models.getProjectByName(self.db(), self.data.get('projectName'))
+        return models.Project.getByName(self.db(), self.data.get('projectName'))
 
     def getDbName(self):
     #------------------------------------------------------------------
