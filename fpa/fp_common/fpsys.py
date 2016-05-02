@@ -714,6 +714,22 @@ class Project():
         #return "NOT IMPLEMENTED"
         return None
 
+    @staticmethod
+    def getAllProjects():
+    #-----------------------------------------------------------------------
+    # Get list of all projects (as Project), or raises FPSysException.
+        try:
+            con = getFpsysDbConnection()
+            qry = 'select id, name, dbname from project p'
+            cur = con.cursor()
+            cur.execute(qry)
+            projects = []
+            for row in cur.fetchall():
+                projects.append(Project(row[0], row[1], row[2]))
+            return projects
+        except mdb.Error, e:
+            raise FPSysException(str(e))
+
 def getProjectDBname(projectSpecifier):
 #-----------------------------------------------------------------------
 # Returns dbname for project identified by either strint name or int id - r None on error.

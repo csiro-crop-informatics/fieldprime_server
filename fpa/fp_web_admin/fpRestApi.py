@@ -25,6 +25,7 @@ from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMO
 import fpUtil
 import fp_common.util as util
 from const import *
+from fp_common.fpsys import FPSysException
 
 ### Initialization: ######################################################################
 webRest = Blueprint('webRest', __name__)
@@ -34,8 +35,8 @@ token_auth = HTTPTokenAuth('fptoken')
 multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
-    pass
-    #print msg
+    #pass
+    print msg
 
 ### Constants: ###########################################################################
 
@@ -100,29 +101,7 @@ def fprData(jsonResponse):
 class FPRestException(Exception):
     pass
 
-### Authentication: ######################################################################
-
-@webRest.route(API_PREFIX + 'token', methods=['GET'])
-@basic_auth.login_required
-def urlGetToken():
-#-------------------------------------------------------------------------------------------------
-# Returns, in a JSON object, a token for user.
-# The returned token may be used as a basic authentication username
-# for subsequent calls to the api (for up to 600 seconds).
-# This is in place of repeatedly sending the real username and password.
-# When using the token as the username, the password is not used, so any
-# value can be given.
-#
-    token = generate_auth_token(g.userName)
-    retObj = {'token': token.decode('ascii'), 'duration': 600}
-    #retObj = jsonify({'token': token.decode('ascii'), 'duration': 600})
-    return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
-
-# @webRest.route(API_PREFIX + 'grant/<login>/<permission>', methods=['GET'])
-# @basic_auth.login_required
-# def authUser(login, permission):
-#     pass
-
+### Authentication Checking: #############################################################
 
 def generate_auth_token(username, expiration=600):
 # Return a token for the specified username. This can be used
@@ -177,8 +156,8 @@ def verify_token(token):
     if not user: # Try with cooky
         ctoken = request.cookies.get(NAME_COOKIE_TOKEN)
         mkdbg('verify_token  cooky {}'.format(str(ctoken)))
-        if ctoken is None: return False
-        user = verify_auth_token(ctoken)
+        if ctoken is not None:
+            user = verify_auth_token(ctoken)
         if not user:
             mkdbg('verify_token: not user')
             return False
@@ -210,8 +189,11 @@ def wrap_api_func(func):
 #
     @wraps(func)
     def inner(*args, **kwargs):
+        mkdbg('json {} form {}'.format('None' if request.json is None else 'NOT None',
+                                       'None' if request.form is None else 'NOT None'))
         if request.json is None and request.form is not None:
-            params = request.form
+            #params = request.form
+            params = request.values
         elif request.json is not None: # and request.form is None:   Note if both json and form, we use json only
             params = request.json
         else:
@@ -234,6 +216,30 @@ def wrap_api_func(func):
         return ret
     return inner
 
+### Authentication: ######################################################################
+
+@webRest.route(API_PREFIX + 'token', methods=['GET'])
+@basic_auth.login_required
+def urlGetToken():
+#-------------------------------------------------------------------------------------------------
+#^-----------------------------------
+#: GET: API_PREFIX + 'token'
+#: Returns access token for requesting user. This can be
+#: used subsequently to access the API, by passing the
+#: token in as a HTTP header: "Authorization: fptoken + <token>"
+#: Access: Requesting user needs to exist.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: {
+#:     'token': <token>
+#:   }
+#$
+
+    token = generate_auth_token(g.userName)
+    retObj = {'token': token.decode('ascii'), 'duration': 600}
+    #retObj = jsonify({'token': token.decode('ascii'), 'duration': 600})
+    return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
 
 ### TraitInstance Attribute: #################################################################
 
@@ -319,6 +325,7 @@ def urlCreateUser(userid, params):
 #:   url: <new user url>
 #:
 #$
+    mkdbg('urlCreateUser')
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
         return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
@@ -506,7 +513,10 @@ def urlGetProjects(userid, params):
 #^-----------------------------------
 #: GET: API_PREFIX + projects
 #: Gets projects accessible to calling user.
-#: Input: none
+#: If parameter all is sent, all projects are shown - if the requesting user is omnipotent. 
+#: Input: {
+#:   'all':<any value>
+#: }
 #: Success Response:
 #:   Status code: HTTP_CREATED
 #:   data: [
@@ -518,12 +528,26 @@ def urlGetProjects(userid, params):
 #:     }
 #:   ]
 #$
-    (plist, errmsg) = fpsys.getUserProjects(g.userName)
-    if errmsg:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    retProjects = [{'projectName':p.getProjectName(),
-                    'url':url_for('webRest.urlGetProject', projId=p.getProjectId())
-                    } for p in plist]
+    mkdbg('urlGetProjects')
+    all = params.get('all') is not None
+    if all and not g.user.omnipotent():
+        return jsonErrorReturn('No permission to get all projects', HTTP_UNAUTHORIZED)
+    
+    if not all:
+        (plist, errmsg) = fpsys.getUserProjects(g.userName)
+        if errmsg:
+            return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+        retProjects = [{'projectName':p.getProjectName(),
+                        'url':url_for('webRest.urlGetProject', projId=p.getProjectId())
+                        } for p in plist]
+    else:
+        try:
+            plist = fpsys.Project.getAllProjects()
+        except FPSysException as e:
+            return jsonErrorReturn("Unexpected error getting projects: {}".format(e), HTTP_SERVER_ERROR)
+        retProjects = [{'projectName':p.getName(),
+                        'url':url_for('webRest.urlGetProject', projId=p.getId())
+                        } for p in plist]    
     return apiResponse(True, HTTP_OK, data=retProjects)
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
@@ -1027,17 +1051,6 @@ curl -u kevin:blueberry -i -X GET $FP/token
 
 '''
 
-# Document the REST API here?
-API_REST_DOCO = '''
-routes:
-
-projects { /<projName> }
-Get - returns ?
-Post - create
-
-trials { /<projName> } [ /<trialName> ]
-
-'''
 
 ########################################################################################
 ### Old stuff, NOT in use: #############################################################

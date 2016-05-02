@@ -36,6 +36,7 @@ fpa/fp_web_admin/datapage.py -text
 fpa/fp_web_admin/forms.py -text
 fpa/fp_web_admin/fpAppWapi.py -text
 fpa/fp_web_admin/fpRestApi.py -text
+fpa/fp_web_admin/fpRestTest.py -text
 fpa/fp_web_admin/fpTrait.py -text
 fpa/fp_web_admin/fpTrial.py -text
 fpa/fp_web_admin/fpUtil.py -text

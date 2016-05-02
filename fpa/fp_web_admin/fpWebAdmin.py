@@ -1230,13 +1230,14 @@ def urlFPAdmin(sess):
     newurl = url_for('webRest.urlGetProjects', _external=True)
     token = request.cookies.get(NAME_COOKIE_TOKEN)
     headers = {"Authorization": "fptoken " + token}
-    resp = requests.get(newurl, timeout=5, headers=headers)
+    params = {"all":1}
+    resp = requests.get(newurl, timeout=5, headers=headers, params=params)
     #print 'status {}'.format(resp.status_code)
     try:
         jresp = resp.json()
     except Exception as e:
-        pass
-        #print 'exception: {}'.format(e)
+        print 'exception getting json response: {}'.format(e)
+    
         
 #        try:
 #             payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
