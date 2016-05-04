@@ -1600,6 +1600,7 @@ def getSysUserEngine(projectName):
     return getDbConnection(dbname)
 
 gdbc = None
+gdbname = None
 def getDbConnection(dbname):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
@@ -1611,7 +1612,8 @@ def getDbConnection(dbname):
 # . Ensuring only one session by use of global var gdbc.
 # I'm sticking with this last method for the moment.
     global gdbc
-    if gdbc is not None:
+    global gdbname
+    if gdbc is not None and dbname == gdbname:
         return gdbc
     host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
     # print fpDBUser(), fpPassword(), host, dbname
@@ -1619,6 +1621,7 @@ def getDbConnection(dbname):
                             #poolclass=sqlalchemy.pool.NullPool)
     Session = sessionmaker(bind=engine)
     gdbc = Session()
+    gdbname = dbname
     return gdbc
 
 # This should use alchemy and return connection

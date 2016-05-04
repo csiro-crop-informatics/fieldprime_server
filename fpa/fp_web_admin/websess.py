@@ -174,7 +174,10 @@ class WebSess(object):
     #------------------------------------------------------------------
     # Returns sqlalchemy Session object.
     # Note the dbsess doesn't get saved in the shelf, but is cached in this object.
-        if not hasattr(self, 'mDBsess'):
-            self.mDBsess = models.getDbConnection(self.getDbName())
-        return self.mDBsess
+    # MFK - now retrieve each time as caching is done in models.
+        return models.getDbConnection(self.getDbName())
+        # Old way:
+#         if not hasattr(self, 'mDBsess'):
+#             self.mDBsess = models.getDbConnection(self.getDbName())
+#         return self.mDBsess
 

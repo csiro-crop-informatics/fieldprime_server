@@ -264,16 +264,25 @@ def _checkTiAttributeStuff(projId, tiId):
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateTiAttribute(userid, params, projId, tiId):
-#----------------------------------------------------------------------------------------------
-# Create attribute for the TI specified in the URL.
-# The attribute name must be present as a url parameter "name".
-#
-    ti = _checkTiAttributeStuff(projId, tiId)
+#^-----------------------------------
+#: POST: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
+#: Create attribute for the TI specified in the URL.
+#: The attribute name must be present as a parameter "name".
+#: Access: requesting user needs project admin permissions.
+#: Input: {
+#:   'name': <attribute name>,
+#: }
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   msg: 'Attribute Created'
+#$
+    ti = _checkTiAttributeStuff(projId, tiId) # NB access checked in here
     if not isinstance(ti, models.TraitInstance):
         return ti
 
     # Get name proposed for attribute:
-    name = request.json.get('name')
+    #name = request.json.get('name')
+    name = params.get('name')
     if not name:
         return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
 
@@ -287,21 +296,30 @@ def urlCreateTiAttribute(userid, params, projId, tiId):
     else:
         # Reset the name:
         tiAtt.setName(name)  # error return
-    return jsonSuccessReturn("Attribute Created")
+    return apiResponse(True, HTTP_OK, msg="Attribute Created")
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/ti/<int:tiId>/attribute', methods=['DELETE'])
 @multi_auth.login_required
 @wrap_api_func
 def urlDeleteTiAttribute(userid, params, projId, tiId):
 #----------------------------------------------------------------------------------------------
-    ti = _checkTiAttributeStuff(projId, tiId)
+#^
+#: DELETE: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
+#: Delete the attribute associated with the specified trait instance.
+#: Note the ti itself, or the data within it are not deleted.
+#: Access: requesting user needs project admin permissions.
+#: Input: none
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   msg: "Attribute Deleted"
+#$
+    ti = _checkTiAttributeStuff(projId, tiId) # NB access checked in here
     if not isinstance(ti, models.TraitInstance):
         return ti
     errmsg = ti.deleteAttribute()
-    if errmsg is None:
-        return jsonSuccessReturn("Attribute Deleted")
-    else:
+    if errmsg is not None:
         return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
+    return apiResponse(True, HTTP_OK, msg="Attribute Deleted")
 
 ### Users: ####################################################################################
 
@@ -377,7 +395,7 @@ def urlGetUsers(userid, params):
 #: Requesting user needs omnipotence permissions.
 #: Input: none
 #: Success Response:
-#:   Status code: HTTP_CREATED
+#:   Status code: HTTP_OK
 #:   data: [
 #:     {
 #:       'url':<user url>,
@@ -409,7 +427,7 @@ def urlGetUser(userid, params, ident):
 #: Requesting user needs create user permissions, or to be the requested user.
 #: Input: none
 #: Success Response:
-#:   Status code: HTTP_CREATED
+#:   Status code: HTTP_OK
 #:   data: {
 #:     'fullname':<user name>,
 #:     'email':<user email>,
@@ -568,7 +586,9 @@ def urlGetProject(userid, params, projId):
 #$
     if g.userProject is None:
         return jsonErrorReturn('no permissions', HTTP_UNAUTHORIZED)
-    ret = {'projectName':g.userProject.getProjectName()}
+    ret = {
+        'projectName':g.userProject.getProjectName()
+    }
     return apiResponse(True, HTTP_OK, data=ret)
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
@@ -580,7 +600,7 @@ def urlCreateProject(userid, params):
 # this should be just be the adminLogin.
 #^-----------------------------------
 #: POST: API_PREFIX + 'projects'
-#: Access: Requesting user needs create omnipotenct permissions.
+#: Access: Requesting user needs create omnipotent permissions.
 #: Input: {
 #:   'projectName': ,
 #:   'contactName': <Name of contact person>,
@@ -594,8 +614,11 @@ def urlCreateProject(userid, params):
 #: Success Response:
 #:   Status code: HTTP_CREATED
 #:   url: <url of created project>
-#:
+#:   data: {
+#:     trialUrl : <url for trials within project>
+#:   }
 #$
+    mkdbg('in urlCreateProject')
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
         return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
@@ -616,6 +639,7 @@ def urlCreateProject(userid, params):
         # Check admin user exists:
         adminUser = fpsys.User.getByLogin(adminLogin)
         if adminUser is None:
+            mkdbg('adminUser not found')
             return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
 
         # Create the project:
@@ -638,9 +662,13 @@ def urlCreateProject(userid, params):
     except Exception, e:
         return jsonErrorReturn('Problem creating project: ' + str(e), HTTP_BAD_REQUEST)
 
+    outData = {
+        'trialUrl' : url_for('webRest.urlCreateTrial', projId=proj.getId(), _external=True)
+    }
     # Return representation of the project, or a link to it?
     return apiResponse(True, HTTP_CREATED, msg='Project {} created'.format(projectName),
-                url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True))
+                url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True),
+                data=outData)
 
 def getCheckProjectsParams(params):
     pxo = {}
@@ -782,21 +810,6 @@ def urlAddProjectUser(userid, params, xprojId):
     if errmsg is not None:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
     return apiResponse(True, HTTP_OK)
-
-#@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
-@basic_auth.login_required
-def old_createProject(path):
-    return 'You want path: %s' % path
-
-    # top level dir called 'projects'? 'users'
-    parent = request.json.get('parent')
-    name = request.json.get('name')
-    if parent is None or name is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
-
-    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-    # create the project:
-    proj = models.Project();
 
 
 ### Trials: ############################################################################
@@ -958,17 +971,33 @@ def urlCreateNode(userid, params, projId, trialId):
 @wrap_api_func
 def urlAttributeData(userid, params, projId, attId):
 #---------------------------------------------------------------------------------
-# Return nodeId:attValue pairs
+#^
+#: GET: API_PREFIX + /projects/<int:projId>/attributes/<int:attId>
+# Returns array of nodeId:attValue pairs
 # These are sorted by node_id.
-# This is used in the admin web pages.
+#: Access:Requesting user needs access to project.
+#: NB can be used to update user permissions for the project.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: [
+#:      [nodeId, attValue], ...
+#:   ]
+#$
 #
+# This is used in the admin web pages. And was designed before the main REST API,
+# so may need some rethinking, eg the url.
+#
+    mkdbg('in urlAttributeData')
     # NB, check that user has access to project is done in wrap_api_func.
-    natt = models.getAttribute(models.getDbConnection(fpsys.getProjectDBname(projId)), attId)
+    natt = models.getAttribute(g.userProject.db(), attId)
+    if natt is None:
+        return jsonErrorReturn("Invalid attribute", HTTP_BAD_REQUEST)
     vals = natt.getAttributeValues()
     data = []
     for av in vals:
         data.append([av.getNode().getId(), av.getValueAsString()])
-    return Response(json.dumps(data), mimetype='application/json')
+    return apiResponse(True, HTTP_OK, data=data)
 
 ### Testing: #####################################################################################
 TEST_STUFF = '''
@@ -1097,7 +1126,7 @@ def urlTraitDelete(sess, trialId, traitId):
     # Delete the trait:
     trl.deleteTrait(traitId)
     # This will probably be called by ajax, so should return json status.
-    return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
+    return dp.dataPage('', 'Trial Deleted', trialId=trialId)
 
     errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
     if errmsg is not None:
@@ -1209,3 +1238,19 @@ def createProject2():
     # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
     # create the project:
     proj = models.Project();
+
+#@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
+@basic_auth.login_required
+def old_createProject(path):
+    return 'You want path: %s' % path
+
+    # top level dir called 'projects'? 'users'
+    parent = request.json.get('parent')
+    name = request.json.get('name')
+    if parent is None or name is None:
+        abort(HTTP_BAD_REQUEST)    # missing arguments
+
+    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
+    # create the project:
+    proj = models.Project();
+

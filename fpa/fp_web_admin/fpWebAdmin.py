@@ -170,7 +170,7 @@ def frontPage(sess, msg=''):
 #-----------------------------------------------------------------------
 # Return HTML Response for urlMain user page after login
 #
-    return dp.dataPage(sess, content=msg, title="FieldPrime")
+    return dp.dataPage(content=msg, title="FieldPrime")
 
 
 def loginPage(error=None):
@@ -514,7 +514,7 @@ def trialPage(sess, trialId):
     trialh = htmlTrial(sess, trialId)
     if trialh is None:
         trialh = "No trial selected"
-    return dp.dataPage(sess, content=trialh, title='Trial Data', trialId=trialId)
+    return dp.dataPage(content=trialh, title='Trial Data', trialId=trialId)
 
 
 @app.route(PREURL+'/trial/<trialId>', methods=["GET"])
@@ -540,7 +540,7 @@ def downloadApp(sess):
     for fname in l:
         if fnmatch(fname, '*.apk'):
             apkListHtml += '<p><a href="{0}">{1}</a>'.format(url_for('static', filename = 'apk/'+fname), fname)
-    return dp.dataPage(sess, content=apkListHtml, title='Download App', trialId=-1)
+    return dp.dataPage(content=apkListHtml, title='Download App', trialId=-1)
 
 
 @app.route(PREURL+'/newTrial/', methods=["GET", "POST"])
@@ -628,7 +628,7 @@ def urlBrowseTrialAttributes(sess, trialId):
 # Page for display of trial data.
 #
     (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
-    return dp.dataPage(sess, content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
+    return dp.dataPage(content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
                        title='Browse', trialId=trialId)
 
 def safeAppend(arr, val):
@@ -879,7 +879,7 @@ def urlTrialDataBrowse(sess, trialId):
 #         //$('#fpTrialData').wrap("<div id='scrooll_div'></div>");
 #         //$('#scrooll_div').doubleScroll();
 #     });</script>''' % str(metas)
-    return dp.dataPage(sess, content=r, title='Browse', trialId=trialId)
+    return dp.dataPage(content=r, title='Browse', trialId=trialId)
 
 @app.route(PREURL+'/trial/<trialId>/datalong/', methods=['GET'])
 @dec_check_session()
@@ -910,7 +910,7 @@ def urlDeleteTrial(sess, trialId):
         out += '<p>Do you really want to delete this trial?'
         out += '<p> <input type="submit" name="yesDelete" value="Yes, Delete">'
         out += '<input type="submit" name="noDelete" style="color:red" color:red value="Goodness me NO!">'
-        return dp.dataPage(sess, title='Delete Trial',
+        return dp.dataPage(title='Delete Trial',
                         content=fpUtil.htmlHeaderFieldset(fpUtil.htmlForm(out, post=True),
                                                           'Really Delete Trial {0}?'.format(trl.name)), trialId=trialId)
     if request.method == 'GET':
@@ -929,7 +929,7 @@ def urlDeleteTrial(sess, trialId):
             else:
                 # Delete the trial:
                 dal.Trial.delete(sess.db(), trialId)
-                return dp.dataPage(sess, '', 'Trial Deleted', trialId=trialId)
+                return dp.dataPage('', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
             return frontPage(sess)
@@ -1010,7 +1010,7 @@ def urlAttributeDisplay(sess, trialId, attId):
         rows.append([node.id, node.row, node.col, hsafe(av.getValueAsString())])
     out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpAttValues', showFooter=False)
 
-    return dp.dataPage(sess, content=out, title='Attribute', trialId=trialId)
+    return dp.dataPage(content=out, title='Attribute', trialId=trialId)
 
 #######################################################################################################
 ### USERS STUFF: ######################################################################################
@@ -1264,7 +1264,7 @@ def urlFPAdmin(sess):
                submitUrl=url_for('webRest.urlCreateUser', _external=True)
                ), topMargin='20px')
     
-    return dp.dataPage(sess, title='Administration', content=out, trialId=-1)
+    return dp.dataPage(title='Administration', content=out, trialId=-1)
 
 #######################################################################################################
 ### END FPADMIN STUFF: ################################################################################
@@ -1284,7 +1284,7 @@ def urlSystemTraits(sess, projectName):
             fpUtil.htmlForm(sysTraitListHtml) +
             fpUtil.htmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
             "System Traits")
-        return dp.dataPage(sess, title='System Traits', content=r, trialId=-1)
+        return dp.dataPage(title='System Traits', content=r, trialId=-1)
 
 
 @app.route(PREURL+'/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
@@ -1651,7 +1651,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     #
     out += fpUtil.htmlFieldset(fpUtil.htmlDiv(oStats, "statsDiv"), 'Statistics:')
-    return dp.dataPage(sess, content=out, title='Score Set Data', trialId=ti.trial_id)
+    return dp.dataPage(content=out, title='Score Set Data', trialId=ti.trial_id)
 
 
 def makeZipArchive(sess, traitInstanceId, archiveFileName):
@@ -1762,7 +1762,7 @@ def errorScreenInSession(sess, msg):
 # suspicious or catastrophic, has occurred.
 #
     out = '<font color="red">Something bad has happened: {}<font>'.format(msg)
-    return dp.dataPage(sess, content=out, title='Error', trialId=-1)
+    return dp.dataPage(content=out, title='Error', trialId=-1)
 
 
 def badJuju(sess, msg):

@@ -192,7 +192,7 @@ def _dataNavigationContent(trialId):
     return nc
 
 
-def dataPage(sess, title, content, trialId=None):
+def dataPage(title, content, trialId=None):
 #----------------------------------------------------------------------------
 # Return page for user data with given content and title.
 # The point of this function is to add the navigation content.
@@ -228,5 +228,5 @@ def dataTemplatePage(sess, template, **kwargs):
 def dataErrorPage(sess, errMsg, trialId=None):
 #----------------------------------------------------------------------------
 # Show error message in user data page.
-    return dataPage(sess, content=errMsg, title='Error', trialId=trialId)
+    return dataPage(content=errMsg, title='Error', trialId=trialId)
 

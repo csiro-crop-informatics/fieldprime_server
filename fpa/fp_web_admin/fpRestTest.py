@@ -6,7 +6,8 @@
 import sys
 import requests
 import traceback
-
+import json as modjson
+import pprint
 from const import *
 #from fpRestApi import fprData
 
@@ -18,6 +19,17 @@ PW = 'foo'
 
 tusr1 = 'testUser1'
 tusr1pw = 'ohelfno33'
+tusr1Name = 'Test User One'
+tusr1Email = 'testUser1@some.where'
+tproj1Name = 'testProject1'
+ttrl1Name = 'testTrial1'
+ttrl1Year = 2016
+ttrl1Site = 'Canberra'
+
+pp = pprint.PrettyPrinter(indent=4)
+
+class RTException(Exception):
+    pass
 
 ### Functions: ###########################################################################
 
@@ -25,6 +37,8 @@ def wout(msg):
     print '#### ', msg, ' =========================================================='
 def fout(msg):
     print 'FAIL ', msg, ' =========================================================='
+def nout(msg):
+    print '  ', msg
 def fprData(jsonResponse):
     return jsonResponse["data"]
    
@@ -69,7 +83,9 @@ def testGetProjects():
         json = resp.json()
         data = json['data']
         print '{} projects found'.format(len(data))
-        print json
+        modjson.dumps(json)
+        pp.pprint(json)
+
     except Exception as e:
         print 'EXCEPTION in testGetProjects: ', str(e) 
         
@@ -92,45 +108,128 @@ def respError(resp):
     try:
         json = resp.json()
         errmsg = json['error']
-        print 'API error message:' + errmsg
+        return 'API error message:' + errmsg
     except Exception as e:
-        print 'Cannot get error: ' + str(e)
+        return 'Cannot get error: ' + str(e)
 
+def getUser(tokenHdr, url):
+    try:
+        resp = requests.get(url, timeout=5, headers=tokenHdr)
+    except requests.exceptions.ConnectionError as e:
+        fout("request exception in getUser: " + str(e))
+        return None
+    if resp.status_code != HTTP_OK:
+        fout
+    
 # # Create local user:
 # curl $AUTH -i -X POST -H "Content-Type: application/json" \
 #      -d '{"ident":"testu1","password":"m","fullname":"Mutti Krupp","loginType":3,"email":"test@fi.fi"}' $FP/users
 # 
 # # Ideally here we would extract new user url from output, and use that subsequently.
-def testCreateLocalUser(token):
+def testLocalUser(tokenHdr):
     wout('Test create local user /projects?all=1')
-    print token
     try:
-        # Get Projects using basic authentication
-        url = AP + '/users'
-        params = {"ident":tusr1,
-                  "password":tusr1pw,
-                  "fullname":"Test User One",
-                  "loginType":3,
-                  "email":tusr1 + "@fi.fi"
-                }
-        headers = {"Authorization": "fptoken " + token}
+        # First check if user already exists:
         try:
-            resp = requests.post(url, timeout=5, params=params, headers=headers)
+            url = AP+'/users/'+tusr1
+            resp = requests.get(url, timeout=5, headers=tokenHdr)
         except requests.exceptions.ConnectionError as e:
             fout("request exception: " + str(e))
             return None
-            
+        if resp.status_code != HTTP_BAD_REQUEST:
+            # user exists already. Delete her!
+            nout("User {} already present. Deleting!".format(tusr1))
+            resp = requests.delete(url, timeout=5, headers=tokenHdr)
+            if resp.status_code != HTTP_OK:
+                fout('Cannot delete user aborting test')
+                return False
+            nout('User deleted')
+                
+        # Create user:
+        url = AP + '/users'
+        params = {"ident":tusr1,
+                  "password":tusr1pw,
+                  "fullname":tusr1Name,
+                  "loginType":3,
+                  "email":tusr1Email
+                }
+        try:
+            resp = requests.post(url, timeout=5, params=params, headers=tokenHdr)
+        except requests.exceptions.ConnectionError as e:
+            fout("request exception: " + str(e))
+            return None            
         if resp.status_code != HTTP_CREATED:
-            fout('unexpected status: {}'.format(resp.status_code))
-            respError(resp)
+            fout('unexpected status: {}\n  {}'.format(resp.status_code, respError(resp)))
             return None
         json = resp.json()
-        print json
         userUrl = json['url']
+        
+        # Get created user and check values
+        try:
+            resp = requests.get(userUrl, timeout=5, headers=tokenHdr)
+        except requests.exceptions.ConnectionError as e:
+            fout("request exception: " + str(e))
+            return None
+        if resp.status_code != HTTP_OK:
+            fout("Cannot GET created user {}".format(tusr1))
+            return False
+        juser = fprData(resp.json())
+        pp.pprint(juser)
+        if juser['email'] != tusr1Email:
+            fout('email incorrect: {} should be {}'.format(juser['email'], tusr1Email))
+        if juser['fullname'] != tusr1Name:
+            fout('fullname incorrect: {} should be {}'.format(juser['fullname'], tusr1Name))
+            
+        # Update user:
+                
     except Exception as e:
-        print 'EXCEPTION in testCreateLocalUser: ', str(e) 
+        fout('EXCEPTION in testCreateLocalUser: ' + str(e))
+        fout(traceback.format_exc())
+        return False
     return userUrl
-    
+
+def testCreateProject(tokenHdr, pname, cname, cemail, adminLogin):
+    try:
+        url = AP+'/projects'
+        params = {
+            'projectName': pname,
+            'contactName': cname,
+            'contactEmail': cemail,
+            'ownDatabase': True,
+            'adminLogin': adminLogin
+        }
+        resp = requests.post(url, timeout=5, data=params, headers=tokenHdr)
+    except requests.exceptions.ConnectionError as e:
+        raise RTException("request exception in testCreateProject: {}".format(str(e)))
+    if resp.status_code != HTTP_CREATED:
+        print resp
+        raise RTException("unexpected status code: {}.\n  {}".format(
+                                                resp.status_code, respError(resp)))
+    return resp.json().get('url')
+
+def testCreateTrial(tokenHdr, projUrl, name, year, site):
+    try:
+        url = AP+'/projects'
+        params = {
+            'projectName': pname,
+            'contactName': cname,
+            'contactEmail': cemail,
+            'ownDatabase': True,
+            'adminLogin': adminLogin
+        }
+        resp = requests.post(url, timeout=5, data=params, headers=tokenHdr)
+    except requests.exceptions.ConnectionError as e:
+        raise RTException("request exception in testCreateProject: {}".format(str(e)))
+    if resp.status_code != HTTP_CREATED:
+        print resp
+        raise RTException("unexpected status code: {}.\n  {}".format(
+                                                resp.status_code, respError(resp)))
+    return resp.json().get('url')
+
+
+def testGetUser():
+    pass
+
 # Test:
 def restTest():
     try:
@@ -139,7 +238,26 @@ def restTest():
         if token is None:
             fout('aborting - token is None')
             exit(0)
-        testCreateLocalUser(token)
+        tokenHdr = {"Authorization": "fptoken " + token}
+        userUrl = testLocalUser(tokenHdr)
+        if userUrl:
+            nout('Created user: ' + userUrl)
+            
+        # Create project:
+        wout('Test Create Project')        
+        projUrl = testCreateProject(tokenHdr, tproj1Name, tusr1Name, tusr1Email, tusr1)
+        nout("Created project: " + projUrl)
+        
+        # Get project:
+        wout('Test Get Project')
+        
+        # Create trial:
+        wout('Test Create Trial')
+        trialUrl = testCreateTrial(tokenHdr, projUrl,
+                                   name=ttrl1Name, year=ttrl1Year, site=ttrl1Site)
+        
+    except RTException as rte:
+        fout("Aborting - " + str(rte))            
     except:
         tb = traceback.format_exc()
         fout(tb)

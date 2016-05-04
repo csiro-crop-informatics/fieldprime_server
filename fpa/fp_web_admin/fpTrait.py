@@ -340,7 +340,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
         formh += ('\n<p><input type="button" value="Cancel"' +
             ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
         formh += '\n<input type="submit" value="Submit">'
-        return dp.dataPage(sess,
+        return dp.dataPage( \
                     content=preform + fpUtil.htmlForm(formh, post=True, onsubmit=onsubmit, multipart=True),
                     title='Trait Validation', trialId=trialId)
 

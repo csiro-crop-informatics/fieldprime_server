@@ -295,14 +295,15 @@ def updateUser(ident, project, perms):
 #-----------------------------------------------------------------------
 # Returns error message on error or None
 #
-    # Check ***REMOVED*** user exists, and get name:
-    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-    if not ***REMOVED***Server:
-        return 'Cannot connect to ***REMOVED*** server'
-    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
-    if ***REMOVED***User is None:
-        return 'Unknown ident {0}'.format(ident)
-    ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
+
+#     # Check ***REMOVED*** user exists, and get name:
+#     ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
+#     if not ***REMOVED***Server:
+#         return 'Cannot connect to ***REMOVED*** server'
+#     ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
+#     if ***REMOVED***User is None:
+#         return 'Unknown ident {0}'.format(ident)
+#     ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
 
     # Get project id:
     projId = _getProjectIdFromName(project)
@@ -324,8 +325,8 @@ def updateUser(ident, project, perms):
         if cur.rowcount != 1:
             return 'User not found for this project'
 
-        # update user table (in case name in ***REMOVED*** has changed):
-        cur.execute('update user set name = %s where id = %s', (***REMOVED***Name, userFpId))
+#         # update user table (in case name in ***REMOVED*** has changed):
+#         cur.execute('update user set name = %s where id = %s', (***REMOVED***Name, userFpId))
         # Update userProject table:
         cur.execute('update userProject set permissions=%s where user_id=%s and project_id = %s',
                     (perms, userFpId, projId))

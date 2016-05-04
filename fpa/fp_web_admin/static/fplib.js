@@ -141,13 +141,17 @@ fplib.getUrlData = function (url, sfunc) {
                 fplib.msg("error:"+jqXHR.responseText);
             },
             success:function (data, textStatus, jqXHR) {
+                if (!data.hasOwnProperty('data')) {
+                    fplib.msg("error: missing data in response");
+                    return;
+                }
+                data = data.data;
                 fplib[cacheDataName] = data;
                 sfunc(data);
             }
         });
     }
 };
-
 /*
  * readCookie()
  */
