@@ -564,7 +564,7 @@ def urlGetProjects(userid, params):
         except FPSysException as e:
             return jsonErrorReturn("Unexpected error getting projects: {}".format(e), HTTP_SERVER_ERROR)
         retProjects = [{'projectName':p.getName(),
-                        'url':url_for('webRest.urlGetProject', projId=p.getId())
+                        'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=True)
                         } for p in plist]    
     return apiResponse(True, HTTP_OK, data=retProjects)
 
@@ -580,14 +580,16 @@ def urlGetProject(userid, params, projId):
 #:   Status code: HTTP_OK
 #:   data: [
 #:     {
-#:       'projectName':<user url>
+#:       'projectName':<Project Name>,
+#:       'trialUrl': <url for trials within project>
 #:     }
 #:   ]
 #$
     if g.userProject is None:
         return jsonErrorReturn('no permissions', HTTP_UNAUTHORIZED)
     ret = {
-        'projectName':g.userProject.getProjectName()
+        'projectName':g.userProject.getProjectName(),
+        'trialUrl' : url_for('webRest.urlCreateTrial', projId=projId, _external=True)
     }
     return apiResponse(True, HTTP_OK, data=ret)
 
@@ -644,15 +646,6 @@ def urlCreateProject(userid, params):
 
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
-#         if proj is None:
-#             print 'proj is None'
-#         else:
-#             if not isinstance(proj, models.Project):
-#                 print 'proj is not proj'
-#             else:
-#                 print 'proj id {}'.format(proj.getId())
-#         if isinstance(proj, basestring):
-#             return jsonErrorReturn(proj, HTTP_BAD_REQUEST)
 
         # Add the adminUser to the project:
         errmsg = fpsys.addUserToProject(adminUser.getId(), projectName, 1)  #MFK define and use constant
@@ -665,7 +658,6 @@ def urlCreateProject(userid, params):
     outData = {
         'trialUrl' : url_for('webRest.urlCreateTrial', projId=proj.getId(), _external=True)
     }
-    # Return representation of the project, or a link to it?
     return apiResponse(True, HTTP_CREATED, msg='Project {} created'.format(projectName),
                 url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True),
                 data=outData)
@@ -775,6 +767,9 @@ def urlDeleteProject(userid, params, xprojId):
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)  # need to distinguish server error, user not found..
     return apiResponse(True, HTTP_OK)
 
+
+# MFK - project could have usersUrl for adding, deleting users, updating permissions
+
 @webRest.route(API_PREFIX + 'projects/<int:xprojId>/users/', methods=['POST'])
 @multi_auth.login_required
 @wrap_api_func
@@ -842,30 +837,38 @@ curl -u fpadmin:foo -i -X DELETE $TRIAL_URL
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateTrial(userid, params, projId):
-# Parameters can be form or json.
-# Expects following parameters - all optional bar trialName.
-#   trialName : name project - must be appropriate.
-#   trialYear : text
-#   trialSite : text
-#   trialAcronym : text
-#   nodeCreation : 'true' or 'false'
-#   rowAlias : text
-#   colAlias : text
-#
-# If successful, returns in the json the URL for the created trial.
-#
+#^-----------------------------------
+#: POST: <trialUrl from getProject>
+#: Access: Requesting user needs project admin permissions.
+#: Input: {
+#:   trialName : name project - must be appropriate.
+#:   trialYear : text
+#:   trialSite : text
+#:   trialAcronym : text
+#:   nodeCreation : 'true' or 'false'
+#:   rowAlias : text
+#:   colAlias : text
+#: }
+#: NB, all input parameters are optional except for trialName.
+#: Success Response:
+#:   Status code: HTTP_CREATED
+#:   url: <url of created trial>
+#$
     # Check permissions:
     # We should have trial creation permissions, but this should be project specific
     # preferably with inheritance
     # At least need to check user has access to project
     mkdbg('urlCreateTrial({}, {})'.format(userid, projId))
-    userProj = fpsys.UserProject.getUserProject(userid, projId)
-    if userProj is None:
-        return jsonErrorReturn("No project access for user", HTTP_UNAUTHORIZED)
-    elif isinstance(userProj, basestring):
-        return jsonErrorReturn("Error in trial creation: {}".format(userProj), HTTP_SERVER_ERROR)
-    elif not isinstance(userProj, fpsys.UserProject):
-        return jsonErrorReturn("Error in trial creation", HTTP_SERVER_ERROR)
+    if not g.userProject.hasAdminRights():
+        return jsonErrorReturn('No administration access', HTTP_UNAUTHORIZED)
+    
+#     userProj = fpsys.UserProject.getUserProject(userid, projId)
+#     if userProj is None:
+#         return jsonErrorReturn("No project access for user", HTTP_UNAUTHORIZED)
+#     elif isinstance(userProj, basestring):
+#         return jsonErrorReturn("Error in trial creation: {}".format(userProj), HTTP_SERVER_ERROR)
+#     elif not isinstance(userProj, fpsys.UserProject):
+#         return jsonErrorReturn("Error in trial creation", HTTP_SERVER_ERROR)
 
     trialName = params.get('trialName')
     trialYear = params.get('trialYear')
@@ -1079,178 +1082,3 @@ curl -u fpadmin:foo -i -X GET $FP/token
 curl -u kevin:blueberry -i -X GET $FP/token
 
 '''
-
-
-########################################################################################
-### Old stuff, NOT in use: #############################################################
-########################################################################################
-
-#goEasy = True
-def wr_check_session(func):
-#-------------------------------------------------------------------------------------------------
-# NB - USED FOR WEB ADMIN PAGES, NOT REALLY DIRECT REST.
-# Decorator to check if in valid session.
-# Generates function that has session as first parameter.
-# If returnNoneSess is true, then the function is returned even if session is
-# invalid, but with None as the session parameter - this can be used for pages
-# that don't require a user to be logged in.
-# NB Derived from fpWebAdmin:dec_check_session.
-#
-    @wraps(func)
-    def inner(*args, **kwargs):
-# is this secure? what if sid not in cooky?
-        print 'wr_check_session'
-        sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
-        if sid is not None:
-            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, current_app.config['SESS_FILE_DIR']) # Create or get session object
-        if sid is None or not sess.valid():  # Check if session is still valid
-            return 'error: not logged in', 401
-        return func(sess, *args, **kwargs) #if not goEasy else func(None, *args, **kwargs)
-    return inner
-
-
-@webRest.route('/trial/<trialId>/trait/<traitId>', methods=['DELETE'])
-@wr_check_session
-#---------------------------------------------------------------------------------
-# Delete specified trait in given trial.
-# If this is a local trait, it will be completely removed, along with
-# all other records that refer to it.
-# If this is a system trait, then the trait itself is not deleted, but
-# all references to it within the specified trial are removed.
-#
-def urlTraitDelete(sess, trialId, traitId):
-    if not sess.adminRights() or projectName != sess.getProjectName():
-        return fpUtil.badJuju(sess, 'No admin rights')
-
-    trl = models.getTrial(sess.db(), trialId)
-    # Delete the trait:
-    trl.deleteTrait(traitId)
-    # This will probably be called by ajax, so should return json status.
-    return dp.dataPage('', 'Trial Deleted', trialId=trialId)
-
-    errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
-    if errmsg is not None:
-        return jsonify({"error":errmsg})
-    else:
-        return jsonify({"status":"good"})
-
-def _jsonErrorReturn(error=None):
-#-----------------------------------------------------------------------
-# Close the session and return the message. Intended as a return for a HTTP request
-# after something bad (and possibly suspicious) has happened.
-# MFK Only used in urlLogin, should be jsonErrorReturn instead probably, if this
-# is used.
-    message = {
-            'error': 'An error occurred: ' + error
-    }
-    resp = jsonify(message)
-    #resp.status_code = 500
-    return resp
-
-
-@webRest.route('/restapi/login', methods=["POST"])
-def urlLogin():
-#-----------------------------------------------------------------------
-# Authenticate and get session token for api.
-# The request should contain parameters "username" and "password".
-#
-# Note the use of sessions. On login, a server side session is established (state is stored
-# in the file system), and the id of this session is sent back to the browser as a token,
-# which should be sent back with each subsequent request.
-#
-# Every access via the various app.routes above, should go through decorator dec_check_session
-# which will check there is a valid session current. If not, eg due to timeout, then it redirects
-# to the login screen.
-#
-#
-    error = ""
-    if request.method != 'POST':
-        return _jsonErrorReturn('non post non expected')  # This shouldn't happen.
-
-    username = request.form.get('username')
-    password = request.form.get('password')
-    if not username:
-        return _jsonErrorReturn('No username')
-    elif not password:
-        return _jsonErrorReturn('No password')
-
-    # Try fieldprime login, then ***REMOVED***:
-    # If it is a known user then what mysql user and password should we use?
-    # We should store the ***REMOVED*** user name in the session in case needed for any metadata,
-    # Or at least log their login.
-    #
-    # MFK we shouldn't need to store password if we switch to using system password.
-    # even for project accounts. The password is checked here and used to make the
-    # timestamped cookie.
-    #
-    project = None    # For either login type we need to set a project
-    access = None
-    dbname = None
-    loginType = None
-    if fpsys.systemPasswordCheck(username, password):
-        project = username
-        access = websess.PROJECT_ACCESS_ALL
-        dbname = models.dbName4Project(project)
-        loginType = LOGIN_TYPE_SYSTEM
-    elif fpsys.***REMOVED***PasswordCheck(username, password):  # Not a main project account, try as ***REMOVED*** user.
-        # For ***REMOVED*** check, we should perhaps first check in a system database
-        # as to whether the user is known to us. If not, no point checking ***REMOVED*** credentials.
-        #
-        # OK, valid ***REMOVED*** user. Find project they have access to:
-        loginType = LOGIN_TYPE_***REMOVED***
-        project = access = dbname = None
-    else:
-        util.fpLog(current_app, 'Login failed attempt for user {0}'.format(username))
-        return _jsonErrorReturn('invalid username/password')
-        error = 'Invalid Password'
-
-    # Create session and return token (session id):
-    util.fpLog(current_app, 'Login from user {0}'.format(username))
-    sess = websess.WebSess(sessFileDir=current_app.config['SESS_FILE_DIR'])  # Create session object
-    sess.resetLastUseTime()
-    sess.setUserIdent(username)
-    sess.setProject(project, dbname, access)
-    sess.setLoginType(loginType)
-    return jsonify({'token':sess.sid()})
-
-def checkIdent(candidate):
-    re.match('\w\w*')
-
-#@webRest.route(API_PREFIX + 'XXXprojects', methods=['POST'])
-@basic_auth.login_required
-def createProject2():
-# Expects JSON object:
-#   parent : url for parent project. If missing root is used.
-#   name : project name, must be nice
-#   contactName :
-#   contactEmail :
-#
-    # top level dir called 'projects'? 'users'
-    parentUrl = request.json.get('parent')
-    parentProj = models.Project.getByUrl(parentUrl);
-    # get project
-    name = request.json.get('name')
-    parentProj.getByName(name)
-    name = checkIdent(name) # check name is valid
-    # and doesn't already exist
-    if parent is None or name is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
-    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-    # create the project:
-    proj = models.Project();
-
-#@webRest.route(API_PREFIX + 'XXXprojects/<path:path>', methods=['POST'])
-@basic_auth.login_required
-def old_createProject(path):
-    return 'You want path: %s' % path
-
-    # top level dir called 'projects'? 'users'
-    parent = request.json.get('parent')
-    name = request.json.get('name')
-    if parent is None or name is None:
-        abort(HTTP_BAD_REQUEST)    # missing arguments
-
-    # Need check user has permission. Need parent project, or path perhaps: /fp/projects/foo/bar
-    # create the project:
-    proj = models.Project();
-

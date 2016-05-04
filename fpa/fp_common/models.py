@@ -645,7 +645,7 @@ class Project(DeclarativeBase):
 
     @staticmethod
     def makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin):
-    # Create new database/project. Returns new project obj on success else error message.
+    # Create new database/project. Returns new project obj on success else raises DalError.
     # Should probably move the relevant bits of this out to fpsys.
    
         if not ownDatabase:

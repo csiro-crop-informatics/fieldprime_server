@@ -671,7 +671,7 @@ class Project():
         if not isinstance(fpsysProj, Project):
             return fpsysProj
         dbc = models.getDbConnection(fpsysProj.dbName())
-        mproj = models.Project.getByName(dbc, fpsysProj.name())
+        mproj = models.Project.getByName(dbc, fpsysProj.getName())
         return mproj
 
     @staticmethod
