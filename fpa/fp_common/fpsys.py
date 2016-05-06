@@ -91,9 +91,12 @@ def getProjectUsers(project):
 # The dictionary keys are the user login ids, the values are tuples (name, permissions).
 #
     # Get project id:
-    projId = _getProjectIdFromName(project)
-    if projId is None:
-        return None, 'bad project name'
+    if isinstance(project, basestring):
+        projId = _getProjectIdFromName(project)
+        if projId is None:
+            return None, 'bad project name'
+    else:
+        projId = project
     try:
         con = getFpsysDbConnection()
         qry = 'select login, name, userProject.permissions from user join userProject on id = user_id where project_id = %s'

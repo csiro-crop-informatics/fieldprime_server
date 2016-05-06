@@ -28,8 +28,8 @@ tusr1Name = 'Test User One'
 tusr1Email = 'testUser1@some.where'
 tusr2 = 'testUser2'
 tusr2pw = 'oFluffinHippo'
-tusr1Name = 'Test User Two'
-tusr1Email = 'testUser2@some.where'
+tusr2Name = 'Test User Two'
+tusr2Email = 'testUser2@some.where'
 tproj1Name = 'testProject1'
 ttrl1Name = 'testTrial1'
 ttrl1Year = 2016
@@ -42,13 +42,17 @@ class RTException(Exception):
 
 ### Functions: ###########################################################################
 
-def wout(msg):
+### Utility funcs: #######################################################################
+
+def hout(msg): # header out - indicate start of test
     print '#### ', msg, ' =========================================================='
-def fout(msg):
+def fout(msg=''): # fail out - failed test
     print 'FAIL ', msg, ' =========================================================='
-def nout(msg):
-    print '  ', msg
-def jout(json):
+def sout(msg=''): # success out - passed test
+    print '  PASS: ', msg
+def nout(msg): # normal out - informational text
+    print '    ', msg
+def jout(json): # json out - pretty print json
     pp.pprint(json)
 
 def fprData(jsonResponse):
@@ -69,272 +73,230 @@ def makeBasicAuthenticationHeader(user, password):
     header = {"Authorization": 'Basic ' + b64Val}
     return header
 
-   
-# # Get users:
-# curl $AUTH $FP/users | prj
-# 
-# # Create local user:
-# curl $AUTH -i -X POST -H "Content-Type: application/json" \
-#      -d '{"ident":"testu1","password":"m","fullname":"Mutti Krupp","loginType":3,"email":"test@fi.fi"}' $FP/users
-# 
-# # Ideally here we would extract new user url from output, and use that subsequently.
-# 
-# # Get user:
-# curl $AUTH $FP/users/testu1 | prj
-# 
-# # update user:
-# curl $AUTH -X PUT -H "Content-Type: application/json" \
-#     -d '{"fullname":"Muddy Knight", "email":"slip@slop.slap", "oldPassword":"m", "password":"secret"}' $FP/users/testu1
-# 
-# # get to check update:
-# curl -umk:secret $FP/users/testu1 | prj
-# 
-# # Delete user:
-# curl $AUTH -XDELETE $FP/users/testu1
-
-def getProjects():
+def getSomething(authHdr, url, somethingName='something', params=None):
+# Makes get request on url. If HTTP_OK received returns the
+# json response object. Raise exception if not OK or connection error occurs.
+#
     try:
-        # Get Projects using basic authentication
-        url = AP + '/projects'
-        params = {"all":1}
-        try:
-            resp = requests.get(url, timeout=5, params=params, auth=(USR, PW))
-        except requests.exceptions.ConnectionError as e:
-            raise RTException("requests exception in tgetProjects: {}".format(str(e)))           
-        if resp.status_code != HTTP_OK:
-            raise RTException('unexpected status: {}'.format(resp.status_code))
-        json = resp.json()
-        data = json['data']
-        return data
-    except RTException:
-        raise
-    except Exception as e:
-        print 'EXCEPTION in getProjects: ', str(e) 
-
-def testGetProjects():
-    try:
-        wout('Test get /projects?all=1')
-        # Get Projects using basic authentication
-        url = AP + '/projects'
-        params = {"all":1}
-        try:
-            resp = requests.get(url, timeout=5, params=params, auth=(USR, PW))
-        except requests.exceptions.ConnectionError as e:
-            fout("request exception: " + str(e))
-            exit(0)
-            
-        if resp.status_code != HTTP_OK:
-            fout('unexpected status: {}'.format(resp.status_code))
-            return
-        json = resp.json()
-        data = json['data']
-        print '{} projects found'.format(len(data))
-        modjson.dumps(json)
-        pp.pprint(json)
-
-    except Exception as e:
-        print 'EXCEPTION in testGetProjects: ', str(e) 
-        
-def testGetToken(usr, pw):
-    wout('Test get /token')  
-    try:
-        url = AP + '/token'
-        resp = requests.get(url, timeout=5, auth=(usr, pw))
-    except Exception, e:
-        print 'getToken error: ' + str(e)
-        return None
-    if resp.status_code != HTTP_OK:
-        fout('unexpected status: {}'.format(resp.status_code))
-        return
-    json = resp.json()
-    return fprData(json)["token"]
-
-def getUser(tokenHdr, url):
-    try:
-        resp = requests.get(url, timeout=5, headers=tokenHdr)
+        resp = requests.get(url, timeout=5, headers=authHdr, params=params)
     except requests.exceptions.ConnectionError as e:
-        fout("request exception in getUser: " + str(e))
-        return None
+        raise RTException("requests exception getting {}: {}".format(somethingName, str(e)))
     if resp.status_code != HTTP_OK:
-        fout
-    
-def testLocalUser(tokenHdr):
-    wout('Test create local user /projects?all=1')
+        raise RTException("unexpected status code ({}) getting {}.\n  {}".format(
+            resp.status_code, somethingName, respError(resp)))
+    return resp.json()
+
+def createSomething(authHdr, url, somethingName='something', params=None):
+# Makes get request on url. If HTTP_OK received returns the
+# json response object. Raise exception if not OK or connection error occurs.
+    try:
+        resp = requests.post(url, timeout=5, headers=authHdr, data=params)
+    except requests.exceptions.ConnectionError as e:
+        raise RTException("requests exception creating {}: {}".format(somethingName, str(e)))
+    if resp.status_code != HTTP_CREATED:
+        raise RTException("unexpected status code ({}) getting {}.\n  {}".format(
+            resp.status_code, somethingName, respError(resp)))
+    return resp.json()
+
+def deleteSomething(authHdr, url, somethingName='something'):
+# Makes delete request on url. 
+# Raises exception if not HTTP_OK or connection error occurs.
+    try:
+        resp = requests.delete(url, timeout=5, headers=authHdr)
+    except requests.exceptions.ConnectionError as e:
+        raise RTException("requests exception deleting {}: {}".format(somethingName, str(e)))
+    if resp.status_code != HTTP_OK:
+        raise RTException("unexpected status code ({}) deleting {}.\n  {}".format(
+            resp.status_code, somethingName, respError(resp)))        
+
+def checkIsSame(thisThing, shouldBeThis, thingName='value'):
+# Raises exception if not thisThing equals shouldBeThis
+    if str(thisThing) != str(shouldBeThis):
+        raise RTException('Incorrect {}: expected {}, got {}'.format(thingName, shouldBeThis, thisThing))
+
+### Test funcs: ##########################################################################
+
+def testGetProjects(authHdr):
+    try:
+        hout('Test get /projects?all=1')     
+        json = getSomething(authHdr, AP + '/projects',
+                                somethingName='project', params={'all':1})
+        data = fprData(json)
+        nout('{} projects found'.format(len(data)))
+        modjson.dumps(json)
+        jout(json)
+    except RTException:
+        raise                
+    except Exception as e:
+        raise RTException('EXCEPTION in testGetProjects: {}'.format(str(e))) 
+        
+def testGetToken(authHdr):
+    hout('Test get /token')
+    token = fprData(getSomething(authHdr, AP + '/token', somethingName='token')).get('token')
+    if token is None:
+        raise RTException('token is None')
+    sout('Got token: ' + token)
+    return token
+
+def testLocalUser(authHdr):
+    hout('Test create local user /projects?all=1')
     try:
         if gClear:
             # First check if user already exists:
             try:
                 url = AP+'/users/'+tusr1
-                resp = requests.get(url, timeout=5, headers=tokenHdr)
+                resp = requests.get(url, timeout=5, headers=authHdr)
             except requests.exceptions.ConnectionError as e:
                 fout("request exception: " + str(e))
                 return None
             if resp.status_code != HTTP_BAD_REQUEST:
                 # user exists already. Delete her!
                 nout("User {} already present. Deleting!".format(tusr1))
-                resp = requests.delete(url, timeout=5, headers=tokenHdr)
+                resp = requests.delete(url, timeout=5, headers=authHdr)
                 if resp.status_code != HTTP_OK:
                     fout('Cannot delete user aborting test')
                     return False
-                nout('User deleted')
+                sout('User deleted')
                 
         # Create user:
-        url = AP + '/users'
-        params = {"ident":tusr1,
+        json = createSomething(authHdr, AP + '/users', somethingName='user', params = {
+                  "ident":tusr1,
                   "password":tusr1pw,
                   "fullname":tusr1Name,
                   "loginType":3,
                   "email":tusr1Email
-                }
-        try:
-            resp = requests.post(url, timeout=5, params=params, headers=tokenHdr)
-        except requests.exceptions.ConnectionError as e:
-            fout("request exception: " + str(e))
-            return None            
-        if resp.status_code != HTTP_CREATED:
-            fout('unexpected status: {}\n  {}'.format(resp.status_code, respError(resp)))
-            return None
-        json = resp.json()
+                })
         userUrl = json['url']
         
-        # Get created user and check values
-        try:
-            resp = requests.get(userUrl, timeout=5, headers=tokenHdr)
-        except requests.exceptions.ConnectionError as e:
-            fout("request exception: " + str(e))
-            return None
-        if resp.status_code != HTTP_OK:
-            fout("Cannot GET created user {}".format(tusr1))
-            return False
-        juser = fprData(resp.json())
-        pp.pprint(juser)
-        if juser['email'] != tusr1Email:
-            fout('email incorrect: {} should be {}'.format(juser['email'], tusr1Email))
-        if juser['fullname'] != tusr1Name:
-            fout('fullname incorrect: {} should be {}'.format(juser['fullname'], tusr1Name))
+        # Get created user and check values:
+        juser = fprData(getSomething(authHdr, userUrl, somethingName='user'))
+        jout(juser)
+        checkIsSame(juser['email'], tusr1Email, 'user email')
+        checkIsSame(juser['fullname'], tusr1Name, 'user fullname')
             
-        # Update user:
-                
+        # Update user: todo
+        
+    except RTException:
+        raise                
     except Exception as e:
         fout('EXCEPTION in testCreateLocalUser: ' + str(e))
         fout(traceback.format_exc())
-        return False
+        raise RTException('EXCEPTION in testLocalUser: {}'.format(str(e))) 
     return userUrl
 
-def deleteProject(tokenHdr, url):
-    resp = requests.delete(url, timeout=5, headers=tokenHdr)
-    if resp.status_code != HTTP_OK:
-        raise RTException("unexpected status code in deleteProject: {}".format(resp.status_code))
-        
-def testCreateProject(tokenHdr, pname, cname, cemail, adminLogin):
+def testCreateProject(authHdr, pname, cname, cemail, adminLogin):
     if gClear:
-        projects = getProjects()
+        projects = fprData(getSomething(authHdr, AP + '/projects',
+                                        somethingName='project', params={'all':1}))
         for proj in projects:
             if proj['projectName'] == pname:
                 nout('project {} already exists - deleting it'.format(pname))
-                deleteProject(tokenHdr, proj['url'])
-        
-    try:
-        url = AP+'/projects'
-        params = {
+                deleteSomething(authHdr, proj['url'], "project")
+    # create project:           
+    resp = createSomething(authHdr, AP+'/projects', somethingName='projects', params={
             'projectName': pname,
             'contactName': cname,
             'contactEmail': cemail,
             'ownDatabase': True,
             'adminLogin': adminLogin
-        }
-        resp = requests.post(url, timeout=5, data=params, headers=tokenHdr)
-    except requests.exceptions.ConnectionError as e:
-        raise RTException("request exception in testCreateProject: {}".format(str(e)))
-    if resp.status_code != HTTP_CREATED:
-        print resp
-        raise RTException("unexpected status code: {}.\n  {}".format(
-                                                resp.status_code, respError(resp)))
-    return resp.json().get('url')
+        })
+    return resp.get('url')
 
-def testCreateTrial(tokenHdr, projUrl, name, year, site):
-#   trialName : name project - must be appropriate.
-#   trialYear : text
-#   trialSite : text
-#   trialAcronym : text
-#   nodeCreation : 'true' or 'false'
-#   rowAlias : text
-#   colAlias : text
-    try:
-        params = {
+def testCreateTrial(authHdr, projUrl, name, year, site):
+    resp = createSomething(authHdr, projUrl, somethingName='trial', params= {
             'trialName': name,
             'trialYear': year,
             'trialSite': site
-        }
-        resp = requests.post(projUrl, timeout=5, data=params, headers=tokenHdr)
-    except requests.exceptions.ConnectionError as e:
-        raise RTException("request exception in testCreateProject: {}".format(str(e)))
-    if resp.status_code != HTTP_CREATED:
-        print resp
-        raise RTException("unexpected status code: {}.\n  {}".format(
-                                                resp.status_code, respError(resp)))
-    return resp.json().get('url')
+        })
+    return resp.get('url')
 
+def testProjectTrialStuff(authHdr, projTrialsUrl):
+    # Create trial:
+    hout('Test Create Trial')
+    trialUrl = testCreateTrial(authHdr, projTrialsUrl,
+                               name=ttrl1Name, year=ttrl1Year, site=ttrl1Site)
+    sout("Trial Created: " + trialUrl)
+    
+    # Get specific trial:
+    hout('Test get trials')
+    trial = fprData(getSomething(authHdr, trialUrl, "trial"))
+    checkIsSame(trial.get('name'), ttrl1Name, 'trial name')
+    checkIsSame(trial.get('year'), ttrl1Year, 'trial year')
+    checkIsSame(trial.get('site'), ttrl1Site, 'trial site')
+    sout("Got trial from URL")
 
-def testGetUser():
-    pass
-
-def getProject(authHdr, projUrl):
-    print 'in getProject'
-    try:
-        resp = requests.get(projUrl, timeout=5, headers=authHdr)
-    except requests.exceptions.ConnectionError as e:
-        raise RTException("request exception in getProject: {}".format(str(e)))
-    if resp.status_code != HTTP_OK:
-        raise RTException("unexpected status code: {}.\n  {}".format(
-                                                resp.status_code, respError(resp)))
-    return fprData(resp.json())
-  
+    # Get trials:
+    hout('Get project trial list')
+    trialList = fprData(getSomething(authHdr, projTrialsUrl, "trial list"))
+    if len(trialList) != 1:
+        raise RTException("Trial list wrong length of {}, should be 1".format(len(trialList)))
+    if trialList[0] != trialUrl:
+        raise RTException("Trial url wrong. Got{}, expected {}".format(trialList[0], trialUrl))
+    sout('project trial list')
+    
+    # Update trial:
+    
+    # Delete trial:
+    deleteSomething(authHdr, trialUrl, 'trial')
+    
 # Test:
 def restTest():
     try:
-        # Get Projects - without token:
-        testGetProjects()
+        adminAuthHdr = makeBasicAuthenticationHeader(USR, PW)
+
+        # Get Projects - with admin basic auth:
+        testGetProjects(adminAuthHdr)
         
-        token = testGetToken(USR, PW)
-        if token is None:
-            fout('aborting - token is None')
-            exit(0)
+        token = testGetToken(adminAuthHdr)
         tokenHdr = {"Authorization": "fptoken " + token}
         userUrl = testLocalUser(tokenHdr)
-        if userUrl:
-            nout('Created user: ' + userUrl)
+        sout('Created user: ' + userUrl)
             
         # Create project:
-        wout('Test Create Project')        
+        hout('Test Create Project')        
         projUrl = testCreateProject(tokenHdr, tproj1Name, tusr1Name, tusr1Email, tusr1)
-        nout("Created project: " + projUrl)
+        sout("Created project: " + projUrl)
         
         # Get project:
-        wout('Test Get Project')
-        basicAuthHdr = makeBasicAuthenticationHeader(tusr1, tusr1pw)
-        proj = getProject(basicAuthHdr, projUrl)
-        if proj.get('projectName') != tproj1Name:
-            fout('Incorrect project name in get: expected {}, got {}'.format(tproj1Name, proj.get('projectName')))
-            return
-        nout("OK: Got project:")
+        hout('Test Get Project')
+        user1AuthHdr = makeBasicAuthenticationHeader(tusr1, tusr1pw)
+        proj = fprData(getSomething(user1AuthHdr, projUrl, somethingName='project'))
+        checkIsSame(proj.get('projectName'), tproj1Name, 'project name')
+        sout("Got project:")
         jout(proj)
         
-        # Create trial:
-        wout('Test Create Trial')
-        createTrialUrl = proj['trialUrl']
-        trialUrl = testCreateTrial(basicAuthHdr, createTrialUrl,
-                                   name=ttrl1Name, year=ttrl1Year, site=ttrl1Site)
+        # Add user to project:
+        hout('Add project user')
+        createSomething(adminAuthHdr, AP + '/users', somethingName='user', params = {
+                  "ident":tusr2,
+                  "password":tusr2pw,
+                  "fullname":tusr2Name,
+                  "loginType":3,
+                  "email":tusr2Email
+                })
+        resp = createSomething(user1AuthHdr, proj.get('urlUsers'), somethingName='user',
+            params = {
+            'ident': tusr2,
+            'admin': False
+            })
+        sout()
         
-        # Update trial:
+        # Get project users:
+        hout('Get project users')
+        data = fprData(getSomething(user1AuthHdr, proj.get('urlUsers'), somethingName='projectUser'))
+        sout()
+        jout(data)
+   
+        # Test project trial functionality:
+        testProjectTrialStuff(user1AuthHdr, proj.get('urlTrials'))
         
-        # Delete trial:
-          
+        hout('Finished all tests')
     except RTException as rte:
-        fout("Aborting - " + str(rte))            
-    except:
-        tb = traceback.format_exc()
-        fout(tb)
+        fout("ABORTING - " + str(rte))            
+        fout(traceback.format_exc())
+    except Exception as e:
+        fout("ABORTING unexpected exception - " + str(e))            
+        fout(traceback.format_exc())
 
 
 ### Main: ################################################################################
@@ -343,7 +305,12 @@ def main():
 #     if len(sys.argv) <= 1:
 #         print 'Usage: {} <API_PREFIX>'.format(sys.argv[0])
 #         exit(0)
-
+    def usage():
+        print 'Usage: {} [-c] [-h]'.format(sys.argv[0])
+        print '  -h : show this help'
+        print '  -c : clear objects from the db with names the same as used in these tests'
+        exit(0)
+        
     global gClear
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ch")
@@ -354,10 +321,7 @@ def main():
         if opt == '-c':
             gClear = True
         if opt == '-h':
-            print 'Usage: {} [-c] [-h]'.format(sys.argv[0])
-            print '  -h : show this help'
-            print '  -c : clear objects from the db with names the same as used in these tests'
-            exit(0)
+            usage()
     restTest()
 
 if __name__=="__main__":

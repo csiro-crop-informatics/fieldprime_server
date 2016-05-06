@@ -608,6 +608,8 @@ class Project(DeclarativeBase):
         self.name = name
     def getId(self):
         return self.id
+    def getTrials(self):
+        return self.trials
     
     def setContactName(self, name):
         self.contactName = name        

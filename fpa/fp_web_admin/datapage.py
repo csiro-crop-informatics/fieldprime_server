@@ -183,7 +183,7 @@ def _dataNavigationContent(trialId):
         # Add trial selector:
         if trialId is None or trialId >= 0:
             r3c1 = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None,
-                g.userProject.getModelProject().trials,
+                g.userProject.getModelProject().getTrials(),
                 lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
                 None if trialId is None else url_for('urlTrial', trialId=trialId))
             nc += fpUtil.bsRow(fpUtil.bsCol(r3c1, numCols=6))

@@ -69,13 +69,15 @@ def apiResponse(succeeded, statusCode, msg=None, data=None, url=None):
 
 def jsonErrorReturn(errmsg, statusCode):
     return apiResponse(False, statusCode, msg=errmsg)
-
 def jsonReturn(jo, statusCode):
     return Response(json.dumps(jo), status=statusCode, mimetype='application/json')
-
 def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
     return apiResponse(True, statusCode, msg=msg)
-
+def notSupported():
+    return apiResponse(False, HTTP_SERVER_ERROR, "Not Supported")
+def accessDenied(msg=None):
+    return apiResponse(False, HTTP_UNAUTHORIZED,
+                       "No access for requested operation" if msg is None else msg)
 
 def fprGetError(jsonResponse):
 # Returns the error message from the response, IF there was an error, else None.
@@ -568,6 +570,13 @@ def urlGetProjects(userid, params):
                         } for p in plist]    
     return apiResponse(True, HTTP_OK, data=retProjects)
 
+def responseProjectObject(proj):
+    projId = proj.getId()
+    return {
+        'projectName':proj.getName(),
+        'urlTrials' : url_for('webRest.urlCreateTrial', projId=projId, _external=True),
+        'urlUsers' : url_for('webRest.urlAddProjectUser', xprojId=projId, _external=True)
+    }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
@@ -581,16 +590,14 @@ def urlGetProject(userid, params, projId):
 #:   data: [
 #:     {
 #:       'projectName':<Project Name>,
-#:       'trialUrl': <url for trials within project>
+#:       'urlTrials': <url for trials within project>
+#:       'urlUsers': <url for users within project>
 #:     }
 #:   ]
 #$
     if g.userProject is None:
         return jsonErrorReturn('no permissions', HTTP_UNAUTHORIZED)
-    ret = {
-        'projectName':g.userProject.getProjectName(),
-        'trialUrl' : url_for('webRest.urlCreateTrial', projId=projId, _external=True)
-    }
+    ret = responseProjectObject(g.userProject.getModelProject())
     return apiResponse(True, HTTP_OK, data=ret)
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
@@ -616,9 +623,7 @@ def urlCreateProject(userid, params):
 #: Success Response:
 #:   Status code: HTTP_CREATED
 #:   url: <url of created project>
-#:   data: {
-#:     trialUrl : <url for trials within project>
-#:   }
+#:   data: <project object - same as for urlGetProject>
 #$
     mkdbg('in urlCreateProject')
     # Check permissions:
@@ -655,12 +660,9 @@ def urlCreateProject(userid, params):
     except Exception, e:
         return jsonErrorReturn('Problem creating project: ' + str(e), HTTP_BAD_REQUEST)
 
-    outData = {
-        'trialUrl' : url_for('webRest.urlCreateTrial', projId=proj.getId(), _external=True)
-    }
     return apiResponse(True, HTTP_CREATED, msg='Project {} created'.format(projectName),
                 url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True),
-                data=outData)
+                data=responseProjectObject(proj))
 
 def getCheckProjectsParams(params):
     pxo = {}
@@ -770,13 +772,16 @@ def urlDeleteProject(userid, params, xprojId):
 
 # MFK - project could have usersUrl for adding, deleting users, updating permissions
 
+
+### Project Users: #######################################################################
+
 @webRest.route(API_PREFIX + 'projects/<int:xprojId>/users/', methods=['POST'])
 @multi_auth.login_required
 @wrap_api_func
 def urlAddProjectUser(userid, params, xprojId):
 #----------------------------------------------------------------------------------------------
 #^
-#: POST: API_PREFIX + 'projects/<id>/users/<ident>
+#: POST: urlUsers from project
 #: Requesting user needs omnipotence permissions or admin access to project.
 #: NB can be used to update user permissions for the project.
 #: Input: {
@@ -804,8 +809,33 @@ def urlAddProjectUser(userid, params, xprojId):
     errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), xprojId, 1 if admin else 0)
     if errmsg is not None:
         return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
-    return apiResponse(True, HTTP_OK)
+    return apiResponse(True, HTTP_CREATED)
 
+@webRest.route(API_PREFIX + 'projects/<int:xprojId>/users/', methods=['GET'])
+@multi_auth.login_required
+@wrap_api_func
+def urlGetProjectUsers(userid, params, xprojId):
+#----------------------------------------------------------------------------------------------
+#^
+#: GET: urlUsers from project
+#: Requesting user needs omnipotence permissions or admin access to project.
+#: NB can be used to update user permissions for the project.
+#: Input: {
+#: }
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: array of {'ident':<ident>, 'admin':boolean}
+#$
+    # check permissions
+    if not g.user.omnipotent():
+        userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
+        if userProject is None or not userProject.hasAdminRights():
+            return accessDenied()
+    users, errmsg = fpsys.getProjectUsers()
+    if users is None:
+        return jsonErrorReturn("cannot get user projects " + errmsg, HTTP_SERVER_ERROR)
+    retList = [(ident, perms==1) for (ident,perms) in users] 
+    return apiResponse(True, HTTP_OK, data=retList)
 
 ### Trials: ############################################################################
 
@@ -898,6 +928,28 @@ def urlCreateTrial(userid, params, projId):
     trial.setNavIndexNames(rowAlias, colAlias)
     return apiResponse(True, HTTP_CREATED, msg='Trial {} created'.format(trialName),
             url=url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()))
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['GET'])
+@multi_auth.login_required
+@wrap_api_func
+def urlGetTrials(userid, params, projId):
+#^-----------------------------------
+#: GET: <trialUrl from project>
+#: Access: Requesting user needs omnipotence or project view permissions.
+#: Input: {
+#: }
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: <array of trial urls>
+#$
+    # Check access:
+    if not g.user.omnipotent() and g.userProject is None:
+        return accessDenied()
+    # Return array of trial URLs:
+    trialUrlList = [
+        url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()) for
+            trial in g.userProject.getModelProject().getTrials()]
+    return apiResponse(True, HTTP_OK, data=trialUrlList)
 
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['GET'])
