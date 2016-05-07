@@ -35,8 +35,8 @@ token_auth = HTTPTokenAuth('fptoken')
 multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
-    #pass
-    print msg
+    if False:
+        print msg
 
 ### Constants: ###########################################################################
 
@@ -486,6 +486,7 @@ def urlUpdateUser(userid, params, ident):
 #: Success Response:
 #:   Status code: HTTP_CREATED
 #$
+    mkdbg('In urlUpdateUser')
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_CREATE_USER):
         if userid != ident:

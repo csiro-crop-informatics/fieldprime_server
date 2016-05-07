@@ -75,9 +75,9 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 def formElements4LocalUserSelfManagement():
 # User details form:
     return [
-        forms.formElement('User Name', 'Full name of new user', 'fullName', 'xcontId',
+        forms.formElement('User Name', 'Full name of new user', 'fullname', 'xcontId',
                           etype=forms.formElement.TEXT, typeSpecificData=g.user.getName()),
-        forms.formElement('User Email', 'Email address of new user', 'userEmail', 'xemailId',
+        forms.formElement('User Email', 'Email address of new user', 'email', 'xemailId',
                           etype=forms.formElement.TEXT, typeSpecificData=g.user.getEmail()),
         forms.formElement('Current Password', '', 'oldPassword', 'xoldPassword',
                           etype=forms.formElement.PASSWORD),
