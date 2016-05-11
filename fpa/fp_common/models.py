@@ -438,7 +438,8 @@ class TraitInstance(DeclarativeBase):
     # Returns NodeAttribute on success, else None.
         try:
             db = _dbc(self)
-            att = NodeAttribute(name, self.getTrialId(), ti=self)
+            att = NodeAttribute(name=name, trial_id=self.getTrialId())
+            att.func = self.id
             db.add(att)
             db.commit()
         except sqlalchemy.exc.SQLAlchemyError as e:
@@ -615,9 +616,55 @@ class Project(DeclarativeBase):
         self.contactName = name        
     def setContactEmail(self, email):
         self.contactEmail = email
-    def save(self):
+    def save(self):  # Not good, is saving whole session, not just project
         dbc = Session.object_session(self)
         dbc.commit()
+        
+    def path(self):
+    #-----------------------------------------------------------------------
+    # Recursion - whee!
+    #
+        if self.upProject is not None:
+            return '{0}/{1}'.format(self.upProject.path(), self.getName())
+        else:
+            return self.getName()
+
+    def getTraits(self):
+        session = Session.object_session(self)
+        return session.query(Trait).filter(Trait.project_id == self.id).all()
+
+    def newTrial(self, name, site, year, acro):  # see comment below , i1name=None, i2name=None):
+    # Creates new trial in the database with given details.
+    # Raises DalError if this fails.
+    # MFK - need to mv commit and rollback out of here
+        session = Session.object_session(self)
+        # Check if there is already a trial by that name:
+        numNames = session.query(Trial).filter(Trial.name == name).count()
+        if numNames != 0:
+            raise DalError("There is already a trial with that name")
+        try:
+            ntrial = Trial(self.id, name, site, year, acro)
+            session.add(ntrial)
+            session.commit()
+# Code to set index names, not needed ATTOW as the single call to this is followed by
+# a call to trialProperties.processPropertiesForm which does this.
+#             # Add index names:
+#             if i1name is not None:
+#                 session.add(TrialProperty(ntrial.id, INDEX_NAME_1, i1name))
+#                 if i2name is not None:   # NB i2name only used if i1name is present.
+#                     session.add(TrialProperty(ntrial.id, INDEX_NAME_2, i2name))
+#                 session.commit()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            session.rollback()  # This should ensure bad trial is not created in db
+            raise DalError("Database error ({0})".format(e.__str__()))
+        return ntrial
+    
+    @oneException2None
+    def getTrialById(self, trialId):
+    #-----------------------------------------------------------------------
+    # Returns trial object with given id if found, else None.
+        dbc = _dbc(self)
+        return dbc.query(Trial).filter(Trial.id == trialId).one()
         
     @staticmethod
     def delete(dbc, projId):
@@ -696,46 +743,6 @@ class Project(DeclarativeBase):
         #dbc.close()
         return proj
 
-    def path(self):
-    #-----------------------------------------------------------------------
-    # Recursion - whee!
-    #
-        if self.upProject is not None:
-            return '{0}/{1}'.format(self.upProject.path(), self.getName())
-        else:
-            return self.getName()
-
-    def getTraits(self):
-        session = Session.object_session(self)
-        return session.query(Trait).filter(Trait.project_id == self.id).all()
-
-    def newTrial(self, name, site, year, acro):  # see comment below , i1name=None, i2name=None):
-    # Creates new trial in the database with given details.
-    # Raises DalError if this fails.
-    #
-        session = Session.object_session(self)
-        # Check if there is already a trial by that name:
-        numNames = session.query(Trial).filter(Trial.name == name).count()
-        if numNames != 0:
-            raise DalError("There is already a trial with that name")
-        try:
-            ntrial = Trial(self.id, name, site, year, acro)
-            session.add(ntrial)
-            session.commit()
-# Code to set index names, not needed ATTOW as the single call to this is followed by
-# a call to trialProperties.processPropertiesForm which does this.
-#             # Add index names:
-#             if i1name is not None:
-#                 session.add(TrialProperty(ntrial.id, INDEX_NAME_1, i1name))
-#                 if i2name is not None:   # NB i2name only used if i1name is present.
-#                     session.add(TrialProperty(ntrial.id, INDEX_NAME_2, i2name))
-#                 session.commit()
-        except sqlalchemy.exc.SQLAlchemyError as e:
-            session.rollback()  # This should ensure bad trial is not created in db
-            raise DalError("Database error ({0})".format(e.__str__()))
-        return ntrial
-
-
 class Trial(DeclarativeBase):
     __tablename__ = 'trial'
     __table_args__ = {}
@@ -776,8 +783,8 @@ class Trial(DeclarativeBase):
     def getAcronym(self):
         return self.acronym
 
-    # MFK - make this getProperties (maybe not, we already use that word) and include, at least, barcode
     def getAttributes(self):
+    # MFK - make this getProperties (maybe not, we already use that word) and include, at least, barcode
         return self.nodeAttributes
 
     @staticmethod
@@ -1079,6 +1086,72 @@ class Trial(DeclarativeBase):
             if att.name == name:
                 return att
         return None
+    
+    @oneException2None
+    def getAttribute2(self, name):
+        return _dbc(self).query(NodeAttribute).filter(
+            and_(NodeAttribute.trial_id==self.getId(), NodeAttribute.name==name)).one()
+    
+    def createAttribute(self, attribute):
+        name = attribute.get('name')
+        if name is None or not util.isValidIdentifier(name):
+            raise DalError("name missing or invalid in attribute")
+        datatype = attribute.get('datatype')
+        if datatype is None or datatype == 'text': datatype = T_STRING
+        elif datatype == 'integer': datatype = T_INTEGER
+        elif datatype == 'decimal': datatype = T_DECIMAL
+        else:
+            raise DalError("Invalid datatype")
+
+        # Check if attribute with name already exists:
+        if self.getAttribute2(name) is not None:
+            return None
+        nattr = NodeAttribute(name=name, trial_id=self.getId(), datatype=datatype)
+        return nattr
+    
+    def createNode(self, jnode):
+        try:
+            ind1 = int(jnode.get('index1'))
+            ind2 = int(jnode.get('index2'))
+        except Exception: #ValueError, TypeError:
+            raise DalError('index1 and index2 must be present, and valid integers')
+        atts = jnode.get('attvals')
+        if self.getNodeId(ind1, ind2) is not None:
+            raise DalError('A node with index values {}, {} already exists'.format(ind1, ind2))
+        node = Node()
+        node.row = ind1
+        node.col = ind2
+        node.trial_id = self.getId()
+        
+#         print 'before {}'.format(node.id)
+        dbc = _dbc(self)
+        dbc.add(node)
+        dbc.flush()
+#         print 'after {}'.format(node.id)
+#         raise DalError('foo')
+        
+        if atts is not None:
+            currAtts = self.getAttributes()#[att.name for att in self.getAttributes()]
+            for attname in atts:
+                # Get attribute
+                currAtt = None
+                for att in currAtts:
+                    if att.getName() == attname:
+                        currAtt = att
+                        break
+                # check attribute exists:
+                if currAtt is None:                
+                    raise DalError('unknown node attribute referenced: ' + attname)
+                
+                # now maybe check type and add value
+                av = AttributeValue()
+                av.nodeAttribute = currAtt
+                av.node = node
+                av.value = str(atts[attname])
+                dbc.add(av)
+            
+        return node
+
 
     def hasNodeProperty(self, name):
         if name in self.navIndexNames() or name.lower() == 'barcode':
@@ -1186,7 +1259,6 @@ class Trial(DeclarativeBase):
         
     def getTrialProperty(self, key):
         return TrialProperty.getPropertyValue(_dbc(self), self.getId(), key)
-
         
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers
@@ -1315,25 +1387,21 @@ class NodeAttribute(DeclarativeBase):
     trial = relation('Trial', primaryjoin='NodeAttribute.trial_id==Trial.id')
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValueTable, secondaryjoin='AttributeValue.node_id==Node.id')
-
-    def __init__(self, name, trial_id, ti=None):
-        self.name = name
-        self.trial_id = trial_id
-        if ti is not None:
-            self.func = ti.id
-
+        
     def fname(self):
         return self.name;
+    def getName(self):
+        return self.name;
+    def getDatatypeText(self):
+        dt = self.datatype
+        if dt == T_INTEGER: return 'integer'
+        elif dt == T_DECIMAL: return 'decimal'
+        elif dt == T_STRING: return 'text'
+        else:
+            raise DalError('unexpected datatype ({}) in NodeAttribute'.format(dt))
 
     def setName(self, name):
-        try:
-            db = _dbc(self)
-            att = NodeAttribute(name, self.getTrialId, ti=self)
-            db.add(att)
-            db.commit
-        except sqlalchemy.exc.SQLAlchemyError as e:
-            return None
-        return att
+        self.name = name
 
     def isTraitInstance(self):
         return self.func is not None and self.func > 0

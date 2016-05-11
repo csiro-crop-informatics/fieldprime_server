@@ -227,7 +227,7 @@ def updateTrialFile(sess, trialCsv, trl, i1name=None, i2name=None):
                     break
             attExists.append(nodeAtt is not None)
             if nodeAtt is None:
-                nodeAtt = models.NodeAttribute(attName, trl.id)
+                nodeAtt = models.NodeAttribute(name=attName, trial_id=trl.id)
                 dbSess.add(nodeAtt)
             nodeAtts.append(nodeAtt)
     except sqlalchemy.exc.SQLAlchemyError as e:

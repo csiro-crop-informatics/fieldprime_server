@@ -1596,10 +1596,11 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
 
     # Make list of urls for trial attributes:  MFK we should put urls for traitInstances as well
     nodeAtts = []
-    for nat in ti.trial.getAttributes():
+    for nat in trl.getAttributes():
         nodeAtts.append(
             {"name":nat.name,
-             "url":url_for('webRest.urlAttributeData', projId=sess.getProjectId(), attId=nat.id),
+             "url":url_for('webRest.urlAttributeData', projId=sess.getProjectId(),
+                           attId=nat.id, trialId=trl.getId()),
              "datatype":nat.datatype})
 
     # Embed the data as JSON in the page (with id "ssdata"):

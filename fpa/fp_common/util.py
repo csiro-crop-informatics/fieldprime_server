@@ -40,6 +40,14 @@ def isValidIdentifier(candidate):
     return re.match("[_A-Za-z][_a-zA-Z0-9]*$", candidate) is not None
 
 @falseIfNotString
+def isValidInteger(s):
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
+    
+@falseIfNotString
 def isValidEmail(email):
 # Return boolean indicating whether email looks like an email address.
     return re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email) is not None

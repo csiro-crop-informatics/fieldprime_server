@@ -10,6 +10,7 @@
 #
 
 import MySQLdb as mdb
+from contextlib import closing
 import os
 from passlib.apps import custom_app_context as pwd_context
 from passlib.apps import mysql_context
@@ -84,19 +85,19 @@ def deleteUser(project, ident):
     except mdb.Error, e:
         return 'Failed system login ' + str(e)
 
-def getProjectUsers(project):
+def getProjectUsers(projIdOrName):
 #-----------------------------------------------------------------------
 # Get (***REMOVED***) users associated with specified project.
 # Returns tuple of dictionary and errorMessage (which will be None if no error).
 # The dictionary keys are the user login ids, the values are tuples (name, permissions).
 #
     # Get project id:
-    if isinstance(project, basestring):
-        projId = _getProjectIdFromName(project)
+    if isinstance(projIdOrName, basestring):
+        projId = _getProjectIdFromName(projIdOrName)
         if projId is None:
             return None, 'bad project name'
     else:
-        projId = project
+        projId = projIdOrName
     try:
         con = getFpsysDbConnection()
         qry = 'select login, name, userProject.permissions from user join userProject on id = user_id where project_id = %s'
@@ -108,6 +109,16 @@ def getProjectUsers(project):
         return (users, None)
     except mdb.Error, e:
         return (None, 'Failed system login')
+    
+class UserProjectPermissions:
+    PERMISSION_VIEW = 0 # i.e. they have access to the project - hmm
+    PERMISSION_ADMIN = 0x1
+    def __init__(self, permissions):
+        self._permissions = permissions
+    def hasPermission(self, perm):
+        return bool(self._permissions & perm)
+    def hasAdminRights(self):
+        return self.hasPermission(self.PERMISSION_ADMIN)
 
 class UserProject:
 # Class to hold details of project with user.
@@ -649,6 +660,45 @@ class Project():
             util.flog(errmsg)
             return errmsg
 
+    def getUserPermissions(self, username):
+    # Returns UserProjectPermissions for username in project (if present), or None
+    # if not such userProject, or raises FPSysException on db error.
+        try:
+            con = getFpsysDbConnection()
+            qry = """
+                select up.permissions from user u join userProject up
+                on u.id = up.user_id and u.login = %s where up.project_id = %s"""
+            cur = con.cursor()
+            cur.execute(qry, (username, self._id))
+            if cur.rowcount != 1:
+                return None
+            row = cur.fetchone()
+            cur.close()
+            con.close()
+            return UserProjectPermissions(row[0])
+        except mdb.Error, e:
+            raise FPSysException('Failed getUserPermissions:' + str(e))
+        
+    def getUsers(self):
+    #-----------------------------------------------------------------------
+    # Get users associated with access to project.
+    # Returns list of tuples (ident, permissions).
+    # Raises FPSysException on error.
+    #
+        try:
+            con = getFpsysDbConnection()
+            with closing(con.cursor()) as cur:
+                qry = 'select login, userProject.permissions from user join userProject ' + \
+                    'on id=user_id where project_id=%s'
+                cur.execute(qry, (self.getId(),))
+                users = []
+                for row in cur.fetchall():
+                    users.append((row[0], row[1]))
+                return users
+        except mdb.Error as e:
+            raise FPSysException('DB error: {}'.format(str(e)))
+
+
     @staticmethod
     def getById(pid):
     # Return project instance or None or errormsg
@@ -666,7 +716,7 @@ class Project():
             errmsg = 'Error in Project.getById: {0}'.format(str(e))
             util.flog(errmsg)
             return errmsg
-
+        
     @staticmethod
     def getModelProjectById(pid):
     # Returns object/None/errorString

@@ -1,6 +1,9 @@
 #!/usr/bin/python
 #
-#
+# fpRestTest.py
+# Michael Kirk 2016
+# 
+# Test script, and tools, for testing the FieldPrime REST API.
 #
 
 import sys
@@ -17,7 +20,7 @@ from const import *
 
 AP = 'http://0.0.0.0:5001/fpv1'
 USR = 'fpadmin'
-PW = 'foo'
+PW = 'food'
 
 gClear = False    # Should we clear db of previous objects with the names used in this test.
 
@@ -90,7 +93,7 @@ def createSomething(authHdr, url, somethingName='something', params=None):
 # Makes get request on url. If HTTP_OK received returns the
 # json response object. Raise exception if not OK or connection error occurs.
     try:
-        resp = requests.post(url, timeout=5, headers=authHdr, data=params)
+        resp = requests.post(url, timeout=5, headers=authHdr, json=params)
     except requests.exceptions.ConnectionError as e:
         raise RTException("requests exception creating {}: {}".format(somethingName, str(e)))
     if resp.status_code != HTTP_CREATED:
@@ -137,6 +140,15 @@ def testGetToken(authHdr):
         raise RTException('token is None')
     sout('Got token: ' + token)
     return token
+
+def deleteUserNoFuss(authHdr, userId):
+# Try delete user, ignore errors as user may not exist
+    url = AP+'/users/'+userId
+    try:
+        deleteSomething(authHdr, url)
+    except RTException as e:
+        pass
+    
 
 def testLocalUser(authHdr):
     hout('Test create local user /projects?all=1')
@@ -206,10 +218,50 @@ def testCreateTrial(authHdr, projUrl, name, year, site):
     resp = createSomething(authHdr, projUrl, somethingName='trial', params= {
             'trialName': name,
             'trialYear': year,
-            'trialSite': site
+            'trialSite': site,
+            'attributes': [{'name':'att1', 'datatype':'integer'},
+                           {'name':'att2', 'datatype':'decimal'},
+                           {'name':'att3'}],
+            'nodes':[
+                {'index1':1, 'index2':1, 'attvals':{'att1':1, 'att2':1.2, 'att3':'hello'}},
+                {'index1':1, 'index2':2, 'attvals':{'att1':2, 'att2':1.3, 'att3':'world'}},
+                {'index1':1, 'index2':3, 'attvals':{'att3':'goodbye'}},
+            ]
         })
     return resp.get('url')
 
+def testProjectUserStuff(adminAuthHdr, user1AuthHdr, projUsersUrl):
+        # Add user to project:
+        hout('Add project user')
+        if gClear: deleteUserNoFuss(adminAuthHdr, tusr2)
+        createSomething(adminAuthHdr, AP + '/users', somethingName='user', params = {
+                  "ident":tusr2,
+                  "password":tusr2pw,
+                  "fullname":tusr2Name,
+                  "loginType":3,
+                  "email":tusr2Email
+                })
+        resp = createSomething(user1AuthHdr, projUsersUrl, somethingName='user',
+            params = {
+            'ident': tusr2,
+            'admin': False
+            })
+        sout()
+        
+        # Get project users:
+        hout('Get project users')
+        nout('url: ' + projUsersUrl)
+        data = fprData(getSomething(user1AuthHdr, projUsersUrl, somethingName='projectUser'))
+        jout(data)
+        # We should have 2 users, tusr1 (admin) and tusr2 (not admin):
+        userPerms = {}
+        for x in data: userPerms[x['ident']] = x['admin']
+        if len(data) != 2: fout('Expected 2 users in project, but got {}'.format(len(data)))
+        checkIsSame(userPerms[tusr1], True, thingName='admin rights')
+        checkIsSame(userPerms[tusr2], False, thingName='admin rights')
+        sout()
+
+ 
 def testProjectTrialStuff(authHdr, projTrialsUrl):
     # Create trial:
     hout('Test Create Trial')
@@ -223,6 +275,7 @@ def testProjectTrialStuff(authHdr, projTrialsUrl):
     checkIsSame(trial.get('name'), ttrl1Name, 'trial name')
     checkIsSame(trial.get('year'), ttrl1Year, 'trial year')
     checkIsSame(trial.get('site'), ttrl1Site, 'trial site')
+    jout(trial)
     sout("Got trial from URL")
 
     # Get trials:
@@ -232,12 +285,15 @@ def testProjectTrialStuff(authHdr, projTrialsUrl):
         raise RTException("Trial list wrong length of {}, should be 1".format(len(trialList)))
     if trialList[0] != trialUrl:
         raise RTException("Trial url wrong. Got{}, expected {}".format(trialList[0], trialUrl))
+    jout(trialList)
     sout('project trial list')
     
     # Update trial:
     
     # Delete trial:
-    deleteSomething(authHdr, trialUrl, 'trial')
+#     hout('Delete trial')
+#     deleteSomething(authHdr, trialUrl, 'trial')
+#     sout()
     
 # Test:
 def restTest():
@@ -265,30 +321,13 @@ def restTest():
         sout("Got project:")
         jout(proj)
         
-        # Add user to project:
-        hout('Add project user')
-        createSomething(adminAuthHdr, AP + '/users', somethingName='user', params = {
-                  "ident":tusr2,
-                  "password":tusr2pw,
-                  "fullname":tusr2Name,
-                  "loginType":3,
-                  "email":tusr2Email
-                })
-        resp = createSomething(user1AuthHdr, proj.get('urlUsers'), somethingName='user',
-            params = {
-            'ident': tusr2,
-            'admin': False
-            })
-        sout()
+        # Test project user functionality:
+        testProjectUserStuff(adminAuthHdr, user1AuthHdr, proj.get('urlUsers'))
         
-        # Get project users:
-        hout('Get project users')
-        data = fprData(getSomething(user1AuthHdr, proj.get('urlUsers'), somethingName='projectUser'))
-        sout()
-        jout(data)
-   
         # Test project trial functionality:
         testProjectTrialStuff(user1AuthHdr, proj.get('urlTrials'))
+        
+        # todo - test trial stuff as super user without specific project access
         
         hout('Finished all tests')
     except RTException as rte:
@@ -305,6 +344,12 @@ def main():
 #     if len(sys.argv) <= 1:
 #         print 'Usage: {} <API_PREFIX>'.format(sys.argv[0])
 #         exit(0)
+# todo: Probably should just clear everything at the beginning if clear is specified.
+# Also incremental option might be useful, i.e. don't clear and skip tests already
+# passed (as detected by inspection?). Or command line flags to do specific tests (but
+# note dependence of some test on results of previous ones that created things).
+# A makefile might be a way to go..
+#
     def usage():
         print 'Usage: {} [-c] [-h]'.format(sys.argv[0])
         print '  -h : show this help'
