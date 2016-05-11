@@ -23,6 +23,7 @@ USR = 'fpadmin'
 PW = 'food'
 
 gClear = False    # Should we clear db of previous objects with the names used in this test.
+gLeave = False    # Should we leave stuff in the db
 
 # Test object names, attributes..
 tusr1 = 'testUser1'
@@ -291,9 +292,10 @@ def testProjectTrialStuff(authHdr, projTrialsUrl):
     # Update trial:
     
     # Delete trial:
-#     hout('Delete trial')
-#     deleteSomething(authHdr, trialUrl, 'trial')
-#     sout()
+    if not gLeave:
+        hout('Delete trial')
+        deleteSomething(authHdr, trialUrl, 'trial')
+        sout()
     
 # Test:
 def restTest():
@@ -354,17 +356,21 @@ def main():
         print 'Usage: {} [-c] [-h]'.format(sys.argv[0])
         print '  -h : show this help'
         print '  -c : clear objects from the db with names the same as used in these tests'
+        print '  -l : leave objects in db for later inspection (NB may imply some delete tests not done)'
         exit(0)
         
     global gClear
+    global gLeave
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ch")
+        opts, args = getopt.getopt(sys.argv[1:], "chl")
     except getopt.GetoptError:
         print 'Problem with command line arguments'
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-c':
             gClear = True
+        if opt == '-l':
+            gLeave = True
         if opt == '-h':
             usage()
     restTest()
