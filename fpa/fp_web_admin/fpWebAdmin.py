@@ -83,6 +83,8 @@ app.config.from_envvar('FP_WEB_ADMIN_SETTINGS', silent=True)
 import importlib
 dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
 
+class FPWebAdminException(Exception):
+    pass
 
 #############################################################################################
 ###  FUNCTIONS: #############################################################################
@@ -583,7 +585,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
 # NB - within columns the order is determined by node id.
 #
 # If fixedOnly is true, then only row, column and barcode are returned.
-#
+# Raises FPWebAdminException on error.
 
     # First get row, column, and barcode:
     con = getMYSQLDBConnection(sess)
@@ -599,11 +601,12 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
         colBarcode.append("" if row[2] is None else hsafe(row[2]))
     attValList = [colRow, colCol, colBarcode]
     trl = dal.getTrial(sess.db(), trialId)
+    if trl is None:
+        raise FPWebAdminException('Cannot get trial')
     hdrs = [hsafe(trl.navIndexName(0)), hsafe(trl.navIndexName(1)), 'Barcode']
 
     if not fixedOnly:
         # And add the other attributes:
-        trl = dal.getTrial(sess.db(), trialId)
         attList = trl.getAttributes()
         qry = """
             select a.value from node n left join attributeValue a
@@ -627,7 +630,10 @@ def urlBrowseTrialAttributes(sess, trialId):
 #===========================================================================
 # Page for display of trial data.
 #
-    (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
+    try:
+        (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
+    except FPWebAdminException as e:
+        return errorScreenInSession(sess, str(e))
     return dp.dataPage(content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
                        title='Browse', trialId=trialId)
 
@@ -651,9 +657,12 @@ def getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser
 # MFK Cloned code from getTrialData above, that could be replaced with this
 # Returns (headers, rows), headers a list, rows a list of lists
 #
+# Raises FPWebAdminException on error.
     # Get Trait Instances:
     tiList = dal.Trial.getTraitInstancesForTrial(sess.db(), trialId)  # get Trait Instances
     trl = dal.getTrial(sess.db(), trialId)
+    if trl is None:
+        raise FPWebAdminException('Cannot get trial')
     valCols = trl.getDataColumns(tiList, quoteStrings=False, metadata=True) # get the data for the instances
 
     # Headers:
@@ -845,7 +854,10 @@ def urlTrialDataBrowse(sess, trialId):
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    (headers, rows, metas) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
+    try:
+        (headers, rows, metas) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
+    except FPWebAdminException as e:
+        return errorScreenInSession(sess, str(e))
     # Probably should return array with type code for each column rather than metas
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
     r += '<script type="text/javascript" language="javascript" src="%s"></script>' % url_for('static', filename='lib/jquery.doubleScroll.js')

@@ -1084,6 +1084,8 @@ def urlGetTrial(userid, params, projId, trialId):
         "rowAlias":trial.navIndexName(0),
         "colAlias":trial.navIndexName(1),
         "urlAttributes":url_for('webRest.urlGetAttributes', _external=True,
+                                projId=projId, trialId=trialId),
+        "urlNodes":url_for('webRest.urlGetNodes', _external=True,
                                 projId=projId, trialId=trialId)
     }
     return apiResponse(True, HTTP_OK, data=returnJson)
@@ -1098,6 +1100,51 @@ def urlDeleteTrial(userid, params, projId, trialId):
     models.Trial.delete(g.userProject.db(), trialId)
     return jsonSuccessReturn("Trial Deleted", HTTP_OK)
 
+### Nodes: ###############################################################################
+#
+# nodes endpoint: This returned from getTrial
+#   GET - get all nodes
+#   POST - create new nodes
+# nodes/nodeId endpoint
+#   GET
+#   DELETE - delete particular node
+#   PUT - update node
+#
+# Need to get node notes somehow
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetNodes(mproj, params, projId, trialId):
+#---------------------------------------------------------------------------------
+#^
+#: GET: urlNodes from trial
+#: Access: Omnipotence or project view access.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: [ {
+#:     url : <url for node>
+#:     fpId : <fp id>
+#:     index1 : <index 1 value>
+#:     index2 : <index 2 value>
+#:   ]
+#$
+    mkdbg('in urlGetNodes')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        nodes = trial.getNodes()
+        data = [{
+#             'url':url_for('webRest.urlAttributeData', _external=True, projId=projId,
+#                           trialId=trialId, attId=nat.getId()),
+            'fpId':node.getId(),
+            'index1':node.getRow(),
+            'index2':node.getCol()
+            } for node in nodes]
+    except Exception as e:
+        return errorBadRequest(str(e))
+    return apiResponse(True, HTTP_OK, data=data)
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes', methods=['POST'])
 @multi_auth.login_required
