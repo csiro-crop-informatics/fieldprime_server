@@ -1249,8 +1249,8 @@ def urlFPAdmin(sess):
         jresp = resp.json()
     except Exception as e:
         print 'exception getting json response: {}'.format(e)
-    
-        
+
+
 #        try:
 #             payload = {'projectName':frm['projectName'], 'contactName':frm['contactName'],
 #                        'contactEmail':frm['contactEmail'], 'ownDatabase':frm['ownDatabase'], 'adminLogin':frm['adminLogin']}
@@ -1275,7 +1275,7 @@ def urlFPAdmin(sess):
                #action=url_for('urlFPAdminCreateUser'),
                submitUrl=url_for('webRest.urlCreateUser', _external=True)
                ), topMargin='20px')
-    
+
     return dp.dataPage(title='Administration', content=out, trialId=-1)
 
 #######################################################################################################

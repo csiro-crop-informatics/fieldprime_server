@@ -2,7 +2,7 @@
 #
 # fpRestTest.py
 # Michael Kirk 2016
-# 
+#
 # Test script, and tools, for testing the FieldPrime REST API.
 #
 
@@ -103,7 +103,7 @@ def createSomething(authHdr, url, somethingName='something', params=None):
     return resp.json()
 
 def deleteSomething(authHdr, url, somethingName='something'):
-# Makes delete request on url. 
+# Makes delete request on url.
 # Raises exception if not HTTP_OK or connection error occurs.
     try:
         resp = requests.delete(url, timeout=5, headers=authHdr)
@@ -111,7 +111,7 @@ def deleteSomething(authHdr, url, somethingName='something'):
         raise RTException("requests exception deleting {}: {}".format(somethingName, str(e)))
     if resp.status_code != HTTP_OK:
         raise RTException("unexpected status code ({}) deleting {}.\n  {}".format(
-            resp.status_code, somethingName, respError(resp)))        
+            resp.status_code, somethingName, respError(resp)))
 
 def checkIsSame(thisThing, shouldBeThis, thingName='value'):
 # Raises exception if not thisThing equals shouldBeThis
@@ -122,7 +122,7 @@ def checkIsSame(thisThing, shouldBeThis, thingName='value'):
 
 def testGetProjects(authHdr):
     try:
-        hout('Test get /projects?all=1')     
+        hout('Test get /projects?all=1')
         json = getSomething(authHdr, AP + '/projects',
                                 somethingName='project', params={'all':1})
         data = fprData(json)
@@ -130,10 +130,10 @@ def testGetProjects(authHdr):
         modjson.dumps(json)
         jout(json)
     except RTException:
-        raise                
+        raise
     except Exception as e:
-        raise RTException('EXCEPTION in testGetProjects: {}'.format(str(e))) 
-        
+        raise RTException('EXCEPTION in testGetProjects: {}'.format(str(e)))
+
 def testGetToken(authHdr):
     hout('Test get /token')
     token = fprData(getSomething(authHdr, AP + '/token', somethingName='token')).get('token')
@@ -149,7 +149,7 @@ def deleteUserNoFuss(authHdr, userId):
         deleteSomething(authHdr, url)
     except RTException as e:
         pass
-    
+
 
 def testLocalUser(authHdr):
     hout('Test create local user /projects?all=1')
@@ -170,7 +170,7 @@ def testLocalUser(authHdr):
                     fout('Cannot delete user aborting test')
                     return False
                 sout('User deleted')
-                
+
         # Create user:
         json = createSomething(authHdr, AP + '/users', somethingName='user', params = {
                   "ident":tusr1,
@@ -180,21 +180,21 @@ def testLocalUser(authHdr):
                   "email":tusr1Email
                 })
         userUrl = json['url']
-        
+
         # Get created user and check values:
         juser = fprData(getSomething(authHdr, userUrl, somethingName='user'))
         jout(juser)
         checkIsSame(juser['email'], tusr1Email, 'user email')
         checkIsSame(juser['fullname'], tusr1Name, 'user fullname')
-            
+
         # Update user: todo
-        
+
     except RTException:
-        raise                
+        raise
     except Exception as e:
         fout('EXCEPTION in testCreateLocalUser: ' + str(e))
         fout(traceback.format_exc())
-        raise RTException('EXCEPTION in testLocalUser: {}'.format(str(e))) 
+        raise RTException('EXCEPTION in testLocalUser: {}'.format(str(e)))
     return userUrl
 
 def testCreateProject(authHdr, pname, cname, cemail, adminLogin):
@@ -205,7 +205,7 @@ def testCreateProject(authHdr, pname, cname, cemail, adminLogin):
             if proj['projectName'] == pname:
                 nout('project {} already exists - deleting it'.format(pname))
                 deleteSomething(authHdr, proj['url'], "project")
-    # create project:           
+    # create project:
     resp = createSomething(authHdr, AP+'/projects', somethingName='projects', params={
             'projectName': pname,
             'contactName': cname,
@@ -248,7 +248,7 @@ def testProjectUserStuff(adminAuthHdr, user1AuthHdr, projUsersUrl):
             'admin': False
             })
         sout()
-        
+
         # Get project users:
         hout('Get project users')
         nout('url: ' + projUsersUrl)
@@ -262,14 +262,14 @@ def testProjectUserStuff(adminAuthHdr, user1AuthHdr, projUsersUrl):
         checkIsSame(userPerms[tusr2], False, thingName='admin rights')
         sout()
 
- 
+
 def testProjectTrialStuff(authHdr, projTrialsUrl):
     # Create trial:
     hout('Test Create Trial')
     trialUrl = testCreateTrial(authHdr, projTrialsUrl,
                                name=ttrl1Name, year=ttrl1Year, site=ttrl1Site)
     sout("Trial Created: " + trialUrl)
-    
+
     # Get specific trial:
     hout('Test get trials')
     trial = fprData(getSomething(authHdr, trialUrl, "trial"))
@@ -288,15 +288,15 @@ def testProjectTrialStuff(authHdr, projTrialsUrl):
         raise RTException("Trial url wrong. Got{}, expected {}".format(trialList[0], trialUrl))
     jout(trialList)
     sout('project trial list')
-    
+
     # Update trial:
-    
+
     # Delete trial:
     if not gLeave:
         hout('Delete trial')
         deleteSomething(authHdr, trialUrl, 'trial')
         sout()
-    
+
 # Test:
 def restTest():
     try:
@@ -304,45 +304,46 @@ def restTest():
 
         # Get Projects - with admin basic auth:
         testGetProjects(adminAuthHdr)
-        
+
         token = testGetToken(adminAuthHdr)
         tokenHdr = {"Authorization": "fptoken " + token}
         userUrl = testLocalUser(tokenHdr)
         sout('Created user: ' + userUrl)
-            
+
         # Create project:
-        hout('Test Create Project')        
+        hout('Test Create Project')
         projUrl = testCreateProject(tokenHdr, tproj1Name, tusr1Name, tusr1Email, tusr1)
         sout("Created project: " + projUrl)
-        
+
         # Get project:
         hout('Test Get Project')
         user1AuthHdr = makeBasicAuthenticationHeader(tusr1, tusr1pw)
         proj = fprData(getSomething(user1AuthHdr, projUrl, somethingName='project'))
+        #proj = fprData(getSomething(adminAuthHdr, projUrl, somethingName='project'))
         checkIsSame(proj.get('projectName'), tproj1Name, 'project name')
         sout("Got project:")
         jout(proj)
-        
+
         # Test project user functionality:
         testProjectUserStuff(adminAuthHdr, user1AuthHdr, proj.get('urlUsers'))
-        
+
         # Test project trial functionality:
         testProjectTrialStuff(user1AuthHdr, proj.get('urlTrials'))
-        
+
         # todo - test trial stuff as super user without specific project access
-        
+
         hout('Finished all tests')
     except RTException as rte:
-        fout("ABORTING - " + str(rte))            
+        fout("ABORTING - " + str(rte))
         fout(traceback.format_exc())
     except Exception as e:
-        fout("ABORTING unexpected exception - " + str(e))            
+        fout("ABORTING unexpected exception - " + str(e))
         fout(traceback.format_exc())
 
 
 ### Main: ################################################################################
 
-def main(): 
+def main():
 #     if len(sys.argv) <= 1:
 #         print 'Usage: {} <API_PREFIX>'.format(sys.argv[0])
 #         exit(0)
@@ -358,7 +359,7 @@ def main():
         print '  -c : clear objects from the db with names the same as used in these tests'
         print '  -l : leave objects in db for later inspection (NB may imply some delete tests not done)'
         exit(0)
-        
+
     global gClear
     global gLeave
     try:
@@ -377,5 +378,5 @@ def main():
 
 if __name__=="__main__":
    main()
-   
+
 ##########################################################################################

@@ -665,7 +665,7 @@ def responseProjectObject(proj):
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
 @multi_auth.login_required
-@project_func
+@project_func()
 def urlGetProject(mproj, params, projId):
 #^-----------------------------------
 #: GET: API_PREFIX + projects/<projId>
@@ -681,6 +681,7 @@ def urlGetProject(mproj, params, projId):
 #:     }
 #:   ]
 #$
+    mkdbg('in urlGetProject')
     ret = responseProjectObject(mproj)
     return apiResponse(True, HTTP_OK, data=ret)
 
