@@ -234,9 +234,9 @@ def project_func(projIdParamName='projId'):
 #
 # Gets parameters dictionary from request (assumed to be in context). This can be from json, or
 # from form if json is not present. This param dictionary, is passed to the decorated function.
-# 
+#
 # Resets token cookie, with g.newToken, assumed to be set (perhaps we should be doing that here).
-# 
+#
 # NB: The decorated functionfunc should return a response, and should have first params:
 # modelProj, params. Flask global request is assumed to be available.
 # If the authenticated user is not omnipotent, and does not have at least read access to the
@@ -262,20 +262,20 @@ def project_func(projIdParamName='projId'):
                 params = request.json
             else:
                 return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
-    
+
             if projIdParamName is None or projIdParamName not in kwargs:
                 return errorServer()
-            
+
             pid = kwargs[projIdParamName]
-            
+
             # If calling user has access to specified project, get the fpsys project,
             # model db session, and the model project for passing to func.
-            
+
             # Get sys project:
             sysProj = fpsys.Project.getById(pid) # get fpsys project
             if sysProj is None:
                 return errorBadRequest('Specified project not found')
-            
+
             # Check access:
             try:
                 perms = sysProj.getUserPermissions(g.userName)
@@ -283,20 +283,20 @@ def project_func(projIdParamName='projId'):
                 return errorServer(fpse)
             if perms is None and not g.user.omnipotent():
                 return errorAccess()
-     
+
             # get model db session and project:
-            dbsess = sysProj.db() 
+            dbsess = sysProj.db()
             modelProj = models.Project.getById(dbsess, pid)# get model project
             if modelProj is None:
                 return errorBadRequest('Specified project not found')
-            
+
             # Setup globals
             g.sysProj = sysProj
             g.dbsess = dbsess
             g.modelProj = modelProj
             g.userProjectPermissions = perms
             g.canAdmin = g.user.omnipotent() or perms.hasAdminRights()
-            
+
             ret = func(modelProj, params, *args, **kwargs)
             ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
             return ret
@@ -338,7 +338,7 @@ def _checkTiAttributeStuff(projId, tiId):
     # Check user has rights for this operation:
     if not g.canAdmin:
         return errorAccess('Requires project admin rights')
-    
+
     # Check ti is in project:
     ti = models.getTraitInstance(g.dbsess, tiId)
     if ti is None:
@@ -619,7 +619,7 @@ def urlGetProjects(userid, params):
 #^-----------------------------------
 #: GET: API_PREFIX + projects
 #: Gets projects accessible to calling user.
-#: If parameter all is sent, all projects are shown - if the requesting user is omnipotent. 
+#: If parameter all is sent, all projects are shown - if the requesting user is omnipotent.
 #: Input: {
 #:   'all':<any value>
 #: }
@@ -638,7 +638,7 @@ def urlGetProjects(userid, params):
     all = params.get('all') is not None
     if all and not g.user.omnipotent():
         return jsonErrorReturn('No permission to get all projects', HTTP_UNAUTHORIZED)
-    
+
     if not all:
         (plist, errmsg) = fpsys.getUserProjects(g.userName)
         if errmsg:
@@ -653,7 +653,7 @@ def urlGetProjects(userid, params):
             return jsonErrorReturn("Unexpected error getting projects: {}".format(e), HTTP_SERVER_ERROR)
         retProjects = [{'projectName':p.getName(),
                         'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=True)
-                        } for p in plist]    
+                        } for p in plist]
     return apiResponse(True, HTTP_OK, data=retProjects)
 
 def responseProjectObject(proj):
@@ -665,8 +665,8 @@ def responseProjectObject(proj):
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
 @multi_auth.login_required
-@wrap_api_func
-def urlGetProject(userid, params, projId):
+@project_func
+def urlGetProject(mproj, params, projId):
 #^-----------------------------------
 #: GET: API_PREFIX + projects/<projId>
 #: Get project - which must be accessible to calling user.
@@ -681,9 +681,7 @@ def urlGetProject(userid, params, projId):
 #:     }
 #:   ]
 #$
-    if g.userProject is None:
-        return jsonErrorReturn('no permissions', HTTP_UNAUTHORIZED)
-    ret = responseProjectObject(g.userProject.getModelProject())
+    ret = responseProjectObject(mproj)
     return apiResponse(True, HTTP_OK, data=ret)
 
 @webRest.route(API_PREFIX + 'projects', methods=['POST'])
@@ -918,12 +916,12 @@ def urlGetProjectUsers(mProj, params, projId):
     # check permissions
     if not g.canAdmin:
         return errorAccess()
-                
+
     try:
         users = g.sysProj.getUsers()
     except FPSysException as e:
         return errorServer('urlGetProjectUsers: ' + e)
-    retList = [{'ident':ident, 'admin':perms==1} for (ident,perms) in users] 
+    retList = [{'ident':ident, 'admin':perms==1} for (ident,perms) in users]
     return apiResponse(True, HTTP_OK, data=retList)
 
 ### Trials: ############################################################################
@@ -1009,7 +1007,7 @@ def urlCreateTrial(mproj, params, projId):
     mkdbg('urlCreateTrial({})'.format(projId))
     if not g.canAdmin:
         return errorAccess()
-    
+
     trialName = params.get('trialName')
     trialYear = params.get('trialYear')
     trialSite = params.get('trialSite')
@@ -1028,21 +1026,21 @@ def urlCreateTrial(mproj, params, projId):
         trial = mproj.newTrial(trialName, trialSite, trialYear, trialAcronym)  #MFK this func doing commits.
         trial.setTrialProperty('nodeCreation', nodeCreation)
         trial.setNavIndexNames(rowAlias, colAlias)
-        
+
         # process attributes:
         if attributes is not None:
             processAttributes(trial, attributes)
-        
+
         # process nodes:
         if nodes is not None:
             processNodes(trial, nodes)
-        
+
         # commit
         g.dbsess.commit()
     except models.DalError as e:
         g.dbsess.rollback()
         return errorBadRequest("Error creating trial: {}".format(e.__str__()))
-    
+
     return apiResponse(True, HTTP_CREATED, msg='Trial {} created'.format(trialName),
             url=url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()))
 
