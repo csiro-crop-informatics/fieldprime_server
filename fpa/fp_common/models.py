@@ -1255,7 +1255,7 @@ class Trial(DeclarativeBase):
         db = _dbc(self)
         newProp = TrialProperty(self.getId(), key, value)
         newProp = db.merge(newProp)
-        db.commit()
+        db.commit()  #MFK get this out
         
     def getTrialProperty(self, key):
         return TrialProperty.getPropertyValue(_dbc(self), self.getId(), key)

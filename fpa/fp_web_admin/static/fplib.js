@@ -87,7 +87,6 @@ fplib.ajax = {
         method = typeof method !== 'undefined' ? method : "POST";
         return function () {
             var formSelector = "#" + formId;
-            var divSelector = "#" + divId;
             $(formSelector).submit(function(e) {
                 // get token
                 var token = fplib.readCookie('fptoken');
@@ -107,7 +106,11 @@ fplib.ajax = {
                        success: fplib.ajax.jsonSuccess,
                        error: fplib.ajax.jsonError
                      });
-                $(divSelector).modal('hide');
+                if (divId !== false) {
+                    var divSelector = "#" + divId;
+                    $(divSelector).modal('hide');
+                }
+                
                 e.preventDefault(); // avoid to execute the actual submit of the form.
             });
         };

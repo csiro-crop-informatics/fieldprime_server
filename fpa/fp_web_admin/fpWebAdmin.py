@@ -12,7 +12,8 @@ import time
 import traceback
 import zipfile, ntpath
 import MySQLdb as mdb
-from flask import Flask, request, Response, redirect, url_for, render_template, g, make_response
+from flask import Flask, request, Response, redirect, url_for, render_template, g, \
+    make_response, session
 from flask import jsonify
 import simplejson as json
 from functools import wraps, update_wrapper
@@ -49,6 +50,7 @@ from const import *
 app = Flask(__name__)
 app.register_blueprint(webRest)
 app.register_blueprint(appApi)
+app.secret_key = '***REMOVED***'
 
 #
 # The FieldPrime server can be run in various ways, and accordingly we may need to detect
@@ -136,7 +138,11 @@ def nocache(f):
         return resp
     return update_wrapper(new_func, f)
 
-def dec_check_session(returnNoneSess=False):
+def mkdbg(msg):
+    if True:
+        print msg
+        
+def OLD_dec_check_session(returnNoneSess=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
@@ -149,8 +155,13 @@ def dec_check_session(returnNoneSess=False):
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
+            
+            mkdbg('dec_check_session {}'.format(session.get('projId')))
             token = request.cookies.get(NAME_COOKIE_TOKEN)
+            # refresh token here? No - could generate token, but need to set it in the response
+            # ..which we have below, assuming func returns a response (which it may not in
+            # some cases).
+            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
             sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
             if not sess.valid():  # Check if session is still valid
@@ -162,13 +173,69 @@ def dec_check_session(returnNoneSess=False):
         return inner
     return param_dec
 
+def dec_check_session(returnNoneSess=False, projIdParamName=None):
+#-------------------------------------------------------------------------------------------------
+# Decorator to check if in valid session. If not, send the login page.
+# Generates function that has session as first parameter.
+# If returnNoneSess is true, then the function is returned even if session is
+# invalid, but with None as the session parameter - this can be used for pages
+# that don't require a user to be logged in.
+#
+# MFK - we need to remove the use of sess here, can get user from token
+# project will have to be set subsequently when it is known (eg from url).
+    def param_dec(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            mkdbg('dec_no_session {}'.format(session.get('projId')))
+#             if projIdParamName is None or projIdParamName not in kwargs:
+#                 return loginPage('Unexpected error')
+
+#             pid = kwargs[projIdParamName]
+            
+            token = request.cookies.get(NAME_COOKIE_TOKEN)
+            print 'oldToken {}'.format(token)
+            resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
+                                headers={"Authorization": "fptoken " + token})
+            if resp.status_code != HTTP_OK:
+                return loginPage('Your session has timed out.')
+            try:
+                jresp = resp.json().get('data')
+                userId = jresp.get('userId')
+                print 'got userId {}'.format(userId)
+            except Exception as e:
+                print 'exception getting json response: {}'.format(e)
+            newToken = resp.cookies[NAME_COOKIE_TOKEN]
+            print 'newToken {}'.format(newToken)
+
+            # make sess:
+            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
+            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
+            if not sess.valid():  # Check if session is still valid
+                if returnNoneSess:
+                    return func(None, *args, **kwargs)
+                return loginPage('Your session has timed out - please login again.')
+
+#             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
+            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
+
+#             @after_this_request
+#             def setNewToken(response):
+#                 response.set_cookie(NAME_COOKIE_TOKEN, newToken)
+            
+            ret = make_response(func(sess, *args, **kwargs))
+            ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
+            return ret
+        return inner
+    return param_dec
+
+
 # @app.route(PREURL+'/crash', methods=['GET'])
 # @dec_check_session()
 # def crashMe(sess):
 #     x = 1 / 0
 #     return 'hallo world'
 
-def frontPage(sess, msg=''):
+def frontPage(msg=''):
 #-----------------------------------------------------------------------
 # Return HTML Response for urlMain user page after login
 #
@@ -284,17 +351,6 @@ def htmlTabNodeAttributes(sess, trialId):
 
     return out
 
-@app.route(PREURL+'/trialUpdate/<trialId>', methods=["POST"])
-@dec_check_session()
-def urlTrialNameDetailPost(sess, trialId):
-#===========================================================================
-# Page for trial creation.
-# Should be REST URL, which it sort of it, but perhaps a PATCH?
-# Or just move to fpAppWapi
-#
-    trialProperties.processPropertiesForm(sess, trialId, request.form)
-    return "Trial Properties Updated on Server"
-
 def htmlTabProperties(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
@@ -315,10 +371,9 @@ def htmlTabProperties(sess, trial):
     extrasForm += fpUtil.htmlButton("Save", id="extrasSubmit", color='btn-success', type='submit')
     r += fpUtil.htmlFieldset(fpUtil.htmlForm(extrasForm, formId='extras'))
     # JavaScript for AJAX form submission:
-    r += '''
-    <script>
-    $(function() {$("#extrasSubmit").click({url: "%s"}, fplib.extrasSubmit);});
-    </script>\n''' % url_for('urlTrialNameDetailPost', trialId=trial.id)
+    r += '''<script>$(fplib.ajax.setupAjaxForm(false,"extras","{}","put"))</script>'''.format(
+               url_for('webRest.urlUpdateTrial', _external=True,
+                       projId=sess.getProjectId(), trialId=trial.id))
 
     # Add DELETE button if admin: ------------------------------------------------
     if sess.adminRights():
@@ -519,7 +574,7 @@ def trialPage(sess, trialId):
     return dp.dataPage(content=trialh, title='Trial Data', trialId=trialId)
 
 
-@app.route(PREURL+'/trial/<trialId>', methods=["GET"])
+@app.route(PREURL+'/projects/we/trial/<int:trialId>', methods=["GET"])
 @dec_check_session()
 def urlTrial(sess, trialId):
 #===========================================================================
@@ -571,7 +626,7 @@ def urlNewTrial(sess):
         # MFK in general we will need insert or update (merge)
         #
         trialProperties.processPropertiesForm(sess, trl.id, request.form)
-        return frontPage(sess)
+        return frontPage()
 
 #MFK move to models
 def getAllAttributeColumns(sess, trialId, fixedOnly=False):
@@ -944,7 +999,7 @@ def urlDeleteTrial(sess, trialId):
                 return dp.dataPage('', 'Trial Deleted', trialId=trialId)
         else:
             # Do nothing:
-            return frontPage(sess)
+            return frontPage()
 
 @app.route(PREURL+'/trial/<trialId>/newTrait/', methods=["GET", "POST"])
 @dec_check_session()
@@ -965,7 +1020,7 @@ def urlNewTrait(sess, trialId):
         if errMsg:
             return dp.dataErrorPage(sess, errMsg, trialId)
         if trialId == -1:
-            return frontPage(sess, 'System trait created')
+            return frontPage('System trait created')
         return trialPage(sess, trialId)
 
 
@@ -1172,7 +1227,7 @@ def urlUserDetails(sess, projectName):
             msg = user.setPassword(newpassword1)
             if msg is None:
                 msg = 'Password reset successfully'
-            return frontPage(sess, msg)
+            return frontPage(msg)
         elif op == 'manageUsers':
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
@@ -1731,7 +1786,7 @@ def urlPhoto(sess, trialId, filename):
 @app.route(PREURL+'/FieldPrime/user/<userName>/', methods=['GET'])
 @dec_check_session()
 def urlUserHome(sess, userName):
-    return frontPage(sess)
+    return frontPage()
 
 @app.route(PREURL+'/FieldPrime/project/<projectName>/', methods=['GET'])
 @dec_check_session()
@@ -1754,9 +1809,10 @@ def urlProject(sess, projectName):
                 if prj.projectName() == projectName:
                     # All checks passed, set the project as specified:
                     sess.setProject(prj)  # slowly getting rid of uses of sess, remove when done
+                    session['projId'] = prj.projectId()
                     g.userProject = prj
                     g.projectName = projectName
-                    return frontPage(sess)
+                    return frontPage()
             # No access to this project - bad user!
             return badJuju(sess, 'no access to project')
 
@@ -1807,6 +1863,7 @@ def urlInfoPage(sess, pagename):
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
 def asyncGetToken(username, password):
+# Could just call fpRestApi.generate_auth_token - if we have verified password.    
     try:
         newurl = url_for('webRest.urlGetToken', _external=True)
         jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
@@ -1870,7 +1927,7 @@ def urlMain():
                     sess.resetLastUseTime()
                     sess.setUserIdent(username)
                     fpsys.fpSetupG(g, userIdent=username)
-                    resp = make_response(frontPage(sess))
+                    resp = make_response(frontPage())
                     resp.set_cookie(NAME_COOKIE_SESSION, sess.sid())      # Set the cookie
 
                     # Create an authentication token for the user:

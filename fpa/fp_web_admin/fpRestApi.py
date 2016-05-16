@@ -328,6 +328,20 @@ def urlGetToken():
     #retObj = jsonify({'token': token.decode('ascii'), 'duration': 600})
     return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
 
+@webRest.route(API_PREFIX + 'tokenUser', methods=['GET'])
+@multi_auth.login_required
+@wrap_api_func
+def urlGetTokenUser(userid, params):
+#^-----------------------------------
+#: GET: API_PREFIX + tokenUser
+#: Access: valid token.
+#: Input: none
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data:  {'userId':<user id>}
+#$
+    return apiResponse(True, HTTP_OK, data={'userId':userid})
+
 ### TraitInstance Attribute: #################################################################
 
 def _checkTiAttributeStuff(projId, tiId):
@@ -1044,6 +1058,22 @@ def urlCreateTrial(mproj, params, projId):
 
     return apiResponse(True, HTTP_CREATED, msg='Trial {} created'.format(trialName),
             url=url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()))
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['PUT'])
+@multi_auth.login_required
+@project_func()
+def urlUpdateTrial(mproj, params, projId, trialId):
+    mkdbg('urlUpdateTrial {}'.format(params))
+    if not g.canAdmin:
+        return errorAccess()
+    nodeCreation = params.get('nodeCreation')
+    ind1 = params.get(const.INDEX_NAME_1)
+    ind2 = params.get(const.INDEX_NAME_2)
+    trial = models.getTrial(g.dbsess, trialId)
+    trial.setTrialProperty('nodeCreation', nodeCreation)
+    trial.setNavIndexNames(ind1, ind2)
+    g.dbsess.commit()    
+    return apiResponse(True, HTTP_OK, msg='trial updated')
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['GET'])
 @multi_auth.login_required
