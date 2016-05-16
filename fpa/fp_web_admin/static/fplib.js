@@ -120,7 +120,7 @@ fplib.ajax = {
 
 /*
  * getUrlData
- *
+ * MFK merge with other ajax funcs
  */
 fplib.getUrlData = function (url, sfunc) {
     var cacheDataName = 'tmp_url_' + url;
@@ -136,10 +136,12 @@ fplib.getUrlData = function (url, sfunc) {
         sfunc(fplib[cacheDataName]);
     }
     else {
+        var token = fplib.readCookie('fptoken');
         $.ajax({
             url:url,
             dataType:"json",
             method:"GET",
+            headers: {"Authorization": "fptoken " + token},
             error:function (jqXHR, textStatus, errorThrown) {
                 fplib.msg("error:"+jqXHR.responseText);
             },

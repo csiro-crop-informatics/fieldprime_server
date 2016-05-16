@@ -113,7 +113,7 @@ class FPRestException(Exception):
 
 ### Authentication Checking: #############################################################
 
-def generate_auth_token(username, expiration=600):
+def generate_auth_token(username, expiration=6):
 # Return a token for the specified username. This can be used
 # to authenticate as the user, for the specified expiration
 # time (which is in seconds).
@@ -124,6 +124,8 @@ def generate_auth_token(username, expiration=600):
 
 def verify_auth_token(token):
 # MFK need to pass back expired indication somehow
+440 is the login timeout status.
+Not working for project selector timeout
     s = Serializer(current_app.config['SECRET_KEY'])
     try:
         data = s.loads(token)
@@ -135,6 +137,10 @@ def verify_auth_token(token):
         return None    # invalid token
     user = data['id']
     return user
+
+@token_auth.error_handler
+def auth_error():
+    return errorAccess('session timed out')
 
 @basic_auth.verify_password
 def verify_password(user, password):
@@ -325,7 +331,6 @@ def urlGetToken():
 
     token = generate_auth_token(g.userName)
     retObj = {'token': token.decode('ascii'), 'duration': 600}
-    #retObj = jsonify({'token': token.decode('ascii'), 'duration': 600})
     return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
 
 @webRest.route(API_PREFIX + 'tokenUser', methods=['GET'])

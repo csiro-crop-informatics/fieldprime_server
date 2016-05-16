@@ -120,6 +120,7 @@ def _dataNavigationContent(trialId):
 #
     userIdent = g.user.getIdent()
     projectName = None if g.userProject is None else g.userProject.getProjectName()
+    projId = None if g.userProject is None else g.userProject.getProjectId()
 
     nc = ''
     #---------------------------------------------------------------------------
@@ -159,9 +160,9 @@ def _dataNavigationContent(trialId):
         return nc
         return 'A problem occurred in finding projects for user {0}:{1}'.format(userIdent, errMsg)
     r2c1 = selectorOfURLs('Project', '..Select Project..' if projectName is None else None, projList,
-        lambda p: url_for('urlProject', projectName=p.projectName()),
+        lambda p: url_for('urlProject', projId=p.getProjectId()),
         lambda p: p.projectName(),
-        None if projectName is None else url_for('urlProject', projectName=projectName))
+        None if projectName is None else url_for('urlProject', projId=projId))
 
     r2 = fpUtil.bsCol(r2c1, numCols=6)
 

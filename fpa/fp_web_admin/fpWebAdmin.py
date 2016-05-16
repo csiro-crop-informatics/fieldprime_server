@@ -45,6 +45,7 @@ import websess
 from fpRestApi import webRest, fprGetError, fprHasError, fprData
 from fpAppWapi import appApi
 import forms
+import fpSess
 from const import *
 
 app = Flask(__name__)
@@ -173,7 +174,7 @@ def OLD_dec_check_session(returnNoneSess=False):
         return inner
     return param_dec
 
-def dec_check_session(returnNoneSess=False, projIdParamName=None):
+def dec_check_session(returnNoneSess=False, projIdParamName=None, logout=False):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
@@ -186,44 +187,51 @@ def dec_check_session(returnNoneSess=False, projIdParamName=None):
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            mkdbg('dec_no_session {}'.format(session.get('projId')))
-#             if projIdParamName is None or projIdParamName not in kwargs:
-#                 return loginPage('Unexpected error')
-
-#             pid = kwargs[projIdParamName]
+            mkdbg('dec_check_session')
+            if projIdParamName is None:
+                projId = session.get('projId')
+            else:
+                projId = kwargs.get(projIdParamName)
+            if projId is None:
+                if returnNoneSess:
+                        return func(None, *args, **kwargs)
+                return loginPage('Unexpected error')
             
             token = request.cookies.get(NAME_COOKIE_TOKEN)
-            print 'oldToken {}'.format(token)
             resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
                                 headers={"Authorization": "fptoken " + token})
-            if resp.status_code != HTTP_OK:
-                return loginPage('Your session has timed out.')
             try:
-                jresp = resp.json().get('data')
-                userId = jresp.get('userId')
-                print 'got userId {}'.format(userId)
+                mkdbg('a')
+                jresp = resp.json()
+                mkdbg('a')
+                if resp.status_code != HTTP_OK:
+                    if returnNoneSess:
+                        mkdbg('b')
+                        return func(None, *args, **kwargs)
+                    #return loginPage('Your session has timed out.')
+                    return loginPage(fprGetError(jresp))
+                mkdbg('a')
+                data = jresp.get('data')
+                mkdbg('a')
+                userId = data.get('userId')
+                mkdbg('a')
             except Exception as e:
-                print 'exception getting json response: {}'.format(e)
+                mkdbg('exception getting json response: {}'.format(e))
+                return loginPage('xunexpected error')
+                
             newToken = resp.cookies[NAME_COOKIE_TOKEN]
             print 'newToken {}'.format(newToken)
 
             # make sess:
-            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
-            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            if not sess.valid():  # Check if session is still valid
-                if returnNoneSess:
-                    return func(None, *args, **kwargs)
-                return loginPage('Your session has timed out - please login again.')
-
-#             g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
+            sess = fpSess.FPsess(userId, projId)
+                
             fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
 
-#             @after_this_request
-#             def setNewToken(response):
-#                 response.set_cookie(NAME_COOKIE_TOKEN, newToken)
-            
             ret = make_response(func(sess, *args, **kwargs))
-            ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
+            if not logout:
+                ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
+            else:
+                ret.set_cookie(NAME_COOKIE_TOKEN, 'nope')
             return ret
         return inner
     return param_dec
@@ -1788,9 +1796,9 @@ def urlPhoto(sess, trialId, filename):
 def urlUserHome(sess, userName):
     return frontPage()
 
-@app.route(PREURL+'/FieldPrime/project/<projectName>/', methods=['GET'])
-@dec_check_session()
-def urlProject(sess, projectName):
+@app.route(PREURL+'/FieldPrime/projects/<int:projId>/', methods=['GET'])
+@dec_check_session(returnNoneSess=True, projIdParamName='projId')
+def urlProject(sess, projId):
 #-----------------------------------------------------------------------
 # URL handler for user choice from project list.
 #
@@ -1798,6 +1806,7 @@ def urlProject(sess, projectName):
 # and find what permissions they have. We can't just use the username and project from
 # the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
 #
+    projectName = sess.getProjectName()
     if projectName is not None:
         projList, errMsg = fpsys.getUserProjects(sess.getUserIdent())
         if errMsg is not None:
@@ -1818,7 +1827,7 @@ def urlProject(sess, projectName):
 
 
 @app.route(PREURL+'/logout', methods=["GET"])
-@dec_check_session()
+@dec_check_session(logout=True)
 def urlLogout(sess):
     sess.close()
     return redirect(url_for('urlMain'))
@@ -1868,7 +1877,7 @@ def asyncGetToken(username, password):
         newurl = url_for('webRest.urlGetToken', _external=True)
         jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
     except Exception, e:
-        print 'getToken error: ' + str(e)
+        mkdbg('getToken error: ' + str(e))
         return None
     return fprData(jresp)["token"]
 
@@ -1898,8 +1907,7 @@ def urlMain():
 # Might want to change displayed url for some things eg the op to change password ends up displaying
 # the frontPage, but shows the URL for the op.
 #
-    sid = request.cookies.get(NAME_COOKIE_SESSION)                # Get the session id from cookie (if there)
-    sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR'])     # Create session object (may be existing session)
+    mkdbg("urlMain")
     g.rootUrl = url_for(sys._getframe().f_code.co_name)   # Set global variable accessible by templates (to the url for this func)
     g.userName = 'unknown'
     error = ""
@@ -1919,16 +1927,11 @@ def urlMain():
                 projList, errMsg = fpsys.getUserProjects(username)
                 if errMsg is not None:
                     error = errMsg
-#                 elif not projList:
-#                     error = 'No projects found for user {0}'.format(username)
                 else:
                     # Good to go, show the user front page, after adding cookie:
                     util.fpLog(app, 'Login from user {0}'.format(username))
-                    sess.resetLastUseTime()
-                    sess.setUserIdent(username)
                     fpsys.fpSetupG(g, userIdent=username)
                     resp = make_response(frontPage())
-                    resp.set_cookie(NAME_COOKIE_SESSION, sess.sid())      # Set the cookie
 
                     # Create an authentication token for the user:
                     # How can we refresh token timeout the way we do for sessions?
@@ -1936,6 +1939,9 @@ def urlMain():
                     token = asyncGetToken(username, password)
                     if token is not None:
                         resp.set_cookie(NAME_COOKIE_TOKEN, token)
+                    else:
+                        util.flog('Login failed attempt for user {0}'.format(username))
+                        error = 'Login failed'
 
                     return resp
             elif authOK is None:
