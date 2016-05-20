@@ -262,6 +262,20 @@ def testProjectUserStuff(adminAuthHdr, user1AuthHdr, projUsersUrl):
         checkIsSame(userPerms[tusr2], False, thingName='admin rights')
         sout()
 
+def testProjectTraits(authHdr, projTraitsUrl):
+    hout('Test Project Traits')
+    createSomething(authHdr, projTraitsUrl, somethingName='trait', params = {
+              "name":'intTrait',
+              "description":'think of a number',
+              "datatype":'Integer'
+            })    
+    createSomething(authHdr, projTraitsUrl, somethingName='trait', params = {
+              "name":'catTrait',
+              "description":'favourit colour?',
+              "datatype":'Categorical',
+              "typeData":{'red':1, 'blue':2, 'purple':3}
+            })    
+    sout()
 
 def testProjectTrialStuff(authHdr, projTrialsUrl):
     # Create trial:
@@ -326,6 +340,9 @@ def restTest():
 
         # Test project user functionality:
         testProjectUserStuff(adminAuthHdr, user1AuthHdr, proj.get('urlUsers'))
+        
+        # Test project traits:
+        testProjectTraits(adminAuthHdr, proj.get('urlTraits'))
 
         # Test project trial functionality:
         testProjectTrialStuff(user1AuthHdr, proj.get('urlTrials'))

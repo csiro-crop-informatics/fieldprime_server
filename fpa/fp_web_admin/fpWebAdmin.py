@@ -140,7 +140,7 @@ def nocache(f):
     return update_wrapper(new_func, f)
 
 def mkdbg(msg):
-    if True:
+    if False:
         print msg
         
 def OLD_dec_check_session(returnNoneSess=False):
@@ -201,23 +201,14 @@ def dec_check_session(returnNoneSess=False, projIdParamName=None, logout=False):
             resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
                                 headers={"Authorization": "fptoken " + token})
             try:
-                mkdbg('a')
                 jresp = resp.json()
-                mkdbg('a')
                 if resp.status_code != HTTP_OK:
-                    if returnNoneSess:
-                        mkdbg('b')
-                        return func(None, *args, **kwargs)
-                    #return loginPage('Your session has timed out.')
                     return loginPage(fprGetError(jresp))
-                mkdbg('a')
                 data = jresp.get('data')
-                mkdbg('a')
                 userId = data.get('userId')
-                mkdbg('a')
             except Exception as e:
                 mkdbg('exception getting json response: {}'.format(e))
-                return loginPage('xunexpected error')
+                return loginPage('unexpected error')
                 
             newToken = resp.cookies[NAME_COOKIE_TOKEN]
             print 'newToken {}'.format(newToken)
@@ -1865,10 +1856,28 @@ def badJsonJuju(sess, error=None):
     return resp
 
 
-@app.route(PREURL+'/info/<pagename>', methods=["GET"])
-@dec_check_session(True)
-def urlInfoPage(sess, pagename):
-    g.rootUrl = url_for('urlMain')
+#@app.route(PREURL+'/info/<pagename>', methods=["GET"])
+#@dec_check_session(returnNoneSess=True)
+#def urlInfoPage(sess, pagename):
+# @app.route(PREURL+'/info/<pagename>', methods=["GET"])
+# def urlInfoPage(pagename):
+#     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
+
+@app.route(PREURL+'/info/news', methods=["GET"])
+def urlInfoPageNews():
+    pagename = 'news'
+    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
+@app.route(PREURL+'/info/about', methods=["GET"])
+def urlInfoPageAbout():
+    pagename = 'about'
+    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
+@app.route(PREURL+'/info/contact', methods=["GET"])
+def urlInfoPageContact():
+    pagename = 'contact'
+    return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
+@app.route(PREURL+'/info/fieldprime', methods=["GET"])
+def urlInfoPageFieldPrime():
+    pagename = 'fieldprime'
     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
 
 def asyncGetToken(username, password):
@@ -1955,7 +1964,7 @@ def urlMain():
         return loginPage(error)
 
     # Request method is 'GET' - return login page:
-    return urlInfoPage('fieldprime')
+    return urlInfoPageFieldPrime()
 
 
 ##############################################################################################################

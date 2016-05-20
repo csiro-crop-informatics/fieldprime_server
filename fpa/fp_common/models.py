@@ -241,6 +241,9 @@ class Trait(DeclarativeBase):
     def getName(self):
         return self.caption
 
+    def getDescription(self):
+        return self.description
+
     def getId(self):
         return self.id
 
@@ -632,6 +635,81 @@ class Project(DeclarativeBase):
     def getTraits(self):
         session = Session.object_session(self)
         return session.query(Trait).filter(Trait.project_id == self.id).all()
+    
+    @oneException2None
+    def getTrait(self, traitId):
+    #-------------------------------------------------------------------------------------------------
+        dbc = _dbc(self)
+        return dbc.query(Trait).filter(Trait.id == traitId).one()
+    
+    def newTrait(self, caption, description, datatype, typeData=None):
+    #-----------------------------------------------------------------------
+    # Create trait in db, from data from html form.
+    # trialId is id of trial if a local trait, else it is -1.
+    # Returns error message if there's a problem, else None.
+    #
+        print 'in newTrait=================================='
+        dbsess = _dbc(self)
+        datatypeCode = TRAIT_TYPE_TYPE_IDS[datatype]
+        # We need to check that caption is unique within the trial - for local anyway, or is this at the add to trialTrait stage?
+        # For creation of a system trait, there is not an automatic adding to a trial, so the uniqueness-within-trial test
+        # can wait til the adding stage.
+    
+        # Check for duplicate captions, probably needs to use transactions or something, but this will usually work:
+        # If system trait, check there's no other system trait with same caption:
+        projTraits = self.getTraits()
+        for x in projTraits:
+            if x.caption == caption:
+                return 'Error: A system trait with this caption already exists'
+            
+        isProjectTrait = True
+        ntrt = Trait(caption, description, datatypeCode, isProjectTrait, self.getId())
+        dbsess.add(ntrt)
+#         dbsess.commit()   # Add the trait to the db (before trait specific stuff which may need id).
+        dbsess.flush()
+
+        print 'about to type specific processing'        
+        # Trait type specific processing:
+        if int(ntrt.datatype) == T_CATEGORICAL and typeData is not None:
+            print 'in if'
+            for caption, value in typeData.iteritems():
+#                 caption = cat.get("caption")
+#                 value = cat.get("value")
+                print 'foo', caption, value
+                # Determine if this is a new category or an existing one.
+                # Trait categories are identified by the value (within a trait).
+                tcat = ntrt.getCategory(value)
+                newCat = tcat is None
+                if newCat:
+                    # Add new trait category:
+                    tcat = TraitCategory()
+                    tcat.value = value
+                    tcat.caption = caption
+                    tcat.trait_id = ntrt.id
+#                     tcat.imageURL = imageURL
+                    dbsess.add(tcat)
+                    print 'added'
+                else:
+                    raise DalError("Duplicate category")
+#                     util.flog("Existing category: cap:{0} value:{1}".format(caption, value))
+#                     # This is an existing category, update caption, or image URL if necessary:
+#                     if tcat.caption != caption:
+#                         tcat.caption = caption
+#                     # (Re)Set the image if necessary. There is a difficulty here.
+#                     # NB If an image was already set, and user doesn't change it, it will come back empty.
+#                     # And we don't want to set it to nothing in this case. The problem remains, however, as
+#                     # to how can the user explicitly set it to no image?
+#                     if imageURL is not None:
+#                         tcat.imageURL = imageURL
+                # NB: no commit - we assume calling function will do it.
+
+        dbsess.commit()
+        
+#         if int(ntrt.datatype) == T_CATEGORICAL:
+#             _newTraitCategorical(sess, request, ntrt)
+#         dbsess.add(ntrt)
+#         dbsess.commit()
+        return ntrt
 
     def newTrial(self, name, site, year, acro):  # see comment below , i1name=None, i2name=None):
     # Creates new trial in the database with given details.

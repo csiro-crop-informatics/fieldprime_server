@@ -36,7 +36,7 @@ token_auth = HTTPTokenAuth('fptoken')
 multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
-    if True:
+    if False:
         print msg
 
 ### Constants: ###########################################################################
@@ -113,7 +113,7 @@ class FPRestException(Exception):
 
 ### Authentication Checking: #############################################################
 
-def generate_auth_token(username, expiration=6):
+def generate_auth_token(username, expiration=600):
 # Return a token for the specified username. This can be used
 # to authenticate as the user, for the specified expiration
 # time (which is in seconds).
@@ -124,8 +124,8 @@ def generate_auth_token(username, expiration=6):
 
 def verify_auth_token(token):
 # MFK need to pass back expired indication somehow
-440 is the login timeout status.
-Not working for project selector timeout
+# 440 is the login timeout status.
+# Not working for project selector timeout
     s = Serializer(current_app.config['SECRET_KEY'])
     try:
         data = s.loads(token)
@@ -680,7 +680,8 @@ def responseProjectObject(proj):
     return {
         'projectName':proj.getName(),
         'urlTrials' : url_for('webRest.urlCreateTrial', projId=projId, _external=True),
-        'urlUsers' : url_for('webRest.urlAddProjectUser', xprojId=projId, _external=True)
+        'urlUsers' : url_for('webRest.urlAddProjectUser', xprojId=projId, _external=True),
+        'urlTraits' : url_for('webRest.urlGetTraits', projId=projId, _external=True)
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
 @multi_auth.login_required
@@ -944,7 +945,109 @@ def urlGetProjectUsers(mProj, params, projId):
     retList = [{'ident':ident, 'admin':perms==1} for (ident,perms) in users]
     return apiResponse(True, HTTP_OK, data=retList)
 
-### Trials: ############################################################################
+#### Traits: ##########################################################################
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/traits', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTraits(mproj, params, projId):
+#---------------------------------------------------------------------------------
+#^
+#: GET: urlTraits from project
+#: Access: Omnipotence or project admin access.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: [ {
+#:     name : <name>
+#:     description : <description>
+#:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
+#:   ]
+#$
+    mkdbg('urlGetTraits({})'.format(projId))
+    # check permissions
+    if not g.canAdmin:
+        return errorAccess()
+    try:
+        straits = mproj.getTraits()
+        retList = [{
+                    'name':trt.getName(),
+                    'description':trt.getDescription(), 
+                    'datatype':trt.getDatatypeName()
+                    } for trt in straits]
+    except Exception as e:
+        return jsonErrorReturn('Problem getting traits: ' + str(e), HTTP_BAD_REQUEST)
+    return apiResponse(True, HTTP_OK, data=retList)
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/traits/<int:traitId>', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTrait(mproj, params, projId, traitId):
+#---------------------------------------------------------------------------------
+#^
+#: GET: urlTraits from project
+#: Access: Omnipotence or project view access.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: [ {
+#:     name : <name>
+#:     description : <description>
+#:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
+#:   ]
+#$
+    mkdbg('urlGetTrait({})'.format(projId))
+    try:
+        trt = mproj.getTrait(traitId)
+        retObj = {
+                    'name':trt.getName(),
+                    'description':trt.getDescription(), 
+                    'datatype':trt.getDatatypeName()
+                    }
+    except Exception as e:
+        return jsonErrorReturn('Problem getting trait: ' + str(e), HTTP_BAD_REQUEST)
+    return apiResponse(True, HTTP_OK, data=retObj)
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/traits', methods=['POST'])
+@multi_auth.login_required
+@project_func()
+def urlCreateTrait(mproj, params, projId):
+#-----------------------------------------------------------------------------------------
+#^-----------------------------------
+#: POST: API_PREFIX + 'projects'
+#: Access: Requesting user needs create omnipotent permissions.
+#: Input: {
+#:   'name': <name>,
+#:   'description': <description>,
+#:   'datatype': <name of datatype>,
+#:   'typeData': [..{caption:<category name, value:<category value>}..]
+#: }
+#: Success Response:
+#:   Status code: HTTP_CREATED
+#:   url: <url of created project>
+#:   data: none
+#$
+    mkdbg('in urlCreateTrait')
+    # check permissions
+    if not g.canAdmin:
+        return errorAccess()
+    try:
+        # todo parameter checks, perhaps, checks are done in makeNewProject
+        name = params.get('name')
+        description = params.get('description')
+        datatype = params.get('datatype')
+        typeData = params.get('typeData')
+        if typeData is not None and type(typeData) != dict:
+            return errorBadRequest('invalid typeData')      
+        trt = mproj.newTrait(name, description, datatype, typeData)
+    except Exception, e:
+        return errorBadRequest('Problem creating trait: ' + str(e))
+
+    return apiResponse(True, HTTP_CREATED, msg='Trait {} created'.format(name),
+                url=url_for('webRest.urlGetTrait', projId=projId,
+                            traitId=trt.getId(), _external=True))
+
+## Trials: ############################################################################
 
 # Todo trial delete
 TEST_trial = '''
@@ -1285,6 +1388,7 @@ def urlAttributeData(userid, params, projId, trialId, attId):
     for av in vals:
         data.append([av.getNode().getId(), av.getValueAsString()])
     return apiResponse(True, HTTP_OK, data=data)
+
 
 ### Testing: #####################################################################################
 TEST_STUFF = '''

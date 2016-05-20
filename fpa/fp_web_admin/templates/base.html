@@ -143,11 +143,11 @@
             {% if loggedIn %}
             <li><a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>Home</a></li>
             {% else %}
-            <li><a href="{{ url_for('urlInfoPage', pagename='fieldprime') }}"><span class='fa fa-home'></span>Home</a></li>
+            <li><a href="{{ url_for('urlInfoPageFieldPrime') }}"><span class='fa fa-home'></span>Home</a></li>
             {% endif %}
-            <li><a href="{{ url_for('urlInfoPage', pagename='news') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
-            <li><a href="{{ url_for('urlInfoPage', pagename='about') }}"><span class='fa fa-info-circle'></span> About</a></li>
-            <li><a href="{{ url_for('urlInfoPage', pagename='contact') }}"><span class='fa fa-phone'></span> Contact</a></li>
+            <li><a href="{{ url_for('urlInfoPageNews') }}"><span class='fa fa-newspaper-o'></span> News</a></li>
+            <li><a href="{{ url_for('urlInfoPageAbout') }}"><span class='fa fa-info-circle'></span> About</a></li>
+            <li><a href="{{ url_for('urlInfoPageContact') }}"><span class='fa fa-phone'></span> Contact</a></li>
             <li>
               {% if loggedIn %}
               <a href="{{ url_for('urlLogout') }}"><span class='fa fa-sign-out'> </span> Log Out</a>
