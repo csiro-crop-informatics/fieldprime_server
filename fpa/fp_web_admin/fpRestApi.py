@@ -13,6 +13,7 @@
 
 from flask import Blueprint, current_app, request, Response, jsonify, g, abort, url_for
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
+from flask_swagger import swagger
 from functools import wraps
 import simplejson as json
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
@@ -27,6 +28,7 @@ import fp_common.util as util
 from const import *
 import fp_common.const as const
 from fp_common.fpsys import FPSysException
+from flask.helpers import make_response
 
 ### Initialization: ######################################################################
 webRest = Blueprint('webRest', __name__)
@@ -36,8 +38,23 @@ token_auth = HTTPTokenAuth('fptoken')
 multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
-    if False:
+    if True:
         print msg
+
+@webRest.route("/specs")
+def spec():
+    swag = swagger(current_app)
+    swag['info']['version'] = "1.0"
+    swag['info']['title'] = "FieldPrime REST API"
+    swag['schemes'] = ['https']
+#    swag['basePath'] = '/fpv1'
+    swag['host'] = '***REMOVED***'
+    swag['security'] = [{"api_key":[], 'basic':[]}]
+    swag['consumes'] = ['application/json']
+    swag['produces'] = ['application/json']
+    resp = make_response(jsonify(swag))
+    resp.headers['Access-Control-Allow-Origin'] = '*'   # Needed for testing, maybe not eventually..
+    return resp
 
 ### Constants: ###########################################################################
 
@@ -74,8 +91,8 @@ def jsonReturn(jo, statusCode):
     return Response(json.dumps(jo), status=statusCode, mimetype='application/json')
 def jsonSuccessReturn(msg='success', statusCode=HTTP_OK):
     return apiResponse(True, statusCode, msg=msg)
-def notSupported():
-    return apiResponse(False, HTTP_SERVER_ERROR, "Not Supported")
+def notImplemented():
+    return apiResponse(False, HTTP_SERVER_ERROR, "Not implemented yet")
 def errorAccess(msg=None):
     return apiResponse(False, HTTP_UNAUTHORIZED,
                        "No access for requested operation" if msg is None else msg)
@@ -370,6 +387,38 @@ def _checkTiAttributeStuff(projId, tiId):
 @multi_auth.login_required
 @project_func()
 def urlCreateTiAttribute(mproj, params, projId, tiId):
+    """
+    Create a new attribute for a trait instance.
+    ---
+    tags:
+      - Trait Instance Attributes
+    definitions:
+      - schema:
+          id: Group
+          properties:
+            name:
+             type: string
+             description: the attibute's name
+    parameters:
+        - name: tiId
+          in: path
+          description: FieldPrime traitInstance id
+          required: true
+          type: integer
+        - name: projId
+          in: path
+          description: FieldPrime project id
+          required: true
+          type: integer
+        - name: name
+          in: body
+          description: Name for Attribute
+          required: true
+          type: string
+    responses:
+      201:
+        description: Attribute created
+    """
 #^-----------------------------------
 #: POST: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
 #: Create attribute for the TI specified in the URL.
@@ -409,6 +458,35 @@ def urlCreateTiAttribute(mproj, params, projId, tiId):
 @multi_auth.login_required
 @project_func()
 def urlDeleteTiAttribute(mproj, params, projId, tiId):
+    """
+    Delete the attribute for a trait instance.
+    After deletion the trait instance still exists, but is not available \
+    as an attribute
+    ---
+    tags:
+      - Trait Instance Attributes
+    definitions:
+      - schema:
+          id: Group
+          properties:
+            name:
+             type: string
+             description: the attibute's name
+    parameters:
+        - name: tiId
+          in: path
+          description: FieldPrime traitInstance id
+          required: true
+          type: integer
+        - name: projId
+          in: path
+          description: FieldPrime project id
+          required: true
+          type: integer
+    responses:
+      200:
+        description: Attribute deleted
+    """    
 #----------------------------------------------------------------------------------------------
 #^
 #: DELETE: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
@@ -434,6 +512,50 @@ def urlDeleteTiAttribute(mproj, params, projId, tiId):
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateUser(userid, params):
+    """
+    Create a user.
+    ---
+    tags:
+      - Users
+    definitions:
+      - schema:
+          id: Group
+          properties:
+            name:
+             type: string
+             description: the attibute's name
+    parameters:
+      - in: body
+        name: body
+        description: User object
+        required: true
+        schema:
+          id: User
+          required:
+            - email
+            - name
+          properties:
+            loginType:
+              type: integer
+              description: 2 for ***REMOVED*** user, 3 for FieldPrime local user.
+            ident:
+              type: string
+              description: Login id for new user
+            password:
+              type: string
+              description: Password for new user
+            email:
+              type: string
+              description: Email address of new user
+            fullname:
+              type: string
+              description: Full name of new user
+    responses:
+      201:
+        description: User Created.
+      400:
+        description: Invalid parameters, or server error.
+    """
 #^-----------------------------------
 #: POST: API_PREFIX + 'users
 #: Access: Requesting user needs create user permissions.
@@ -962,6 +1084,7 @@ def urlGetTraits(mproj, params, projId):
 #:     name : <name>
 #:     description : <description>
 #:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
+#:     url : <trait URL>
 #:   ]
 #$
     mkdbg('urlGetTraits({})'.format(projId))
@@ -973,7 +1096,9 @@ def urlGetTraits(mproj, params, projId):
         retList = [{
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
-                    'datatype':trt.getDatatypeName()
+                    'datatype':trt.getDatatypeName(),
+                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
+                                  _external=True)
                     } for trt in straits]
     except Exception as e:
         return jsonErrorReturn('Problem getting traits: ' + str(e), HTTP_BAD_REQUEST)
@@ -1135,7 +1260,7 @@ def urlCreateTrial(mproj, params, projId):
     trialYear = params.get('trialYear')
     trialSite = params.get('trialSite')
     trialAcronym = params.get('trialAcronym')
-    nodeCreation = params.get('nodeCreation')
+    
     rowAlias = params.get('rowAlias')
     colAlias = params.get('colAlias')
     attributes = params.get('attributes')
@@ -1147,7 +1272,11 @@ def urlCreateTrial(mproj, params, projId):
 
     try:
         trial = mproj.newTrial(trialName, trialSite, trialYear, trialAcronym)  #MFK this func doing commits.
-        trial.setTrialProperty('nodeCreation', nodeCreation)
+        nodeCreation = params.get('nodeCreation')
+        if nodeCreation is not None:
+            if nodeCreation not in ('true', 'false'):
+                raise Exception('nodeCreation must be "true" or "false"') 
+            trial.setTrialPropertyBoolean('nodeCreation', nodeCreation=='true')
         trial.setNavIndexNames(rowAlias, colAlias)
 
         # process attributes:
@@ -1160,7 +1289,7 @@ def urlCreateTrial(mproj, params, projId):
 
         # commit
         g.dbsess.commit()
-    except models.DalError as e:
+    except Exception as e:
         g.dbsess.rollback()
         return errorBadRequest("Error creating trial: {}".format(e.__str__()))
 
@@ -1174,13 +1303,22 @@ def urlUpdateTrial(mproj, params, projId, trialId):
     mkdbg('urlUpdateTrial {}'.format(params))
     if not g.canAdmin:
         return errorAccess()
-    nodeCreation = params.get('nodeCreation')
-    ind1 = params.get(const.INDEX_NAME_1)
-    ind2 = params.get(const.INDEX_NAME_2)
-    trial = models.getTrial(g.dbsess, trialId)
-    trial.setTrialProperty('nodeCreation', nodeCreation)
-    trial.setNavIndexNames(ind1, ind2)
-    g.dbsess.commit()    
+    try:
+        nodeCreation = params.get('nodeCreation')
+        ind1 = params.get(const.INDEX_NAME_1)
+        ind2 = params.get(const.INDEX_NAME_2)
+        trial = models.getTrial(g.dbsess, trialId)
+        if nodeCreation is not None:
+            if nodeCreation not in ('true', 'false'):
+                raise Exception('nodeCreation must be "true" or "false"') 
+            trial.setTrialPropertyBoolean('nodeCreation', nodeCreation=='true')
+        trial.setNavIndexNames(ind1, ind2)
+        # commit
+        g.dbsess.commit()
+    except Exception as e:
+        g.dbsess.rollback()
+        return errorBadRequest("Error creating trial: {}".format(e.__str__()))
+       
     return apiResponse(True, HTTP_OK, msg='trial updated')
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['GET'])
@@ -1238,16 +1376,11 @@ def urlDeleteTrial(userid, params, projId, trialId):
     return jsonSuccessReturn("Trial Deleted", HTTP_OK)
 
 ### Nodes: ###############################################################################
-#
-# nodes endpoint: This returned from getTrial
+
+#-----------------------------------------------------------------------------------------
+# nodes endpoint: urlNodes attribute from api Trial object
 #   GET - get all nodes
 #   POST - create new nodes
-# nodes/nodeId endpoint
-#   GET
-#   DELETE - delete particular node
-#   PUT - update node
-#
-# Need to get node notes somehow
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes', methods=['GET'])
 @multi_auth.login_required
@@ -1273,8 +1406,8 @@ def urlGetNodes(mproj, params, projId, trialId):
         trial = mproj.getTrialById(trialId)
         nodes = trial.getNodes()
         data = [{
-#             'url':url_for('webRest.urlAttributeData', _external=True, projId=projId,
-#                           trialId=trialId, attId=nat.getId()),
+            'url':url_for('webRest.urlGetNode', _external=True, projId=projId,
+                          trialId=trialId, nodeId=node.getId()),
             'fpId':node.getId(),
             'index1':node.getRow(),
             'index2':node.getCol()
@@ -1283,23 +1416,22 @@ def urlGetNodes(mproj, params, projId, trialId):
         return errorBadRequest(str(e))
     return apiResponse(True, HTTP_OK, data=data)
 
-@webRest.route(API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes', methods=['POST'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes', methods=['POST'])
 @multi_auth.login_required
-@wrap_api_func
-def urlCreateNode(userid, params, projId, trialId):
+@project_func()
+def urlCreateNode(mproj, params, projId, trialId):
 #-----------------------------------------------------------------------------------------
-# MFK, could have complex object, including attributes, or could have everything atomic,
+# NB, could have complex object, including attributes, or could have everything atomic,
 # and have separate access point to create attributes and add values to them.
 # Or we could have both, eventually. Separately is better I think. Reduces risk of
 # unintentionally create new attributes by mistyping names, and allows defining the type
 # of an attribute prior to loading values.
-#
-#
-#
 #^-----------------------------------
-#: API_PREFIX + 'projects/<int:projId>/trials<int:trialId>/nodes'
+#: POST: urlNodes from trial
+#: Access: Omnipotence or project view access. If nodeCreation is not enabled for the
+#:   trial, then project admin access is required.
 #: Input JSON object:
-#: {
+#: { node : <node object> }
 #:   // MANDATORY fields:
 #:   index1 : <positive integer>
 #:   index2 : <positive integer>
@@ -1317,10 +1449,119 @@ def urlCreateNode(userid, params, projId, trialId):
 #: url: <new node url>
 #: data: absent
 #$
-    # Check permissions:
+    mkdbg('urlCreateNode : {}'.format(params))
+    try:
+        # Check permissions, nodeCreation needs to be on if not admin.
+        trial = mproj.getTrialById(trialId)
+        if not g.canAdmin and not trial.getTrialPropertyBoolean('nodeCreation'):
+            return errorAccess('nodeCreation not enabled for non admin user')
+        
+        node = params.get('node')
+        if node is None: return errorBadRequest('missing node parameter')
+        #processNodes(trial, (node,))
+        mnode = trial.createNode(node)
+        g.dbsess.commit()
+    except Exception as e:
+        g.dbsess.rollback()
+        return errorBadRequest("Error creating trial: {}".format(e.__str__()))
+    return apiResponse(True, HTTP_CREATED, msg='Node created',
+            url=url_for('webRest.urlGetNode', _external=True, projId=projId, trialId=trialId, nodeId=mnode.getId()))
 
-    # Check node with specified indicies doesn't already exist.
-    pass
+#-----------------------------------------------------------------------------------------
+# nodes/nodeId endpoint
+#   GET
+#   DELETE - delete particular node
+#   PUT - update node
+#
+# Need to get node notes somehow
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes/<int:nodeId>', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetNode(mproj, params, projId, trialId, nodeId):
+#---------------------------------------------------------------------------------
+#^
+#: GET: node url from getNodes
+#: Access: Omnipotence or project view access.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: {
+#:     fpId : <fp id>
+#:     index1 : <index 1 value>
+#:     index2 : <index 2 value>
+#:   }
+#$
+    mkdbg('in urlGetNodes')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        node = trial.getNode(nodeId)
+        if node is None:
+            return errorBadRequest('Node not found')
+        data = {
+            'fpId':node.getId(),
+            'index1':node.getRow(),
+            'index2':node.getCol()
+            }
+    except Exception as e:
+        return errorBadRequest(str(e))
+    return apiResponse(True, HTTP_OK, data=data)
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes/<int:nodeId>', methods=['PUT'])
+@multi_auth.login_required
+@project_func()
+def urlUpdateNode(mproj, params, projId, trialId, nodeId):
+#---------------------------------------------------------------------------------
+#^
+#: PUT: node url from getNodes
+#: Access: Omnipotence or admin.
+#: Input: As for urlCreateNode
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: none
+#$
+    mkdbg('in urlGetNodes : {}'.format(params))
+    if not g.canAdmin:
+        return errorAccess('admin privileges required')
+    try:
+        # Check permissions, nodeCreation needs to be on if not admin.
+        trial = mproj.getTrialById(trialId)        
+        jnode = params.get('node')
+        if jnode is None: return errorBadRequest('missing node parameter')
+        mnode = trial.updateNode(jnode)
+        g.dbsess.commit()
+    except Exception as e:
+        g.dbsess.rollback()
+        return errorBadRequest("Error creating trial: {}".format(e.__str__()))
+    return apiResponse(True, HTTP_CREATED, msg='Node created',
+            url=url_for('webRest.urlGetNode', _external=True, projId=projId, trialId=trialId, nodeId=mnode.getId()))
+#     return notImplemented()
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes/<int:nodeId>', methods=['DELETE'])
+@multi_auth.login_required
+@project_func()
+def urlDeleteNode(mproj, params, projId, trialId, nodeId):
+#---------------------------------------------------------------------------------
+#^
+#: DELETE: node url from getNodes
+#: Access: Omnipotence or project admin access.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: none
+#$
+    mkdbg('in urlDeleteNode')
+    # NB, check that user has access to project is done in project_func.
+    if not g.canAdmin:
+        return errorAccess()
+    try:
+        trial = mproj.getTrialById(trialId)
+        trial.deleteNode(nodeId)
+        g.dbsess.commit()
+    except Exception as e:
+        return errorBadRequest(str(e))
+    return apiResponse(True, HTTP_OK)
 
 ### Attributes: ##########################################################################
 

@@ -984,6 +984,8 @@ class Trial(DeclarativeBase):
     def getNodes(self):
     # Returns list of Nodes, sorted by node id.
         return self.nodes
+    def getNode(self, nodeId):
+        return getNode(_dbc(self), nodeId) 
 
     def getNodesSortedRowCol(self):
         # Return nodes for the specified trial, sorted by row/col
@@ -1188,6 +1190,9 @@ class Trial(DeclarativeBase):
         return nattr
     
     def createNode(self, jnode):
+    # expects:    {'index1': - , 'index2': - , 'attvals':{<attName>:<attValue>, ...}}
+    # returns node, or raises exception.
+    # Commit is the responsibility of the caller.
         try:
             ind1 = int(jnode.get('index1'))
             ind2 = int(jnode.get('index2'))
@@ -1229,7 +1234,61 @@ class Trial(DeclarativeBase):
                 dbc.add(av)
             
         return node
+    
+    def deleteNode(self, nodeId, jnode):
+    # expects:    {'index1': - , 'index2': - , 'attvals':{<attName>:<attValue>, ...}}
+    # returns node, or raises exception.
+    # Commit is the responsibility of the caller.
+        
+        try:
+            ind1 = int(jnode.get('index1'))
+            ind2 = int(jnode.get('index2'))
+        except Exception: #ValueError, TypeError:
+            raise DalError('index1 and index2 must be present, and valid integers')
+        atts = jnode.get('attvals')
+        if self.getNodeId(ind1, ind2) is not None:
+            raise DalError('A node with index values {}, {} already exists'.format(ind1, ind2))
+        node = Node()
+        node.row = ind1
+        node.col = ind2
+        node.trial_id = self.getId()
+        
+#         print 'before {}'.format(node.id)
+        dbc = _dbc(self)
+        dbc.add(node)
+        dbc.flush()
+#         print 'after {}'.format(node.id)
+#         raise DalError('foo')
+        
+        if atts is not None:
+            currAtts = self.getAttributes()#[att.name for att in self.getAttributes()]
+            for attname in atts:
+                # Get attribute
+                currAtt = None
+                for att in currAtts:
+                    if att.getName() == attname:
+                        currAtt = att
+                        break
+                # check attribute exists:
+                if currAtt is None:                
+                    raise DalError('unknown node attribute referenced: ' + attname)
+                
+                # now maybe check type and add value
+                av = AttributeValue()
+                av.nodeAttribute = currAtt
+                av.node = node
+                av.value = str(atts[attname])
+                dbc.add(av)            
+        return node
 
+    def deleteNode(self, nodeId):
+    # No commit
+        try:
+            db = _dbc(self)
+            db.query(Node).filter(and_(Node.id==nodeId, Node.trial_id==self.getId())).delete()
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            return str(e)
+        return None
 
     def hasNodeProperty(self, name):
         if name in self.navIndexNames() or name.lower() == 'barcode':
@@ -1330,13 +1389,23 @@ class Trial(DeclarativeBase):
 #                 return 'Error parsing note ' + e.args[0]
 
     def setTrialProperty(self, key, value):
+    # NB - does not commit
         db = _dbc(self)
         newProp = TrialProperty(self.getId(), key, value)
-        newProp = db.merge(newProp)
-        db.commit()  #MFK get this out
+        newProp = db.merge(newProp)        
+    def setTrialPropertyBoolean(self, key, value):
+        self.setTrialProperty(key, 'true' if value else 'false')
         
     def getTrialProperty(self, key):
+    # Returns value from db, or None if not set
         return TrialProperty.getPropertyValue(_dbc(self), self.getId(), key)
+    def getTrialPropertyBoolean(self, key):
+    # Returns None, True, False, or raises DalError
+        val = self.getTrialProperty(key)
+        if val is None: return None
+        if val == 'true': return True
+        if val == 'false': return False
+        raise DalError('unexpected value for {}'.format(key))
         
 def navIndexName(dbc, trialId, indexOrder):
 # Static version of Trial method navIndexName, exists because some callers

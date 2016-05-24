@@ -34,6 +34,7 @@ tusr2 = 'testUser2'
 tusr2pw = 'oFluffinHippo'
 tusr2Name = 'Test User Two'
 tusr2Email = 'testUser2@some.where'
+
 tproj1Name = 'testProject1'
 ttrl1Name = 'testTrial1'
 ttrl1Year = 2016
@@ -76,6 +77,8 @@ def makeBasicAuthenticationHeader(user, password):
     b64Val = base64.b64encode(usrPass)
     header = {"Authorization": 'Basic ' + b64Val}
     return header
+
+user2AuthHdr = makeBasicAuthenticationHeader(tusr2, tusr2pw)
 
 def getSomething(authHdr, url, somethingName='something', params=None):
 # Makes get request on url. If HTTP_OK received returns the
@@ -220,13 +223,16 @@ def testCreateTrial(authHdr, projUrl, name, year, site):
             'trialName': name,
             'trialYear': year,
             'trialSite': site,
+            'nodeCreation' : 'true',
+            'rowAlias' : 'Range',
+            'colAlias' : 'Run',
             'attributes': [{'name':'att1', 'datatype':'integer'},
                            {'name':'att2', 'datatype':'decimal'},
                            {'name':'att3'}],
             'nodes':[
                 {'index1':1, 'index2':1, 'attvals':{'att1':1, 'att2':1.2, 'att3':'hello'}},
                 {'index1':1, 'index2':2, 'attvals':{'att1':2, 'att2':1.3, 'att3':'world'}},
-                {'index1':1, 'index2':3, 'attvals':{'att3':'goodbye'}},
+                {'index1':1, 'index2':3, 'attvals':{'att3':'goodbye'}}
             ]
         })
     return resp.get('url')
@@ -291,7 +297,19 @@ def testProjectTrialStuff(authHdr, projTrialsUrl):
     checkIsSame(trial.get('year'), ttrl1Year, 'trial year')
     checkIsSame(trial.get('site'), ttrl1Site, 'trial site')
     jout(trial)
+    # Create a node, should check nodecreation invalid value, admin access..
+    urlNodes = trial.get('urlNodes')
     sout("Got trial from URL")
+    ret = createSomething(user2AuthHdr, urlNodes, somethingName='node',
+                          params={'node':{'index1':2, 'index2':1, 'attvals':{'att2':'att2val'}}})
+    # get created node
+    newNodeUrl = ret.get('url')
+    node = fprData(getSomething(authHdr, newNodeUrl, somethingName='node'))
+    checkIsSame(node.get('index1'), 2, 'index 1 value')
+    checkIsSame(node.get('index2'), 1, 'index 2 value')
+    # delete new node:
+    deleteSomething(authHdr, newNodeUrl, somethingName='node')
+    sout("Created Node")
 
     # Get trials:
     hout('Get project trial list')
