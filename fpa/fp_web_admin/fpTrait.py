@@ -155,16 +155,16 @@ def _newTraitCategorical(sess, request, trt):
                 tcat.imageURL = imageURL
         # NB: no commit - we assume calling function will do it.
 
-def traitDetailsPageHandler(sess, request, trialId, traitId):
+def traitDetailsPageHandler(sess, request, trial, trialId, traitId):
 #===========================================================================
 # Handles both GET and POST for page to display/modify details for a trait.
 #
 # MFK Note overlap with code from trait creation.
+# Needs rework, most models calls here should be from trial object, not statics
 #
     projId = sess.getProjectId()
     trt = models.getTrait(sess.db(), traitId)
     trlTrt = models.getTrialTrait(sess.db(), trialId, traitId)
-    trial = models.getTrial(sess.db(), trialId)
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
     comparatorCodes = [
         ["gt", "Greater Than", 1],

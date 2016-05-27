@@ -204,6 +204,7 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
                 if trial is None:
                     return errorScreenInSession(sess, 'trial not found')
                 g.sessTrial = trial
+            g.sessProjId = projId
                 
             ret = make_response(func(sess, *args, **kwargs))
             # Reset the token:
@@ -214,8 +215,9 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
         return inner
     return param_dec
 
-def fpUrl(endpoint, sess, **kwargs):
-    projId = sess.getProjectId()
+def fpUrl(endpoint, sess=None, **kwargs):
+    if sess is not None: projId = sess.getProjectId()
+    else: projId = g.sessProjId
     #return url_for(endpoint, projId=projId, _external=True, **kwargs)
     return url_for(endpoint, projId=projId, **kwargs)
 
@@ -262,8 +264,7 @@ def htmlTrialTraitTable(trial):
         trows.append([hsafe(trt.caption), hsafe(trt.description), TRAIT_TYPE_NAMES[trt.datatype],
              trt.getNumScoreSets(trial.id),
              fpUtil.htmlButtonLink("Details",
-                 url_for('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
-
+                 fpUrl('urlTraitDetails', trialId=trial.id, traitId=trt.id, _external=True))])
     #xxx =  '''<button style="color: red" onClick="showIt('#fpTraitTable')">Press Me</button>'''
     return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False)
 
@@ -1015,13 +1016,14 @@ def urlNewTrait(sess, trialId):
         return trialPage(sess, trialId)
 
 
-@app.route(PREURL+'/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
-@session_check()
-def urlTraitDetails(sess, trialId, traitId):
+@app.route(PREURL+'/projects/<int:projId>/trials/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
+@session_check(trialIdParamName='trialId')
+def urlTraitDetails(sess, projId, trialId, traitId):
 #===========================================================================
 # Page to display/modify the details for a trait.
 #
-    return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
+    trial = g.sessTrial
+    return fpTrait.traitDetailsPageHandler(sess, request, trial, trialId, traitId)
 
 @app.route(PREURL+'/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
 @session_check()
