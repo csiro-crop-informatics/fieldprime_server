@@ -161,6 +161,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
 #
 # MFK Note overlap with code from trait creation.
 #
+    projId = sess.getProjectId()
     trt = models.getTrait(sess.db(), traitId)
     trlTrt = models.getTrialTrait(sess.db(), trialId, traitId)
     trial = models.getTrial(sess.db(), trialId)
@@ -338,7 +339,7 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
             formh += "<p>Pattern: <input type='text' name='pattern' id=tdMin {0}>".format(patText)
 
         formh += ('\n<p><input type="button" value="Cancel"' +
-            ' onclick="location.href=\'{0}\';">'.format(url_for("urlTrial", trialId=trialId)))
+            ' onclick="location.href=\'{0}\';">'.format(fpUtil.fpUrl('urlTrial', sess, trialId=trialId)))
         formh += '\n<input type="submit" value="Submit">'
         return dp.dataPage( \
                     content=preform + fpUtil.htmlForm(formh, post=True, onsubmit=onsubmit, multipart=True),
@@ -407,6 +408,6 @@ def traitDetailsPageHandler(sess, request, trialId, traitId):
 
         sess.db().commit()
 
-        return redirect(url_for("urlTrial", trialId=trialId))
+        return redirect(fpUtil.fpUrl('urlTrial', sess, trialId=trialId))
 
 

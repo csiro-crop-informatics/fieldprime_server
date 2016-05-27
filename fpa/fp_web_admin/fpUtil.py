@@ -7,6 +7,7 @@
 import sys
 from cgi import escape
 
+from flask import url_for
 
 ###  Constants: ################################################################
 
@@ -20,6 +21,11 @@ htmlBootstrapGumpf = '''
 '''
 
 ###  Functions: ################################################################
+
+def fpUrl(endpoint, sess, **kwargs):
+    print('fooey')
+    projId = sess.getProjectId()
+    return url_for(endpoint, projId=projId, _external=True, **kwargs)
 
 def hsafe(x):
     return escape(str(x))

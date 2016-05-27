@@ -6,6 +6,7 @@
 #
 # Standard or third party imports:
 #
+from __future__ import print_function
 import os
 import sys
 import time
@@ -76,7 +77,7 @@ PREURL = '/fieldprime' if FP_RUNTIME == 'docker' else ''
 try:
     app.config.from_object('fp_common.config')
 except ImportError:
-    print 'no fpAppConfig found'
+    print('no fpAppConfig found')
     pass
 
 # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
@@ -95,11 +96,17 @@ class FPWebAdminException(Exception):
 ###  FUNCTIONS: #############################################################################
 #############################################################################################
 
-@app.errorhandler(401)
-def custom_401(error):
-    print 'in custom_401'
-    return Response('<Why access is denied string goes here...>', 401)
-                    #, {'WWWAuthenticate':'Basic realm="Login Required"'})
+mkdbg = (lambda msg : print(msg)) if (__name__ == '__main__') else (lambda msg : None)
+
+# def mkdbg(msg):
+#     if __name__ == '__main__':
+#         print msg
+
+# @app.errorhandler(401)
+# def custom_401(error):
+#     print('in custom_401')
+#     return Response('<Why access is denied string goes here...>', 401)
+#                     #, {'WWWAuthenticate':'Basic realm="Login Required"'})
 
 @app.errorhandler(500)
 def internalError(e):
@@ -141,64 +148,33 @@ def nocache(f):
         return resp
     return update_wrapper(new_func, f)
 
-def mkdbg(msg):
-    if False:
-        print msg
         
-def OLD_dec_check_session(returnNoneSess=False):
+def session_check(projIdParamName='projId', trialIdParamName=None):
 #-------------------------------------------------------------------------------------------------
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
+#
 # If returnNoneSess is true, then the function is returned even if session is
 # invalid, but with None as the session parameter - this can be used for pages
 # that don't require a user to be logged in.
 #
-# MFK - we need to remove the use of sess here, can get user from token
-# project will have to be set subsequently when it is known (eg from url).
-    def param_dec(func):
-        @wraps(func)
-        def inner(*args, **kwargs):
-            
-            mkdbg('dec_check_session {}'.format(session.get('projId')))
-            token = request.cookies.get(NAME_COOKIE_TOKEN)
-            # refresh token here? No - could generate token, but need to set it in the response
-            # ..which we have below, assuming func returns a response (which it may not in
-            # some cases).
-            sid = request.cookies.get(NAME_COOKIE_SESSION) # Get the session id from cookie (if there)
-            sess = websess.WebSess(False, sid, LOGIN_TIMEOUT, app.config['SESS_FILE_DIR']) # Create or get session object
-            g.rootUrl = url_for('urlMain') # Set global var g, accessible by templates, to the url for this func
-            if not sess.valid():  # Check if session is still valid
-                if returnNoneSess:
-                    return func(None, *args, **kwargs)
-                return loginPage('Your session has timed out - please login again.')
-            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
-            return func(sess, *args, **kwargs)
-        return inner
-    return param_dec
-
-def dec_check_session(returnNoneSess=False, projIdParamName=None, logout=False):
-#-------------------------------------------------------------------------------------------------
-# Decorator to check if in valid session. If not, send the login page.
-# Generates function that has session as first parameter.
-# If returnNoneSess is true, then the function is returned even if session is
-# invalid, but with None as the session parameter - this can be used for pages
-# that don't require a user to be logged in.
+# A project must be identified. This is either in the parameters with key
+# given by projIdParamName, or in the flask session if there is no such parameter.
 #
-# MFK - we need to remove the use of sess here, can get user from token
-# project will have to be set subsequently when it is known (eg from url).
+# Ultimately all endpoints that reference a specific project should have the
+# project id specified in the URL. That's not the case currently for historical
+# reasons, but we should aim to make it so, and then remove the use of the
+# flask session.
+#
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            mkdbg('dec_check_session')
-            if projIdParamName is None:
-                projId = session.get('projId')
-            else:
-                projId = kwargs.get(projIdParamName)
-            if projId is None:
-                if returnNoneSess:
-                        return func(None, *args, **kwargs)
-                return loginPage('Unexpected error')
+            mkdbg('session_check')
+            projId = kwargs.get(projIdParamName)
+            if projId is None: projId = session.get('projId')
+            if projId is None: return loginPage('Unexpected error')
             
+            # Get token, validate, and get user:
             token = request.cookies.get(NAME_COOKIE_TOKEN)
             resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
                                 headers={"Authorization": "fptoken " + token})
@@ -212,26 +188,39 @@ def dec_check_session(returnNoneSess=False, projIdParamName=None, logout=False):
                 mkdbg('exception getting json response: {}'.format(e))
                 return loginPage('unexpected error')
                 
-            newToken = resp.cookies[NAME_COOKIE_TOKEN]
-            print 'newToken {}'.format(newToken)
-
-            # make sess:
-            sess = fpSess.FPsess(userId, projId)
+            try:
+                sess = fpSess.FPsess(userId, projId)  # make session
+            except Exception as e:
+                return loginPage(str(e))
+            
+            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())            
+            # Get trial if specified:
+            if trialIdParamName is not None:
+                trialId = kwargs.get(trialIdParamName)
+                try:
+                    trial = dal.getTrial(sess.db(), trialId)
+                except:
+                    trial = None
+                if trial is None:
+                    return errorScreenInSession(sess, 'trial not found')
+                g.sessTrial = trial
                 
-            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
-
             ret = make_response(func(sess, *args, **kwargs))
-            if not logout:
-                ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
-            else:
-                ret.set_cookie(NAME_COOKIE_TOKEN, 'nope')
+            # Reset the token:
+            newToken = resp.cookies[NAME_COOKIE_TOKEN]
+            mkdbg('newToken {}'.format(newToken))
+            ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
             return ret
         return inner
     return param_dec
 
+def fpUrl(endpoint, sess, **kwargs):
+    projId = sess.getProjectId()
+    #return url_for(endpoint, projId=projId, _external=True, **kwargs)
+    return url_for(endpoint, projId=projId, **kwargs)
 
 # @app.route(PREURL+'/crash', methods=['GET'])
-# @dec_check_session()
+# @session_check()
 # def crashMe(sess):
 #     x = 1 / 0
 #     return 'hallo world'
@@ -279,7 +268,7 @@ def htmlTrialTraitTable(trial):
     return fpUtil.htmlDatatableByRow(hdrs, trows, 'fpTraitTable', showFooter=False)
 
 @app.route(PREURL+'/test', methods=["GET"])
-@dec_check_session()
+@session_check()
 def urlTest(sess):
     #return  dp.dataPageTest(sess, content=htmlTabScoreSets(sess, 1), title='foo', trialId=1)
     return render_template('foo.html', title="test")
@@ -345,16 +334,17 @@ def htmlTabNodeAttributes(sess, trialId):
 
     # Add BROWSE button:
     out += '<p>'
-    out += fpUtil.htmlButtonLink("Browse Attributes", url_for("urlBrowseTrialAttributes", trialId=trialId))
+    out += fpUtil.htmlButtonLink("Browse Attributes", fpUrl('urlBrowseTrialAttributes', sess, trialId=trialId))
 
     # Add button to upload new/modified attributes:
-    out += fpUtil.htmlButtonLink("Upload Attributes", url_for("urlAttributeUpload", trialId=trialId))
+    out += fpUtil.htmlButtonLink("Upload Attributes", fpUrl('urlAttributeUpload', sess, trialId=trialId))
 
     return out
 
 def htmlTabProperties(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
+    projId = sess.getProjectId()
     trialDetails = ''
     if trial.site: trialDetails += trial.site
     if trial.year:
@@ -374,12 +364,12 @@ def htmlTabProperties(sess, trial):
     # JavaScript for AJAX form submission:
     r += '''<script>$(fplib.ajax.setupAjaxForm(false,"extras","{}","put"))</script>'''.format(
                url_for('webRest.urlUpdateTrial', _external=True,
-                       projId=sess.getProjectId(), trialId=trial.id))
+                       projId=projId, trialId=trial.id))
 
     # Add DELETE button if admin: ------------------------------------------------
     if sess.adminRights():
         r += '<p>'
-        r += fpUtil.htmlButtonLink("Delete this trial", url_for("urlDeleteTrial", trialId=trial.id), color='btn-danger')
+        r += fpUtil.htmlButtonLink("Delete this trial", url_for("urlDeleteTrial", projId=projId, trialId=trial.id), color='btn-danger')
         r += '<p>'
     return r
 
@@ -574,10 +564,9 @@ def trialPage(sess, trialId):
         trialh = "No trial selected"
     return dp.dataPage(content=trialh, title='Trial Data', trialId=trialId)
 
-
-@app.route(PREURL+'/projects/we/trial/<int:trialId>', methods=["GET"])
-@dec_check_session()
-def urlTrial(sess, trialId):
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>', methods=["GET"])
+@session_check()
+def urlTrial(sess, projId, trialId):
 #===========================================================================
 # Page to display/modify a single trial.
 #
@@ -585,7 +574,7 @@ def urlTrial(sess, trialId):
 
 
 @app.route(PREURL+'/downloadApp/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def downloadApp(sess):
 #-----------------------------------------------------------------------
 # Display page for app download.
@@ -601,9 +590,9 @@ def downloadApp(sess):
     return dp.dataPage(content=apkListHtml, title='Download App', trialId=-1)
 
 
-@app.route(PREURL+'/newTrial/', methods=["GET", "POST"])
-@dec_check_session()
-def urlNewTrial(sess):
+@app.route(PREURL+'/projects/<int:projId>/newTrial/', methods=["GET", "POST"])
+@session_check()
+def urlNewTrial(sess, projId):
 #===========================================================================
 # Page for trial creation.
 #
@@ -680,9 +669,9 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
             cur.close()
     return (hdrs, attValList)
 
-@app.route(PREURL+'/browseTrial/<trialId>/', methods=["GET", "POST"])
-@dec_check_session()
-def urlBrowseTrialAttributes(sess, trialId):
+@app.route(PREURL+'/projects/<int:projId>/browseTrial/<trialId>/', methods=["GET", "POST"])
+@session_check()
+def urlBrowseTrialAttributes(sess, projId, trialId):
 #===========================================================================
 # Page for display of trial data.
 #
@@ -888,7 +877,7 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
 
 
 @app.route(PREURL+'/trial/<trialId>/data/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlTrialDataWideTSV(sess, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
@@ -900,7 +889,7 @@ def urlTrialDataWideTSV(sess, trialId):
     return Response(out, content_type='text/plain')
 
 @app.route(PREURL+'/trial/<trialId>/data/browse', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlTrialDataBrowse(sess, trialId):
 #---------------------------------------------------------------------------------------
 # Return page with datatable for the trial in wide form.
@@ -950,7 +939,7 @@ def urlTrialDataBrowse(sess, trialId):
     return dp.dataPage(content=r, title='Browse', trialId=trialId)
 
 @app.route(PREURL+'/trial/<trialId>/datalong/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlTrialDataLongForm(sess, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
@@ -960,15 +949,16 @@ def urlTrialDataLongForm(sess, trialId):
     out = trl.getDataLongForm(showTime, showUser, showGps, showAttributes)
     return Response(out, content_type='text/plain')
 
-@app.route(PREURL+'/deleteTrial/<trialId>/', methods=["GET", "POST"])
-@dec_check_session()
-def urlDeleteTrial(sess, trialId):
+@app.route(PREURL+'/projects/<int:projId>/deleteTrial/<int:trialId>/', methods=["GET", "POST"])
+@session_check(trialIdParamName='trialId')
+def urlDeleteTrial(sess, projId, trialId):
 #===========================================================================
 # Page for trial deletion. Display trial stats and request confirmation
 # of delete.
 #
 # MFK - replace the post part of this with a DELETE?
-    trl = dal.getTrial(sess.db(), trialId)
+    trl = g.sessTrial
+#     trl = dal.getTrial(sess.db(), trialId)
     def getHtml(msg=''):
         out = '<div style="color:red">{0}</div><p>'.format(msg);  # should be red style="color:red"
         out += 'Trial {0} contains:<br>'.format(trl.name)
@@ -1003,7 +993,7 @@ def urlDeleteTrial(sess, trialId):
             return frontPage()
 
 @app.route(PREURL+'/trial/<trialId>/newTrait/', methods=["GET", "POST"])
-@dec_check_session()
+@session_check()
 def urlNewTrait(sess, trialId):
 #===========================================================================
 # Page for trait creation.
@@ -1026,7 +1016,7 @@ def urlNewTrait(sess, trialId):
 
 
 @app.route(PREURL+'/trial/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
-@dec_check_session()
+@session_check()
 def urlTraitDetails(sess, trialId, traitId):
 #===========================================================================
 # Page to display/modify the details for a trait.
@@ -1034,7 +1024,7 @@ def urlTraitDetails(sess, trialId, traitId):
     return fpTrait.traitDetailsPageHandler(sess, request, trialId, traitId)
 
 @app.route(PREURL+'/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
-@dec_check_session()
+@session_check()
 def urlUploadScores(sess, trialId):
     if request.method == 'GET':
         return dp.dataTemplatePage(sess, 'uploadScores.html', title='Upload Scores', trialId=trialId)
@@ -1048,8 +1038,8 @@ def urlUploadScores(sess, trialId):
             return trialPage(sess, trialId)
 
 
-@app.route(PREURL+'/trial/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
-@dec_check_session()
+@app.route(PREURL+'/projects/<int:projId>/trials/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
+@session_check()
 def urlAttributeUpload(sess, trialId):
     if request.method == 'GET':
         return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', trialId=trialId)
@@ -1063,7 +1053,7 @@ def urlAttributeUpload(sess, trialId):
             return trialPage(sess, trialId)
 
 @app.route(PREURL+'/trial/<trialId>/attribute/<attId>/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlAttributeDisplay(sess, trialId, attId):
     natt = dal.getAttribute(sess.db(), attId)
     out = "<b>Attribute</b> : {0}".format(natt.name)
@@ -1110,7 +1100,7 @@ def manageUsersHTML(sess, msg=None):
     return out
 
 @app.route(PREURL+'/project/<projectName>/user/<ident>', methods=['DELETE'])
-@dec_check_session()
+@session_check()
 def urlUserDelete(sess, projectName, ident):
     if not sess.adminRights() or projectName != sess.getProjectName():
         return fpUtil.badJuju(sess, 'No admin rights')
@@ -1121,7 +1111,7 @@ def urlUserDelete(sess, projectName, ident):
         return jsonify({"status":"good"})
 
 @app.route(PREURL+'/project/<projectName>/users', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlUsersGet(sess, projectName):
     if not sess.adminRights():
         return badJsonJuju(sess, 'No admin rights')
@@ -1132,12 +1122,11 @@ def urlUsersGet(sess, projectName):
     for login, namePerms in sorted(users.items()):
         retjson.append([url_for('urlUserDelete', projectName=projectName, ident=login),
                         login, namePerms[0], namePerms[1]])
-    print 'json dumps:'
-    print json.dumps(retjson)
+    mkdbg('json dumps:\n{}'.format(json.dumps(retjson)))
     return jsonify({'users':retjson})
 
 @app.route(PREURL+'/project/<projectName>/users', methods=['POST'])
-@dec_check_session()
+@session_check()
 def urlUsersPost(sess, projectName):
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
@@ -1145,8 +1134,7 @@ def urlUsersPost(sess, projectName):
     try:
         userData = request.json
     except Exception, e:
-        print 'exception'
-
+        return Response('Bad or missing JSON')
     if not userData:
         return Response('Bad or missing JSON')
     util.flog("ajaxData:\n" + json.dumps(userData))
@@ -1172,7 +1160,7 @@ def urlUsersPost(sess, projectName):
     return jsonify({"status":"ok", "errors":errMsgs})
 
 @app.route(PREURL+'/project/<projectName>/details/', methods=['GET', 'POST'])
-@dec_check_session()
+@session_check()
 def urlUserDetails(sess, projectName):
     if projectName != sess.getProjectName():
         return badJuju(sess, 'Incorrect project name')
@@ -1285,7 +1273,7 @@ def formElements4UserManagement():
 
 @app.route(PREURL+'/fpadmin/', methods=['GET'])
 @nocache  # This not needed? I was thinking of including tokens in urls in page, but now a cookie
-@dec_check_session()
+@session_check()
 def urlFPAdmin(sess):
     # Check permissions:
     usr = sess.getUser()
@@ -1304,7 +1292,7 @@ def urlFPAdmin(sess):
     try:
         jresp = resp.json()
     except Exception as e:
-        print 'exception getting json response: {}'.format(e)
+        return badJuju(sess, 'exception getting json response: {}'.format(e))
 
 
 #        try:
@@ -1339,7 +1327,7 @@ def urlFPAdmin(sess):
 #######################################################################################################
 
 @app.route(PREURL+'/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
-@dec_check_session()
+@session_check()
 def urlSystemTraits(sess, projectName):
 #---------------------------------------------------------------------------
 #
@@ -1356,11 +1344,13 @@ def urlSystemTraits(sess, projectName):
 
 
 @app.route(PREURL+'/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
-@dec_check_session()
+@session_check()
 def urlAddSysTrait2Trial(sess, trialId):
 #-------------------------------------------------------------------------------
 # MFK need check valid traitId and preferably trialId too (it could be hacked).
-#
+# MFK - this should probly be restAPI call - with the traitId in the url, called
+# from the browser. Need to be able to generate rest api urls here to do that,
+# but could we still do that if we were running on a different server?
     # Get and validate traitId:
     traitId = 0
     try:
@@ -1598,13 +1588,13 @@ def tiAttributeHtml(sess, ti):
 # NB to use, uncomment this and change the current
 # method to:
 # @app.route(PREURL+'/scoreSet2/<traitInstanceId>/', methods=['GET'])
-# @dec_check_session()
+# @session_check()
 # def urlScoreSetTraitInstance2(sess, traitInstanceId):
 #
 #
 # import requests
 # @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
-# @dec_check_session()
+# @session_check()
 # def urlScoreSetTraitInstance(sess, traitInstanceId):
 #     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
 #     print 'newurl:' + newurl
@@ -1613,7 +1603,7 @@ def tiAttributeHtml(sess, ti):
 #     return requests.get(newurl, cookies=cooky).content
 
 @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlScoreSetTraitInstance(sess, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Try client graphics.
@@ -1753,7 +1743,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
     return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.getProjectName(), ti.trial.name, traitInstanceId)
 
 @app.route(PREURL+"/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlPhotoScoreSetArchive(sess, traitInstanceId):
 #--------------------------------------------------------------------
 # Return zipped archive of the photos for given traitInstance
@@ -1769,7 +1759,7 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
 
 
 @app.route(PREURL+"/trial/<trialId>/photo/<filename>", methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlPhoto(sess, trialId, filename):
 # This is a way to provide images to authenticated user only.
 # An alternative would be to put the image in a static folder,
@@ -1785,12 +1775,12 @@ def urlPhoto(sess, trialId, filename):
 
 
 @app.route(PREURL+'/FieldPrime/user/<userName>/', methods=['GET'])
-@dec_check_session()
+@session_check()
 def urlUserHome(sess, userName):
     return frontPage()
 
 @app.route(PREURL+'/FieldPrime/projects/<int:projId>/', methods=['GET'])
-@dec_check_session(returnNoneSess=True, projIdParamName='projId')
+@session_check()
 def urlProject(sess, projId):
 #-----------------------------------------------------------------------
 # URL handler for user choice from project list.
@@ -1818,12 +1808,11 @@ def urlProject(sess, projId):
             # No access to this project - bad user!
             return badJuju(sess, 'no access to project')
 
-
 @app.route(PREURL+'/logout', methods=["GET"])
-@dec_check_session(logout=True)
-def urlLogout(sess):
-    sess.close()
-    return redirect(url_for('urlMain'))
+def urlLogout():
+    ret = redirect(url_for('urlMain'))
+    ret.set_cookie(NAME_COOKIE_TOKEN, 'loggedOut')
+    return ret
 
 def errorScreenInSession(sess, msg):
 #-----------------------------------------------------------------------
@@ -1857,14 +1846,9 @@ def badJsonJuju(sess, error=None):
     resp.status_code = 500
     return resp
 
-
-#@app.route(PREURL+'/info/<pagename>', methods=["GET"])
-#@dec_check_session(returnNoneSess=True)
-#def urlInfoPage(sess, pagename):
-# @app.route(PREURL+'/info/<pagename>', methods=["GET"])
-# def urlInfoPage(pagename):
-#     return render_template(pagename + '.html', title='FieldPrime {0}'.format(pagename), pagename=pagename)
-
+#
+# Endpoints for some static pages that don't require login.
+#
 @app.route(PREURL+'/info/news', methods=["GET"])
 def urlInfoPageNews():
     pagename = 'news'
@@ -1903,7 +1887,7 @@ def urlMain():
 # in the file system), and the id of this session is sent back to the browser in a cookie,
 # which should be sent back with each subsequent request.
 #
-# Every access via the various app.routes above, should go through decorator dec_check_session
+# Every access via the various app.routes above, should go through decorator session_check
 # which will check there is a valid session current. If not, eg due to timeout, then it redirects
 # to the login screen.
 #

@@ -642,6 +642,14 @@ class Project(DeclarativeBase):
         dbc = _dbc(self)
         return dbc.query(Trait).filter(Trait.id == traitId).one()
     
+    def deleteTrait(self, traitId):
+    #-------------------------------------------------------------------------------------------------
+    # See Trial.deleteTrait.
+    # This should be (and we should check) that this is a project trait, not a trial trait.
+    # Also that any peripheral data is cleaned up. NB, it seems traitInstance does NOT delete cascade
+        dbc = _dbc(self)
+        return dbc.query(Trait).filter(Trait.id == traitId).delete()
+    
     def newTrait(self, caption, description, datatype, typeData=None):
     #-----------------------------------------------------------------------
     # Create trait in db, from data from html form.
@@ -984,8 +992,14 @@ class Trial(DeclarativeBase):
     def getNodes(self):
     # Returns list of Nodes, sorted by node id.
         return self.nodes
-    def getNode(self, nodeId):
-        return getNode(_dbc(self), nodeId) 
+    def getNode(self, nodeId): # Replace this with getNodeById below
+        return getNode(_dbc(self), nodeId)
+    @oneException2None
+    def getNodeById(self, nodeId):
+    # New version of above, checking that node is within trial.
+        dbc = _dbc(self)
+        return dbc.query(Node).filter(and_(Node.id == nodeId, Node.trial_id==self.id)).one()
+
 
     def getNodesSortedRowCol(self):
         # Return nodes for the specified trial, sorted by row/col
@@ -1206,12 +1220,9 @@ class Trial(DeclarativeBase):
         node.col = ind2
         node.trial_id = self.getId()
         
-#         print 'before {}'.format(node.id)
         dbc = _dbc(self)
         dbc.add(node)
         dbc.flush()
-#         print 'after {}'.format(node.id)
-#         raise DalError('foo')
         
         if atts is not None:
             currAtts = self.getAttributes()#[att.name for att in self.getAttributes()]
@@ -1235,16 +1246,24 @@ class Trial(DeclarativeBase):
             
         return node
     
-    def deleteNode(self, nodeId, jnode):
+    def updateNode(self, nodeId, jnode):
     # expects:    {'index1': - , 'index2': - , 'attvals':{<attName>:<attValue>, ...}}
     # returns node, or raises exception.
     # Commit is the responsibility of the caller.
-        
+        # Get the node (must be in this trial:
+        node = self.getNodeById(nodeId)
+        if node is None:
+            raise DalError('Node does not exist')
+        ind1 = jnode.get('index1')
+        ind2 = jnode.get('index2')    
         try:
-            ind1 = int(jnode.get('index1'))
-            ind2 = int(jnode.get('index2'))
+            if ind1 is not None:                
+                node.row = int(ind1)
+            if ind2 is not None:                
+                node.col = int(ind2)
         except Exception: #ValueError, TypeError:
-            raise DalError('index1 and index2 must be present, and valid integers')
+            raise DalError('index1 and index2 must valid integers')
+# Should we check new ind1/ind2 is unique? This is NOT in table specs        
         atts = jnode.get('attvals')
         if self.getNodeId(ind1, ind2) is not None:
             raise DalError('A node with index values {}, {} already exists'.format(ind1, ind2))
@@ -1253,12 +1272,9 @@ class Trial(DeclarativeBase):
         node.col = ind2
         node.trial_id = self.getId()
         
-#         print 'before {}'.format(node.id)
         dbc = _dbc(self)
-        dbc.add(node)
-        dbc.flush()
-#         print 'after {}'.format(node.id)
-#         raise DalError('foo')
+#         dbc.add(node)
+#         dbc.flush()
         
         if atts is not None:
             currAtts = self.getAttributes()#[att.name for att in self.getAttributes()]

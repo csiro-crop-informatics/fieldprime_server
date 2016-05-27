@@ -8,7 +8,7 @@
 from flask import url_for, render_template, g
 import fp_common.fpsys as fpsys
 import fp_common.const as fpconst
-import fpUtil
+import fpUtil as fpu
 import forms
 
 
@@ -25,31 +25,6 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
 #
     out = ''
     out += '<div style="overflow: hidden; display:inline-block;">'
-#     out += '''<script>
-#     function zirptl3(newLocation) {
-#     sessionStorage.removeItem("fpCurrTrialPageTab"); //MFK hard code test hack
-#         if (newLocation !== 0) location=newLocation;
-#     }
-#     </script>'''
-
-#     if label is not None:
-#         out +=   '<div style="display:inline-block;">'
-#         out +=     '<label for="tdd">{0}: &nbsp;</label>'.format(label)
-#         out +=   '</div>'
-#     out += '<div style="display:inline-block;min-width:200px">'
-#     out += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" onchange="zirptl3(this.options[this.selectedIndex].value);">'
-#     if promptOptionString is not None:
-#         out +=     '<option value=0 selected="selected">{0}</option>'.format(promptOptionString)
-#     for thing in listOfThings:
-#         val = thingValueFunc(thing)
-#         out += '<option value="{0}" {1}>{2}</option>'.format(
-#             val,
-#             'selected="selected"' if val ==  selectedThingValue else '',
-#             thingNameFunc(thing))
-#     out +=     '</select>'
-#     out +=   '</div>'
-
-
     sel = '<div style="display:inline-block;min-width:200px">'
     sel += '<select class="form-control" style="min-width:300" name="tdd" id="tdd" ' + \
               'onchange="fplib.gotoLocationAndClearLastTab(this.options[this.selectedIndex].value);">'
@@ -65,7 +40,7 @@ def selectorOfURLs(label, promptOptionString, listOfThings, thingValueFunc, thin
     sel +=   '</div>'
 
     if label is not None:
-        out += fpUtil.htmlLabelValue(label, sel)
+        out += fpu.htmlLabelValue(label, sel)
     else:
         out = sel
 
@@ -101,7 +76,7 @@ def userBit():
         userNameLink = '<a href="#" data-toggle="modal" data-target="#updateUserForm">{}</a>'.format(ident)
     else:
         userNameLink = ident
-    out  += '<span>' + fpUtil.htmlLabelValue('User', userNameLink) + '</span>'
+    out  += '<span>' + fpu.htmlLabelValue('User', userNameLink) + '</span>'
     out += '<a href="{0}" class="btn btn-primary" role="button">Sign Out</a>'.format(url_for('urlLogout'))
     return out
 
@@ -137,15 +112,7 @@ def _dataNavigationContent(trialId):
     r1c2 +=   '<a style="white-space:nowrap" href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
             '<span class="fa fa-question-circle"></span> App User Guide</a>'
     r1c2 += '</div>'
-    nc += fpUtil.bsRow(fpUtil.bsCol(r1c1, numCols=6) + fpUtil.bsCol(r1c2, numCols=6))
-
-#     teststuff = '''
-#   <div class="row">
-#     <div style="background-color:red" class="col-sm-6">a</div>
-#     <div style="background-color:green" class="col-sm-6">b</div>
-# </div>'''
-#     <div style="background-color:blue" class="col-sm-4">c</div>
-#     nc += teststuff
+    nc += fpu.bsRow(fpu.bsCol(r1c1, numCols=6) + fpu.bsCol(r1c2, numCols=6))
 
     #---------------------------------------------------------------------------
     # Second row. Project and project specific buttons:
@@ -164,7 +131,7 @@ def _dataNavigationContent(trialId):
         lambda p: p.projectName(),
         None if projectName is None else url_for('urlProject', projId=projId))
 
-    r2 = fpUtil.bsCol(r2c1, numCols=6)
+    r2 = fpu.bsCol(r2c1, numCols=6)
 
     # Show project specific buttons:
     if projectName is not None:
@@ -172,11 +139,11 @@ def _dataNavigationContent(trialId):
         if g.userProject.hasAdminRights():
             r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=projectName))
         r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=projectName))
-        r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for("urlNewTrial"))
+        r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for('urlNewTrial', projId=projId))
         r2c2 += '</div><div style="clear:both"></div>'
-        r2 += fpUtil.bsCol(r2c2, numCols=6, extra='style="white-space:nowrap"')
+        r2 += fpu.bsCol(r2c2, numCols=6, extra='style="white-space:nowrap"')
 
-    nc += fpUtil.bsRow(r2)
+    nc += fpu.bsRow(r2)
 
     #---------------------------------------------------------------------------
     # Trial selector:
@@ -185,11 +152,11 @@ def _dataNavigationContent(trialId):
         if trialId is None or trialId >= 0:
             r3c1 = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None,
                 g.userProject.getModelProject().getTrials(),
-                lambda t: url_for('urlTrial', trialId=t.id), lambda t: t.name,
-                None if trialId is None else url_for('urlTrial', trialId=trialId))
-            nc += fpUtil.bsRow(fpUtil.bsCol(r3c1, numCols=6))
+                lambda t: url_for('urlTrial', projId=projId, trialId=t.id), lambda t: t.name,
+                None if trialId is None else url_for('urlTrial', projId=projId, trialId=trialId))
+            nc += fpu.bsRow(fpu.bsCol(r3c1, numCols=6))
 
-    nc += fpUtil.htmlHorizontalRule()
+    nc += fpu.htmlHorizontalRule()
     return nc
 
 

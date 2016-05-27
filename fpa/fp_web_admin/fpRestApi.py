@@ -157,7 +157,7 @@ def verify_auth_token(token):
 
 @token_auth.error_handler
 def auth_error():
-    return errorAccess('session timed out')
+    return errorAccess('session expired')
 
 @basic_auth.verify_password
 def verify_password(user, password):
@@ -1104,13 +1104,52 @@ def urlGetTraits(mproj, params, projId):
         return jsonErrorReturn('Problem getting traits: ' + str(e), HTTP_BAD_REQUEST)
     return apiResponse(True, HTTP_OK, data=retList)
 
+@webRest.route(API_PREFIX + 'projects/<int:projId>/traits', methods=['POST'])
+@multi_auth.login_required
+@project_func()
+def urlCreateTrait(mproj, params, projId):
+#-----------------------------------------------------------------------------------------
+#^-----------------------------------
+#: POST: urlTraits from project
+#: Access: Requesting user needs create omnipotent permissions.
+#: Input: {
+#:   'name': <name>,
+#:   'description': <description>,
+#:   'datatype': <name of datatype>,
+#:   'typeData': [..{caption:<category name, value:<category value>}..]
+#: }
+#: Success Response:
+#:   Status code: HTTP_CREATED
+#:   url: <url of created trait>
+#:   data: none
+#$
+    mkdbg('in urlCreateTrait')
+    # check permissions
+    if not g.canAdmin:
+        return errorAccess()
+    try:
+        # todo parameter checks, perhaps, checks are done in makeNewProject
+        name = params.get('name')
+        description = params.get('description')
+        datatype = params.get('datatype')
+        typeData = params.get('typeData')
+        if typeData is not None and type(typeData) != dict:
+            return errorBadRequest('invalid typeData')      
+        trt = mproj.newTrait(name, description, datatype, typeData)
+    except Exception, e:
+        return errorBadRequest('Problem creating trait: ' + str(e))
+
+    return apiResponse(True, HTTP_CREATED, msg='Trait {} created'.format(name),
+                url=url_for('webRest.urlGetTrait', projId=projId,
+                            traitId=trt.getId(), _external=True))
+    
 @webRest.route(API_PREFIX + 'projects/<int:projId>/traits/<int:traitId>', methods=['GET'])
 @multi_auth.login_required
 @project_func()
 def urlGetTrait(mproj, params, projId, traitId):
 #---------------------------------------------------------------------------------
 #^
-#: GET: urlTraits from project
+#: GET: trait url from getTraits
 #: Access: Omnipotence or project view access.
 #: Input: None
 #: Success Response:
@@ -1133,44 +1172,26 @@ def urlGetTrait(mproj, params, projId, traitId):
         return jsonErrorReturn('Problem getting trait: ' + str(e), HTTP_BAD_REQUEST)
     return apiResponse(True, HTTP_OK, data=retObj)
 
-@webRest.route(API_PREFIX + 'projects/<int:projId>/traits', methods=['POST'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>/traits/<int:traitId>', methods=['DELETE'])
 @multi_auth.login_required
 @project_func()
-def urlCreateTrait(mproj, params, projId):
-#-----------------------------------------------------------------------------------------
-#^-----------------------------------
-#: POST: API_PREFIX + 'projects'
-#: Access: Requesting user needs create omnipotent permissions.
-#: Input: {
-#:   'name': <name>,
-#:   'description': <description>,
-#:   'datatype': <name of datatype>,
-#:   'typeData': [..{caption:<category name, value:<category value>}..]
-#: }
+def urlDeleteTrait(mproj, params, projId, traitId):
+#---------------------------------------------------------------------------------
+#^
+#: DELETE: urlTraits from project
+#: Access: Omnipotence or project view access.
+#: Input: None
 #: Success Response:
-#:   Status code: HTTP_CREATED
-#:   url: <url of created project>
+#:   Status code: HTTP_OK
 #:   data: none
 #$
-    mkdbg('in urlCreateTrait')
-    # check permissions
-    if not g.canAdmin:
-        return errorAccess()
+    mkdbg('urlDeleteTrait({})'.format(projId))
+    return notImplemented()
     try:
-        # todo parameter checks, perhaps, checks are done in makeNewProject
-        name = params.get('name')
-        description = params.get('description')
-        datatype = params.get('datatype')
-        typeData = params.get('typeData')
-        if typeData is not None and type(typeData) != dict:
-            return errorBadRequest('invalid typeData')      
-        trt = mproj.newTrait(name, description, datatype, typeData)
-    except Exception, e:
-        return errorBadRequest('Problem creating trait: ' + str(e))
-
-    return apiResponse(True, HTTP_CREATED, msg='Trait {} created'.format(name),
-                url=url_for('webRest.urlGetTrait', projId=projId,
-                            traitId=trt.getId(), _external=True))
+        mproj.deleteTrait(traitId)
+    except Exception as e:
+        return jsonErrorReturn('Problem deleting trait: ' + str(e), HTTP_BAD_REQUEST)
+    return apiResponse(True, HTTP_OK)
 
 ## Trials: ############################################################################
 
@@ -1533,10 +1554,9 @@ def urlUpdateNode(mproj, params, projId, trialId, nodeId):
         g.dbsess.commit()
     except Exception as e:
         g.dbsess.rollback()
-        return errorBadRequest("Error creating trial: {}".format(e.__str__()))
+        return errorBadRequest("Error updating node: {}".format(e.__str__()))
     return apiResponse(True, HTTP_CREATED, msg='Node created',
             url=url_for('webRest.urlGetNode', _external=True, projId=projId, trialId=trialId, nodeId=mnode.getId()))
-#     return notImplemented()
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes/<int:nodeId>', methods=['DELETE'])
 @multi_auth.login_required
