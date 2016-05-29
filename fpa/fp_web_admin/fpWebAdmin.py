@@ -377,7 +377,7 @@ def htmlTabProperties(sess, trial):
 def htmlTabTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
-    createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", url_for("urlNewTrait", trialId=trial.id))
+    createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", fpUrl("urlNewTrait", sess, trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
     addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select System Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
@@ -463,17 +463,17 @@ def htmlTabData(sess, trial):
     dl += "</div>"
 
     # Download wide format:
-    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataWideTSV", trialId=trial.id))
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, fpUrl("urlTrialDataWideTSV", sess, trialId=trial.id))
     dl +=     "<button class='fpButton'>Download Trial Data - wide format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
     # Download long format:
-    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, url_for("urlTrialDataLongForm", trialId=trial.id))
+    dl += "<p><a href='dummy' download='{0}.tsv' onclick='this.href=addParams(\"{1}\")'>".format(trial.name, fpUrl("urlTrialDataLongForm", sess, trialId=trial.id))
     dl +=     "<button class='fpButton'>Download Trial Data - long format</button></a><br />"
     dl +=     "<span style='font-size: smaller;'>(NB For Internet Explorer you may need to right click and Save Link As)</span>"
 
     # View wide format as datatable:
-    loc = url_for("urlTrialDataBrowse", trialId=trial.id)
+    loc = fpUrl("urlTrialDataBrowse", sess, trialId=trial.id)
     dl += "<p>" + fpUtil.htmlFpButtonLink("Browse Trial Data",
          location='addParams(\'{0}\')'.format(loc), quoteLocation=False)
     return dl
@@ -877,21 +877,22 @@ def getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttribute
     return r
 
 
-@app.route(PREURL+'/trial/<trialId>/data/', methods=['GET'])
-@session_check()
-def urlTrialDataWideTSV(sess, trialId):
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/data/', methods=['GET'])
+@session_check(trialIdParamName='trialId')
+def urlTrialDataWideTSV(sess, projId, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
     showNotes = request.args.get("notes")
     showAttributes = request.args.get("attributes")
-    trl = dal.getTrial(sess.db(), trialId)
-    out = getDataWideForm(trl, showTime, showUser, showGps, showNotes, showAttributes)
+    #trl = dal.getTrial(sess.db(), trialId)
+    trial = g.sessTrial
+    out = getDataWideForm(trial, showTime, showUser, showGps, showNotes, showAttributes)
     return Response(out, content_type='text/plain')
 
-@app.route(PREURL+'/trial/<trialId>/data/browse', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/data/browse', methods=['GET'])
 @session_check()
-def urlTrialDataBrowse(sess, trialId):
+def urlTrialDataBrowse(sess, projId, trialId):
 #---------------------------------------------------------------------------------------
 # Return page with datatable for the trial in wide form.
 #
@@ -939,9 +940,9 @@ def urlTrialDataBrowse(sess, trialId):
 #     });</script>''' % str(metas)
     return dp.dataPage(content=r, title='Browse', trialId=trialId)
 
-@app.route(PREURL+'/trial/<trialId>/datalong/', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/datalong/', methods=['GET'])
 @session_check()
-def urlTrialDataLongForm(sess, trialId):
+def urlTrialDataLongForm(sess, projId, trialId):
     showGps = request.args.get("gps")
     showUser = request.args.get("user")
     showTime = request.args.get("timestamp")
@@ -993,13 +994,13 @@ def urlDeleteTrial(sess, projId, trialId):
             # Do nothing:
             return frontPage()
 
-@app.route(PREURL+'/trial/<trialId>/newTrait/', methods=["GET", "POST"])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/newTrait/', methods=["GET", "POST"])
 @session_check()
-def urlNewTrait(sess, trialId):
+def urlNewTrait(sess, projId, trialId):
 #===========================================================================
 # Page for trait creation.
 #
-    if trialId == 'sys':
+    if trialId == 0:
         trialId = -1
     if request.method == 'GET':
         # NB, could be a new sys trait, or trait for a trial. Indicated by trialId which will be
@@ -1016,7 +1017,7 @@ def urlNewTrait(sess, trialId):
         return trialPage(sess, trialId)
 
 
-@app.route(PREURL+'/projects/<int:projId>/trials/<trialId>/trait/<traitId>', methods=['GET', 'POST'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/trait/<traitId>', methods=['GET', 'POST'])
 @session_check(trialIdParamName='trialId')
 def urlTraitDetails(sess, projId, trialId, traitId):
 #===========================================================================
@@ -1340,7 +1341,7 @@ def urlSystemTraits(sess, projectName):
         sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = fpUtil.htmlFieldset(
             fpUtil.htmlForm(sysTraitListHtml) +
-            fpUtil.htmlButtonLink("Create New System Trait", url_for("urlNewTrait", trialId='sys')),
+            fpUtil.htmlButtonLink("Create New System Trait", fpUrl("urlNewTrait", sess, trialId=0)),
             "System Traits")
         return dp.dataPage(title='System Traits', content=r, trialId=-1)
 
