@@ -1249,13 +1249,15 @@ def urlCreateTrial(mproj, params, projId):
 #: POST: <trialUrl from getProject>
 #: Access: Requesting user needs project admin permissions.
 #: Input: {
-#:   trialName : name project - must be appropriate.
-#:   trialYear : text
-#:   trialSite : text
-#:   trialAcronym : text
-#:   nodeCreation : 'true' or 'false'
-#:   rowAlias : text
-#:   colAlias : text
+#:   properties : {
+#:     name : name project - must be appropriate.
+#:     year : text
+#:     site : text
+#:     acronym : text
+#:     nodeCreation : 'true' or 'false'
+#:     index1name : text
+#:     index2name : text
+#:   }
 #:   attributes : array of {
 #:     name : <attribute name>,
 #:     datatype : OPTIONAL 'text' | 'decimal' | 'integer'
@@ -1277,13 +1279,16 @@ def urlCreateTrial(mproj, params, projId):
     if not g.canAdmin:
         return errorAccess()
 
-    trialName = params.get('trialName')
-    trialYear = params.get('trialYear')
-    trialSite = params.get('trialSite')
-    trialAcronym = params.get('trialAcronym')
+    properties = params.get('properties')
+    if properties is None:
+        return errorBadRequest('missing properties parameter')
+    trialName = properties.get('name')
+    trialYear = properties.get('year')
+    trialSite = properties.get('site')
+    trialAcronym = properties.get('acronym')    
+    index1 = properties.get('index1name')
+    index2 = properties.get('index2name')
     
-    rowAlias = params.get('rowAlias')
-    colAlias = params.get('colAlias')
     attributes = params.get('attributes')
     nodes = params.get('nodes')
 
@@ -1293,12 +1298,12 @@ def urlCreateTrial(mproj, params, projId):
 
     try:
         trial = mproj.newTrial(trialName, trialSite, trialYear, trialAcronym)  #MFK this func doing commits.
-        nodeCreation = params.get('nodeCreation')
+        nodeCreation = properties.get('nodeCreation')
         if nodeCreation is not None:
             if nodeCreation not in ('true', 'false'):
                 raise Exception('nodeCreation must be "true" or "false"') 
             trial.setTrialPropertyBoolean('nodeCreation', nodeCreation=='true')
-        trial.setNavIndexNames(rowAlias, colAlias)
+        trial.setNavIndexNames(index1, index2)
 
         # process attributes:
         if attributes is not None:
@@ -1372,13 +1377,15 @@ def urlGetTrial(userid, params, projId, trialId):
     # check user has access to project
     trial = models.getTrial(g.userProject.db(), trialId)
     returnJson = { # perhaps we should have trial.getJson()
-        "name":trial.getName(),
-        "year":trial.getYear(),
-        "site":trial.getSite(),
-        "acronym":trial.getAcronym(),
-        "nodeCreation":trial.getTrialProperty('nodeCreation'),
-        "rowAlias":trial.navIndexName(0),
-        "colAlias":trial.navIndexName(1),
+        'properties' : {
+            "name":trial.getName(),
+            "year":trial.getYear(),
+            "site":trial.getSite(),
+            "acronym":trial.getAcronym(),
+            "nodeCreation":trial.getTrialProperty('nodeCreation'),
+            "index1name":trial.navIndexName(0),
+            "index2name":trial.navIndexName(1)
+        },
         "urlAttributes":url_for('webRest.urlGetAttributes', _external=True,
                                 projId=projId, trialId=trialId),
         "urlNodes":url_for('webRest.urlGetNodes', _external=True,

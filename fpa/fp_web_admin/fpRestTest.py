@@ -39,6 +39,15 @@ tproj1Name = 'testProject1'
 ttrl1Name = 'testTrial1'
 ttrl1Year = 2016
 ttrl1Site = 'Canberra'
+ttrl1Properties = {
+    'name': ttrl1Name,
+    'year': ttrl1Year,
+    'site': ttrl1Site,
+    'acronym':'abrocat',
+    'nodeCreation' : 'true',
+    'index1name' : 'Range',
+    'index2name' : 'Run'
+}
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -119,6 +128,11 @@ def deleteSomething(authHdr, url, somethingName='something'):
 def checkIsSame(thisThing, shouldBeThis, thingName='value'):
 # Raises exception if not thisThing equals shouldBeThis
     if str(thisThing) != str(shouldBeThis):
+        raise RTException('Incorrect {}: expected {}, got {}'.format(thingName, shouldBeThis, thisThing))
+
+def checkObjSame(thisThing, shouldBeThis, thingName='value'):
+# Raises exception if not thisThing equals shouldBeThis
+    if thisThing != shouldBeThis:
         raise RTException('Incorrect {}: expected {}, got {}'.format(thingName, shouldBeThis, thisThing))
 
 ### Test funcs: ##########################################################################
@@ -218,14 +232,17 @@ def testCreateProject(authHdr, pname, cname, cemail, adminLogin):
         })
     return resp.get('url')
 
-def testCreateTrial(authHdr, projUrl, name, year, site):
+def testCreateTrial(authHdr, projUrl, trialProperties):
     resp = createSomething(authHdr, projUrl, somethingName='trial', params= {
-            'trialName': name,
-            'trialYear': year,
-            'trialSite': site,
-            'nodeCreation' : 'true',
-            'rowAlias' : 'Range',
-            'colAlias' : 'Run',
+            'properties': trialProperties,
+#      {
+#                 'trialName': name,
+#                 'trialYear': year,
+#                 'trialSite': site,
+#                 'nodeCreation' : 'true',
+#                 'index1name' : 'Range',
+#                 'index2name' : 'Run'
+#             },
             'attributes': [{'name':'att1', 'datatype':'integer'},
                            {'name':'att2', 'datatype':'decimal'},
                            {'name':'att3'}],
@@ -286,16 +303,18 @@ def testProjectTraits(authHdr, projTraitsUrl):
 def testProjectTrialStuff(authHdr, projTrialsUrl):
     # Create trial:
     hout('Test Create Trial')
-    trialUrl = testCreateTrial(authHdr, projTrialsUrl,
-                               name=ttrl1Name, year=ttrl1Year, site=ttrl1Site)
+    trialUrl = testCreateTrial(authHdr, projTrialsUrl, ttrl1Properties)
     sout("Trial Created: " + trialUrl)
 
     # Get specific trial:
     hout('Test get trials')
     trial = fprData(getSomething(authHdr, trialUrl, "trial"))
-    checkIsSame(trial.get('name'), ttrl1Name, 'trial name')
-    checkIsSame(trial.get('year'), ttrl1Year, 'trial year')
-    checkIsSame(trial.get('site'), ttrl1Site, 'trial site')
+    properties = trial['properties']
+#     checkObjSame(properties, ttrl1Properties)
+    checkIsSame(properties.get('name'), ttrl1Properties.get('name'), 'trial name')
+    checkIsSame(properties.get('year'), ttrl1Properties.get('year'), 'trial year')
+    checkIsSame(properties.get('site'), ttrl1Properties.get('site'), 'trial site')
+    checkIsSame(properties.get('index2name'), ttrl1Properties.get('index2name'), 'trial index2name')
     jout(trial)
     # Create a node, should check nodecreation invalid value, admin access..
     urlNodes = trial.get('urlNodes')
