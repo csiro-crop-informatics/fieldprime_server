@@ -809,7 +809,6 @@ def getProjectDBname(projectSpecifier):
 def fpSetupG(g, userIdent=None, projectName=None):
     g.userName = userIdent
     g.user = None if userIdent is None else User.getByLogin(userIdent)
-    g.projectName = projectName
     g.userProject = None # this has to be set explicitly at the moment
 
 

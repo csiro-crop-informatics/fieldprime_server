@@ -94,8 +94,12 @@ def _dataNavigationContent(trialId):
 #     The trial select dropdown is not shown.
 #
     userIdent = g.user.getIdent()
-    projectName = None if g.userProject is None else g.userProject.getProjectName()
-    projId = None if g.userProject is None else g.userProject.getProjectId()
+    sess = g.get('sess')
+    if sess is not None:
+        projectName = sess.getProjectName()
+        projId = sess.getProjectId()
+        print('got sess,', projectName,',',projId)
+    else: print('no sess')
 
     nc = ''
     #---------------------------------------------------------------------------
@@ -126,18 +130,18 @@ def _dataNavigationContent(trialId):
     if not projList:
         return nc
         return 'A problem occurred in finding projects for user {0}:{1}'.format(userIdent, errMsg)
-    r2c1 = selectorOfURLs('Project', '..Select Project..' if projectName is None else None, projList,
+    r2c1 = selectorOfURLs('Project', '..Select Project..' if sess is None else None, projList,
         lambda p: url_for('urlProject', projId=p.getProjectId()),
         lambda p: p.projectName(),
-        None if projectName is None else url_for('urlProject', projId=projId))
+        None if sess is None else url_for('urlProject', projId=projId))
 
     r2 = fpu.bsCol(r2c1, numCols=6)
 
     # Show project specific buttons:
-    if projectName is not None:
+    if sess is not None:
         r2c2 = '<div style="float:right; display:inline-block">'
-        if g.userProject.hasAdminRights():
-            r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projectName=projectName))
+        if sess.adminRights():
+            r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projId=projId))
         r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=projectName))
         r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for('urlNewTrial', projId=projId))
         r2c2 += '</div><div style="clear:both"></div>'
@@ -147,11 +151,11 @@ def _dataNavigationContent(trialId):
 
     #---------------------------------------------------------------------------
     # Trial selector:
-    if projectName is not None:
+    if sess is not None:
         # Add trial selector:
         if trialId is None or trialId >= 0:
             r3c1 = selectorOfURLs('Trial', '..Select Trial..' if trialId is None else None,
-                g.userProject.getModelProject().getTrials(),
+                g.sess.getProject().getTrials(),
                 lambda t: url_for('urlTrial', projId=projId, trialId=t.id), lambda t: t.name,
                 None if trialId is None else url_for('urlTrial', projId=projId, trialId=trialId))
             nc += fpu.bsRow(fpu.bsCol(r3c1, numCols=6))

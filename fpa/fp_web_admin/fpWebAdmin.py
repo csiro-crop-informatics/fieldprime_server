@@ -1,6 +1,6 @@
 # fpWebAdmin.py
-# Michael Kirk 2013
-#
+# Michael Kirk 2013 - 2016
+# Web site endpoints to administer and use FieldPrime
 #
 
 #
@@ -120,8 +120,8 @@ def internalError(e):
     usr = proj = None
     if hasattr(g, 'userName'):
         usr = g.userName
-    if hasattr(g, 'projectName'):
-        proj = g.projectName
+    if hasattr(g, 'sess'):
+        proj = g.sess.getProjectName()
     errmsg += 'User:{0} Project:{1}\n'.format(usr, proj)
     errmsg += '{0}\n{1}##########'.format(e, traceback.format_exc())
     util.flog(errmsg)
@@ -193,7 +193,11 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
             except Exception as e:
                 return loginPage(str(e))
             
-            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())            
+            fpsys.fpSetupG(g, userIdent=sess.getUserIdent(), projectName=sess.getProjectName())
+            g.sess = sess           
+            g.sessProjId = projId
+            g.fpUrl = fpUrl
+
             # Get trial if specified:
             if trialIdParamName is not None:
                 trialId = kwargs.get(trialIdParamName)
@@ -204,7 +208,6 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
                 if trial is None:
                     return errorScreenInSession(sess, 'trial not found')
                 g.sessTrial = trial
-            g.sessProjId = projId
                 
             ret = make_response(func(sess, *args, **kwargs))
             # Reset the token:
@@ -1162,11 +1165,9 @@ def urlUsersPost(sess, projectName):
 
     return jsonify({"status":"ok", "errors":errMsgs})
 
-@app.route(PREURL+'/project/<projectName>/details/', methods=['GET', 'POST'])
+@app.route(PREURL+'/projects/<int:projId>/details/', methods=['GET', 'POST'])
 @session_check()
-def urlUserDetails(sess, projectName):
-    if projectName != sess.getProjectName():
-        return badJuju(sess, 'Incorrect project name')
+def urlUserDetails(sess, projId):
     if not sess.adminRights():
         return badJuju(sess, 'No admin rights')
     usr = sess.getUser()
@@ -1803,10 +1804,11 @@ def urlProject(sess, projId):
             for prj in projList:
                 if prj.projectName() == projectName:
                     # All checks passed, set the project as specified:
-                    sess.setProject(prj)  # slowly getting rid of uses of sess, remove when done
-                    session['projId'] = prj.projectId()
-                    g.userProject = prj
-                    g.projectName = projectName
+                    sess.setProject(prj)
+                    # Use Flask session so store project ID.
+                    # Should not be needed when all endpoints contain
+                    # 'projId' in URL, remove when this is completed.
+                    session['projId'] = prj.projectId() # should not be needed when all endpoints contain
                     return frontPage()
             # No access to this project - bad user!
             return badJuju(sess, 'no access to project')
