@@ -235,14 +235,6 @@ def testCreateProject(authHdr, pname, cname, cemail, adminLogin):
 def testCreateTrial(authHdr, projUrl, trialProperties):
     resp = createSomething(authHdr, projUrl, somethingName='trial', params= {
             'properties': trialProperties,
-#      {
-#                 'trialName': name,
-#                 'trialYear': year,
-#                 'trialSite': site,
-#                 'nodeCreation' : 'true',
-#                 'index1name' : 'Range',
-#                 'index2name' : 'Run'
-#             },
             'attributes': [{'name':'att1', 'datatype':'integer'},
                            {'name':'att2', 'datatype':'decimal'},
                            {'name':'att3'}],

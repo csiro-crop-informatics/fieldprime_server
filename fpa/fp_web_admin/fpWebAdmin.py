@@ -1046,7 +1046,7 @@ def urlUploadScores(sess, trialId):
 
 @app.route(PREURL+'/projects/<int:projId>/trials/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @session_check()
-def urlAttributeUpload(sess, trialId):
+def urlAttributeUpload(sess, projId, trialId):
     if request.method == 'GET':
         return dp.dataTemplatePage(sess, 'uploadAttributes.html', title='Load Attributes', trialId=trialId)
 
