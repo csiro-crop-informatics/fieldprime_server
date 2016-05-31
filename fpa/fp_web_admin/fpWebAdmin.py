@@ -315,9 +315,7 @@ def htmlTabScoreSets(sess, trialId):
         htm = fpUtil.htmlDatatableByRow(hdrs, rows, 'fpScoreSets', showFooter=False)
     # Add button to upload scores:
     htm += '<p>'
-    htm += fpUtil.htmlButtonLink("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))
-    #htm += fpUtil.bsRow(fpUtil.bsCol(
-    #        fpUtil.htmlButtonLink("Upload ScoreSets", url_for("urlUploadScores", trialId=trialId))))
+    htm += fpUtil.htmlButtonLink("Upload ScoreSets", fpUrl("urlUploadScores", trialId=trialId))
     return htm
 
 def htmlTabNodeAttributes(sess, trialId):
@@ -332,7 +330,7 @@ def htmlTabNodeAttributes(sess, trialId):
         hdrs = ["Name", "Datatype", "Values"]
         rows = []
         for att in attList:
-            valuesButton = fpUtil.htmlButtonLink("values", url_for("urlAttributeDisplay", trialId=trialId, attId=att.id))
+            valuesButton = fpUtil.htmlButtonLink("values", fpUrl("urlAttributeDisplay", trialId=trialId, attId=att.id))
             rows.append([hsafe(att.name), TRAIT_TYPE_NAMES[att.datatype], valuesButton])
         out += fpUtil.htmlDatatableByRow(hdrs, rows, 'fpNodeAttributes', showFooter=False)
 
@@ -382,7 +380,7 @@ def htmlTabTraits(sess, trial):
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", fpUrl("urlNewTrait", sess, trialId=trial.id))
     addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
-    addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select System Trait to add</option>'
+    addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select Project Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
@@ -402,7 +400,7 @@ def htmlTabTraits(sess, trial):
     }
     </script>
     '''
-    addSysTraitForm += '<input type="submit" value="Add System Trait" onclick="checkSelectionMade(\'sysTraitSelId\')">'
+    addSysTraitForm += '<input type="submit" value="Add Project Trait" onclick="checkSelectionMade(\'sysTraitSelId\')">'
     addSysTraitForm += '</form>'
     return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
 
@@ -673,7 +671,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
             cur.close()
     return (hdrs, attValList)
 
-@app.route(PREURL+'/projects/<int:projId>/browseTrial/<trialId>/', methods=["GET", "POST"])
+@app.route(PREURL+'/projects/<int:projId>/browseTrial/<trialId>/', methods=["GET"])
 @session_check()
 def urlBrowseTrialAttributes(sess, projId, trialId):
 #===========================================================================
@@ -1029,9 +1027,9 @@ def urlTraitDetails(sess, projId, trialId, traitId):
     trial = g.sessTrial
     return fpTrait.traitDetailsPageHandler(sess, request, trial, trialId, traitId)
 
-@app.route(PREURL+'/trial/<trialId>/uploadScoreSets/', methods=['GET', 'POST'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/uploadScoreSets/', methods=['GET', 'POST'])
 @session_check()
-def urlUploadScores(sess, trialId):
+def urlUploadScores(sess, projId, trialId):
     if request.method == 'GET':
         return dp.dataTemplatePage(sess, 'uploadScores.html', title='Upload Scores', trialId=trialId)
 
@@ -1044,7 +1042,7 @@ def urlUploadScores(sess, trialId):
             return trialPage(sess, trialId)
 
 
-@app.route(PREURL+'/projects/<int:projId>/trials/<trialId>/uploadAttributes/', methods=['GET', 'POST'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/uploadAttributes/', methods=['GET', 'POST'])
 @session_check()
 def urlAttributeUpload(sess, projId, trialId):
     if request.method == 'GET':
@@ -1058,9 +1056,9 @@ def urlAttributeUpload(sess, projId, trialId):
         else:
             return trialPage(sess, trialId)
 
-@app.route(PREURL+'/trial/<trialId>/attribute/<attId>/', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/attribute/<attId>/', methods=['GET'])
 @session_check()
-def urlAttributeDisplay(sess, trialId, attId):
+def urlAttributeDisplay(sess, projId, trialId, attId):
     natt = dal.getAttribute(sess.db(), attId)
     out = "<b>Attribute</b> : {0}".format(natt.name)
     out += "<br><b>Datatype</b> : " + TRAIT_TYPE_NAMES[natt.datatype]
@@ -1330,21 +1328,24 @@ def urlFPAdmin(sess):
 ### END FPADMIN STUFF: ################################################################################
 #######################################################################################################
 
-@app.route(PREURL+'/FieldPrime/<projectName>/systemTraits/', methods=['GET', 'POST'])
+@app.route(PREURL+'/projects/<int:projId>/projectTraits/', methods=['GET', 'POST'])
 @session_check()
-def urlSystemTraits(sess, projectName):
+def urlProjectTraits(sess, projId):
 #---------------------------------------------------------------------------
 #
 #
     if request.method == 'GET':
         # System Traits:
         sysTraits = sess.getProject().getTraits()
-        sysTraitListHtml = "No system traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
+        sysTraitListHtml = "No project traits yet" if len(sysTraits) < 1 else fpTrait.traitListHtmlTable(sysTraits)
         r = fpUtil.htmlFieldset(
+#            fpUtil.bsSingleColumnRow(fpUtil.htmlForm(sysTraitListHtml)) +
             fpUtil.htmlForm(sysTraitListHtml) +
-            fpUtil.htmlButtonLink("Create New System Trait", fpUrl("urlNewTrait", sess, trialId=0)),
-            "System Traits")
-        return dp.dataPage(title='System Traits', content=r, trialId=-1)
+            fpUtil.bsSingleColumnRow(
+                       fpUtil.htmlButtonLink("Create New Project Trait", fpUrl("urlNewTrait", sess, trialId=0)),
+                       '20px'),
+            "Project Traits")
+        return dp.dataPage(title='Project Traits', content=r, trialId=-1)
 
 
 @app.route(PREURL+'/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])

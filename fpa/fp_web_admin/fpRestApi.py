@@ -392,13 +392,7 @@ def urlCreateTiAttribute(mproj, params, projId, tiId):
     ---
     tags:
       - Trait Instance Attributes
-    definitions:
-      - schema:
-          id: Group
-          properties:
-            name:
-             type: string
-             description: the attibute's name
+      - Attributes
     parameters:
         - name: tiId
           in: path
@@ -465,13 +459,6 @@ def urlDeleteTiAttribute(mproj, params, projId, tiId):
     ---
     tags:
       - Trait Instance Attributes
-    definitions:
-      - schema:
-          id: Group
-          properties:
-            name:
-             type: string
-             description: the attibute's name
     parameters:
         - name: tiId
           in: path
@@ -517,13 +504,6 @@ def urlCreateUser(userid, params):
     ---
     tags:
       - Users
-    definitions:
-      - schema:
-          id: Group
-          properties:
-            name:
-             type: string
-             description: the attibute's name
     parameters:
       - in: body
         name: body
@@ -618,6 +598,36 @@ def urlCreateUser(userid, params):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetUsers(userid, params):
+    """
+    Get user list.
+    ---
+    tags:
+      - Users
+    responses:
+      200:
+        description: User Created.
+        type: object
+        schema:
+          properties:
+            data:
+              type: array
+              items:
+                schema:
+                  properties:
+                    url:
+                     type: string
+                     description: user URL
+                    fullname:
+                     type: string
+                     description: Full user name
+                    email:
+                     type: string
+                     description: user email address
+
+        
+      400:
+        description: Invalid parameters, or server error.
+    """
 #^-----------------------------------
 #: GET: API_PREFIX + users
 #: Requesting user needs omnipotence permissions.
@@ -650,6 +660,39 @@ def urlGetUsers(userid, params):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetUser(userid, params, ident):
+    """
+Get user.
+---
+tags:
+  - Users
+responses:
+  200:
+    description: User Created.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              properties:
+                url:
+                 type: string
+                 description: user URL
+                fullname:
+                 type: string
+                 description: Full user name
+                email:
+                 type: string
+                 description: user email address
+
+    
+  400:
+    description: Invalid parameters, or server error.
+  401:
+    description: Invalid parameters, or server error.
+
+"""
 #^-----------------------------------
 #: GET: API_PREFIX + users/<ident>
 #: Requesting user needs create user permissions, or to be the requested user.
@@ -675,7 +718,40 @@ def urlGetUser(userid, params, ident):
 @multi_auth.login_required
 @wrap_api_func
 def urlDeleteUser(userid, params, ident):
-#----------------------------------------------------------------------------------------------
+    """
+Delete user.
+Use wisely - there's no going back.
+---
+tags:
+  - Users
+responses:
+  200:
+    description: User Deleted.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              properties:
+                url:
+                 type: string
+                 description: user URL
+                fullname:
+                 type: string
+                 description: Full user name
+                email:
+                 type: string
+                 description: user email address
+
+    
+  400:
+    description: Invalid parameters, or server error.
+  401:
+    description: Invalid parameters, or server error.
+
+"""#----------------------------------------------------------------------------------------------
 #^
 #: DELETE: API_PREFIX + 'users/<ident>
 #: Requesting user needs create user permissions, and cannot delete self.
@@ -1245,6 +1321,85 @@ def processNodes(trial, nodes):
 @multi_auth.login_required
 @project_func()
 def urlCreateTrial(mproj, params, projId):
+    """
+Create a trial.
+Requesting user needs project admin permissions.
+---
+tags:
+  - Trials
+parameters:
+  - in: body
+    name: Trial Creation
+    description: Trial creation data
+    required: true
+    schema:
+      required:
+        - properties
+      type: object
+      properties:
+        properties:
+          schema:
+              id: TrialProperties
+              type: object
+              required:
+                - name
+              description: Trial properties
+              properties:
+                name:
+                  type: string
+                  description: Name for trial
+                year:
+                  type: integer
+                  description: Trial year
+                site:
+                  type: integer
+                  description: Trial site
+                acronym:
+                  type: integer
+                  description: Trial acronym
+                nodeCreation:
+                  type: string
+                  description: Indicates whether user node creation allowed for trial
+                index1name:
+                  type: string
+                  description: Name of first index for trial
+                index2name:
+                  type: string
+                  description: Name of second index for trial
+        attributes:
+          type: array
+          items:
+            description: Attribute details
+            schema:
+              id: Attribute
+              properties:
+                name:
+                  type: string
+                  description: Attribute name
+                datatype:
+                  type: string
+                  description: Must be 'text', 'decimal', or 'integer'
+        nodes:
+          type: array
+          items:
+            description: Node details
+            schema:
+              id: Node
+              properties:
+                attributeName:
+                  type: string
+                  description: Attribute Value
+responses:
+  201:
+    description: Trial Created.
+    schema:
+      properties:
+        success:
+          type: string
+          description: Informative phrase
+  400:
+    description: Invalid parameters, or server error.
+"""
 #^-----------------------------------
 #: POST: <trialUrl from getProject>
 #: Access: Requesting user needs project admin permissions.
@@ -1351,6 +1506,37 @@ def urlUpdateTrial(mproj, params, projId, trialId):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetTrials(userid, params, projId):
+    """
+Get trial list.
+Requesting user needs project view permissions.
+---
+tags:
+  - Trials
+responses:
+  200:
+    description: Trial Created.
+    schema:
+      type: object
+      properties:
+        data:
+            type: array
+            items:
+              type: string
+              description: Trial URL
+#           schema:
+#               properties:
+#                 schema:
+#                   $ref: "#/definitions/TrialProperties"
+#               urlAttributes:
+#                 type: string
+#                 description: URL for accessing trial attributes
+#               urlNodes :
+#                 type: string
+#                 description: URL for accessing trial nodes
+
+  400:
+    description: Invalid parameters, or server error.
+"""
 #^-----------------------------------
 #: GET: <trialUrl from project>
 #: Access: Requesting user needs omnipotence or project view permissions.
@@ -1374,6 +1560,32 @@ def urlGetTrials(userid, params, projId):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetTrial(userid, params, projId, trialId):
+    """
+Get trial.
+Requesting user needs project view permissions.
+---
+tags:
+  - Trials
+responses:
+  200:
+    description: Trial found.
+    schema:
+      type: object
+      properties:
+        data:
+          schema:
+              properties:
+                schema:
+                  $ref: "#/definitions/TrialProperties"
+              urlAttributes:
+                type: string
+                description: URL for accessing trial attributes
+              urlNodes :
+                type: string
+                description: URL for accessing trial nodes
+  400:
+    description: Invalid parameters, or server error.
+"""
     # check user has access to project
     trial = models.getTrial(g.userProject.db(), trialId)
     returnJson = { # perhaps we should have trial.getJson()

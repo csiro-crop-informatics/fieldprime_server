@@ -142,7 +142,7 @@ def _dataNavigationContent(trialId):
         r2c2 = '<div style="float:right; display:inline-block">'
         if sess.adminRights():
             r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projId=projId))
-        r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> System Traits</a>'.format(url_for('urlSystemTraits', projectName=projectName))
+        r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> Project Traits</a>'.format(url_for('urlProjectTraits', projId=projId))
         r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for('urlNewTrial', projId=projId))
         r2c2 += '</div><div style="clear:both"></div>'
         r2 += fpu.bsCol(r2c2, numCols=6, extra='style="white-space:nowrap"')
