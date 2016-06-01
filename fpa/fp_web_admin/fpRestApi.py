@@ -178,9 +178,9 @@ def verify_password(user, password):
 
 @token_auth.verify_token
 def verify_token(token):
-# Note parameter is retrieved from www-authenticate header, and if there we should use it.
-# But in the absence, we look in cookie - and then perhaps in json?
-# NB - it turns out this function is not called in the absence of www-authenticate header.
+# Note parameter is retrieved from Authorization header field, and if there we should use it.
+# But in the absence, we look in cookie (and then perhaps in json?).
+# NB - it turns out this function is not called in the absence of Authorization header.
 # So the cookie functionality is useful only in that it allows you to
 # add a dummy token value in the www-authenticate header, under the assumption
 # that you're passing a cooky with the correct value in it.
@@ -225,7 +225,6 @@ def wrap_api_func(func):
         mkdbg('json {} form {}'.format('None' if request.json is None else 'NOT None',
                                        'None' if request.form is None else 'NOT None'))
         if request.json is None and request.form is not None:
-            #params = request.form
             params = request.values
         elif request.json is not None: # and request.form is None:   Note if both json and form, we use json only
             params = request.json
@@ -260,7 +259,7 @@ def project_func(projIdParamName='projId'):
 #
 # Resets token cookie, with g.newToken, assumed to be set (perhaps we should be doing that here).
 #
-# NB: The decorated functionfunc should return a response, and should have first params:
+# NB: The decorated function should return a response, and should have first params:
 # modelProj, params. Flask global request is assumed to be available.
 # If the authenticated user is not omnipotent, and does not have at least read access to the
 # project, then an authentication error is returned.
@@ -331,6 +330,29 @@ def project_func(projIdParamName='projId'):
 @webRest.route(API_PREFIX + 'token', methods=['GET'])
 @basic_auth.login_required
 def urlGetToken():
+    """
+Get access token for the API.
+User and password must be supplied to get token. The token can be used to access the api
+either Authorization header, or by cookie.
+<p>An authorization header must be of the form
+<code>"Authorization: fptoken &lt;token&gt;"</code>
+<p>Alternatively the token can be supplied as the
+cookie value for key <code>"fptoken"</code>.
+---
+tags:
+  - Authentication
+responses:
+    200:
+      description: Token generated
+      schema:
+        properties:
+          data:
+           schema:
+             properties:
+               token:
+                 type: string
+                 description: API token
+"""
 #-------------------------------------------------------------------------------------------------
 #^-----------------------------------
 #: GET: API_PREFIX + 'token'
@@ -354,6 +376,23 @@ def urlGetToken():
 @multi_auth.login_required
 @wrap_api_func
 def urlGetTokenUser(userid, params):
+    """
+Get the login name of currently authenticated user.
+---
+tags:
+  - Authentication
+responses:
+    200:
+      description: User login name
+      schema:
+        properties:
+          data:
+           schema:
+             properties:
+               userId:
+                 type: string
+                 description: User login id
+"""
 #^-----------------------------------
 #: GET: API_PREFIX + tokenUser
 #: Access: valid token.
@@ -388,31 +427,31 @@ def _checkTiAttributeStuff(projId, tiId):
 @project_func()
 def urlCreateTiAttribute(mproj, params, projId, tiId):
     """
-    Create a new attribute for a trait instance.
-    ---
-    tags:
-      - Trait Instance Attributes
-      - Attributes
-    parameters:
-        - name: tiId
-          in: path
-          description: FieldPrime traitInstance id
-          required: true
-          type: integer
-        - name: projId
-          in: path
-          description: FieldPrime project id
-          required: true
-          type: integer
-        - name: name
-          in: body
-          description: Name for Attribute
-          required: true
-          type: string
-    responses:
-      201:
-        description: Attribute created
-    """
+Create a new attribute for a trait instance.
+---
+tags:
+  - Trait Instance Attributes
+  - Attributes
+parameters:
+    - name: tiId
+      in: path
+      description: FieldPrime traitInstance id
+      required: true
+      type: integer
+    - name: projId
+      in: path
+      description: FieldPrime project id
+      required: true
+      type: integer
+    - name: name
+      in: body
+      description: Name for Attribute
+      required: true
+      type: string
+responses:
+  201:
+    description: Attribute created
+"""
 #^-----------------------------------
 #: POST: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
 #: Create attribute for the TI specified in the URL.
@@ -500,42 +539,42 @@ def urlDeleteTiAttribute(mproj, params, projId, tiId):
 @wrap_api_func
 def urlCreateUser(userid, params):
     """
-    Create a user.
-    ---
-    tags:
-      - Users
-    parameters:
-      - in: body
-        name: body
-        description: User object
-        required: true
-        schema:
-          id: User
-          required:
-            - email
-            - name
-          properties:
-            loginType:
-              type: integer
-              description: 2 for ***REMOVED*** user, 3 for FieldPrime local user.
-            ident:
-              type: string
-              description: Login id for new user
-            password:
-              type: string
-              description: Password for new user
-            email:
-              type: string
-              description: Email address of new user
-            fullname:
-              type: string
-              description: Full name of new user
-    responses:
-      201:
-        description: User Created.
-      400:
-        description: Invalid parameters, or server error.
-    """
+Create a user.
+---
+tags:
+  - Users
+parameters:
+  - in: body
+    name: body
+    description: User object
+    required: true
+    schema:
+      id: User
+      required:
+        - email
+        - name
+      properties:
+        loginType:
+          type: integer
+          description: 2 for ***REMOVED*** user, 3 for FieldPrime local user.
+        ident:
+          type: string
+          description: Login id for new user
+        password:
+          type: string
+          description: Password for new user
+        email:
+          type: string
+          description: Email address of new user
+        fullname:
+          type: string
+          description: Full name of new user
+responses:
+  201:
+    description: User Created.
+  400:
+    description: Invalid parameters, or server error.
+"""
 #^-----------------------------------
 #: POST: API_PREFIX + 'users
 #: Access: Requesting user needs create user permissions.
@@ -593,41 +632,51 @@ def urlCreateUser(userid, params):
                 url=url_for('webRest.urlGetUser', ident=login, _external=True))
     except Exception, e:
         return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
-
+    
+def userPropertiesObject(user):    
+    return {
+            'url':url_for('webRest.urlGetUser', ident=user.getIdent()),
+            'fullname':user.getName(),
+            'email':user.getEmail(),
+            'ident':user.getIdent()
+           }
+    
 @webRest.route(API_PREFIX + 'users', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
 def urlGetUsers(userid, params):
     """
-    Get user list.
-    ---
-    tags:
-      - Users
-    responses:
-      200:
-        description: User Created.
-        type: object
-        schema:
-          properties:
-            data:
-              type: array
-              items:
-                schema:
-                  properties:
-                    url:
-                     type: string
-                     description: user URL
-                    fullname:
-                     type: string
-                     description: Full user name
-                    email:
-                     type: string
-                     description: user email address
-
-        
-      400:
-        description: Invalid parameters, or server error.
-    """
+Get user list.
+---
+tags:
+  - Users
+responses:
+  200:
+    description: User Created.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              id: UserProperties
+              properties:
+                ident:
+                  type: string
+                  description: user login id
+                url:
+                 type: string
+                 description: user URL
+                fullname:
+                 type: string
+                 description: Full user name
+                email:
+                 type: string
+                 description: user email address        
+  400:
+    description: Invalid parameters, or server error.
+"""
 #^-----------------------------------
 #: GET: API_PREFIX + users
 #: Requesting user needs omnipotence permissions.
@@ -649,11 +698,7 @@ def urlGetUsers(userid, params):
     users = fpsys.User.getAll()
     if users is None:
         return jsonErrorReturn('Problem getting users', HTTP_SERVER_ERROR)
-    retUsers = [{'url':url_for('webRest.urlGetUser', ident=u.getIdent()),
-                 'fullname':u.getName(),
-                 'email':u.getEmail(),
-                 'ident':u.getIdent()
-                 } for u in users]
+    retUsers = [userPropertiesObject(u) for u in users]
     return apiResponse(True, HTTP_OK, data=retUsers)
 
 @webRest.route(API_PREFIX + 'users/<ident>', methods=['GET'])
@@ -667,31 +712,17 @@ tags:
   - Users
 responses:
   200:
-    description: User Created.
-    type: object
+    description: User found.
     schema:
+      type: object
       properties:
         data:
-          type: array
-          items:
-            schema:
-              properties:
-                url:
-                 type: string
-                 description: user URL
-                fullname:
-                 type: string
-                 description: Full user name
-                email:
-                 type: string
-                 description: user email address
-
-    
+          schema:
+            $ref: "#/definitions/UserProperties"
   400:
-    description: Invalid parameters, or server error.
+      description: Invalid parameters, or server error.
   401:
-    description: Invalid parameters, or server error.
-
+      description: Unauthorized.
 """
 #^-----------------------------------
 #: GET: API_PREFIX + users/<ident>
@@ -711,8 +742,7 @@ responses:
     user = fpsys.User.getByLogin(ident)
     if user is None:
         return jsonErrorReturn("Cannot access user", HTTP_BAD_REQUEST)
-    retObj = {'fullname':user.getName(), 'email':user.getEmail()}
-    return apiResponse(True, HTTP_OK, data=retObj)
+    return apiResponse(True, HTTP_OK, data=userPropertiesObject(user))
 
 @webRest.route(API_PREFIX + 'users/<ident>', methods=['DELETE'])
 @multi_auth.login_required
@@ -720,6 +750,7 @@ responses:
 def urlDeleteUser(userid, params, ident):
     """
 Delete user.
+Requesting user needs create user permissions, and cannot delete self.
 Use wisely - there's no going back.
 ---
 tags:
@@ -727,32 +758,12 @@ tags:
 responses:
   200:
     description: User Deleted.
-    type: object
-    schema:
-      properties:
-        data:
-          type: array
-          items:
-            schema:
-              properties:
-                url:
-                 type: string
-                 description: user URL
-                fullname:
-                 type: string
-                 description: Full user name
-                email:
-                 type: string
-                 description: user email address
-
-    
   400:
     description: Invalid parameters, or server error.
   401:
-    description: Invalid parameters, or server error.
-
-"""#----------------------------------------------------------------------------------------------
-#^
+    description: Unauthorized.
+"""
+#^---------------------------------
 #: DELETE: API_PREFIX + 'users/<ident>
 #: Requesting user needs create user permissions, and cannot delete self.
 #: Input: none
@@ -771,7 +782,36 @@ responses:
 @multi_auth.login_required
 @wrap_api_func
 def urlUpdateUser(userid, params, ident):
-#----------------------------------------------------------------------------------------------
+    """
+Update user properties.
+---
+tags:
+  - Users
+parameters:
+  - in: body
+    name: body
+    description: User object
+    required: true
+    schema:
+      properties:
+        oldPassword:
+          type: string
+          description: Current password for user
+        password:
+          type: string
+          description: New password for user
+        email:
+          type: string
+          description: Email address of user
+        fullname:
+          type: string
+          description: Full name of user
+responses:
+  200:
+    description: User updated.
+  400:
+    description: Invalid parameters, or server error.
+"""
 #^-----------------------------------
 #: PUT: API_PREFIX + users/<ident>
 #: Access: Requesting user needs create user permissions, or to be the updated user.
@@ -792,10 +832,10 @@ def urlUpdateUser(userid, params, ident):
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_CREATE_USER):
         if userid != ident:
-            return jsonErrorReturn("no user update permission", HTTP_UNAUTHORIZED)
+            return errorAccess("no user update permission")
         oldPass = params.get('oldPassword')
         if oldPass is None or not fpsys.localPasswordCheck(ident, oldPass):
-            return jsonErrorReturn("Invalid current password", HTTP_UNAUTHORIZED)
+            return errorAccess("Invalid current password")
 
     try:
         user = fpsys.User.getByLogin(ident)
