@@ -11,17 +11,15 @@
 # - If we create userProject in wrap_api, update original funcs to use it.
 #
 
-from flask import Blueprint, current_app, request, Response, jsonify, g, abort, url_for
+from flask import Blueprint, current_app, request, Response, jsonify, g, url_for
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from flask_swagger import swagger
 from functools import wraps
 import simplejson as json
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-import re
 
 import fp_common.models as models
 import fp_common.fpsys as fpsys
-import websess
 from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
 import fpUtil
 import fp_common.util as util
@@ -52,6 +50,26 @@ def spec():
     swag['security'] = [{"api_key":[], 'basic':[]}]
     swag['consumes'] = ['application/json']
     swag['produces'] = ['application/json']
+    defs = swag['definitions']
+    defs['Error'] = {
+          'properties': {'error':{"description":"Description of error.", 'type':'string'}}
+        }
+    swag['responses'] = {
+        'Unauthorized': {
+            "description": "Insufficient access rights for this resource/operation.",
+            "schema": {"$ref": "#/definitions/Error"}
+        },
+        'BadRequest': {
+            "description": "Invalid parameters, or server error.",
+            "schema": {"$ref": "#/definitions/Error"}
+        },
+        'ServerError': {
+            "description": "Unexpected error on the server.",
+            "schema": {"$ref": "#/definitions/Error"}
+        }
+    }
+
+    
     resp = make_response(jsonify(swag))
     resp.headers['Access-Control-Allow-Origin'] = '*'   # Needed for testing, maybe not eventually..
     return resp
@@ -229,18 +247,18 @@ def wrap_api_func(func):
         elif request.json is not None: # and request.form is None:   Note if both json and form, we use json only
             params = request.json
         else:
-            return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+            return errorBadRequest('Missing parameters')
 
         if 'projId' in kwargs:
             # Check permissions and get UserProject object:
             try:
                 up = fpsys.UserProject.getUserProject(g.userName, kwargs['projId'])
             except fpsys.FPSysException as fpse:
-                return jsonErrorReturn('Unexpected error: {}'.format(fpse), HTTP_SERVER_ERROR)
+                return errorServer('Unexpected error: {}'.format(fpse))
             if up is None:
-                return jsonErrorReturn('No access for user {} to project'.format(g.userName), HTTP_UNAUTHORIZED)
+                return errorAccess('No access for user {} to project'.format(g.userName))
             if isinstance(up, basestring):
-                return jsonErrorReturn('Unexpected error: {}'.format(up), HTTP_SERVER_ERROR)
+                return errorBadRequest('Unexpected error: {}'.format(up))
             g.userProject = up
 
         ret = func(g.userName, params, *args, **kwargs)
@@ -283,7 +301,7 @@ def project_func(projIdParamName='projId'):
             elif request.json is not None: # and request.form is None:   Note if both json and form, we use json only
                 params = request.json
             else:
-                return jsonErrorReturn('Missing parameters', HTTP_BAD_REQUEST)
+                return errorBadRequest('Missing parameters')
 
             if projIdParamName is None or projIdParamName not in kwargs:
                 return errorServer()
@@ -330,6 +348,19 @@ def project_func(projIdParamName='projId'):
 @webRest.route(API_PREFIX + 'token', methods=['GET'])
 @basic_auth.login_required
 def urlGetToken():
+#^-----------------------------------
+#: GET: API_PREFIX + 'token'
+#: Returns access token for requesting user. This can be
+#: used subsequently to access the API, by passing the
+#: token in as a HTTP header: "Authorization: fptoken + <token>"
+#: Access: Requesting user needs to exist.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: {
+#:     'token': <token>
+#:   }
+#$
     """
 Get access token for the API.
 User and password must be supplied to get token. The token can be used to access the api
@@ -353,21 +384,6 @@ responses:
                  type: string
                  description: API token
 """
-#-------------------------------------------------------------------------------------------------
-#^-----------------------------------
-#: GET: API_PREFIX + 'token'
-#: Returns access token for requesting user. This can be
-#: used subsequently to access the API, by passing the
-#: token in as a HTTP header: "Authorization: fptoken + <token>"
-#: Access: Requesting user needs to exist.
-#: Input: None
-#: Success Response:
-#:   Status code: HTTP_OK
-#:   data: {
-#:     'token': <token>
-#:   }
-#$
-
     token = generate_auth_token(g.userName)
     retObj = {'token': token.decode('ascii'), 'duration': 600}
     return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
@@ -376,6 +392,14 @@ responses:
 @multi_auth.login_required
 @wrap_api_func
 def urlGetTokenUser(userid, params):
+#^-----------------------------------
+#: GET: API_PREFIX + tokenUser
+#: Access: valid token.
+#: Input: none
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data:  {'userId':<user id>}
+#$
     """
 Get the login name of currently authenticated user.
 ---
@@ -393,14 +417,6 @@ responses:
                  type: string
                  description: User login id
 """
-#^-----------------------------------
-#: GET: API_PREFIX + tokenUser
-#: Access: valid token.
-#: Input: none
-#: Success Response:
-#:   Status code: HTTP_OK
-#:   data:  {'userId':<user id>}
-#$
     return apiResponse(True, HTTP_OK, data={'userId':userid})
 
 ### TraitInstance Attribute: #################################################################
@@ -426,11 +442,22 @@ def _checkTiAttributeStuff(projId, tiId):
 @multi_auth.login_required
 @project_func()
 def urlCreateTiAttribute(mproj, params, projId, tiId):
+#^-----------------------------------
+#: POST: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
+#: Create attribute for the TI specified in the URL.
+#: The attribute name must be present as a parameter "name".
+#: Access: requesting user needs project admin permissions.
+#: Input: {
+#:   'name': <attribute name>,
+#: }
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   msg: 'Attribute Created'
+#$
     """
 Create a new attribute for a trait instance.
 ---
 tags:
-  - Trait Instance Attributes
   - Attributes
 parameters:
     - name: tiId
@@ -451,19 +478,11 @@ parameters:
 responses:
   201:
     description: Attribute created
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
-#^-----------------------------------
-#: POST: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
-#: Create attribute for the TI specified in the URL.
-#: The attribute name must be present as a parameter "name".
-#: Access: requesting user needs project admin permissions.
-#: Input: {
-#:   'name': <attribute name>,
-#: }
-#: Success Response:
-#:   Status code: HTTP_OK
-#:   msg: 'Attribute Created'
-#$
     ti = _checkTiAttributeStuff(projId, tiId) # NB access checked in here
     if not isinstance(ti, models.TraitInstance):
         return ti
@@ -472,7 +491,7 @@ responses:
     #name = request.json.get('name')
     name = params.get('name')
     if not name:
-        return jsonErrorReturn('invalid name', HTTP_BAD_REQUEST)
+        return errorBadRequest('invalid name')
 
     # Create or rename attribute for the ti:
     tiAtt = ti.getAttribute()
@@ -480,7 +499,7 @@ responses:
         # Create it:
         att = ti.createAttribute(name)
         if att is None:
-            return jsonErrorReturn('Cannot create attribute, may be invalid name', HTTP_BAD_REQUEST)
+            return errorBadRequest('Cannot create attribute, may be invalid name')
     else:
         # Reset the name:
         tiAtt.setName(name)  # error return
@@ -491,28 +510,6 @@ responses:
 @multi_auth.login_required
 @project_func()
 def urlDeleteTiAttribute(mproj, params, projId, tiId):
-    """
-    Delete the attribute for a trait instance.
-    After deletion the trait instance still exists, but is not available \
-    as an attribute
-    ---
-    tags:
-      - Trait Instance Attributes
-    parameters:
-        - name: tiId
-          in: path
-          description: FieldPrime traitInstance id
-          required: true
-          type: integer
-        - name: projId
-          in: path
-          description: FieldPrime project id
-          required: true
-          type: integer
-    responses:
-      200:
-        description: Attribute deleted
-    """    
 #----------------------------------------------------------------------------------------------
 #^
 #: DELETE: API_PREFIX + projects/<int:projId>/ti/<int:tiId>/attribute
@@ -524,12 +521,38 @@ def urlDeleteTiAttribute(mproj, params, projId, tiId):
 #:   Status code: HTTP_OK
 #:   msg: "Attribute Deleted"
 #$
+    """
+Delete the attribute for a trait instance.
+After deletion the trait instance still exists, but is not available \
+as an attribute
+---
+tags:
+  - Attributes
+parameters:
+    - name: tiId
+      in: path
+      description: FieldPrime traitInstance id
+      required: true
+      type: integer
+    - name: projId
+      in: path
+      description: FieldPrime project id
+      required: true
+      type: integer
+responses:
+  200:
+    description: Attribute deleted
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     ti = _checkTiAttributeStuff(projId, tiId) # NB access checked in here
     if not isinstance(ti, models.TraitInstance):
         return ti
     errmsg = ti.deleteAttribute()
     if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
+        return errorServer(errmsg)
     return apiResponse(True, HTTP_OK, msg="Attribute Deleted")
 
 ### Users: ####################################################################################
@@ -538,6 +561,21 @@ def urlDeleteTiAttribute(mproj, params, projId, tiId):
 @multi_auth.login_required
 @wrap_api_func
 def urlCreateUser(userid, params):
+#^-----------------------------------
+#: POST: API_PREFIX + 'users
+#: Access: Requesting user needs create user permissions.
+#: Input: {
+#:   'ident': ,
+#:   'password': ,
+#:   'fullname': ,
+#:   'loginType': ,
+#:   'email':
+#: }
+#: Success Response:
+#:   Status code: HTTP_CREATED
+#:   url: <new user url>
+#:
+#$
     """
 Create a user.
 ---
@@ -573,39 +611,26 @@ responses:
   201:
     description: User Created.
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
-#^-----------------------------------
-#: POST: API_PREFIX + 'users
-#: Access: Requesting user needs create user permissions.
-#: Input: {
-#:   'ident': ,
-#:   'password': ,
-#:   'fullname': ,
-#:   'loginType': ,
-#:   'email':
-#: }
-#: Success Response:
-#:   Status code: HTTP_CREATED
-#:   url: <new user url>
-#:
-#$
     mkdbg('urlCreateUser({},{})'.format(userid, str(params)))
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER):
-        return jsonErrorReturn("no user create permission", HTTP_UNAUTHORIZED)
+        return errorAccess("no user create permission")
 
     try:
         # check all details provided (should be infra)
         login = params.get('ident')
         loginType = params.get('loginType')
         if login is None or loginType is None:
-            return jsonErrorReturn("login and loginType required", HTTP_BAD_REQUEST)
+            return errorBadRequest("login and loginType required")
         loginType = int(loginType)
 
         # check if user already exists
         if fpsys.User.getByLogin(login) is not None:
-            return jsonErrorReturn("User with that login already exists", HTTP_BAD_REQUEST)
+            return errorBadRequest("User with that login already exists")
 
         # create them
         if loginType == LOGIN_TYPE_LOCAL:
@@ -614,24 +639,24 @@ responses:
             email = params.get('email')
             # Validation - should be by infrastructure..
             if password is None or fullname is None:
-                return jsonErrorReturn("password and fullname required for local user", HTTP_BAD_REQUEST)
+                return errorBadRequest("password and fullname required for local user")
             if not util.isValidName(fullname):
-                return jsonErrorReturn('Invalid user name', HTTP_BAD_REQUEST)
+                return errorBadRequest('Invalid user name')
             if not util.isValidPassword(password):
-                return jsonErrorReturn('Invalid password', HTTP_BAD_REQUEST)
+                return errorBadRequest('Invalid password')
             if not util.isValidEmail(email):
-                return jsonErrorReturn("Invalid email address", HTTP_BAD_REQUEST)
+                return errorBadRequest("Invalid email address")
             errmsg = fpsys.addLocalUser(login, fullname, password, email)
         elif loginType == LOGIN_TYPE_***REMOVED***:
             errmsg = fpsys.add***REMOVED***User(login)
         else:
             errmsg = 'Invalid loginType'
         if errmsg is not None:
-            return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+            return errorBadRequest(errmsg)
         return apiResponse(True, HTTP_CREATED, msg='User {} created'.format(login),
                 url=url_for('webRest.urlGetUser', ident=login, _external=True))
     except Exception, e:
-        return jsonErrorReturn('Problem in REST create user: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem in REST create user: ' + str(e))
     
 def userPropertiesObject(user):    
     return {
@@ -643,8 +668,22 @@ def userPropertiesObject(user):
     
 @webRest.route(API_PREFIX + 'users', methods=['GET'])
 @multi_auth.login_required
-@wrap_api_func
-def urlGetUsers(userid, params):
+@project_func()
+def urlGetUsers(mproj, params):
+#^-----------------------------------
+#: GET: API_PREFIX + users
+#: Requesting user needs omnipotence permissions.
+#: Input: none
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: [
+#:     {
+#:       'url':<user url>,
+#:       'fullname':<user name>,
+#:       'email':<user email>
+#:     }
+#:   ]
+#$
     """
 Get user list.
 ---
@@ -652,7 +691,7 @@ tags:
   - Users
 responses:
   200:
-    description: User Created.
+    description: User list.
     type: object
     schema:
       properties:
@@ -675,29 +714,17 @@ responses:
                  type: string
                  description: user email address        
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
-#^-----------------------------------
-#: GET: API_PREFIX + users
-#: Requesting user needs omnipotence permissions.
-#: Input: none
-#: Success Response:
-#:   Status code: HTTP_OK
-#:   data: [
-#:     {
-#:       'url':<user url>,
-#:       'fullname':<user name>,
-#:       'email':<user email>
-#:     }
-#:   ]
-#$
     # Check permissions:
     if not g.user.omnipotent():
-        return jsonErrorReturn("No permission", HTTP_UNAUTHORIZED)
+        return errorAccess("No permission")
 
     users = fpsys.User.getAll()
     if users is None:
-        return jsonErrorReturn('Problem getting users', HTTP_SERVER_ERROR)
+        return errorServer('Problem getting users')
     retUsers = [userPropertiesObject(u) for u in users]
     return apiResponse(True, HTTP_OK, data=retUsers)
 
@@ -720,9 +747,9 @@ responses:
           schema:
             $ref: "#/definitions/UserProperties"
   400:
-      description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
   401:
-      description: Unauthorized.
+    $ref: "#/responses/Unauthorized"
 """
 #^-----------------------------------
 #: GET: API_PREFIX + users/<ident>
@@ -737,11 +764,11 @@ responses:
 #$
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_CREATE_USER) and userid != ident:
-        return jsonErrorReturn("no permission to access user", HTTP_UNAUTHORIZED)
+        return errorAccess("no permission to access user")
 
     user = fpsys.User.getByLogin(ident)
     if user is None:
-        return jsonErrorReturn("Cannot access user", HTTP_BAD_REQUEST)
+        return errorBadRequest("Cannot access user")
     return apiResponse(True, HTTP_OK, data=userPropertiesObject(user))
 
 @webRest.route(API_PREFIX + 'users/<ident>', methods=['DELETE'])
@@ -759,9 +786,9 @@ responses:
   200:
     description: User Deleted.
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
   401:
-    description: Unauthorized.
+    $ref: "#/responses/Unauthorized"
 """
 #^---------------------------------
 #: DELETE: API_PREFIX + 'users/<ident>
@@ -772,10 +799,10 @@ responses:
 #$
     # check permissions
     if not fpsys.User.sHasPermission(userid, fpsys.User.PERMISSION_CREATE_USER) and userid != ident:
-        return jsonErrorReturn("no permission to delete user", HTTP_UNAUTHORIZED)
+        return errorAccess("no permission to delete user")
     errmsg = fpsys.User.delete(ident)
     if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)  # need to distinguish server error, user not found..
+        return errorBadRequest(errmsg)  # need to distinguish server error, user not found..
     return apiResponse(True, HTTP_OK)
 
 @webRest.route(API_PREFIX + 'users/<ident>', methods=['PUT'])
@@ -810,7 +837,9 @@ responses:
   200:
     description: User updated.
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
 #^-----------------------------------
 #: PUT: API_PREFIX + users/<ident>
@@ -842,13 +871,13 @@ responses:
         if user is None:
             return jsonErrorReturn("user not found", HTTP_NOT_FOUND)
         if user.getLoginType() != LOGIN_TYPE_LOCAL:
-            return jsonErrorReturn("Cannot update non-local users", HTTP_UNAUTHORIZED)
+            return errorAccess("Cannot update non-local users")
 
         password = params.get('password')
         if password is not None and util.isValidPassword(password):
             errmsg = user.setPassword(password) # should be exception
             if errmsg is not None:
-                return jsonErrorReturn('Problem updating password: ' +  errmsg, HTTP_BAD_REQUEST)
+                return errorBadRequest('Problem updating password: ' +  errmsg)
 
         fullname = params.get('fullname')
         if fullname is not None:
@@ -860,10 +889,10 @@ responses:
         if fullname is not None or email is not None:
             errmsg = user.save()
             if errmsg is not None:
-                return jsonErrorReturn('Problem in updateUser: ' +  errmsg, HTTP_BAD_REQUEST)
+                return errorBadRequest('Problem in updateUser: ' +  errmsg)
         return apiResponse(True, HTTP_OK)
     except Exception, e:
-        return jsonErrorReturn('Problem in updateUser: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem in updateUser: ' + str(e))
 
 
 ### Projects: ############################################################################
@@ -891,15 +920,55 @@ def urlGetProjects(userid, params):
 #:     }
 #:   ]
 #$
+    """
+Get project list.
+---
+tags:
+  - Projects
+parameters:
+  - in: body
+    name: All
+    description: If this flag is present, and the user is omnipotent, then all projects are returned.
+    schema:
+      type: object
+      schema:
+        properties:
+          all:
+            type: string
+            description: |
+              If this flag is present, and the user is omnipotent, then all projects are returned.
+              Otherwise only the projects to which the calling user has view access are returned.
+responses:
+  200:
+    description: Project list.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              properties:
+                url:
+                 type: string
+                 description: Project URL
+                projectName:
+                 type: string
+                 description: Project name     
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlGetProjects')
     all = params.get('all') is not None
     if all and not g.user.omnipotent():
-        return jsonErrorReturn('No permission to get all projects', HTTP_UNAUTHORIZED)
+        return errorAccess('No permission to get all projects')
 
     if not all:
         (plist, errmsg) = fpsys.getUserProjects(g.userName)
         if errmsg:
-            return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+            return errorBadRequest(errmsg)
         retProjects = [{'projectName':p.getProjectName(),
                         'url':url_for('webRest.urlGetProject', projId=p.getProjectId())
                         } for p in plist]
@@ -907,7 +976,7 @@ def urlGetProjects(userid, params):
         try:
             plist = fpsys.Project.getAllProjects()
         except FPSysException as e:
-            return jsonErrorReturn("Unexpected error getting projects: {}".format(e), HTTP_SERVER_ERROR)
+            return errorServer("Unexpected error getting projects: {}".format(e))
         retProjects = [{'projectName':p.getName(),
                         'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=True)
                         } for p in plist]
@@ -918,7 +987,7 @@ def responseProjectObject(proj):
     return {
         'projectName':proj.getName(),
         'urlTrials' : url_for('webRest.urlCreateTrial', projId=projId, _external=True),
-        'urlUsers' : url_for('webRest.urlAddProjectUser', xprojId=projId, _external=True),
+        'urlUsers' : url_for('webRest.urlAddProjectUser', projId=projId, _external=True),
         'urlTraits' : url_for('webRest.urlGetTraits', projId=projId, _external=True)
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
@@ -939,6 +1008,39 @@ def urlGetProject(mproj, params, projId):
 #:     }
 #:   ]
 #$
+    """
+Get project.
+Requesting user needs project view permissions.
+---
+tags:
+  - Projects
+responses:
+  200:
+    description: Project found.
+    schema:
+      type: object
+      properties:
+        data:
+          schema:
+            id: ProjectDetails
+            properties:
+              projectName:
+                type: string
+                description: Project name
+              urlTrials:
+                type: string
+                description: URL for accessing project trials
+              urlUsers :
+                type: string
+                description: URL for accessing project users
+              urlTraits :
+                type: string
+                description: URL for accessing project traits
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('in urlGetProject')
     ret = responseProjectObject(mproj)
     return apiResponse(True, HTTP_OK, data=ret)
@@ -968,10 +1070,51 @@ def urlCreateProject(userid, params):
 #:   url: <url of created project>
 #:   data: <project object - same as for urlGetProject>
 #$
+    """
+Create a project.
+Requesting user must have omnipotence.
+---
+tags:
+  - Projects
+parameters:
+  - in: body
+    name: Project Creation
+    description: Project creation data
+    required: true
+    schema:
+      type: object
+      properties:
+        projectName:
+          type: string
+          description: Project name
+        contactName':
+          type: string
+          description: Name of contact person for project
+        contactEmail':
+          type: string
+          description: Email address of contact person for project
+        adminLogin':
+          type: string
+          description: Login id of administrator for project
+responses:
+  201:
+    description: Project Created.
+    schema:
+      properties:
+        data:
+          $ref: "#/definitions/ProjectDetails"
+        success:
+          type: string
+          description: Informative phrase
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('in urlCreateProject')
     # Check permissions:
     if not g.user.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
-        return jsonErrorReturn("No permission for project creation", HTTP_UNAUTHORIZED)
+        return errorAccess("No permission for project creation")
     try:
         # todo parameter checks, perhaps, checks are done in makeNewProject
         projectName = params.get('projectName')
@@ -990,7 +1133,7 @@ def urlCreateProject(userid, params):
         adminUser = fpsys.User.getByLogin(adminLogin)
         if adminUser is None:
             mkdbg('adminUser not found')
-            return jsonErrorReturn("Unknown admin user ({}) does not exist".format(adminLogin), HTTP_BAD_REQUEST)
+            return errorBadRequest("Unknown admin user ({}) does not exist".format(adminLogin))
 
         # Create the project:
         proj = models.Project.makeNewProject(projectName, ownDatabase, contactName, contactEmail, adminLogin)
@@ -998,10 +1141,10 @@ def urlCreateProject(userid, params):
         # Add the adminUser to the project:
         errmsg = fpsys.addUserToProject(adminUser.getId(), projectName, 1)  #MFK define and use constant
         if errmsg is not None:
-            return jsonErrorReturn('project {} created, but could not add user {} ({})'.format(projectName,
-                adminLogin, errmsg), HTTP_BAD_REQUEST)
+            return errorBadRequest('project {} created, but could not add user {} ({})'.format(projectName,
+                adminLogin, errmsg))
     except Exception, e:
-        return jsonErrorReturn('Problem creating project: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem creating project: ' + str(e))
 
     return apiResponse(True, HTTP_CREATED, msg='Project {} created'.format(projectName),
                 url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True),
@@ -1037,11 +1180,10 @@ def getCheckProjectsParams(params):
             'adminLogin':adminLogin
             }
 
-@webRest.route(API_PREFIX + 'projects/<int:xprojId>', methods=['PUT'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['PUT'])
 @multi_auth.login_required
-@wrap_api_func
-def urlUpdateProject(userid, params, xprojId):
-#----------------------------------------------------------------------------------------------
+@project_func()
+def urlUpdateProject(mproj, params, projId):
 #^-----------------------------------
 #: PUT: API_PREFIX + projects/<ident>
 #: Access: Requesting user needs omnipotence, or to have admin access to the project.
@@ -1049,79 +1191,99 @@ def urlUpdateProject(userid, params, xprojId):
 #:   'projectName': <Project name>,
 #:   'contactName': <Name of contact person>,
 #:   'contactEmail': <email of contact person>,
-#:   'adminLogin': <FieldPrime ident of user to have admin access> NOT SUPPORTED
 #: }
 #: Success Response:
 #:   Status code: HTTP_OK
 #$
+    """
+Update project properties.
+Requesting user needs to have admin access to the project, or omnipotence.
+---
+tags:
+  - Projects
+parameters:
+  - in: body
+    description: Project details
+    required: true
+    schema:
+      type: object
+      properties:
+        projectName:
+          type: string
+          description: Project name
+        contactName':
+          type: string
+          description: Name of contact person for project
+        contactEmail':
+          type: string
+          description: Email address of contact person for project
+responses:
+  200:
+    description: Project updated.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    if not g.canAdmin:
+        return errorAccess()
     try:
         # Check permissions:
-        userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
-        if userProject is None and not g.user.omnipotent():
-                return jsonErrorReturn('No permissions', HTTP_UNAUTHORIZED)
-
         pxo = getCheckProjectsParams(params)
     except Exception, e:
-        return jsonErrorReturn('Problem project update: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem project update: ' + str(e))
 
     # now update stuff:
     # Need to update name in both fpsys and project database.
     # Other details in project database.
 
-    # get fpsys proj obj:
-    sysProj = fpsys.Project.getById(xprojId)
-    if sysProj is None:
-        return jsonErrorReturn('Project not found', HTTP_NOT_FOUND)
-
-    # get local proj obj:
-    lproj = models.Project.getById(sysProj.db(), xprojId)
-    if lproj is None:
-        return jsonErrorReturn('Cannot get project', HTTP_SERVER_ERROR)
-
     if pxo['projectName'] is not None:
-        sysProj.setName(pxo['projectName'])
-        errmsg = sysProj.saveName()
+        g.sysProj.setName(pxo['projectName'])
+        errmsg = g.sysProj.saveName()
         if errmsg is not None:
-            return jsonErrorReturn(errmsg, HTTP_SERVER_ERROR)
-        lproj.setName(pxo['projectName'])
+            return errorServer(errmsg)
+        mproj.setName(pxo['projectName'])
     if pxo['contactName'] is not None:
-        lproj.setContactName(pxo['contactName'])
+        mproj.setContactName(pxo['contactName'])
     if pxo['contactEmail'] is not None:
-        lproj.setContactEmail(pxo['contactEmail'])
+        mproj.setContactEmail(pxo['contactEmail'])
 
-    lproj.save()  # check worked..
+    mproj.save()  # check worked..
     return apiResponse(True, HTTP_OK)
 
-@webRest.route(API_PREFIX + 'projects/<int:xprojId>', methods=['DELETE'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['DELETE'])
 @multi_auth.login_required
-@wrap_api_func
-def urlDeleteProject(userid, params, xprojId):
-#----------------------------------------------------------------------------------------------
-#^
-#: DELETE: API_PREFIX + 'projects/<id>
-#: Requesting user needs omnipotence permissions.
-#: Input: none
-#: Success Response:
-#:   Status code: HTTP_OK
-#$
+@project_func()
+def urlDeleteProject(mproj, params, projId):
+    """
+Delete project.
+Requesting user needs create project permissions.
+---
+tags:
+  - Projects
+responses:
+  200:
+    description: Project Deleted.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     # check permissions
     if not g.user.omnipotent():
-        return jsonErrorReturn("no permission to delete project", HTTP_UNAUTHORIZED)
-    errmsg = fpsys.Project.delete(xprojId)
+        return errorAccess("no permission to delete project")
+    errmsg = fpsys.Project.delete(projId)
     if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)  # need to distinguish server error, user not found..
+        return errorBadRequest(errmsg)  # need to distinguish server error, user not found..
     return apiResponse(True, HTTP_OK)
-
-
-# MFK - project could have usersUrl for adding, deleting users, updating permissions
 
 
 ### Project Users: #######################################################################
 
-@webRest.route(API_PREFIX + 'projects/<int:xprojId>/users/', methods=['POST'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>/users/', methods=['POST'])
 @multi_auth.login_required
-@wrap_api_func
-def urlAddProjectUser(userid, params, xprojId):
+@project_func()
+def urlAddProjectUser(mproj, params, projId):
 #----------------------------------------------------------------------------------------------
 #^
 #: POST: urlUsers from project
@@ -1132,14 +1294,41 @@ def urlAddProjectUser(userid, params, xprojId):
 #:   "admin":<boolean>
 #: }
 #: Success Response:
-#:   Status code: HTTP_OK
+#:   Status code: HTTP_CREATED
 #$
-    mkdbg('urlAddProjectUser({},{},{})'.format(userid, params, xprojId))
+    """
+Add user to project.
+Requesting user must have admin access to project.
+---
+tags:
+  - Projects
+parameters:
+  - in: body
+    name: Project Creation
+    description: Project creation data
+    required: true
+    schema:
+      id: ProjectUser
+      type: object
+      properties:
+        ident:
+          type: string
+          description: Login id of user
+        admin':
+          type: boolean
+          description: Does user have admin access to project.
+responses:
+  201:
+    description: User added.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('urlAddProjectUser({},{})'.format(params, projId))
     # check permissions
-    if not g.user.omnipotent():
-        userProject = fpsys.UserProject.getUserProject(g.userName, xprojId)
-        if userProject is None or not userProject.hasAdminRights():
-            return jsonErrorReturn('No permissions', HTTP_UNAUTHORIZED)
+    if not g.canAdmin:
+        return errorAccess()
 
     ident = params.get('ident')
     admin = params.get('admin')
@@ -1147,13 +1336,13 @@ def urlAddProjectUser(userid, params, xprojId):
     # check user exists:
     user = fpsys.User.getByLogin(ident)
     if user is None:
-        return jsonErrorReturn("Unknown user ({}) does not exist".format(ident), HTTP_BAD_REQUEST)
+        return errorBadRequest("Unknown user ({}) does not exist".format(ident))
 
     # Add the adminUser to the project:
-    mkdbg('calling addOrUpdateUserProjectById({},{},{})'.format(user.getId(), xprojId, 1 if admin else 0))
-    errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), xprojId, 1 if admin else 0)
+    mkdbg('calling addOrUpdateUserProjectById({},{},{})'.format(user.getId(), projId, 1 if admin else 0))
+    errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), projId, 1 if admin else 0)
     if errmsg is not None:
-        return jsonErrorReturn(errmsg, HTTP_BAD_REQUEST)
+        return errorBadRequest(errmsg)
     return apiResponse(True, HTTP_CREATED)
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/users/', methods=['GET'])
@@ -1171,6 +1360,27 @@ def urlGetProjectUsers(mProj, params, projId):
 #:   Status code: HTTP_OK
 #:   data: array of {'ident':<ident>, 'admin':boolean}
 #$
+    """
+Get list of project users.
+Requesting user must have admin access to project.
+---
+tags:
+  - Projects
+responses:
+  200:
+    description: Trial Created.
+    schema:
+      type: object
+      properties:
+        data:
+            type: array
+            items:
+              $ref: '#/definitions/ProjectUser'
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlGetProjectUsers({})'.format(projId))
     # check permissions
     if not g.canAdmin:
@@ -1203,6 +1413,41 @@ def urlGetTraits(mproj, params, projId):
 #:     url : <trait URL>
 #:   ]
 #$
+    """
+Get project trait list.
+---
+tags:
+  - Traits
+responses:
+  200:
+    description: Project list.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              id: Trait
+              properties:
+                url:
+                 type: string
+                 description: Trait URL
+                name:
+                 type: string
+                 description: Trait name
+                description:
+                 type: string
+                 description: Trait description
+                datatype:
+                 id: ScoreDatatype
+                 type: string
+                 description: Must be one of integer, decimal, text, categorical, date, photo
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlGetTraits({})'.format(projId))
     # check permissions
     if not g.canAdmin:
@@ -1217,14 +1462,13 @@ def urlGetTraits(mproj, params, projId):
                                   _external=True)
                     } for trt in straits]
     except Exception as e:
-        return jsonErrorReturn('Problem getting traits: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem getting traits: ' + str(e))
     return apiResponse(True, HTTP_OK, data=retList)
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/traits', methods=['POST'])
 @multi_auth.login_required
 @project_func()
 def urlCreateTrait(mproj, params, projId):
-#-----------------------------------------------------------------------------------------
 #^-----------------------------------
 #: POST: urlTraits from project
 #: Access: Requesting user needs create omnipotent permissions.
@@ -1239,6 +1483,45 @@ def urlCreateTrait(mproj, params, projId):
 #:   url: <url of created trait>
 #:   data: none
 #$
+    """
+Create a trait.
+Requesting user needs project admin permissions.
+---
+tags:
+  - Traits
+parameters:
+  - in: body
+    name: Project Trait Creation
+    description: Trait creation data
+    required: true
+    schema:
+      required:
+        - properties
+      type: object
+      properties:
+        name:
+          type: string
+          description: Trait name
+        description:
+          type: string
+          description: Description of trait.
+        datatype:
+          $ref: '#/definitions/ScoreDatatype'
+        typeData:
+          type: object
+responses:
+  201:
+    description: Trait Created.
+    schema:
+      properties:
+        success:
+          type: string
+          description: Informative phrase
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('in urlCreateTrait')
     # check permissions
     if not g.canAdmin:
@@ -1276,16 +1559,49 @@ def urlGetTrait(mproj, params, projId, traitId):
 #:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
 #:   ]
 #$
+    """
+Get project trait.
+---
+tags:
+  - Traits
+responses:
+  200:
+    description: Trait details.
+    type: object
+    schema:
+      properties:
+        data:
+          $ref: '#/definitions/Trait'
+#           type: object
+#           properties:
+#             url:
+#              type: string
+#              description: Trait URL
+#             name:
+#              type: string
+#              description: Trait name
+#             description:
+#              type: string
+#              description: Trait description
+#             datatype:
+#              $ref: '#/definitions/ScoreDatatype'
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlGetTrait({})'.format(projId))
     try:
         trt = mproj.getTrait(traitId)
         retObj = {
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
-                    'datatype':trt.getDatatypeName()
+                    'datatype':trt.getDatatypeName(),
+                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
+                                  _external=True)
                     }
     except Exception as e:
-        return jsonErrorReturn('Problem getting trait: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem getting trait: ' + str(e))
     return apiResponse(True, HTTP_OK, data=retObj)
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/traits/<int:traitId>', methods=['DELETE'])
@@ -1301,39 +1617,29 @@ def urlDeleteTrait(mproj, params, projId, traitId):
 #:   Status code: HTTP_OK
 #:   data: none
 #$
+    """
+Delete trait.
+Requesting user needs project view permissions.
+---
+tags:
+  - Traits
+responses:
+  200:
+    description: Trait Deleted.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlDeleteTrait({})'.format(projId))
     return notImplemented()
     try:
         mproj.deleteTrait(traitId)
     except Exception as e:
-        return jsonErrorReturn('Problem deleting trait: ' + str(e), HTTP_BAD_REQUEST)
+        return errorBadRequest('Problem deleting trait: ' + str(e))
     return apiResponse(True, HTTP_OK)
 
 ## Trials: ############################################################################
-
-# Todo trial delete
-TEST_trial = '''
-FP=http://0.0.0.0:5001/fpv1
-
-# Get token:
-curl -u fpadmin:foo -i -X GET $FP/token
-
-# Create trial:
-curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
-     -d '{"trialName":"testCreateTrial"}' $FP/projects/1/trials
-
-curl -u fpadmin:foo -i -X POST -H "Content-Type: application/json" \
-     -d '{"trialName":"testCreateTrial2", "trialYear":2016, "trialSite":"yonder", "trialAcronym":"123",
-     "nodeCreation":"false", "rowAlias":"range", "colAlias":"run"}' $FP/projects/1/trials
-
-TRIAL_URL=<url from create>
-# Get Trial:
-curl -u fpadmin:foo -i $TRIAL_URL
-
-# Delete Trial:
-curl -u fpadmin:foo -i -X DELETE $TRIAL_URL
-
-'''
 
 def processAttributes(trial, attributes):
 # Adds attributes to trial.
@@ -1361,6 +1667,32 @@ def processNodes(trial, nodes):
 @multi_auth.login_required
 @project_func()
 def urlCreateTrial(mproj, params, projId):
+#^-----------------------------------
+#: POST: <trialUrl from getProject>
+#: Access: Requesting user needs project admin permissions.
+#: Input: {
+#:   properties : {
+#:     name : name project - must be appropriate.
+#:     year : text
+#:     site : text
+#:     acronym : text
+#:     nodeCreation : 'true' or 'false'
+#:     index1name : text
+#:     index2name : text
+#:   }
+#:   attributes : array of {
+#:     name : <attribute name>,
+#:     datatype : OPTIONAL 'text' | 'decimal' | 'integer'
+#:   }
+#:   nodes : array of {
+#:     attributeName : attributeValue
+#:   }
+#: }
+#: NB, all input parameters are optional except for trialName.
+#: Success Response:
+#:   Status code: HTTP_CREATED
+#:   url: <url of created trial>
+#$
     """
 Create a trial.
 Requesting user needs project admin permissions.
@@ -1417,6 +1749,7 @@ parameters:
                   type: string
                   description: Attribute name
                 datatype:
+                  id: datatype
                   type: string
                   description: Must be 'text', 'decimal', or 'integer'
         nodes:
@@ -1424,7 +1757,6 @@ parameters:
           items:
             description: Node details
             schema:
-              id: Node
               properties:
                 attributeName:
                   type: string
@@ -1438,34 +1770,10 @@ responses:
           type: string
           description: Informative phrase
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
-#^-----------------------------------
-#: POST: <trialUrl from getProject>
-#: Access: Requesting user needs project admin permissions.
-#: Input: {
-#:   properties : {
-#:     name : name project - must be appropriate.
-#:     year : text
-#:     site : text
-#:     acronym : text
-#:     nodeCreation : 'true' or 'false'
-#:     index1name : text
-#:     index2name : text
-#:   }
-#:   attributes : array of {
-#:     name : <attribute name>,
-#:     datatype : OPTIONAL 'text' | 'decimal' | 'integer'
-#:   }
-#:   nodes : array of {
-#:     attributeName : attributeValue
-#:   }
-#: }
-#: NB, all input parameters are optional except for trialName.
-#: Success Response:
-#:   Status code: HTTP_CREATED
-#:   url: <url of created trial>
-#$
     # Check permissions:
     # Calling user must be omnipotent or have admin access to project.
     # We should have trial creation permissions, but this should be project specific
@@ -1489,7 +1797,7 @@ responses:
 
     # check trial name provided and valid format:
     if trialName is None or not util.isValidIdentifier(trialName):
-        return jsonErrorReturn("Invalid trial name", HTTP_BAD_REQUEST)
+        return errorBadRequest("Invalid trial name")
 
     try:
         trial = mproj.newTrial(trialName, trialSite, trialYear, trialAcronym)  #MFK this func doing commits.
@@ -1521,13 +1829,43 @@ responses:
 @multi_auth.login_required
 @project_func()
 def urlUpdateTrial(mproj, params, projId, trialId):
+    """
+Update a trial.
+---
+tags:
+  - Trials
+parameters:
+  - in: body
+    name: Trial Creation
+    description: Trial creation data
+    required: true
+    schema:
+      type: object
+      properties:
+        nodeCreation:
+          type: string
+          description: Indicates whether user node creation allowed for trial
+        index1name:
+          type: string
+          description: Name of first index for trial
+        index2name:
+          type: string
+          description: Name of second index for trial
+responses:
+  200:
+    description: Trial Updated.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlUpdateTrial {}'.format(params))
     if not g.canAdmin:
         return errorAccess()
     try:
         nodeCreation = params.get('nodeCreation')
-        ind1 = params.get(const.INDEX_NAME_1)
-        ind2 = params.get(const.INDEX_NAME_2)
+        ind1 = params.get('index1name')
+        ind2 = params.get('index2name')
         trial = models.getTrial(g.dbsess, trialId)
         if nodeCreation is not None:
             if nodeCreation not in ('true', 'false'):
@@ -1546,6 +1884,15 @@ def urlUpdateTrial(mproj, params, projId, trialId):
 @multi_auth.login_required
 @wrap_api_func
 def urlGetTrials(userid, params, projId):
+#^-----------------------------------
+#: GET: <trialUrl from project>
+#: Access: Requesting user needs omnipotence or project view permissions.
+#: Input: {
+#: }
+#: Success Response:
+#:   Status code: HTTP_OK
+#:   data: <array of trial urls>
+#$
     """
 Get trial list.
 Requesting user needs project view permissions.
@@ -1575,17 +1922,10 @@ responses:
 #                 description: URL for accessing trial nodes
 
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
-#^-----------------------------------
-#: GET: <trialUrl from project>
-#: Access: Requesting user needs omnipotence or project view permissions.
-#: Input: {
-#: }
-#: Success Response:
-#:   Status code: HTTP_OK
-#:   data: <array of trial urls>
-#$
     # Check access:
     if not g.user.omnipotent() and g.userProject is None:
         return errorAccess()
@@ -1613,7 +1953,8 @@ responses:
       type: object
       properties:
         data:
-          schema:
+          type: object
+          properties:
               properties:
                 schema:
                   $ref: "#/definitions/TrialProperties"
@@ -1624,7 +1965,9 @@ responses:
                 type: string
                 description: URL for accessing trial nodes
   400:
-    description: Invalid parameters, or server error.
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
 """
     # check user has access to project
     trial = models.getTrial(g.userProject.db(), trialId)
@@ -1649,9 +1992,21 @@ responses:
 @multi_auth.login_required
 @wrap_api_func
 def urlDeleteTrial(userid, params, projId, trialId):
+    """
+Delete trial.
+Requesting user needs project admin permissions.
+---
+tags:
+  - Trials
+responses:
+  200:
+    description: Trial Deleted.
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     # Need project admin access to delete
     if not g.userProject.hasAdminRights():
-        return jsonErrorReturn('No administration access', HTTP_UNAUTHORIZED)
+        return errorAccess('No administration access')
     models.Trial.delete(g.userProject.db(), trialId)
     return jsonSuccessReturn("Trial Deleted", HTTP_OK)
 
@@ -1666,6 +2021,41 @@ def urlDeleteTrial(userid, params, projId, trialId):
 @multi_auth.login_required
 @project_func()
 def urlGetNodes(mproj, params, projId, trialId):
+    """
+Get node list.
+User must have project view access, or omnipotence.
+This URL is urlNodes from the trial object.
+---
+tags:
+  - Nodes
+responses:
+  200:
+    description: Node list.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              properties:
+                url:
+                 type: string
+                 description: Node URL
+                fpId:
+                 type: string
+                 description: Attribute name
+                index1:
+                 type: string
+                 description: Node value for index 1
+                index2:
+                 type: string
+                 description: Node value for index 2
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
 #---------------------------------------------------------------------------------
 #^
 #: GET: urlNodes from trial
@@ -1729,6 +2119,56 @@ def urlCreateNode(mproj, params, projId, trialId):
 #: url: <new node url>
 #: data: absent
 #$
+    """
+Create a trial node.
+---
+tags:
+  - Nodes
+parameters:
+  - in: body
+    name: body
+    description: Node object
+    required: true
+    schema:
+      required:
+        - node
+      properties:
+        node:
+          schema:
+            id: Node
+            properties:
+              index1:
+                type: integer
+                description: Value of index 1 for the node.
+              index2:
+                type: integer
+                description: Value of index 2 for the node.
+              description:
+                type: string
+                description: Optional node information.
+              barcode:
+                type: string
+                description: Default barcode for navigation
+              latitude:
+                type: double
+                description: Latitude of node location.
+              longitude:
+                type: double
+                description: Longitude of node location.
+              attributes:
+                type: array
+                description: Array of attribute name:attribute value objects
+                items:
+                  type: object
+                
+responses:
+  201:
+    description: Node Created.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('urlCreateNode : {}'.format(params))
     try:
         # Check permissions, nodeCreation needs to be on if not admin.
@@ -1772,6 +2212,37 @@ def urlGetNode(mproj, params, projId, trialId, nodeId):
 #:     index2 : <index 2 value>
 #:   }
 #$
+    """
+Get node.
+User must have project view access, or omnipotence.
+Node URLs can be obtaing from the getNodes operation.
+---
+tags:
+  - Nodes
+responses:
+  200:
+    description: Node.
+    type: object
+    schema:
+      properties:
+        data:
+          type: object
+          schema:
+              properties:
+                fpId:
+                 type: string
+                 description: Attribute name
+                index1:
+                 type: string
+                 description: Node value for index 1
+                index2:
+                 type: string
+                 description: Node value for index 2
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('in urlGetNodes')
     # NB, check that user has access to project is done in project_func.
     try:
@@ -1801,6 +2272,31 @@ def urlUpdateNode(mproj, params, projId, trialId, nodeId):
 #:   Status code: HTTP_OK
 #:   data: none
 #$
+    """
+Update a trial node.
+---
+tags:
+  - Nodes
+parameters:
+  - in: body
+    name: body
+    description: Node object
+    required: true
+    schema:
+      required:
+        - node
+      properties:
+        node:
+          $ref: '#/definitions/Node'
+                
+responses:
+  200:
+    description: Node Updated.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
     mkdbg('in urlGetNodes : {}'.format(params))
     if not g.canAdmin:
         return errorAccess('admin privileges required')
@@ -1821,6 +2317,18 @@ def urlUpdateNode(mproj, params, projId, trialId, nodeId):
 @multi_auth.login_required
 @project_func()
 def urlDeleteNode(mproj, params, projId, trialId, nodeId):
+    """
+Delete node.
+Requesting user needs project admin permissions.
+---
+tags:
+  - Nodes
+responses:
+  200:
+    description: Node Deleted.
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
 #---------------------------------------------------------------------------------
 #^
 #: DELETE: node url from getNodes
@@ -1848,6 +2356,37 @@ def urlDeleteNode(mproj, params, projId, trialId, nodeId):
 @multi_auth.login_required
 @project_func()
 def urlGetAttributes(mproj, params, projId, trialId):
+    """
+Get attribute list.
+User must have project view access, or omnipotence.
+This URL is urlAttributes from the trial object.
+---
+tags:
+  - Attributes
+responses:
+  200:
+    description: Attribute list.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            schema:
+              properties:
+                url:
+                 type: string
+                 description: Attribute URL
+                name:
+                 type: string
+                 description: Attribute name
+                datatype:
+                 $ref: "#/definitions/datatype"
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
 #---------------------------------------------------------------------------------
 #^
 #: GET: urlAttributes from trial
@@ -1878,8 +2417,36 @@ def urlGetAttributes(mproj, params, projId, trialId):
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/attributes/<int:attId>', methods=['GET'])
 @multi_auth.login_required
-@wrap_api_func
-def urlAttributeData(userid, params, projId, trialId, attId):
+@project_func()
+def urlAttributeData(mproj, params, projId, trialId, attId):
+    """
+Get attribute values.
+User must have project view access.
+The returned data property is an array of two element arrays, each
+of which represents a single value of the attribute for a node.
+The first element of the array is the node id, and the second
+element is the value of the attribute for that node.
+---
+tags:
+  - Attributes
+responses:
+  200:
+    description: Attribute value list.
+    type: object
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+            type: array
+            items:
+              - type: integer
+              - type: string
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
 #---------------------------------------------------------------------------------
 #^
 #: GET: API_PREFIX + /projects/<int:projId>/trials/<int:trialId>/attributes/<int:attId>
@@ -1900,9 +2467,9 @@ def urlAttributeData(userid, params, projId, trialId, attId):
 #
     mkdbg('in urlAttributeData')
     # NB, check that user has access to project is done in wrap_api_func.
-    natt = models.getAttribute(g.userProject.db(), attId)
+    natt = models.getAttribute(g.dbsess, attId)
     if natt is None:
-        return jsonErrorReturn("Invalid attribute", HTTP_BAD_REQUEST)
+        return errorBadRequest("Invalid attribute")
     vals = natt.getAttributeValues()
     data = []
     for av in vals:
