@@ -68,7 +68,13 @@ def spec():
             "schema": {"$ref": "#/definitions/Error"}
         }
     }
-
+#     swag['securityDefinitions'] = {
+#             "api_key": {
+#                         "type": "apiKey",
+#                         "name": "api_key",
+#                         "in": "header"
+#                         }                       
+#         }
     
     resp = make_response(jsonify(swag))
     resp.headers['Access-Control-Allow-Origin'] = '*'   # Needed for testing, maybe not eventually..
@@ -692,7 +698,6 @@ tags:
 responses:
   200:
     description: User list.
-    type: object
     schema:
       properties:
         data:
@@ -941,7 +946,6 @@ parameters:
 responses:
   200:
     description: Project list.
-    type: object
     schema:
       properties:
         data:
@@ -1087,13 +1091,13 @@ parameters:
         projectName:
           type: string
           description: Project name
-        contactName':
+        contactName:
           type: string
           description: Name of contact person for project
-        contactEmail':
+        contactEmail:
           type: string
           description: Email address of contact person for project
-        adminLogin':
+        adminLogin:
           type: string
           description: Login id of administrator for project
 responses:
@@ -1211,10 +1215,10 @@ parameters:
         projectName:
           type: string
           description: Project name
-        contactName':
+        contactName:
           type: string
           description: Name of contact person for project
-        contactEmail':
+        contactEmail:
           type: string
           description: Email address of contact person for project
 responses:
@@ -1421,7 +1425,6 @@ tags:
 responses:
   200:
     description: Project list.
-    type: object
     schema:
       properties:
         data:
@@ -1567,7 +1570,6 @@ tags:
 responses:
   200:
     description: Trait details.
-    type: object
     schema:
       properties:
         data:
@@ -1749,7 +1751,7 @@ parameters:
                   type: string
                   description: Attribute name
                 datatype:
-                  id: datatype
+#                  id: datatype
                   type: string
                   description: Must be 'text', 'decimal', or 'integer'
         nodes:
@@ -2031,7 +2033,6 @@ tags:
 responses:
   200:
     description: Node list.
-    type: object
     schema:
       properties:
         data:
@@ -2222,11 +2223,9 @@ tags:
 responses:
   200:
     description: Node.
-    type: object
     schema:
       properties:
         data:
-          type: object
           schema:
               properties:
                 fpId:
@@ -2366,7 +2365,6 @@ tags:
 responses:
   200:
     description: Attribute list.
-    type: object
     schema:
       properties:
         data:
@@ -2432,7 +2430,6 @@ tags:
 responses:
   200:
     description: Attribute value list.
-    type: object
     schema:
       properties:
         data:
