@@ -480,7 +480,11 @@ parameters:
       in: body
       description: Name for Attribute
       required: true
-      type: string
+      schema:
+        properties:
+          name:
+            description: Attribute name
+            type: string
 responses:
   201:
     description: Attribute created
@@ -936,11 +940,10 @@ parameters:
     description: If this flag is present, and the user is omnipotent, then all projects are returned.
     schema:
       type: object
-      schema:
-        properties:
-          all:
-            type: string
-            description: |
+      properties:
+        all:
+          type: string
+          description: |
               If this flag is present, and the user is omnipotent, then all projects are returned.
               Otherwise only the projects to which the calling user has view access are returned.
 responses:
@@ -949,16 +952,17 @@ responses:
     schema:
       properties:
         data:
+          description: List of projects
           type: array
           items:
             schema:
               properties:
                 url:
-                 type: string
-                 description: Project URL
+                  type: string
+                  description: Project URL
                 projectName:
-                 type: string
-                 description: Project name     
+                  type: string
+                  description: Project name     
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -1207,6 +1211,7 @@ tags:
   - Projects
 parameters:
   - in: body
+    name: Project update
     description: Project details
     required: true
     schema:
@@ -1443,7 +1448,6 @@ responses:
                  type: string
                  description: Trait description
                 datatype:
-                 id: ScoreDatatype
                  type: string
                  description: Must be one of integer, decimal, text, categorical, date, photo
   400:
@@ -1509,7 +1513,9 @@ parameters:
           type: string
           description: Description of trait.
         datatype:
-          $ref: '#/definitions/ScoreDatatype'
+         type: string
+         description: Must be one of integer, decimal, text, categorical, date, photo
+#          $ref: '#/definitions/ScoreDatatype'
         typeData:
           type: object
 responses:
@@ -1709,12 +1715,10 @@ parameters:
     schema:
       required:
         - properties
-      type: object
       properties:
         properties:
           schema:
               id: TrialProperties
-              type: object
               required:
                 - name
               description: Trial properties
@@ -2151,10 +2155,10 @@ parameters:
                 type: string
                 description: Default barcode for navigation
               latitude:
-                type: double
+                type: number
                 description: Latitude of node location.
               longitude:
-                type: double
+                type: number
                 description: Longitude of node location.
               attributes:
                 type: array
