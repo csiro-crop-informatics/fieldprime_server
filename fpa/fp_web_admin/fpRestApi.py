@@ -384,7 +384,6 @@ responses:
       schema:
         properties:
           data:
-           schema:
              properties:
                token:
                  type: string
@@ -417,7 +416,6 @@ responses:
       schema:
         properties:
           data:
-           schema:
              properties:
                userId:
                  type: string
@@ -753,7 +751,6 @@ responses:
       type: object
       properties:
         data:
-          schema:
             $ref: "#/definitions/UserProperties"
   400:
     $ref: "#/responses/BadRequest"
@@ -955,7 +952,6 @@ responses:
           description: List of projects
           type: array
           items:
-            schema:
               properties:
                 url:
                   type: string
@@ -1707,17 +1703,9 @@ Requesting user needs project admin permissions.
 ---
 tags:
   - Trials
-parameters:
-  - in: body
-    name: Trial Creation
-    description: Trial creation data
-    required: true
-    schema:
-      required:
-        - properties
-      properties:
-        properties:
-          schema:
+definitions:
+  - schema:
+              type: object
               id: TrialProperties
               required:
                 - name
@@ -1744,13 +1732,50 @@ parameters:
                 index2name:
                   type: string
                   description: Name of second index for trial
+parameters:
+  - in: body
+    name: Trial Creation
+    description: Trial creation data
+    required: true
+    schema:
+      required:
+        - properties
+      properties:
+        properties:
+            $ref: "#/definitions/TrialProperties"
+#               type: object
+#               id: TrialProperties
+#               required:
+#                 - name
+#               description: Trial properties
+#               properties:
+#                 name:
+#                   type: string
+#                   description: Name for trial
+#                 year:
+#                   type: integer
+#                   description: Trial year
+#                 site:
+#                   type: integer
+#                   description: Trial site
+#                 acronym:
+#                   type: integer
+#                   description: Trial acronym
+#                 nodeCreation:
+#                   type: string
+#                   description: Indicates whether user node creation allowed for trial
+#                 index1name:
+#                   type: string
+#                   description: Name of first index for trial
+#                 index2name:
+#                   type: string
+#                   description: Name of second index for trial
         attributes:
           type: array
           items:
             description: Attribute details
-            schema:
-              id: Attribute
-              properties:
+            type: object
+            properties:
                 name:
                   type: string
                   description: Attribute name
@@ -1762,8 +1787,8 @@ parameters:
           type: array
           items:
             description: Node details
-            schema:
-              properties:
+            type: object
+            properties:
                 attributeName:
                   type: string
                   description: Attribute Value
@@ -1907,9 +1932,8 @@ tags:
   - Trials
 responses:
   200:
-    description: Trial Created.
+    description: Got trials.
     schema:
-      type: object
       properties:
         data:
             type: array
@@ -1962,7 +1986,6 @@ responses:
           type: object
           properties:
               properties:
-                schema:
                   $ref: "#/definitions/TrialProperties"
               urlAttributes:
                 type: string
@@ -2042,7 +2065,6 @@ responses:
         data:
           type: array
           items:
-            schema:
               properties:
                 url:
                  type: string
@@ -2230,7 +2252,6 @@ responses:
     schema:
       properties:
         data:
-          schema:
               properties:
                 fpId:
                  type: string
@@ -2374,7 +2395,6 @@ responses:
         data:
           type: array
           items:
-            schema:
               properties:
                 url:
                  type: string
