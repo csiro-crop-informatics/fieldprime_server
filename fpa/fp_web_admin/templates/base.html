@@ -141,7 +141,7 @@
           <!-- Individual Navbar elements -->
           <ul class="nav nav-justified nasti-nav">
             {% if loggedIn %}
-            <li><a href={{ url_for('urlUserHome', userName=g.userName) }}><span class='fa fa-user'></span>Home</a></li>
+            <li><a href="{{ url_for('urlUserHome') }}"><span class='fa fa-user'></span>Home</a></li>
             {% else %}
             <li><a href="{{ url_for('urlInfoPageFieldPrime') }}"><span class='fa fa-home'></span>Home</a></li>
             {% endif %}

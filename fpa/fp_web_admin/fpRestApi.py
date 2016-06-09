@@ -37,7 +37,7 @@ multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
     if True:
-        print msg
+        print "webRest:" + msg
 
 @webRest.route("/specs")
 def spec():
@@ -160,7 +160,7 @@ def generate_auth_token(username, expiration=600):
 # time (which is in seconds).
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
     token = s.dumps({'id': username})
-    mkdbg('generate_auth_token: {}'.format(token))
+    mkdbg('generate_auth_token: {}, {}'.format(username, token))
     return token
 
 def verify_auth_token(token):
@@ -191,6 +191,7 @@ def verify_password(user, password):
 #    g.userName is set to the user login
 #    g.newToken is set to a new authentication token
 #
+    mkdbg('in verify_password {} {}'.format(user, password))
     # try to authenticate with username/password
     check = fpsys.userPasswordCheck(user, password)
     if not check:
@@ -209,6 +210,7 @@ def verify_token(token):
 # add a dummy token value in the www-authenticate header, under the assumption
 # that you're passing a cooky with the correct value in it.
     mkdbg('verify_token({})'.format(token))
+    #print 'headers: {}'.format(request.headers)
     user = verify_auth_token(token)
     if not user: # Try with cooky
         ctoken = request.cookies.get(NAME_COOKIE_TOKEN)
@@ -220,7 +222,7 @@ def verify_token(token):
             return False
     # Reset token
     g.newToken = generate_auth_token(user)
-    mkdbg('verify_token newToken: {}'.format(g.newToken))
+    mkdbg('verify_token newToken: {} {}'.format(g.newToken, user))
     fpsys.fpSetupG(g, userIdent=user)
     return True
 
@@ -389,6 +391,7 @@ responses:
                  type: string
                  description: API token
 """
+    mkdbg('in urlGetToken')
     token = generate_auth_token(g.userName)
     retObj = {'token': token.decode('ascii'), 'duration': 600}
     return apiResponse(True, HTTP_OK, data=retObj) #, url=url_for('urlGetUser'))
@@ -421,6 +424,7 @@ responses:
                  type: string
                  description: User login id
 """
+    mkdbg('in urlGetTokenUser')
     return apiResponse(True, HTTP_OK, data={'userId':userid})
 
 ### TraitInstance Attribute: #################################################################
@@ -1285,7 +1289,7 @@ responses:
 
 ### Project Users: #######################################################################
 
-@webRest.route(API_PREFIX + 'projects/<int:projId>/users/', methods=['POST'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>/users', methods=['POST'])
 @multi_auth.login_required
 @project_func()
 def urlAddProjectUser(mproj, params, projId):
@@ -1304,6 +1308,8 @@ def urlAddProjectUser(mproj, params, projId):
     """
 Add user to project.
 Requesting user must have admin access to project.
+Can be used to add multiple users, if parameter "users" is present,
+or a single user, if "ident" and "admin" are present. Or both.
 ---
 tags:
   - Projects
@@ -1319,9 +1325,21 @@ parameters:
         ident:
           type: string
           description: Login id of user
-        admin':
+        admin:
           type: boolean
           description: Does user have admin access to project.
+        users:
+          type: array
+          description: List of users to add to project.
+          items:
+            type: object
+            properties:
+              ident:
+                type: string
+                description: Login id of user
+              admin:
+                type: boolean
+                description: Does user have admin access to project.
 responses:
   201:
     description: User added.
@@ -1335,22 +1353,47 @@ responses:
     if not g.canAdmin:
         return errorAccess()
 
-    ident = params.get('ident')
-    admin = params.get('admin')
+    def processSingleUser(ident, admin):
+    # Return error return if bad, else None
+        # check user exists:
+        user = fpsys.User.getByLogin(ident)
+        if user is None:
+            return errorBadRequest("Unknown user ({}) does not exist".format(ident))
+    
+        # Add the adminUser to the project:
+        mkdbg('calling addOrUpdateUserProjectById({},{},{})'.format(user.getId(), projId, 1 if admin else 0))
+        errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), projId, 1 if admin else 0)
+        if errmsg is not None:
+            return errorBadRequest(errmsg)
+        return None
+    
+    try:
+        # Process array of users:
+        users = params.get('users')
+        if users is not None:
+            if not isinstance(users, list):
+                return errorBadRequest("users parameter must be a list")
+            for user in users:
+                ident = user.get('ident')
+                admin = user.get('admin')
+                ret = processSingleUser(ident, admin)
+                if ret is not None:
+                    return ret
+        
+        # Process single user
+        ident = params.get('ident')
+        if ident is not None:
+            admin = params.get('admin')       
+            ret = processSingleUser(ident, admin)
+            if ret is not None:
+                return ret
+    except Exception as e:
+        mkdbg('EXCEPTION in urlAddProjectUser: {}'.format(str(e)))
+        return errorBadRequest('Invalid input')
 
-    # check user exists:
-    user = fpsys.User.getByLogin(ident)
-    if user is None:
-        return errorBadRequest("Unknown user ({}) does not exist".format(ident))
-
-    # Add the adminUser to the project:
-    mkdbg('calling addOrUpdateUserProjectById({},{},{})'.format(user.getId(), projId, 1 if admin else 0))
-    errmsg = fpsys.addOrUpdateUserProjectById(user.getId(), projId, 1 if admin else 0)
-    if errmsg is not None:
-        return errorBadRequest(errmsg)
     return apiResponse(True, HTTP_CREATED)
 
-@webRest.route(API_PREFIX + 'projects/<int:projId>/users/', methods=['GET'])
+@webRest.route(API_PREFIX + 'projects/<int:projId>/users', methods=['GET'])
 @multi_auth.login_required
 @project_func('projId')
 def urlGetProjectUsers(mProj, params, projId):
@@ -1380,7 +1423,20 @@ responses:
         data:
             type: array
             items:
-              $ref: '#/definitions/ProjectUser'
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: URL for user in project
+                name:
+                  type: string
+                  description: Name of user
+                ident:
+                  type: string
+                  description: Login id of user
+                admin':
+                  type: boolean
+                  description: Does user have admin access to project
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -1395,8 +1451,53 @@ responses:
         users = g.sysProj.getUsers()
     except FPSysException as e:
         return errorServer('urlGetProjectUsers: ' + e)
-    retList = [{'ident':ident, 'admin':perms==1} for (ident,perms) in users]
+    retList = [{'url':url_for('webRest.urlDeleteProjectUser', projId=projId, userId=userId),
+                'ident':ident,
+                'admin':perms==1,
+                'name':name
+                } for (ident,perms,name,userId) in users]
+    mkdbg('user list {}'.format(retList))
     return apiResponse(True, HTTP_OK, data=retList)
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/users/<int:userId>', methods=['DELETE'])
+@multi_auth.login_required
+@project_func('projId')
+def urlDeleteProjectUser(mProj, params, userId, projId):
+#def urlDeleteProjectUser(userId, projId):
+#----------------------------------------------------------------------------------------------
+#^
+#: DELETE: urlProjectUser from getProjectUsers
+#: Access: Requesting user needs omnipotence permissions or admin access to project.
+#: NB can be used to update user permissions for the project.
+#: Input: None
+#: Success Response:
+#:   Status code: HTTP_OK
+#$
+    """
+Remove user from project.
+Requesting user must have admin access to project.
+---
+tags:
+  - Projects
+responses:
+  200:
+    description: Remove project user.
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('urlDeleteProjectUser({})'.format(projId))
+
+    # check permissions
+    if not g.canAdmin:
+        return errorAccess()
+    try:
+        g.sysProj.removeUser(userId)
+    except FPSysException as e:
+        return errorServer('urlDeleteProjectUser: ' + str(e))
+    return apiResponse(True, HTTP_OK, msg='User removed from project')
+
 
 #### Traits: ##########################################################################
 

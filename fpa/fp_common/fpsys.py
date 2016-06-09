@@ -61,7 +61,7 @@ def _getUserIdFromIdent(ident):
         return None
 
 
-def deleteUser(project, ident):
+def deleteUserFromProject(project, ident):
 #-----------------------------------------------------------------------
 # Return None or string error message on error.
 #
@@ -688,16 +688,31 @@ class Project():
         try:
             con = getFpsysDbConnection()
             with closing(con.cursor()) as cur:
-                qry = 'select login, userProject.permissions from user join userProject ' + \
+                qry = 'select login, userProject.permissions, user.name, user.id from user join userProject ' + \
                     'on id=user_id where project_id=%s'
                 cur.execute(qry, (self.getId(),))
                 users = []
                 for row in cur.fetchall():
-                    users.append((row[0], row[1]))
+                    users.append((row[0], row[1], row[2], row[3]))
                 return users
         except mdb.Error as e:
             raise FPSysException('DB error: {}'.format(str(e)))
 
+    def removeUser(self, userId):
+    #-----------------------------------------------------------------------
+    # Get users associated with access to project.
+    # Returns list of tuples (ident, permissions).
+    # Raises FPSysException on error.
+    #
+        try:
+            con = getFpsysDbConnection()
+            with closing(con.cursor()) as cur:
+                qry = 'delete from userProject where project_id = %s and user_id=%s'
+                print qry, (self.getId(), userId)
+                cur.execute(qry, (self.getId(), userId))
+                con.commit()
+        except mdb.Error as e:
+            raise FPSysException('DB error: {}'.format(str(e)))
 
     @staticmethod
     def getById(pid):

@@ -3,7 +3,7 @@
 {% block dataContent %}
 
 <fieldset><legend><h3>Contact Details</h3></legend>
-  <form method="POST" action="{{g.fpUrl('urlUserDetails')}}?op=contact">
+  <form method="POST" action="{{g.fpUrl('urlProjectAdmin')}}?op=contact">
     <p> Name and email address of a contact for this project: </p>
     <label for="contactName">Contact name: </label><input type="text" name="contactName" id="contactName" style="width: 200px;" value="{{contactName}}"><br />
     <label for="contactEmail">Contact email: </label><input type=text name="contactEmail" id="contactEmail" style="width: 200px;" value="{{contactEmail}}"><br />
@@ -17,7 +17,7 @@
 
 {% if passChange == True %}
 <fieldset><legend><h3>Reset Admin password</h3></legend>
-  <form method="POST" action="{{g.fpUrl('urlUserDetails')}}?op=newpw">
+  <form method="POST" action="{{g.fpUrl('urlProjectAdmin')}}?op=newpw">
     <p> The <i>Admin Password</i> is the password used to login to this web server to
       manage the trials. I.e. the one you must have used at some stage to get to this page. </p>
     <label for="password" style='width:200px'> Current <i>Admin</i> password: </label><input type=password name="password" id="password"><br />
@@ -32,7 +32,7 @@
 {% endif %}
 
 <fieldset><legend><h3>Reset Scoring Devices Password</h3></legend>
-  <form method="POST" action="{{g.fpUrl('urlUserDetails')}}?op=setAppPassword">
+  <form method="POST" action="{{g.fpUrl('urlProjectAdmin')}}?op=setAppPassword">
     <p> The <i>Scoring Devices Password</i> is the password that needs to be configured on the scoring devices
       to allow them to download trial information, and upload trial scores. If this is not configured,
       or if it is blank, then the scoring devices will be able to download and upload without configuring

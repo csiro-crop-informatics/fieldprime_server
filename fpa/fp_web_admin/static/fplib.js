@@ -93,8 +93,6 @@ fplib.ajax = {
                 $.ajax({
                        type: method,
                        url: url,
-                       //username: token,
-                       //password: 'x',
                        statusCode: {
                         401: function() {
                                 alert( "401" );
@@ -111,12 +109,37 @@ fplib.ajax = {
                     $(divSelector).modal('hide');
                 }
                 
-                e.preventDefault(); // avoid to execute the actual submit of the form.
+                e.preventDefault(); // avoid executing the form submit.
             });
         };
+    },
+    
+    // Call to ajax with some defaults.
+    doAjax : function(url, method, sfunc, params) {
+        method = typeof method !== 'undefined' ? method : "GET";
+        sfunc = typeof sfunc !== 'undefined' ? sfunc : fplib.ajax.jsonSuccess;
+        
+        var token = fplib.readCookie('fptoken');
+        var ajaxObj = {
+            url: url,
+            dataType:"json",
+            statusCode: {
+             401: function() { alert( "401" ); }
+            },
+            headers: {"Authorization": "fptoken " + token},
+            success: sfunc,
+            error: fplib.ajax.jsonError
+         };
+        ajaxObj.type = method;
+        if (typeof params === 'object') {
+            if (params.hasOwnProperty('jsonData')) {
+                ajaxObj.data = JSON.stringify(params.jsonData);
+                ajaxObj.contentType = "application/json";
+            }
+        }
+        $.ajax(ajaxObj);
     }
 };
-
 
 /*
  * getUrlData
@@ -701,6 +724,9 @@ fplib.setDirty = function (el, goUp) {
     el.setAttribute("data-dirty", "y");
 };
 
+
+//*** User stuff: ***********************************************************
+
 /*
  * userAdd
  * Adds row to user table, with user to fill in the login and permissions.
@@ -719,9 +745,7 @@ fplib.userAdd = function () {
  * function userAdd).
  */
 fplib.userSaveChanges = function (destUrl) {
-    var updateUsers = {};
-    var newUsers = {};
-    var delUsers = {};
+    var addUsers = [];
     // get the users and encode them in json
     var table = document.getElementById("userTable");
 
@@ -733,29 +757,31 @@ fplib.userSaveChanges = function (destUrl) {
     };
 
     for (var i = 1, row; row = table.rows[i]; i++) {
-       var loginId;
-       if (row.hasAttribute("data-addedUser")) {
-           loginId = row.cells[0].children[0].value;
-           if (loginId.length > 0 && loginId.length < 16) {
-               newUsers[loginId] = row.cells[2].getElementsByTagName('input')[0].checked; // admin field
-           }
-       } else if (row.hasAttribute("data-dirty")) {
-           var login = row.cells[0];
-           loginId = login.innerHTML;
-           updateUsers[loginId] = row.cells[2].getElementsByTagName('input')[0].checked; // admin field
-       }
+        var loginId;
+        var admin = row.cells[2].getElementsByTagName('input')[0].checked;
+        if (row.hasAttribute("data-addedUser")) {
+            loginId = row.cells[0].children[0].value;
+            if (loginId.length > 0 && loginId.length < 16) {
+                addUsers.push({'ident':loginId, 'admin':admin});
+            }
+        } else if (row.hasAttribute("data-dirty")) {
+            var login = row.cells[0];
+            loginId = login.innerHTML;
+            addUsers.push({'ident':loginId, 'admin':admin});
+        }
     }
-
+    fplib.ajax.doAjax(destUrl, 'POST', sfunc, {"users":addUsers});
+    /*
     $.ajax({
         url:destUrl,
-        data:JSON.stringify({"update":updateUsers, "create":newUsers, "delete":delUsers}),
+        data:JSON.stringify({"users":addUsers}),
         dataType:"json",
         contentType: "application/json",
         type:"POST",
-        //error:function (jqXHR, textStatus, errorThrown){fplib.msg("errorFunc:"+textStatus);},
         error:function (jqXHR, textStatus, errorThrown){fplib.msg("errorFunc:"+jqXHR.responseText);},
         success:sfunc
     });
+    */
 };
 
 /*
@@ -764,23 +790,16 @@ fplib.userSaveChanges = function (destUrl) {
  * NB URL is present as data attribute on row (from the server, see fillUserTable).
  */
 fplib.userDelete = function(row) {
-    var sfunc = function (data, textStatus, jqXHR) {
-        fplib.fillUserTable();
-    };
     var url = row.getAttribute("data-url");
-    if (!url) {
+    if (!url) { // only come here if is a just created (in UI) but not saved user - so nothing to do on db.
         var utab = row.parentNode.parentNode;
         utab.deleteRow(row.rowIndex);
         return;
     }
-    $.ajax({
-        url:url,
-        dataType:"json",
-        contentType: "application/json",
-        type:"DELETE",
-        error:function (jqXHR, textStatus, errorThrown){alert("errorFunc:"+textStatus);},
-        success:sfunc
-    });
+    var sfunc = function (data, textStatus, jqXHR) {
+        fplib.fillUserTable();
+    };
+    fplib.ajax.doAjax(url, "DELETE", sfunc);
 };
 
 /*
@@ -818,22 +837,24 @@ fplib.addUserTableRow = function(utab, local, url, id, name, admin) {
 /*
  * fillUserTable()
  */
-fplib.fillUserTable = function () {
+fplib.fillUserTable = function (url) {
     var utab = document.getElementById('userTable');
-    var url = utab.getAttribute("data-url");
+    if (url === undefined) {
+        url = utab.getAttribute("data-url");
+    }
     var sfunc = function(data) {
-        var users = data.users;
+        var users = data.data;
         var utab = document.getElementById('userTable');
         utab.innerHTML = "";  // delete any current content
         utab.insertRow(-1).innerHTML = '<th>Id</th><th>Name</th><th>Admin</th>'; // headers
         for (var i=0; i<users.length; ++i) {
-            var admin = users[i][3] & 1;
-            fplib.addUserTableRow(utab, false, users[i][0], users[i][1], users[i][2], admin);
+            var user = users[i];
+            fplib.addUserTableRow(utab, false, user.url, user.ident, user.name, user.admin);
         }
     };
-// error handling?
-    $.getJSON(url, sfunc);
+    fplib.ajax.doAjax(url, 'GET', sfunc);
 };
+
 
 /***************************************************************
  * popup form

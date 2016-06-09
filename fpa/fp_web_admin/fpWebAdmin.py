@@ -96,7 +96,7 @@ class FPWebAdminException(Exception):
 ###  FUNCTIONS: #############################################################################
 #############################################################################################
 
-mkdbg = (lambda msg : print(msg)) if (__name__ == '__main__') else (lambda msg : None)
+mkdbg = (lambda msg : print('fpsrver:'+msg)) if (__name__ == '__main__') else (lambda msg : None)
 
 # def mkdbg(msg):
 #     if __name__ == '__main__':
@@ -154,10 +154,6 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
 # Decorator to check if in valid session. If not, send the login page.
 # Generates function that has session as first parameter.
 #
-# If returnNoneSess is true, then the function is returned even if session is
-# invalid, but with None as the session parameter - this can be used for pages
-# that don't require a user to be logged in.
-#
 # A project must be identified. This is either in the parameters with key
 # given by projIdParamName, or in the flask session if there is no such parameter.
 #
@@ -170,9 +166,6 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
         @wraps(func)
         def inner(*args, **kwargs):
             mkdbg('session_check')
-            projId = kwargs.get(projIdParamName)
-            if projId is None: projId = session.get('projId')
-            if projId is None: return loginPage('Unexpected error')
             
             # Get token, validate, and get user:
             token = request.cookies.get(NAME_COOKIE_TOKEN)
@@ -188,6 +181,12 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
                 mkdbg('exception getting json response: {}'.format(e))
                 return loginPage('unexpected error')
                 
+            projId = kwargs.get(projIdParamName)
+            if projId is None: 
+                projId = session.get('projId')
+                mkdbg('Got projId from session: {}'.format(projId))
+            if projId is None: return loginPage('Unexpected error')
+            
             try:
                 sess = fpSess.FPsess(userId, projId)  # make session
             except Exception as e:
@@ -206,7 +205,7 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
                 except:
                     trial = None
                 if trial is None:
-                    return errorScreenInSession(sess, 'trial not found')
+                    return errorScreenInSession('trial not found')
                 g.sessTrial = trial
                 
             ret = make_response(func(sess, *args, **kwargs))
@@ -218,7 +217,46 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
         return inner
     return param_dec
 
+def logged_in_check(func):
+#-------------------------------------------------------------------------------------------------
+# Decorator to check if we have a valid login token, and to get the user
+# Generates function that has user (object from fpsys) as first parameter.
+#
+    @wraps(func)
+    def inner(*args, **kwargs):
+        mkdbg('logged_in_check')
+        
+        # Get token, validate, and get user:
+        token = request.cookies.get(NAME_COOKIE_TOKEN)
+        resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
+                            headers={"Authorization": "fptoken " + token})
+        try:
+            jresp = resp.json()
+            if resp.status_code != HTTP_OK:
+                return loginPage(fprGetError(jresp))
+            data = jresp.get('data')
+            userId = data.get('userId')
+        except Exception as e:
+            mkdbg('exception getting json response: {}'.format(e))
+            return loginPage('unexpected error')
+            
+        g.fpUrl = fpUrl
+        user = fpsys.User.getByLogin(userId)
+        if user is None:
+            return loginPage('Specified user not found')
+        g.user = user
+        
+        ret = make_response(func(user, *args, **kwargs))
+        # Reset the token:
+        newToken = resp.cookies[NAME_COOKIE_TOKEN]
+        ret.set_cookie(NAME_COOKIE_TOKEN, newToken)
+        return ret
+    return inner
+
 def fpUrl(endpoint, sess=None, **kwargs):
+# Adds projId param to url generator. The projId is retrieved from sess if present.
+# Otherwise it is got from the g.sessProjId global var.
+#
     if sess is not None: projId = sess.getProjectId()
     else: projId = g.sessProjId
     #return url_for(endpoint, projId=projId, _external=True, **kwargs)
@@ -307,7 +345,7 @@ def htmlTabScoreSets(sess, trialId):
             samps = ''   # We show all the separate samples in a single cell
             for oti in tis:
                 samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
-                        url_for('urlScoreSetTraitInstance', traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        fpUrl('urlScoreSetTraitInstance', sess=sess, traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
                         oti.numScoredNodes())
             row.append(samps)
             rows.append(row)
@@ -379,7 +417,7 @@ def htmlTabTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
     createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", fpUrl("urlNewTrait", sess, trialId=trial.id))
-    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(url_for('urlAddSysTrait2Trial', trialId=trial.id))
+    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(fpUrl('urlAddSysTrait2Trial', sess=sess, trialId=trial.id))
     addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select Project Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
     for st in sysTraits:
@@ -582,6 +620,7 @@ def downloadApp(sess):
 # Display page for app download.
 # Provide a link for each .apk file in the static/apk folder
 #
+    mkdbg('in downloadApp')
     from fnmatch import fnmatch
     apkDir = app.root_path + '/static/apk'
     apkListHtml = 'To download the app, right click on a link and select "Save Link As":'
@@ -680,7 +719,7 @@ def urlBrowseTrialAttributes(sess, projId, trialId):
     try:
         (hdrs, cols) = getAllAttributeColumns(sess, int(trialId))
     except FPWebAdminException as e:
-        return errorScreenInSession(sess, str(e))
+        return errorScreenInSession(str(e))
     return dp.dataPage(content=fpUtil.htmlDatatableByCol(hdrs, cols, 'fpTrialAttributes'),
                        title='Browse', trialId=trialId)
 
@@ -905,7 +944,7 @@ def urlTrialDataBrowse(sess, projId, trialId):
     try:
         (headers, rows, metas) = getTrialDataHeadersAndRows(sess, trialId, showAttributes, showTime, showUser, showGps, showNotes)
     except FPWebAdminException as e:
-        return errorScreenInSession(sess, str(e))
+        return errorScreenInSession(str(e))
     # Probably should return array with type code for each column rather than metas
     r = fpUtil.htmlDatatableByRow(headers, rows, 'fpTrialData', showFooter=False, extraOptions='')
     r += '<script type="text/javascript" language="javascript" src="%s"></script>' % url_for('static', filename='lib/jquery.doubleScroll.js')
@@ -1079,6 +1118,7 @@ def urlAttributeDisplay(sess, projId, trialId, attId):
 #######################################################################################################
 
 def manageUsersHTML(sess, msg=None):
+# Project user list section of project administration form
 # Show list of ***REMOVED*** users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
 #
@@ -1090,87 +1130,32 @@ def manageUsersHTML(sess, msg=None):
     # Check security:
     if not sess.adminRights():
         return ''
+    projId=sess.getProjectId()
     cont = '<button onClick=fplib.userSaveChanges("{0}")>Save Changes</button>'.format(
-                url_for("urlUsersPost", projectName=sess.getProjectName()))
-    cont += '<button onClick=fplib.userAdd()>Add User</button>'
+                url_for("webRest.urlAddProjectUser", projId=projId))
 
-    # NB We could get user list for this project, here, but we now rely on ajax call from the browser:
-    cont += '<script>$(fplib.fillUserTable)</script>'  # javascript will fill the table using ajax call
-    # NB store url for table data in attribute for javascript to access.
-    cont += '<table id=userTable data-url="{0}"></table>'.format(url_for("urlUsersPost", projectName=sess.getProjectName()))
+    cont += '<button onClick=fplib.userAdd()>Add User</button>'
+    cont += '''
+    <script>
+        $(function(){fplib.fillUserTable("%s")});
+    </script>
+    ''' % (url_for("webRest.urlGetProjectUsers", projId=projId))
+    cont += '<table id=userTable data-url="{0}"></table>'.format(url_for("webRest.urlGetProjectUsers", projId=projId))
+    
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
     out = fpUtil.htmlFieldset(cont, 'Manage ***REMOVED*** Users')
     return out
 
-@app.route(PREURL+'/project/<projectName>/user/<ident>', methods=['DELETE'])
-@session_check()
-def urlUserDelete(sess, projectName, ident):
-    if not sess.adminRights() or projectName != sess.getProjectName():
-        return fpUtil.badJuju(sess, 'No admin rights')
-    errmsg = fpsys.deleteUser(sess.getProjectName(), ident)
-    if errmsg is not None:
-        return jsonify({"error":errmsg})
-    else:
-        return jsonify({"status":"good"})
-
-@app.route(PREURL+'/project/<projectName>/users', methods=['GET'])
-@session_check()
-def urlUsersGet(sess, projectName):
-    if not sess.adminRights():
-        return badJsonJuju(sess, 'No admin rights')
-    users, errMsg = fpsys.getProjectUsers(sess.getProjectName())
-    if errMsg is not None:
-        return badJsonJuju(sess, errMsg)
-    retjson = []
-    for login, namePerms in sorted(users.items()):
-        retjson.append([url_for('urlUserDelete', projectName=projectName, ident=login),
-                        login, namePerms[0], namePerms[1]])
-    mkdbg('json dumps:\n{}'.format(json.dumps(retjson)))
-    return jsonify({'users':retjson})
-
-@app.route(PREURL+'/project/<projectName>/users', methods=['POST'])
-@session_check()
-def urlUsersPost(sess, projectName):
-    if not sess.adminRights():
-        return badJuju(sess, 'No admin rights')
-    # Check admin rights:
-    try:
-        userData = request.json
-    except Exception, e:
-        return Response('Bad or missing JSON')
-    if not userData:
-        return Response('Bad or missing JSON')
-    util.flog("ajaxData:\n" + json.dumps(userData))
-    # Go thru userData and process - it might be nice to try using
-    # http CRUD/REST operations here. Identify a user in a project as resource
-    # /project/<project>/user/<userid>. But for the moment we're doing it all here.
-    # We will however use separate functions for what would be the individual
-    # CRUD operations.
-    errMsgs = []
-    newUsers = userData.get('create')
-    if newUsers is not None:
-        for user, perms in newUsers.iteritems():
-            errmsg = fpsys.add***REMOVED***UserToProject(user, sess.getProjectName(), perms)
-            if errmsg is not None:
-                errMsgs.append(('create', user, errmsg))
-    updateUsers = userData.get('update')
-    if updateUsers is not None:
-        for user, perms in updateUsers.iteritems():
-            errmsg = fpsys.updateUser(user, sess.getProjectName(), perms)
-            if errmsg is not None:
-                errMsgs.append(('update', user, errmsg))
-
-    return jsonify({"status":"ok", "errors":errMsgs})
-
 @app.route(PREURL+'/projects/<int:projId>/details/', methods=['GET', 'POST'])
 @session_check()
-def urlUserDetails(sess, projId):
+def urlProjectAdmin(sess, projId):
+# This is the project administration form.
     if not sess.adminRights():
-        return badJuju(sess, 'No admin rights')
+        return badJuju('No admin rights')
     usr = sess.getUser()
     if usr is None:
-        return badJuju(sess, 'No user found')
+        return badJuju('No user found')
     showPassChange = usr.allowPasswordChange()
 
     def theFormAgain(op=None, msg=None):
@@ -1222,7 +1207,7 @@ def urlUserDetails(sess, projId):
         elif op == 'manageUsers':
             return theFormAgain(op='manageUser', msg='I\'m Sorry Dave, I\'m afraid I can\'t do that')
         else:
-            return badJuju(sess, 'Unexpected operation')
+            return badJuju('Unexpected operation')
 
 #######################################################################################################
 ### END USERS STUFF: ##################################################################################
@@ -1274,15 +1259,12 @@ def formElements4UserManagement():
     ]
 
 @app.route(PREURL+'/fpadmin/', methods=['GET'])
-@nocache  # This not needed? I was thinking of including tokens in urls in page, but now a cookie
-@session_check()
-def urlFPAdmin(sess):
+#@session_check(projIdParamName=None)
+@logged_in_check
+def urlFPAdmin(usr):
     # Check permissions:
-    usr = sess.getUser()
-    if usr is None:
-        return badJuju(sess, 'No user found')
     if not usr.hasPermission(fpsys.User.PERMISSION_OMNIPOTENCE):
-        return badJuju(sess, 'No admin rights')
+        return errorScreenInSession('No admin rights')
 
     # Get projects, show as list:
     newurl = url_for('webRest.urlGetProjects', _external=True)
@@ -1294,7 +1276,7 @@ def urlFPAdmin(sess):
     try:
         jresp = resp.json()
     except Exception as e:
-        return badJuju(sess, 'exception getting json response: {}'.format(e))
+        return badJuju('exception getting json response: {}'.format(e))
 
 
 #        try:
@@ -1308,7 +1290,7 @@ def urlFPAdmin(sess):
 #             respContent = resp.content
 #             jresp = resp.json()
 #         except Exception, e:
-#             return errorScreenInSession(sess, 'A problem occurred in project creation: ' + str(e))
+#             return errorScreenInSession('A problem occurred in project creation: ' + str(e))
 
     # Create project form:
     projEls = formElements4ProjectManagement()
@@ -1348,9 +1330,9 @@ def urlProjectTraits(sess, projId):
         return dp.dataPage(title='Project Traits', content=r, trialId=-1)
 
 
-@app.route(PREURL+'/trial/<trialId>/addSysTrait2Trial/', methods=['POST'])
+@app.route(PREURL+'/projects/<int:projId>/trial/<int:trialId>/addSysTrait2Trial/', methods=['POST'])
 @session_check()
-def urlAddSysTrait2Trial(sess, trialId):
+def urlAddSysTrait2Trial(sess, projId, trialId):
 #-------------------------------------------------------------------------------
 # MFK need check valid traitId and preferably trialId too (it could be hacked).
 # MFK - this should probly be restAPI call - with the traitId in the url, called
@@ -1607,9 +1589,9 @@ def tiAttributeHtml(sess, ti):
 #     cooky = {'sid':f}
 #     return requests.get(newurl, cookies=cooky).content
 
-@app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/scoreSet/<traitInstanceId>/', methods=['GET'])
 @session_check()
-def urlScoreSetTraitInstance(sess, traitInstanceId):
+def urlScoreSetTraitInstance(sess, projId, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Try client graphics.
 # Include table data as JSON
@@ -1631,7 +1613,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
     # For photo score sets add button to download photos as zip file:
     if typ == T_PHOTO:
         out += ("<p><a href={1} download='{0}'>".format(ntpath.basename(photoArchiveZipFileName(sess, traitInstanceId)),
-                                                 url_for('urlPhotoScoreSetArchive', traitInstanceId=traitInstanceId))
+                                                 url_for('urlPhotoScoreSetArchive', projId=projId, traitInstanceId=traitInstanceId))
          + "<button>Download Photos as Zip file</button></a>"
          + " (browser permitting, Chrome and Firefox OK. For Internet Explorer right click and Save Link As)")
 
@@ -1650,7 +1632,7 @@ def urlScoreSetTraitInstance(sess, traitInstanceId):
             else:
 #               fname = d.txtValue    This is what we should be doing, when hack is no longer necessary
                 fname = hackyPhotoFileName(sess, ti, d)
-                value = '<a href=' + url_for('urlPhoto', filename=fname, trialId=ti.getTrialId()) + '>view photo</a>'
+                value = '<a href=' + url_for('urlPhoto', projId=projId, filename=fname, trialId=ti.getTrialId()) + '>view photo</a>'
         else:
             value = d.getValue()
         rows.append([d.node.id, d.node.row, d.node.col,
@@ -1747,7 +1729,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
     ti = dal.getTraitInstance(sess.db(), traitInstanceId)
     return app.config['PHOTO_UPLOAD_FOLDER'] + '{0}_{1}_{2}.zip'.format(sess.getProjectName(), ti.trial.name, traitInstanceId)
 
-@app.route(PREURL+"/photo/scoreSetArchive/<traitInstanceId>", methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/photo/scoreSetArchive/<traitInstanceId>', methods=['GET'])
 @session_check()
 def urlPhotoScoreSetArchive(sess, traitInstanceId):
 #--------------------------------------------------------------------
@@ -1763,7 +1745,7 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
     return resp
 
 
-@app.route(PREURL+"/trial/<trialId>/photo/<filename>", methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/trial/<trialId>/photo/<filename>', methods=['GET'])
 @session_check()
 def urlPhoto(sess, trialId, filename):
 # This is a way to provide images to authenticated user only.
@@ -1779,12 +1761,12 @@ def urlPhoto(sess, trialId, filename):
     return resp
 
 
-@app.route(PREURL+'/FieldPrime/user/<userName>/', methods=['GET'])
+@app.route(PREURL+'/home', methods=['GET'])
 @session_check()
-def urlUserHome(sess, userName):
+def urlUserHome(sess):
     return frontPage()
 
-@app.route(PREURL+'/FieldPrime/projects/<int:projId>/', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/', methods=['GET'])
 @session_check()
 def urlProject(sess, projId):
 #-----------------------------------------------------------------------
@@ -1798,9 +1780,9 @@ def urlProject(sess, projId):
     if projectName is not None:
         projList, errMsg = fpsys.getUserProjects(sess.getUserIdent())
         if errMsg is not None:
-            return badJuju(sess, errMsg)
+            return badJuju(errMsg)
         elif not projList:
-            return badJuju(sess, 'Unexpected project')
+            return badJuju('Unexpected project')
         else:
             for prj in projList:
                 if prj.projectName() == projectName:
@@ -1809,18 +1791,19 @@ def urlProject(sess, projId):
                     # Use Flask session so store project ID.
                     # Should not be needed when all endpoints contain
                     # 'projId' in URL, remove when this is completed.
-                    session['projId'] = prj.projectId() # should not be needed when all endpoints contain
+                    session['projId'] = prj.projectId() # should not be needed when all endpoints contain projId
                     return frontPage()
             # No access to this project - bad user!
-            return badJuju(sess, 'no access to project')
+            return badJuju('no access to project')
 
 @app.route(PREURL+'/logout', methods=["GET"])
 def urlLogout():
+    session.clear()
     ret = redirect(url_for('urlMain'))
     ret.set_cookie(NAME_COOKIE_TOKEN, 'loggedOut')
     return ret
 
-def errorScreenInSession(sess, msg):
+def errorScreenInSession(msg):
 #-----------------------------------------------------------------------
 # Show the message in red, with a warning that an error has occurred.
 # User remains logged in and error is show with usual page header/footer.
@@ -1831,11 +1814,10 @@ def errorScreenInSession(sess, msg):
     return dp.dataPage(content=out, title='Error', trialId=-1)
 
 
-def badJuju(sess, msg):
+def badJuju(msg):
 #-----------------------------------------------------------------------
 # Close the session and return the message. Intended as a return for a HTTP request
 # after something bad (and possibly suspicious) has happened.
-    sess.close()
     return "Something bad has happened: " + msg
 
 

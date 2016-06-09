@@ -98,8 +98,6 @@ def _dataNavigationContent(trialId):
     if sess is not None:
         projectName = sess.getProjectName()
         projId = sess.getProjectId()
-        print('got sess,', projectName,',',projId)
-    else: print('no sess')
 
     nc = ''
     #---------------------------------------------------------------------------
@@ -141,7 +139,7 @@ def _dataNavigationContent(trialId):
     if sess is not None:
         r2c2 = '<div style="float:right; display:inline-block">'
         if sess.adminRights():
-            r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlUserDetails', projId=projId))
+            r2c2 += '<a href="{0}"><span class="fa fa-user"></span> Administration</a>'.format(url_for('urlProjectAdmin', projId=projId))
         r2c2 += '<a href="{0}"><span class="fa fa-gear"></span> Project Traits</a>'.format(url_for('urlProjectTraits', projId=projId))
         r2c2 += '<a href="{0}"><span class="fa fa-magic"></span> Create New Trial</a>'.format(url_for('urlNewTrial', projId=projId))
         r2c2 += '</div><div style="clear:both"></div>'
