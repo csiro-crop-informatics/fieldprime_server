@@ -612,10 +612,9 @@ def urlTrial(sess, projId, trialId):
 #
     return trialPage(sess, trialId)
 
-
 @app.route(PREURL+'/downloadApp/', methods=['GET'])
-@session_check()
-def downloadApp(sess):
+@logged_in_check
+def urlDownloadApp(sess):
 #-----------------------------------------------------------------------
 # Display page for app download.
 # Provide a link for each .apk file in the static/apk folder
@@ -1259,7 +1258,6 @@ def formElements4UserManagement():
     ]
 
 @app.route(PREURL+'/fpadmin/', methods=['GET'])
-#@session_check(projIdParamName=None)
 @logged_in_check
 def urlFPAdmin(usr):
     # Check permissions:

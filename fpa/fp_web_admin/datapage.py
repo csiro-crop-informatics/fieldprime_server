@@ -110,7 +110,7 @@ def _dataNavigationContent(trialId):
     r1c2 = '<div style="float:right">'
     if fpsys.User.sHasPermission(userIdent, fpsys.User.PERMISSION_OMNIPOTENCE):
         r1c2 += '<a href="{0}"><span class="fa fa-user"></span>Manage FP</a>'.format(url_for('urlFPAdmin'))
-    r1c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("downloadApp"))
+    r1c2 +=   '<a href="{0}"><span class="fa fa-download"></span> Download App</a>'.format(url_for("urlDownloadApp"))
     r1c2 +=   '<a style="white-space:nowrap" href="https://docs.google.com/document/d/1SpKO_lPj0YzhMV6RKlzPgpNDGFhpaF-kCu1-NTmgZmc/pub">' + \
             '<span class="fa fa-question-circle"></span> App User Guide</a>'
     r1c2 += '</div>'
