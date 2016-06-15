@@ -19,6 +19,13 @@ app = flask.current_app
 
 #-- FUNCTIONS: ---------------------------------------------------------------------
 
+def errorScreenInSession(msg):
+#-----------------------------------------------------------------------
+# Copied from fpWebAdmin
+#
+    out = '<font color="red">Something bad has happened: {}<font>'.format(msg)
+    return dp.dataPage(content=out, title='Error', trialId=-1)
+
 def traitListHtmlTable(traitList):
 #-----------------------------------------------------------------------
 # Returns html table of traitList
@@ -164,7 +171,13 @@ def traitDetailsPageHandler(sess, request, trial, trialId, traitId):
 #
     projId = sess.getProjectId()
     trt = models.getTrait(sess.db(), traitId)
+    if trt is None or True:
+        util.flog("No trait in traitDetailsPageHandler, trialId: {}, traitId: {}".format(trialId, traitId))
+        return errorScreenInSession('Cannot find trait')
     trlTrt = models.getTrialTrait(sess.db(), trialId, traitId)
+    if trlTrt is None:
+        util.flog("No trialTrait in traitDetailsPageHandler, trialId: {}, traitId: {}".format(trialId, traitId))
+        return errorScreenInSession('Cannot find trial trait')
     title = 'Trial: ' + trial.name + ', Trait: ' + trt.caption
     comparatorCodes = [
         ["gt", "Greater Than", 1],

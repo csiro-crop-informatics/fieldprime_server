@@ -228,6 +228,8 @@ def logged_in_check(func):
         
         # Get token, validate, and get user:
         token = request.cookies.get(NAME_COOKIE_TOKEN)
+        if token is None:
+            return loginPage('Not logged in')
         resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
                             headers={"Authorization": "fptoken " + token})
         try:
