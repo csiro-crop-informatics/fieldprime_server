@@ -260,9 +260,10 @@ def get_trial(username, trial, dbc, token=None):
         # Barcode - NB we rely on the fact that there are (now) no sys traits on the client.
         #
         trlTrt = dal.getTrialTrait(dbc, trial.id, trt.id)
-        barcode = trlTrt.barcodeAtt_id
-        if (barcode is not None):
-            jtrait['barcodeAttId'] = barcode
+        if trlTrt is not None:
+            barcode = trlTrt.barcodeAtt_id
+            if (barcode is not None):
+                jtrait['barcodeAttId'] = barcode
 
         #########################################################################
         # Here we should have trait datatype specific stuff. Using polymorphism?

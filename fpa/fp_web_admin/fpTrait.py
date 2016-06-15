@@ -171,7 +171,7 @@ def traitDetailsPageHandler(sess, request, trial, trialId, traitId):
 #
     projId = sess.getProjectId()
     trt = models.getTrait(sess.db(), traitId)
-    if trt is None or True:
+    if trt is None:
         util.flog("No trait in traitDetailsPageHandler, trialId: {}, traitId: {}".format(trialId, traitId))
         return errorScreenInSession('Cannot find trait')
     trlTrt = models.getTrialTrait(sess.db(), trialId, traitId)

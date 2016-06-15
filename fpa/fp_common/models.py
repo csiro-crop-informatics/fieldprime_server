@@ -1910,6 +1910,7 @@ def getNode(dbc, nodeId):
     return dbc.query(Node).filter(Node.id == nodeId).one()
 
 
+@oneException2None
 def getTrialTrait(dbc, trialId, traitId):
 #-------------------------------------------------------------------------------------------------
     return dbc.query(TrialTrait).filter(

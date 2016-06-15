@@ -477,6 +477,7 @@ def _parseScoresCSV(fobj, trl, ind1name, ind2name):
 def uploadScores(sess, scoresCsv, trl, i1name=None, i2name=None):
 #-----------------------------------------------------------------------
 # Update trial data according to csv file scoresCsv.
+# Returns None on success, or object with 'error' key.
 #
     # Get index names if not supplied:
     if i1name is None:
@@ -497,6 +498,8 @@ def uploadScores(sess, scoresCsv, trl, i1name=None, i2name=None):
     for ss in scoreSets:
         trt = ss['trait']
         trlTrait = models.getTrialTrait(sess.db(), trl.getId(), trt.getId())   # trait existence checked in parse
+        if trlTrait is None:
+            return {'error':'Trait not found'}
         newti = trlTrait.addTraitInstance(fpDate, token.getId())
         newti.addData(ss['data'])
     return None
