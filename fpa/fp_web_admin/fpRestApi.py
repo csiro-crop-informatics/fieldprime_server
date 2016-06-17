@@ -274,7 +274,7 @@ def wrap_api_func(func):
         return ret
     return inner
 
-def project_func(projIdParamName='projId'):
+def project_func(projIdParamName='projId', trialIdParamName=None):
 #-------------------------------------------------------------------------------------------------
 # Decorator used for requests identifying a specific project, via url parameter with name
 # projIdParamName. Various information about the project, and calling user, are retrieved and
@@ -344,6 +344,12 @@ def project_func(projIdParamName='projId'):
             g.modelProj = modelProj
             g.userProjectPermissions = perms
             g.canAdmin = g.user.omnipotent() or perms.hasAdminRights()
+            if trialIdParamName is not None:
+                trialId = kwargs.get(trialIdParamName)
+                if trialId is None: return errorBadRequest('Specified trial not found')
+                trial = g.modelProj.getTrialById(trialId)
+                if trial is None: return errorBadRequest('Specified trial not found')
+                else: g.trial = trial
 
             ret = func(modelProj, params, *args, **kwargs)
             ret.set_cookie(NAME_COOKIE_TOKEN, g.newToken)
@@ -2139,6 +2145,60 @@ responses:
         return errorAccess('No administration access')
     models.Trial.delete(g.userProject.db(), trialId)
     return jsonSuccessReturn("Trial Deleted", HTTP_OK)
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/traits/<int:traitId>', methods=['PUT'])
+@multi_auth.login_required
+@project_func(trialIdParamName='trialId')
+def urlTrialProjectTrait(mproj, params, projId, trialId, traitId):
+# Use this URL for adding trait to trial, or deleting? But Where do we get it from?
+# NB - we probably should allow the passing in of barcode attribute (trialTrait field)
+# and a type specific object.    
+# parameters:
+#   - in: body
+#     name: Trial Creation
+#     description: Trial creation data
+#     required: true
+#     schema:
+#       type: object
+#       properties:
+#         trialUrl:
+#           type: string
+#           description: Url of trait to add to trial
+    """
+Add trial trait.
+Add project trait to trial.
+---
+tags:
+  - Trials
+  - Traits
+responses:
+  200:
+    description: Trait added to trial.
+    schema:
+      type: object
+      properties:
+        success:
+          type: string
+          description: Informative phrase
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    trial = g.trial
+    trait = mproj.getTrait(traitId) # does this check trait is in project?
+    if trait is None:
+        return errorBadRequest('Trait not found in project')
+    trial.addTrait(trait)
+    g.dbsess.commit()
+    return apiResponse(True, HTTP_OK, msg="Trait added to trial")
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/availableTraits', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetAvailableTrialProjectTraits(mproj, params, projId, trialId):
+    pass
+
 
 ### Nodes: ###############################################################################
 

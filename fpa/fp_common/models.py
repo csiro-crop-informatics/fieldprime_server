@@ -1318,6 +1318,15 @@ class Trial(DeclarativeBase):
             if trt.getName() == trtName:
                 return trt
         return None
+    
+    def addTrait(self, trait):
+    #---------------------------------------------------------------------------------------
+    # Add trait to trial, if it's not already in it.
+    # NB- no commit.
+        traitId = trait.id
+        for trt in self.traits:
+            if traitId == trt.id: return
+        return self.traits.append(trait)
 
     def getDataColumns(self, tiList, quoteStrings=True, metadata=True):
     #-----------------------------------------------------------------------

@@ -418,31 +418,40 @@ def htmlTabProperties(sess, trial):
 def htmlTabTraits(sess, trial):
 #--------------------------------------------------------------------
 # Return HTML for trial name, details and top level config:
-    createTraitButton = '<p>' + fpUtil.htmlButtonLink("Create New Trait", fpUrl("urlNewTrait", sess, trialId=trial.id))
-    addSysTraitForm = '<FORM method="POST" action="{0}">'.format(fpUrl('urlAddSysTrait2Trial', sess=sess, trialId=trial.id))
-    addSysTraitForm += '<select name="traitID" id="sysTraitSelId" ><option value="0">Select Project Trait to add</option>'
+    createTraitButton = '<div class="top20">{}</div>'.format(
+        fpUtil.htmlButtonLink("Create New Trial Trait", fpUrl("urlNewTrait", sess, trialId=trial.id)))
+    adder = '<div class="top20" style="display:inline-block;">'
+    adder += '<form class="form-inline">'
+    adder += '''
+    <script>
+    function handleAddTrait() {
+        var e = document.getElementById('trait2add');
+        if (e.selectedIndex == 0) {
+            alert('Please select a project trait to add');
+            //event.preventDefault()
+        } else {
+            fplib.ajax.doAjax(e.value, "PUT", fplib.ajax.jsonSuccessReload);
+        }
+    }
+    </script>
+    '''
+    adder += '<select class="form-control" style="min-width:300" name="tdd" id="trait2add"> '
+    adder += '<option value="0">Select Project Trait to add</option>'
     sysTraits = sess.getProject().getTraits()
+    print('len sysTraits {}'.format(len(sysTraits)))
     for st in sysTraits:
         for trt in trial.traits:   # Only add traits not already in trial
             if trt.id == st.id:
                 break
         else:
-            addSysTraitForm += '<option value="{0}">{1}</option>'.format(st.id, st.caption)
-    addSysTraitForm += '</select> &nbsp; '
-    addSysTraitForm += '''
-    <script>
-    function checkSelectionMade(selElementId) {
-        var e = document.getElementById(selElementId);
-        if (e.selectedIndex == 0) {
-            alert('Please select a system trait to add');
-            event.preventDefault()
-        }
-    }
-    </script>
-    '''
-    addSysTraitForm += '<input type="submit" value="Add Project Trait" onclick="checkSelectionMade(\'sysTraitSelId\')">'
-    addSysTraitForm += '</form>'
-    return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + createTraitButton + addSysTraitForm
+            adder += '<option value="{0}">{1}</option>'.format(
+                url_for('webRest.urlTrialProjectTrait', projId=sess.getProjectId(), trialId=trial.getId(), traitId=st.id), st.caption)
+    adder += '</select>'
+    adder += fpUtil.htmlButton("Add Existing Project Trait", click='handleAddTrait()')
+    adder += '</form>'
+    adder += '</div>'
+    
+    return fpUtil.htmlForm(htmlTrialTraitTable(trial)) + adder + createTraitButton
 
 def htmlTabData(sess, trial):
 #--------------------------------------------------------------------
@@ -1329,29 +1338,6 @@ def urlProjectTraits(sess, projId):
             "Project Traits")
         return dp.dataPage(title='Project Traits', content=r, trialId=-1)
 
-
-@app.route(PREURL+'/projects/<int:projId>/trial/<int:trialId>/addSysTrait2Trial/', methods=['POST'])
-@session_check()
-def urlAddSysTrait2Trial(sess, projId, trialId):
-#-------------------------------------------------------------------------------
-# MFK need check valid traitId and preferably trialId too (it could be hacked).
-# MFK - this should probly be restAPI call - with the traitId in the url, called
-# from the browser. Need to be able to generate rest api urls here to do that,
-# but could we still do that if we were running on a different server?
-    # Get and validate traitId:
-    traitId = 0
-    try:
-        traitId = int(request.form['traitID'])
-    except Exception:
-        return dp.dataErrorPage(sess, "Invalid system trait specified", trialId)
-    if traitId <= 0:
-        return dp.dataErrorPage(sess, "Invalid system trait specified", trialId)
-
-    errMsg = fpTrait.addTrait2Trial(sess, trialId, traitId)
-    if errMsg:
-        return dp.dataErrorPage(sess, errMsg, trialId)
-    # If all is well, display the trial page:
-    return trialPage(sess, trialId)
 
 def hackyPhotoFileName(sess, ti, d):
 # This should eventually be replaced by call do models.photoFileName, but:

@@ -12,6 +12,7 @@
  * Element styles:
  */
 
+.top20 { margin-top:20px; }
 
 /* The font-family is not overwritten by bootstrap I think */
 a {
