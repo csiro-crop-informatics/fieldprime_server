@@ -748,14 +748,12 @@ fplib.userSaveChanges = function (destUrl) {
     var addUsers = [];
     // get the users and encode them in json
     var table = document.getElementById("userTable");
-
     var sfunc = function(data) {
         var errs = data.errors;
         if (errs && errs.length > 0)
             fplib.msg("errors found:" + JSON.stringify(errs));
         fplib.fillUserTable();
     };
-
     for (var i = 1, row; row = table.rows[i]; i++) {
         var loginId;
         var admin = row.cells[2].getElementsByTagName('input')[0].checked;
@@ -770,7 +768,7 @@ fplib.userSaveChanges = function (destUrl) {
             addUsers.push({'ident':loginId, 'admin':admin});
         }
     }
-    fplib.ajax.doAjax(destUrl, 'POST', sfunc, {"users":addUsers});
+    fplib.ajax.doAjax(destUrl, 'POST', sfunc, {'jsonData':{"users":addUsers}});
     /*
     $.ajax({
         url:destUrl,
