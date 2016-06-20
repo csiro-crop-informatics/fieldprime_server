@@ -945,6 +945,14 @@ class Trial(DeclarativeBase):
         ss = self.getScoreSets()
         return len(ss)
 
+    @oneException2None
+    def getTraitInstance(self, tiId):
+    #-----------------------------------------------------------------------
+    # Return traitInstance if one with given id is in this trial. Or None if problem.
+        dbc = _dbc(self)
+        return dbc.query(TraitInstance).filter(and_(
+            TraitInstance.trial_id == self.id, TraitInstance.id == tiId)).one()
+
     def getTraitInstances(self):
     #-----------------------------------------------------------------------
     # Return all the traitInstances for this trial, ordered by trait, token, seqnum,

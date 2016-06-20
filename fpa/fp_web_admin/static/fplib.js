@@ -769,17 +769,6 @@ fplib.userSaveChanges = function (destUrl) {
         }
     }
     fplib.ajax.doAjax(destUrl, 'POST', sfunc, {'jsonData':{"users":addUsers}});
-    /*
-    $.ajax({
-        url:destUrl,
-        data:JSON.stringify({"users":addUsers}),
-        dataType:"json",
-        contentType: "application/json",
-        type:"POST",
-        error:function (jqXHR, textStatus, errorThrown){fplib.msg("errorFunc:"+jqXHR.responseText);},
-        success:sfunc
-    });
-    */
 };
 
 /*

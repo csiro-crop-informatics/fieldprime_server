@@ -108,6 +108,14 @@ mkdbg = (lambda msg : print('fpsrver:'+msg)) if (__name__ == '__main__') else (l
 #     return Response('<Why access is denied string goes here...>', 401)
 #                     #, {'WWWAuthenticate':'Basic realm="Login Required"'})
 
+def getUserProjectInfo():
+    usr = proj = None
+    if hasattr(g, 'userName'):
+        usr = g.userName
+    if hasattr(g, 'sess'):
+        proj = g.sess.getProjectName()
+    return 'User:{0} Project:{1}'.format(usr, proj)
+
 @app.errorhandler(500)
 def internalError(e):
 #-------------------------------------------------------------------------------
@@ -117,12 +125,7 @@ def internalError(e):
 #
     errmsg = '### Internal error:#################################\n'
     # Get user and project names if available: NB must check references or lose error context, can't use try.
-    usr = proj = None
-    if hasattr(g, 'userName'):
-        usr = g.userName
-    if hasattr(g, 'sess'):
-        proj = g.sess.getProjectName()
-    errmsg += 'User:{0} Project:{1}\n'.format(usr, proj)
+    errmsg += '{}\n'.format(getUserProjectInfo())
     errmsg += '{0}\n{1}##########'.format(e, traceback.format_exc())
     util.flog(errmsg)
     return make_response('FieldPrime: An error has occurred\n'+errmsg.replace('\n', '<br>'), 500)
@@ -349,7 +352,7 @@ def htmlTabScoreSets(sess, trialId):
             samps = ''   # We show all the separate samples in a single cell
             for oti in tis:
                 samps += "<a href={0}>&nbsp;Sample{1}&nbsp;:&nbsp;{2}&nbsp;scores&nbsp;(for&nbsp;{3}&nbsp;nodes)</a><br>".format(
-                        fpUrl('urlScoreSetTraitInstance', sess=sess, traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
+                        fpUrl('urlScoreSetTraitInstance', sess=sess, trialId=trialId, traitInstanceId=oti.id), oti.sampleNum, oti.numData(),
                         oti.numScoredNodes())
             row.append(samps)
             rows.append(row)
@@ -1012,7 +1015,6 @@ def urlDeleteTrial(sess, projId, trialId):
 #
 # MFK - replace the post part of this with a DELETE?
     trl = g.sessTrial
-#     trl = dal.getTrial(sess.db(), trialId)
     def getHtml(msg=''):
         out = '<div style="color:red">{0}</div><p>'.format(msg);  # should be red style="color:red"
         out += 'Trial {0} contains:<br>'.format(trl.name)
@@ -1558,28 +1560,9 @@ def tiAttributeHtml(sess, ti):
     return out
 
 
-#
-# Example of getting response from another URL:
-# NB to use, uncomment this and change the current
-# method to:
-# @app.route(PREURL+'/scoreSet2/<traitInstanceId>/', methods=['GET'])
-# @session_check()
-# def urlScoreSetTraitInstance2(sess, traitInstanceId):
-#
-#
-# import requests
-# @app.route(PREURL+'/scoreSet/<traitInstanceId>/', methods=['GET'])
-# @session_check()
-# def urlScoreSetTraitInstance(sess, traitInstanceId):
-#     newurl = url_for('urlScoreSetTraitInstance2', traitInstanceId=traitInstanceId, _external=True)
-#     print 'newurl:' + newurl
-#     f = request.cookies.get('sid')
-#     cooky = {'sid':f}
-#     return requests.get(newurl, cookies=cooky).content
-
-@app.route(PREURL+'/projects/<int:projId>/scoreSet/<traitInstanceId>/', methods=['GET'])
-@session_check()
-def urlScoreSetTraitInstance(sess, projId, traitInstanceId):
+@app.route(PREURL+'/projects/<int:projId>/trials/<int:trialId>/scoreSet/<int:traitInstanceId>/', methods=['GET'])
+@session_check(trialIdParamName='trialId')
+def urlScoreSetTraitInstance(sess, projId, trialId, traitInstanceId):
 #-------------------------------------------------------------------------------
 # Try client graphics.
 # Include table data as JSON
@@ -1587,8 +1570,10 @@ def urlScoreSetTraitInstance(sess, projId, traitInstanceId):
 # NB deleted data are shown (crossed out), not just the latest for each node.
 # MFK this should probably display RepSets, not individual TIs
 #
-    ti = dal.getTraitInstance(sess.db(), traitInstanceId)
-    trl = ti.trial
+    trl = g.sessTrial
+    ti = trl.getTraitInstance(traitInstanceId)
+    if ti is None:
+        return errorScreenInSession('Trait instance not found')
     typ = ti.trait.datatype
     name = ti.trait.caption + '_' + str(ti.seqNum) + ', sample ' + str(ti.sampleNum) # MFK add name() to TraitInstance
     data = ti.getData()
@@ -1791,13 +1776,18 @@ def urlLogout():
     ret.set_cookie(NAME_COOKIE_TOKEN, 'loggedOut')
     return ret
 
-def errorScreenInSession(msg):
+def errorScreenInSession(msg, logit=True):
 #-----------------------------------------------------------------------
 # Show the message in red, with a warning that an error has occurred.
 # User remains logged in and error is show with usual page header/footer.
 # Intended as a return for a HTTP request after something bad, but not
 # suspicious or catastrophic, has occurred.
 #
+    if logit:
+        try:
+            util.flog('Glitch: ({}) {}'.format(getUserProjectInfo(), msg))
+        except Exception:
+            pass
     out = '<font color="red">Something bad has happened: {}<font>'.format(msg)
     return dp.dataPage(content=out, title='Error', trialId=-1)
 
