@@ -1718,9 +1718,9 @@ def urlPhotoScoreSetArchive(sess, traitInstanceId):
     return resp
 
 
-@app.route(PREURL+'/projects/<int:projId>/trial/<trialId>/photo/<filename>', methods=['GET'])
+@app.route(PREURL+'/projects/<int:projId>/trial/<int:trialId>/photo/<filename>', methods=['GET'])
 @session_check()
-def urlPhoto(sess, trialId, filename):
+def urlPhoto(sess, projId, trialId, filename):
 # This is a way to provide images to authenticated user only.
 # An alternative would be to put the image in a static folder,
 # but then (I think) they must be visible to everyone.
