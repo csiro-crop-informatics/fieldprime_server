@@ -1849,6 +1849,12 @@ def urlMain():
 # As a GET it presents a login screen.
 # As a POST it process the login data.
 #
+# THIS COMMENT IS OUT OF DATE, NOT REFLECTING CURRENT CODE STATE:
+# In particular, I've removed the server state, so now the server is stateless.
+# Session state is carried in cookies, one of which is obtained from the REST API.
+# The other is (I think) used by the Flask session object, which I use to store
+# the current project ID. Ultimately these should be in the URLs.
+#
 # Note the use of sessions. On login, a server side session is established (state is stored
 # in the file system), and the id of this session is sent back to the browser in a cookie,
 # which should be sent back with each subsequent request.
