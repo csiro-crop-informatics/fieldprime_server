@@ -6,12 +6,14 @@
 # so that there can be a single wsgi entry point.
 #
 
-from flask import Blueprint, Flask, request, Response, url_for
+from flask import Blueprint, current_app, Flask, request, Response, url_for
 import simplejson as json
 
 import os, traceback
 from functools import wraps
 from werkzeug import secure_filename
+
+import fp_common.models as dal
 
 # If we are running locally for testing, we need this magic for some imports to work:
 if __name__ == '__main__':
@@ -27,18 +29,10 @@ import fp_common.util as util
 ### SetUp: ######################################################################################
 
 appApi = Blueprint('appApi', __name__)
-app = Flask(__name__)
-try:
-    app.config.from_object('fp_common.config')
-except ImportError:
-    pass
+capp = Flask(__name__)
 
-# If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
-app.config.from_envvar('FPAPI_SETTINGS', silent=True)
-
-# Load the Data Access Layer Module (must be named in the config)
-import importlib
-dal = importlib.import_module(app.config['DATA_ACCESS_MODULE'])
+# # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
+# app.config.from_envvar('FPAPI_SETTINGS', silent=True)
 
 gdbg = False  # Switch for logging to file
 
@@ -52,17 +46,17 @@ API_PREFIX = '/fprime' if FP_RUNTIME == 'docker' else ''
 
 ##################################################################################################
 
-@app.errorhandler(500)
-def internalError(e):
-#-------------------------------------------------------------------------------
-# Trap for Internal Server Errors, these are typically as exception raised
-# due to some problem in code or database. We log the details. Possibly should
-# try to send an email (to me I guess) to raise the alarm..
-#
-    util.flog('internal error:')
-    util.flog(e)
-    util.flog(traceback.format_exc())
-    return 'FieldPrime: Internal Server Error'
+# @app.errorhandler(500)
+# def internalError(e):
+# #-------------------------------------------------------------------------------
+# # Trap for Internal Server Errors, these are typically as exception raised
+# # due to some problem in code or database. We log the details. Possibly should
+# # try to send an email (to me I guess) to raise the alarm..
+# #
+#     util.flog('internal error:')
+#     util.flog(e)
+#     util.flog(traceback.format_exc())
+#     return 'FieldPrime: Internal Server Error'
 
 def serverErrorResponse(msg):
     util.flog(msg)
@@ -98,7 +92,7 @@ def dec_get_trial(jsonReturn):
         @wraps(func)
         def inner(username, trialid, *args, **kwargs):
             # Log request:
-            util.fpLog(app, "client ver:{0} user:{1} andid:{2}".format(
+            util.fpLog(current_app, "client ver:{0} user:{1} andid:{2}".format(
                 request.args.get('ver', '0'), username, request.args.get('andid', '')))
 
             password = request.args.get('pw', '')
@@ -121,7 +115,7 @@ def dec_get_trial(jsonReturn):
     return param_dec
 
 @appApi.route(API_PREFIX + '/user/<username>/', methods=['GET'])
-def trial_list(username):
+def urlAppCoolTrialList(username):
 #-------------------------------------------------------------------------------------------------
 # Return JSON list of available trials for user.
 # They are returned as a JSON object containing a named
@@ -146,27 +140,27 @@ def trial_list(username):
 
     trialList = []
     for t in trials:
-        url = url_for('appApi.get_trial', username=username, trialid=t.id, _external=True)
+        url = url_for('appApi.urlAppGetTrial', username=username, trialid=t.id, _external=True)
         tdic = {'name':t.name, 'url':url}
         trialList.append(tdic)
 
-    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+#     app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     dic = {'trials':trialList}
     return Response(json.dumps(dic), mimetype='application/json')
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['GET'])   # For trial update
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/', methods=['GET'])                  # For new trial download
 @dec_get_trial(True)
-def get_trial(username, trial, dbc, token=None):
+def urlAppGetTrial(username, trial, dbc, token=None):
 #-------------------------------------------------------------------------------------------------
 # Return trial design in JSON format.
 #
 # Note we can come to this with either of the 2 urls above. If there is a token present
 # then this is an update, and we don't create a new token (which cause trouble when
 # existing scores sets are re-exported). Currently when the client is getting a new trial,
-# it uses the URL returned to it from the trial_list function. When updating the trial, it uses
+# it uses the URL returned to it from the urlAppCoolTrialList function. When updating the trial, it uses
 # the "uploadURL" provided to it with the trial. This is a little confusing perhaps. It works,
-# however because this function and the upload_trait_data function have the same URL, but the
+# however because this function and the urlAppUploadTraitData function have the same URL, but the
 # upload is POST only, and this one is GET only. A better solution perhaps would be to provide
 # an updateURL with the trial. Would have to add support on the client to use this.
 #
@@ -185,7 +179,7 @@ def get_trial(username, trial, dbc, token=None):
         try:
             dal.Token.getTokenId(dbc, token)
         except:
-            util.alertFieldPrimeAdmin(app, 'token ({0}) not found in database'.format(token))
+            util.alertFieldPrimeAdmin(current_app, 'token ({0}) not found in database'.format(token))
 
     # Trial json object members:
     jtrl = {'name':trial.name, 'site':trial.site, 'year':trial.year, 'acronym':trial.acronym}
@@ -193,8 +187,8 @@ def get_trial(username, trial, dbc, token=None):
                                 # Currently used in upload of notes, but now we embed it in the uploadURL,
                                 # and the notes upload should switch to using that.
 
-    jtrl['adhocURL'] = url_for('appApi.create_adhoc', username=username, trialid=trial.id, _external=True)
-    jtrl['uploadURL'] = url_for('appApi.upload_trial_data', username=username, trialid=trial.id, token=token, _external=True)
+    jtrl['adhocURL'] = url_for('appApi.urlAppCreateAdhocTrait', username=username, trialid=trial.id, _external=True)
+    jtrl['uploadURL'] = url_for('appApi.urlAppUploadTrialData', username=username, trialid=trial.id, token=token, _external=True)
     # Add trial attributes from database:
     jprops = {}
     for tp in trial.trialProperties:
@@ -253,7 +247,7 @@ def get_trial(username, trial, dbc, token=None):
         jtrait['sysType'] = 0
 
         # Add the uploadURL:
-        jtrait['uploadURL'] = url_for('appApi.upload_trait_data', username=username, trialid=trial.id, traitid=trt.id,
+        jtrait['uploadURL'] = url_for('appApi.urlAppUploadTraitData', username=username, trialid=trial.id, traitid=trt.id,
                                       token=token, _external=True)
 
         #
@@ -281,7 +275,7 @@ def get_trial(username, trial, dbc, token=None):
 
         # Photo traits:
         elif trt.datatype == T_PHOTO:
-            jtrait['photoUploadURL'] = url_for('appApi.upload_photo', username=username, trialid=trial.id,
+            jtrait['photoUploadURL'] = url_for('appApi.urlAppUploadPhoto', username=username, trialid=trial.id,
                                                traitid=trt.id, token=token, _external=True)
 
         # Numeric traits (integer and decimal):
@@ -325,7 +319,7 @@ def get_trial(username, trial, dbc, token=None):
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
-def upload_trait_data(username, trial, dbc, traitid, token):
+def urlAppUploadTraitData(username, trial, dbc, traitid, token):
 #-------------------------------------------------------------------------------------------------
 # Process upload of json trait instance data.
 # Trait instances are uniquely identified by trial/trait/token/seqNum/sampleNum.
@@ -350,7 +344,7 @@ def upload_trait_data(username, trial, dbc, traitid, token):
         aData = None
 
     # Log upload, but don't output json.dumps(jti), as it can be big:
-    util.flog("upload_trait_data from {0}: dc:{1}, seq:{2}, samp:{3}".format(
+    util.flog("urlAppUploadTraitData from {0}: dc:{1}, seq:{2}, samp:{3}".format(
                         token, dayCreated, seqNum, sampleNum, "None" if aData is None else len(aData)))
 
     # MFK: A problem here in that ideally we don't want to create empty scoresets.
@@ -388,7 +382,7 @@ def allowed_file(filename):
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/trait/<traitid>/device/<token>/photo/', methods=['POST'])
 @dec_get_trial(False)
-def upload_photo(username, trial, dbc, traitid, token):
+def urlAppUploadPhoto(username, trial, dbc, traitid, token):
 #-------------------------------------------------------------------------------------------------
 # Handle a photo upload from the app.
 # These are uniquely identified by dbusername/trial/trait/token/seqNum/sampleNum.
@@ -425,13 +419,14 @@ def upload_photo(username, trial, dbc, traitid, token):
     dayCreated = request.args.get(TI_DAYCREATED, '')
 
     file = request.files.get('uploadedfile')
-    util.flog('upload_photo:node {0}, seq {1} samp {2} filename {3}'.format(nodeId, seqNum, sampNum, file.filename))
+    util.flog('urlAppUploadPhoto:node {0}, seq {1} samp {2} filename {3}'.format(nodeId, seqNum, sampNum, file.filename))
     if file and allowed_file(file.filename):
         sentFilename = secure_filename(file.filename)
         saveName = dal.photoFileName(username, trial.id, traitid, int(nodeId), token, seqNum, sampNum)
         try:
             # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
-            fullPath = app.config['PHOTO_UPLOAD_FOLDER'] + saveName
+            fullPath = current_app.config['PHOTO_UPLOAD_FOLDER'] + saveName
+            print 'fullPath {}'.format(current_app.config['PHOTO_UPLOAD_FOLDER'] + saveName)
             base = os.path.splitext(fullPath)[0]
             ext = os.path.splitext(fullPath)[1]
             tryAgain = os.path.isfile(fullPath)
@@ -443,7 +438,7 @@ def upload_photo(username, trial, dbc, traitid, token):
 
             file.save(fullPath)
         except Exception, e:
-            util.flog('failed save {0}'.format(app.config['PHOTO_UPLOAD_FOLDER'] + saveName))
+            util.flog('failed save {0}'.format(current_app.config['PHOTO_UPLOAD_FOLDER'] + saveName))
             util.flog(e.__doc__)
             util.flog(e.message)
             return serverErrorResponse('Failed photo upload : can''t save')
@@ -463,28 +458,28 @@ def upload_photo(username, trial, dbc, traitid, token):
             else:
                 return serverErrorResponse('Failed photo upload : datum create fail')
         else:
-            util.flog('upload_photo: no nodeId, presumed old app version')
+            util.flog('urlAppUploadPhoto: no nodeId, presumed old app version')
             return successResponse()
     else:
         return serverErrorResponse('Failed photo upload : bad file')
 
 @appApi.route(API_PREFIX + '/crashReport', methods=['POST'])
-def upload_crash_report():
+def urlAppCoolUploadCrashReport():
 #-------------------------------------------------------------------------------------------------
 # check file size?
 # Handle a crash report upload from the app.
     cfile = request.files.get('uploadedfile')
-    util.flog('upload_crash_report: filename {0}'.format(cfile.filename))
+    util.flog('urlAppCoolUploadCrashReport: filename {0}'.format(cfile.filename))
     if cfile and allowed_file(cfile.filename):
         sentFilename = secure_filename(cfile.filename)
         saveName = sentFilename
         try:
             # Need to check if file exists, if so postfix copy num to name so as not to overwrite:
-            fullPath = app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName
+            fullPath = current_app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName
             cfile.save(fullPath)
             return successResponse()
         except Exception, e:
-            util.flog('failed save {0}'.format(app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName))
+            util.flog('failed save {0}'.format(current_app.config['CRASH_REPORT_UPLOAD_FOLDER'] + saveName))
             util.flog(e.__doc__)
             util.flog(e.message)
             return serverErrorResponse('Failed crash report upload : can''t save')
@@ -506,7 +501,7 @@ def upload_crash_report():
 # not. URLs sent and stored on client when this function was
 # used should still be able to access this func (since the URL will match). But now
 # we send out the URL for the new version.
-def upload_trial_data(username, trial, dbc, token):
+def urlAppUploadTrialData(username, trial, dbc, token):
     jtrial = request.json
     if not jtrial:
         return Response('Bad or missing JSON')
@@ -543,7 +538,10 @@ def upload_trial_data(username, trial, dbc, token):
         serverCols = []
         # We have to return array of server ids to replace the passed in local ids.
         # We need to record the local ids so as to be idempotent.
-        tokenObj = dal.Token.getOrCreateToken(dbc, token, trial.id)
+        tokenObj = dal.Token.getToken(dbc, token, trial.id)
+        if tokenObj is None:
+            util.flog('urlAppUploadTrialData: invalid token')
+            return Response('invalid token')
         for newid in clientLocalIds:
             #print 'new id: {0}'.format(newid)
             # Create node, or get it if it already exists:
@@ -559,12 +557,12 @@ def upload_trial_data(username, trial, dbc, token):
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/createAdHocTrait/', methods=['GET'])
 @dec_get_trial(True)
-def create_adhoc(username, trl, dbc):
+def urlAppCreateAdhocTrait(username, trl, dbc):
 #-------------------------------------------------------------------------------------------------
 # Create an adhoc trait, and return the id of the trait in JSON
 # This should be a url.
 #
-    # Bundle all this into get_trial(username, password), may not need dbs if all can be done from trial object
+    # Bundle all this into urlAppGetTrial(username, password), may not need dbs if all can be done from trial object
     # password = request.args.get('pw', '')
     # androidId = request.args.get('andid', '')
 
@@ -603,22 +601,3 @@ def error_404(msg):
 
 
 #############################################################################################
-
-# For local testing:
-if __name__ == '__main__':
-    from os.path import expanduser
-    FPROOT = expanduser("~") + '/proj/fpserver/'
-    app.config['PHOTO_UPLOAD_FOLDER'] = FPROOT + '/photos/'
-    app.config['FPLOG_FILE'] = FPROOT + '/fplog/fp.log'
-    app.config['CRASH_REPORT_UPLOAD_FOLDER'] = FPROOT + '/crashReports/'
-    app.config['FPPWFILE'] = FPROOT + '/fppw'
-    # Setup logging:
-    app.config['FP_FLAG_DIR'] = expanduser("~") + '/fplog/'
-    util.initLogging(app, True)  # Specify print log messages
-
-    app.run(debug=True, host='0.0.0.0')
-
-#############################################################################################
-
-
-

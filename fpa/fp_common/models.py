@@ -1715,16 +1715,15 @@ class Token(DeclarativeBase):
         return nt
 
     @staticmethod
+    @oneException2None
+    def getToken(dbc, tokenStr, trialId):
+    # Returns token id for token, or None if not found or other error.
+        return dbc.query(Token).filter(Token.token == tokenStr).one()
+
+    @staticmethod
     def getOrCreateToken(dbc, tokenStr, trialId):
     # Returns token id for token, creating new record if necessary.
-    # NB this only really needed because we introduced the token table
-    # after system had been in use. So there may be trial out there with
-    # tokens that are not in the table, so we need to create them if they
-    # are missing. When we are confident that all tokens still to be uploaded
-    # will be in the token table, then we should remove this functionality,
-    # so that if a token that should be in the table is not, we throw an
-    # error (I'm writing this on 24/2/2015, and the token table has already
-    # been in place for a couple of weeks at least).
+    # Currently only used by fpTrial, to create a token for uploads initiated from the server.
         try:
             return dbc.query(Token).filter(Token.token == tokenStr).one()
         except NoResultFound:
