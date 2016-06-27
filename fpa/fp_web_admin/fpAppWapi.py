@@ -2,8 +2,8 @@
 # Michael Kirk 2013-2016
 #
 # This version a copy of fp_app_api/fpApi.py.
-# Aiming to make this a blueprint part of the web admin app,
-# so that there can be a single wsgi entry point.
+# This is now a blueprint part of the web admin app,
+# it used to be a separate wsgi entry point.
 #
 
 from flask import Blueprint, current_app, Flask, request, Response, url_for
@@ -14,14 +14,6 @@ from functools import wraps
 from werkzeug import secure_filename
 
 import fp_common.models as dal
-
-# If we are running locally for testing, we need this magic for some imports to work:
-if __name__ == '__main__':
-    import sys, inspect
-    currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parentdir = os.path.dirname(currentdir)
-    sys.path.insert(0,parentdir)
-
 from fp_common.const import *
 import fp_common.util as util
 
@@ -29,10 +21,6 @@ import fp_common.util as util
 ### SetUp: ######################################################################################
 
 appApi = Blueprint('appApi', __name__)
-capp = Flask(__name__)
-
-# # If env var FPAPI_SETTINGS is set then load configuration from the file it specifies:
-# app.config.from_envvar('FPAPI_SETTINGS', silent=True)
 
 gdbg = False  # Switch for logging to file
 
@@ -45,18 +33,6 @@ FP_RUNTIME = os.environ.get('FP_RUNTIME', '')
 API_PREFIX = '/fprime' if FP_RUNTIME == 'docker' else ''
 
 ##################################################################################################
-
-# @app.errorhandler(500)
-# def internalError(e):
-# #-------------------------------------------------------------------------------
-# # Trap for Internal Server Errors, these are typically as exception raised
-# # due to some problem in code or database. We log the details. Possibly should
-# # try to send an email (to me I guess) to raise the alarm..
-# #
-#     util.flog('internal error:')
-#     util.flog(e)
-#     util.flog(traceback.format_exc())
-#     return 'FieldPrime: Internal Server Error'
 
 def serverErrorResponse(msg):
     util.flog(msg)
@@ -490,6 +466,7 @@ def urlAppCoolUploadCrashReport():
 
 @appApi.route(API_PREFIX + '/user/<username>/trial/<trialid>/device/<token>/', methods=['POST'])
 @dec_get_trial(False)
+def urlAppUploadTrialData(username, trial, dbc, token):
 #-------------------------------------------------------------------------------------------------
 # This version should return JSON!
 # NB historical peculiarities here, this attow only used for upload nodes, or notes.
@@ -501,7 +478,6 @@ def urlAppCoolUploadCrashReport():
 # not. URLs sent and stored on client when this function was
 # used should still be able to access this func (since the URL will match). But now
 # we send out the URL for the new version.
-def urlAppUploadTrialData(username, trial, dbc, token):
     jtrial = request.json
     if not jtrial:
         return Response('Bad or missing JSON')
@@ -590,14 +566,6 @@ def JsonErrorResponse(errMsg):
 # Returns Response with error message in JSON ('error' key)
 #
     return Response(json.dumps({'error':errMsg}), mimetype='application/json')
-
-
-def error_404(msg):
-#-------------------------------------------------------------------------------------------------
-# Not used ATM:
-    response = Response(msg)
-    response.status_code = 404
-    return response
 
 
 #############################################################################################
