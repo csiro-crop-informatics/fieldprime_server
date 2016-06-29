@@ -36,10 +36,11 @@ token_auth = HTTPTokenAuth('fptoken')
 multi_auth = MultiAuth(basic_auth, token_auth)
 
 def mkdbg(msg):
-    if True:
+    if False:
         print "webRest:" + msg
 
 @webRest.route("/specs")
+@multi_auth.login_required
 def spec():
     swag = swagger(current_app)
     swag['info']['version'] = "1.0"
