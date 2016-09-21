@@ -1704,7 +1704,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
 
 @app.route(PREURL+'/projects/<int:projId>/photo/scoreSetArchive/<traitInstanceId>', methods=['GET'])
 @session_check()
-def urlPhotoScoreSetArchive(sess, traitInstanceId):
+def urlPhotoScoreSetArchive(sess, projId, traitInstanceId):
 #--------------------------------------------------------------------
 # Return zipped archive of the photos for given traitInstance
     archFname = photoArchiveZipFileName(sess, traitInstanceId)
