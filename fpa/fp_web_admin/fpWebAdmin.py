@@ -1690,8 +1690,11 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
                 # Generate a name for the photo to have in the zip file. This needs to show row and col.
                 node = dal.getNode(sess.db(), d.node_id)
                 # MFK - we should allow for alternate file extensions, not assume ".jpg"
-                archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
-                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
+                #archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
+                #myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
+                # TE: Use default filename (remove achiveName)
+                # TODO: Better file naming CSFA-191
+                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname)
     except Exception, e:
         return 'A problem occurred:\n{0}\n{1}'.format(type(e), e.args)
     return None
