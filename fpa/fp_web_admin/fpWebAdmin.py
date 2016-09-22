@@ -1694,7 +1694,7 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
                 #myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
                 # TE: Use default filename (remove achiveName)
                 # TODO: Better file naming CSFA-191
-                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname)
+                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, fname)
     except Exception, e:
         return 'A problem occurred:\n{0}\n{1}'.format(type(e), e.args)
     return None
