@@ -21,7 +21,7 @@ clean.volumes :
 	docker volume rm $$(docker volume ls -qf dangling=true)
 
 test.fp :
-	curl https://***REMOVED***/fieldprime/
+	curl http://localhost/fieldprime/
 
 # Sample backup example from Docker docs, not tried yet..
 backup :
