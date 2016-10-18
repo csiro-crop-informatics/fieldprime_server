@@ -7,10 +7,10 @@
 #
 
 import os
-FP_ROOT = os.environ.get('FP_ROOT', '***REMOVED***/')
+FP_ROOT = os.environ.get('FP_ROOT', '/srv/www/fpserver/')
 
 #FP_ROOT = '/var/www/fieldprime/'
-#FP_ROOT = '***REMOVED***/'
+#FP_ROOT = '/srv/www/fpserver/'
 
 #
 # Check for server down flag file. If the flag is there, we export an application

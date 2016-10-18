@@ -48,7 +48,7 @@ else:
 if len(sys.argv) > 2:
     photodir = sys.argv[2]
 else:
-    photodir = '/home/***REMOVED***/web/photos/'
+    photodir = './web/photos/'
 dbc = md.getSysUserEngine(project)
 photoCheck(dbc, photodir)
 

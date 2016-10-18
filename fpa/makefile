@@ -35,7 +35,7 @@ clean :
 #	docker rmi $$(docker images -q --filter "dangling=true")
 
 test.fp :
-	curl https://***REMOVED***/fieldprime/
+	curl http://localhost/fieldprime/
 
 # Sample backup example from Docker docs, not tried yet..
 backup :
