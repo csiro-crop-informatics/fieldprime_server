@@ -1,5 +1,6 @@
 # fpWebAdmin.py
 # Michael Kirk 2013 - 2016
+# Tim Erwin 2016
 # Web site endpoints to administer and use FieldPrime
 #
 
@@ -137,7 +138,8 @@ def getMYSQLDBConnection(sess):
 #
     try:
         projectDBname = models.dbName4Project(sess.getProjectName())
-        con = mdb.connect('localhost', models.fpDBUser(), models.fpPassword(), projectDBname)
+        from config import FP_MYSQL_HOST, FP_MYSQL_PORT
+        con = mdb.connect(host=FP_MYSQL_HOST, port=FP_MYSQL_PORT, user=models.fpDBUser(), passwd=models.fpPassword(), db=projectDBname)
         return con
     except mdb.Error:
         return None
@@ -168,11 +170,12 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
     def param_dec(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            mkdbg('session_check')
+            app.logger.debug("session_check")
             
             # Get token, validate, and get user:
             token = request.cookies.get(NAME_COOKIE_TOKEN)
             if token is None:
+                app.logger.debug("session_check: No token")
                 return loginPage('Not logged in')
             resp = requests.get(url_for('webRest.urlGetTokenUser', _external=True), timeout=5,
                                 headers={"Authorization": "fptoken " + token})
@@ -183,8 +186,8 @@ def session_check(projIdParamName='projId', trialIdParamName=None):
                 data = jresp.get('data')
                 userId = data.get('userId')
             except Exception as e:
-                mkdbg('exception getting json response: {}'.format(e))
-                return loginPage('unexpected error')
+                app.logger.debug('session_check: exception getting json response: {}'.format(e))
+                return loginPage('Unexpected error')
                 
             projId = kwargs.get(projIdParamName)
             if projId is None: 
@@ -229,6 +232,7 @@ def logged_in_check(func):
 #
     @wraps(func)
     def inner(*args, **kwargs):
+        app.logger.debug("logged_in_check")
         mkdbg('logged_in_check')
         
         # Get token, validate, and get user:
@@ -1841,7 +1845,7 @@ def asyncGetToken(username, password):
         newurl = url_for('webRest.urlGetToken', _external=True)
         jresp = requests.get(newurl, timeout=5, auth=(username, password)).json()
     except Exception, e:
-        mkdbg('getToken error: ' + str(e))
+        app.logger.error('getToken error: ' + str(e))
         return None
     return fprData(jresp)["token"]
 
@@ -1892,14 +1896,16 @@ def urlMain():
         if not error:
             # Check login details:
             authOK = fpsys.userPasswordCheck(username, password)
+            app.logger.debug("authOK %s" % authOK)
             if authOK:
                 # OK, valid user. Find projects they have access to:
                 projList, errMsg = fpsys.getUserProjects(username)
                 if errMsg is not None:
+                    app.logger.debug("Error in getUserProjects: %s" % errMsg)
                     error = errMsg
                 else:
                     # Good to go, show the user front page, after adding cookie:
-                    util.fpLog(app, 'Login from user {0}'.format(username))
+                    app.logger.debug('Login from user {0}'.format(username))
                     fpsys.fpSetupG(g, userIdent=username)
                     resp = make_response(frontPage())
 
@@ -1909,15 +1915,18 @@ def urlMain():
                     token = asyncGetToken(username, password)
                     if token is not None:
                         resp.set_cookie(NAME_COOKIE_TOKEN, token)
+                        app.logger.debug('Setting cookie token {0}'.format(token))
                     else:
-                        util.flog('Login failed attempt for user {0}'.format(username))
+                        app.logger.debug('Login failed to create token for user {0}'.format(username))
                         error = 'Login failed'
 
                     return resp
             elif authOK is None:
+                app.logger.debug("Login failed for user {0}".format(username))
                 util.flog('Login failed attempt for user {0}'.format(username))
                 error = 'Login failed'
             else:
+                app.logger.debug("Login failed for user {0}".format(username))
                 util.flog('Login failed attempt for user {0}'.format(username))
                 error = 'Invalid Password'
 
