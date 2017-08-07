@@ -1,5 +1,6 @@
 # fpsys.py
 # Michael Kirk 2015
+# Tim Erwin 2016
 #
 # To manage access to the fpsys database.
 # This db (attow) holds information about cldap users and which projects
@@ -25,12 +26,15 @@ class FPSysException(Exception):
     pass
 
 def getFpsysDbConnection():
-#-----------------------------------------------------------------------
-# Get mysql connection to fpsys database.
-#
-    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
-    #print 'host {0} user {1} pw {2}'.format(host, fpDBUser(), fpPassword())
-    return mdb.connect(host, models.fpDBUser(), models.fpPassword(), 'fpsys')
+    '''
+    Get mysql connection to fpsys database.
+
+    Uses FP_MYSQL_HOST and FP_MYSQL_PORT from config.py and can be overridden 
+    by environment variables of the same name.
+    '''
+
+    from config import FP_MYSQL_HOST, FP_MYSQL_PORT
+    return mdb.connect(host=FP_MYSQL_HOST, port=FP_MYSQL_PORT, user=models.fpDBUser(), passwd=models.fpPassword(), db='fpsys')
 
 def _getProjectIdFromName(projName):
 #-----------------------------------------------------------------------
@@ -413,7 +417,8 @@ def systemPasswordCheck(user, password):
         return 'fp_' + username
 
     try:
-        con = mdb.connect('localhost', models.dbName4Project(user), password, dbName(user));
+        from config import FP_MYSQL_HOST, FP_MYSQL_PORT
+        con = mdb.connect(host=FP_MYSQL_HOST, port=FP_MYSQL_PORT, user=models.dbName4Project(user), passwd=password, db=dbName(user))
         con.close()
         return True
     except mdb.Error, e:
