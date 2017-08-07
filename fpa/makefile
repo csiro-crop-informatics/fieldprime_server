@@ -15,6 +15,7 @@ bash :
 
 # Make image with needed python libraries installed :
 build :
+	docker build --tag fp_wsgi_pylibs -f Dockerfile-wsgiPlusPylibs .
 	docker build --build-arg FPWS_PW=fpwserver:bar --tag $(IMAGE_NAME) .
 
 stop :
@@ -35,7 +36,7 @@ clean :
 #	docker rmi $$(docker images -q --filter "dangling=true")
 
 test.fp :
-	curl http://localhost/fieldprime/
+	curl https://localhost/fieldprime/
 
 # Sample backup example from Docker docs, not tried yet..
 backup :

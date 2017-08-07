@@ -22,10 +22,10 @@ WORKDIR /fieldprime
 #
 # Setup script to run on container creation, and files needed by it:
 #
-COPY init.sql /docker-entrypoint-initdb.d
-COPY fpsys.sql /fieldprime
-COPY createProject.sh /fieldprime
-COPY fprime.create.tables.sql /fieldprime
+COPY sql/init.sql /docker-entrypoint-initdb.d
+COPY sql/fpsys.sql /fieldprime
+COPY sql/fprime.create.tables.sql /fieldprime
+COPY scripts/createProject.sh /fieldprime
 
 # Create fieldprime server user, with password.  NOT VERY SECURE - And I think this now done in init.sql
 #ENV MYSQL_USER=fpwserver MYSQL_PASSWORD=bar

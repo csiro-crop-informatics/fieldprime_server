@@ -25,6 +25,9 @@ from functools import wraps
 from flask import current_app as app
 import fpsys
 
+# Gloabls, using weakref as these should not be used outside of module 
+_FP_DBC = None    # Database connection
+_FP_DBNAME = None # Database name
 
 DeclarativeBase = declarative_base()
 metadata = DeclarativeBase.metadata
@@ -1848,8 +1851,6 @@ def getSysUserEngine(projectName):
     dbname = fpsys.getProjectDBname(projectName)
     return getDbConnection(dbname)
 
-gdbc = None
-gdbname = None
 def getDbConnection(dbname):
 #-----------------------------------------------------------------------
 # This should be called once only and the result stored,
@@ -1858,20 +1859,22 @@ def getDbConnection(dbname):
 # Three separate things fixed it:
 # . The use of poolclass=sqlalchemy.pool.NullPool commented out below.
 # . Calling close on the session after using it.
-# . Ensuring only one session by use of global var gdbc.
+# . Ensuring only one session by use of global var _FP_DBC.
 # I'm sticking with this last method for the moment.
-    global gdbc
-    global gdbname
-    if gdbc is not None and dbname == gdbname:
-        return gdbc
-    host = os.environ.get('FP_MYSQL_PORT_3306_TCP_ADDR', 'localhost')
-    # print fpDBUser(), fpPassword(), host, dbname
-    engine = create_engine('mysql://{0}:{1}@{2}/{3}'.format(fpDBUser(), fpPassword(), host, dbname))#,
+    app.logger.debug("getDbConnection")
+
+    global _FP_DBC
+    global _FP_DBNAME
+    if _FP_DBC is not None and dbname == _FP_DBNAME:
+        return _FP_DBC
+
+    from config import FP_MYSQL_HOST, FP_MYSQL_PORT
+    engine = create_engine('mysql://{0}:{1}@{2}:{3}/{4}'.format(fpDBUser(), fpPassword(), FP_MYSQL_HOST, FP_MYSQL_PORT, dbname))
                             #poolclass=sqlalchemy.pool.NullPool)
     Session = sessionmaker(bind=engine)
-    gdbc = Session()
-    gdbname = dbname
-    return gdbc
+    _FP_DBC = Session()
+    _FP_DBNAME = dbname
+    return _FP_DBC
 
 # This should use alchemy and return connection
 def dbConnectAndAuthenticate(project, password):

@@ -1,27 +1,34 @@
 #
 # wsgi_adm_entry.py
 # Michael Kirk 2013
+# Tim Erwin 2016
 # This is the entry point for the FieldPrime admin pages on the server.
 # The function of this file is to export a runnable called "application",
 # which will be used by wsgi to service requests.
 #
 
-import os
-FP_ROOT = os.environ.get('FP_ROOT', '/srv/www/fpserver/')
+import os, sys
+import logging
 
-#FP_ROOT = '/var/www/fieldprime/'
-#FP_ROOT = '/srv/www/fpserver/'
+#Setup path for application code
+app_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, app_path)
 
+from fp_common.util import fpServerDown, activateVirtualenv, initLogging
+
+#Activate python virtualenv if set
+activateVirtualenv()
+
+#
+# Maintenance Mode
 #
 # Check for server down flag file. If the flag is there, we export an application
 # that provides only a 'down for maintenance' message.
 #
-import os.path
-flagdir = FP_ROOT + 'fplog/'
-fpdown = os.path.isfile(flagdir + "/fpdown")
-if fpdown:
-    import sys
+if fpServerDown():
+
     def application(environ, start_response):
+        #TODO: Template maintenance message"
         status = '500 Server Down'
         output = '<h1>Sorry, FieldPrime is currently down for maintenance</h1>'
         response_headers = [('Content-type', 'text/html'),
@@ -29,13 +36,22 @@ if fpdown:
                             ('Cache-Control', 'no-cache, no-store, must-revalidate')]
         start_response(status, response_headers)
         return [output]
+# 
+# Production Mode
+#
 else:
-    if False:    # For testing at a different location to the main one (WSGIPythonPath) configured in apache.
-        import sys
-        sys.path.insert(0, FP_ROOT + 'fptest/fpa')
-    from fp_web_admin import app as application
-    from fp_common import util
 
+    from fp_web_admin import app as application
     # Setup logging:
-    util.initLogging(application)
-    #util.flog("wsgi_adm_entry called")
+    initLogging(application)
+
+
+#
+# Development Mode ($> flask run or $> python fp_admin_entry.wsgi)
+#
+if __name__ == '__main__':
+
+    from fp_web_admin import app as application
+    initLogging(application,level=logging.DEBUG)
+    application.run()
+
