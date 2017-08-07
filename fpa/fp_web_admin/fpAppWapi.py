@@ -14,23 +14,14 @@ from functools import wraps
 from werkzeug import secure_filename
 
 import fp_common.models as dal
-from fp_common.const import *
 import fp_common.util as util
+from fp_common.const import *
+from fp_common.config import API_PREFIX
 
 
 ### SetUp: ######################################################################################
 
 appApi = Blueprint('appApi', __name__)
-
-gdbg = False  # Switch for logging to file
-
-#
-# The FieldPrime server can be run in various ways, and accordingly we may need to detect
-# part of the URL. The FP_RUNTIME environment var should be used to indicate what configuration
-# we are running as. An alternative would be to put the prefix itself in the environment.
-#
-FP_RUNTIME = os.environ.get('FP_RUNTIME', '')
-API_PREFIX = '/fprime' if FP_RUNTIME == 'docker' else ''
 
 ##################################################################################################
 
