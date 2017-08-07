@@ -9,7 +9,7 @@ MYSQL=`which mysql`
 if [ $# -ne $EXPECTED_ARGS ]
 then
   echo "Usage: $0 projectName contactName contactEmail"
-  echo "  You will need to provide mysql super password."
+  echo "  You will need to provide mysql root password."
   exit $E_BADARGS
 fi
 
@@ -25,7 +25,7 @@ CONTACT_EMAIL=$3
 #exit 0
 
 # Run Mysql script:
-$MYSQL -uSuperadm -p <<EOF
+$MYSQL -uroot -p <<EOF
 create database if not exists $DBNAME;
 use $DBNAME;
 source fprime.create.tables.sql;
