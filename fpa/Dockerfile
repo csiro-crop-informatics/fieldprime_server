@@ -4,7 +4,7 @@
 #
 
 FROM fp_wsgi_pylibs
-MAINTAINER Michael Kirk <***REMOVED***>
+MAINTAINER Michael Kirk <michael.kirk@csiro.au>
 
 WORKDIR /app
 ARG FPWS_PW=fpwserver:bar

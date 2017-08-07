@@ -20,7 +20,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSign
 
 import fp_common.models as models
 import fp_common.fpsys as fpsys
-from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL
+from fp_common.const import LOGIN_TIMEOUT, LOGIN_TYPE_SYSTEM, LOGIN_TYPE_LDAP, LOGIN_TYPE_LOCAL
 import fpUtil
 import fp_common.util as util
 from const import *
@@ -47,7 +47,7 @@ def spec():
     swag['info']['title'] = "FieldPrime REST API"
     swag['schemes'] = ['https']
 #    swag['basePath'] = '/fpv1'
-    swag['host'] = '***REMOVED***'
+    swag['host'] = 'localhost'
     swag['security'] = [{"api_key":[], 'basic':[]}]
     swag['consumes'] = ['application/json']
     swag['produces'] = ['application/json']
@@ -613,7 +613,7 @@ parameters:
       properties:
         loginType:
           type: integer
-          description: 2 for ***REMOVED*** user, 3 for FieldPrime local user.
+          description: 2 for cldap user, 3 for FieldPrime local user.
         ident:
           type: string
           description: Login id for new user
@@ -666,8 +666,8 @@ responses:
             if not util.isValidEmail(email):
                 return errorBadRequest("Invalid email address")
             errmsg = fpsys.addLocalUser(login, fullname, password, email)
-        elif loginType == LOGIN_TYPE_***REMOVED***:
-            errmsg = fpsys.add***REMOVED***User(login)
+        elif loginType == LOGIN_TYPE_LDAP:
+            errmsg = fpsys.addLdapUser(login)
         else:
             errmsg = 'Invalid loginType'
         if errmsg is not None:
@@ -861,7 +861,7 @@ responses:
 #^-----------------------------------
 #: PUT: API_PREFIX + users/<ident>
 #: Access: Requesting user needs create user permissions, or to be the updated user.
-#: Only LOCAL users can be updated (not ***REMOVED***).
+#: Only LOCAL users can be updated (not LDAP).
 #: Input: {
 #:   'oldPassword': ,
 #:   'fullname': ,
@@ -2684,13 +2684,6 @@ JH='-H "Content-Type: application/json"'
 #
 
 ### User tests: ==========================================================================
-
-# Create ***REMOVED*** user:
-curl -u mk:m -i -X POST -H "Content-Type: application/json" \
-     -d '{"login":"***REMOVED***","loginType":2}' $FP/users
-
-# Get users:
-curl $AUTH $FP/users | prj
 
 # Create local user:
 curl $AUTH -i -X POST -H "Content-Type: application/json" \

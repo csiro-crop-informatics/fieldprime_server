@@ -6,7 +6,7 @@
 # which will be used by wsgi to service requests.
 #
 
-FP_ROOT = '***REMOVED***/'
+FP_ROOT = '/srv/www/fpserver/'
 #FP_ROOT = '/var/www/fieldprime/'
 
 #

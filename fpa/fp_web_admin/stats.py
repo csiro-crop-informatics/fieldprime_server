@@ -12,7 +12,7 @@
 # import flask
 #
 # import os
-# #os.environ['MPLCONFIGDIR'] = '***REMOVED***/matplotlib/'
+# #os.environ['MPLCONFIGDIR'] = '/srv/www/fpserver/matplotlib/'
 # #os.environ['MPLCONFIGDIR'] = flask.current_app.config['MPLCONFIGDIR']
 # #import os
 # #import tempfile

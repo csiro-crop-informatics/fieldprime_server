@@ -2,7 +2,7 @@
 # Michael Kirk 2015
 #
 # To manage access to the fpsys database.
-# This db (attow) holds information about ***REMOVED*** users and which projects
+# This db (attow) holds information about cldap users and which projects
 # they have access to.
 #
 # Since we are only doing a little with the fpsys database, we are just using
@@ -15,9 +15,9 @@ import os
 from passlib.apps import custom_app_context as pwd_context
 from passlib.apps import mysql_context
 
-import ***REMOVED***
+import cldap
 import util
-from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_***REMOVED***, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
+from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_LDAP, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
 #from models import getFpsysDbConnection         # circularity here, could move APP* to separate module
 import models
 
@@ -87,7 +87,7 @@ def deleteUserFromProject(project, ident):
 
 def getProjectUsers(projIdOrName):
 #-----------------------------------------------------------------------
-# Get (***REMOVED***) users associated with specified project.
+# Get (cldap) users associated with specified project.
 # Returns tuple of dictionary and errorMessage (which will be None if no error).
 # The dictionary keys are the user login ids, the values are tuples (name, permissions).
 #
@@ -174,7 +174,7 @@ class UserProject:
 
 def getUserProjects(username):
 #-----------------------------------------------------------------------
-# Get project available to specified user - this should be a valid ***REMOVED*** user.
+# Get project available to specified user - this should be a valid cldap user.
 # Returns tuple, project dictionary and errorMessage (which will be None if no error).
 # The dictionary keys are the project names, the values are the permissions (for the specified user).
     try:
@@ -197,7 +197,7 @@ def addOrUpdateUserProjectById(userId, projId, perms):
 # Add user with given id to specified project with specified permissions.
 # Note user db entry created if not already present.
 # Returns error message on error or None
-# MFK Note overlap with add***REMOVED***User()
+# MFK Note overlap with addLdapUser()
 #
     try:
         con = getFpsysDbConnection()
@@ -226,7 +226,7 @@ def addUserToProject(userId, projectName, perms):
 # Add user with given id to specified project with specified permissions.
 # Note user db entry created if not already present.
 # Returns error message on error or None
-# MFK Note overlap with add***REMOVED***User()
+# MFK Note overlap with addLdapUser()
 #
     # Get project id:
     projId = _getProjectIdFromName(projectName)
@@ -253,25 +253,25 @@ def addUserToProject(userId, projectName, perms):
     return None
 
 
-def add***REMOVED***UserToProject(ident, project, perms):
+def addLdapUserToProject(ident, project, perms):
 #-----------------------------------------------------------------------
 # Add user with given ident to specified project with specified permissions.
 # Note user db entry created if not already present.
 # Returns error message on error or None
-# MFK Note overlap with add***REMOVED***User()
+# MFK Note overlap with addLdapUser()
 #
     try:
-        ***REMOVED***Name = ***REMOVED***.getUserName(ident)
-    except ***REMOVED***.Error, e:
+        cldapName = cldap.getUserName(ident)
+    except cldap.Error, e:
         return str(e)
-#     # Check ***REMOVED*** user exists, and get name:
-#     ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-#     if not ***REMOVED***Server:
-#         return 'Cannot connect to ***REMOVED*** server'
-#     ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
-#     if ***REMOVED***User is None:
+#     # Check cldap user exists, and get name:
+#     cldapServer = cldap.LdapServer(cldap.SERVER_URL)
+#     if not cldapServer:
+#         return 'Cannot connect to cldap server'
+#     cldapUser = cldapServer.getUserByIdent(ident)
+#     if cldapUser is None:
 #         return 'Unknown ident'
-#     ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
+#     cldapName = cldapUser.given_name + ' ' + cldapUser.surname
 
     # Get project id:
     projId = _getProjectIdFromName(project)
@@ -290,12 +290,12 @@ def add***REMOVED***UserToProject(ident, project, perms):
         if cur.rowcount == 1:
             return 'User already configured for this project'
         # Insert or update user:
-        # We don't really have to update, but in case name has changed in ***REMOVED*** we do.
+        # We don't really have to update, but in case name has changed in cldap we do.
         if userFpId is None:
-            cur.execute('insert user (login,name,login_type) values (%s,%s,%s)', (ident, ***REMOVED***Name, LOGIN_TYPE_***REMOVED***))
+            cur.execute('insert user (login,name,login_type) values (%s,%s,%s)', (ident, cldapName, LOGIN_TYPE_LDAP))
             userFpId = cur.lastrowid
         else:
-            cur.execute('update user set name = %s where id = %s', (***REMOVED***Name, userFpId))
+            cur.execute('update user set name = %s where id = %s', (cldapName, userFpId))
         # Insert into userProject table:
         cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
                     (userFpId, projId, perms))
@@ -310,14 +310,14 @@ def updateUser(ident, project, perms):
 # Returns error message on error or None
 #
 
-#     # Check ***REMOVED*** user exists, and get name:
-#     ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-#     if not ***REMOVED***Server:
-#         return 'Cannot connect to ***REMOVED*** server'
-#     ***REMOVED***User = ***REMOVED***Server.getUserByIdent(ident)
-#     if ***REMOVED***User is None:
+#     # Check cldap user exists, and get name:
+#     cldapServer = cldap.LdapServer(cldap.SERVER_URL)
+#     if not cldapServer:
+#         return 'Cannot connect to cldap server'
+#     cldapUser = cldapServer.getUserByIdent(ident)
+#     if cldapUser is None:
 #         return 'Unknown ident {0}'.format(ident)
-#     ***REMOVED***Name = ***REMOVED***User.given_name + ' ' + ***REMOVED***User.surname
+#     cldapName = cldapUser.given_name + ' ' + cldapUser.surname
 
     # Get project id:
     projId = _getProjectIdFromName(project)
@@ -339,8 +339,8 @@ def updateUser(ident, project, perms):
         if cur.rowcount != 1:
             return 'User not found for this project'
 
-#         # update user table (in case name in ***REMOVED*** has changed):
-#         cur.execute('update user set name = %s where id = %s', (***REMOVED***Name, userFpId))
+#         # update user table (in case name in cldap has changed):
+#         cur.execute('update user set name = %s where id = %s', (cldapName, userFpId))
         # Update userProject table:
         cur.execute('update userProject set permissions=%s where user_id=%s and project_id = %s',
                     (perms, userFpId, projId))
@@ -350,19 +350,19 @@ def updateUser(ident, project, perms):
         return (None, 'Failed system login')
     return None
 
-def add***REMOVED***User(login):
+def addLdapUser(login):
 #-----------------------------------------------------------------------
 # Returns None on success, else error message.
 #
     try:
-        ***REMOVED***Name = ***REMOVED***.getUserName(login)
+        cldapName = cldap.getUserName(login)
         con = getFpsysDbConnection()
         qry = "insert user (login, name, login_type) values (%s,%s,%s)"
         cur = con.cursor()
-        cur.execute(qry, (login, ***REMOVED***Name, LOGIN_TYPE_***REMOVED***))
+        cur.execute(qry, (login, cldapName, LOGIN_TYPE_LDAP))
         con.commit()
         con.close()
-    except (***REMOVED***.Error, mdb.Error) as e:
+    except (cldap.Error, mdb.Error) as e:
         return str(e)
     return None
 
@@ -420,22 +420,20 @@ def systemPasswordCheck(user, password):
         #util.flog('system password check failed')
         return False
 
-def ***REMOVED***PasswordCheck(username, password):
+def cldapPasswordCheck(username, password):
 #-----------------------------------------------------------------------
-# Validate ***REMOVED*** user/password, returning boolean indicating success
+# Validate cldap user/password, returning boolean indicating success
 #
-#     if username == '***REMOVED***' and password == 'm':
-#         return True;
-    ***REMOVED***Server = ***REMOVED***.***REMOVED***Server(***REMOVED***.SERVER_URL)
-    if not ***REMOVED***Server:
-        util.flog('Cannot connect to ***REMOVED*** server')
+    cldapServer = cldap.LdapServer(cldap.SERVER_URL)
+    if not cldapServer:
+        util.flog('Cannot connect to cldap server')
         return False
-    ***REMOVED***User = ***REMOVED***Server.getUserByIdent(username)
-    if ***REMOVED***User is None:
+    cldapUser = cldapServer.getUserByIdent(username)
+    if cldapUser is None:
         util.flog('The supplied username is unknown.')
         return False
-    if not ***REMOVED***User.authenticate(password):
-        #util.flog('wrong ***REMOVED*** password')
+    if not cldapUser.authenticate(password):
+        #util.flog('wrong cldap password')
         return False
     return True;
 
@@ -462,8 +460,8 @@ def userPasswordCheck(username, password):
         return pwd_context.verify(password, phash)
     elif loginType == LOGIN_TYPE_SYSTEM:
         return systemPasswordCheck(username, password)
-    elif loginType == LOGIN_TYPE_***REMOVED***:
-        return ***REMOVED***PasswordCheck(username, password)
+    elif loginType == LOGIN_TYPE_LDAP:
+        return cldapPasswordCheck(username, password)
     elif loginType == LOGIN_TYPE_MYSQL:
         return mysql_context.verify(password, phash)
     else:

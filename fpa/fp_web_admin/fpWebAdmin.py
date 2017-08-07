@@ -52,7 +52,7 @@ from const import *
 app = Flask(__name__)
 app.register_blueprint(webRest)
 app.register_blueprint(appApi)
-app.secret_key = '***REMOVED***'
+app.secret_key = '** REMOVED **'
 
 #
 # The FieldPrime server can be run in various ways, and accordingly we may need to detect
@@ -1133,7 +1133,7 @@ def urlAttributeDisplay(sess, projId, trialId, attId):
 
 def manageUsersHTML(sess, msg=None):
 # Project user list section of project administration form
-# Show list of ***REMOVED*** users for current project, with delete and add functionality.
+# Show list of Ldap users for current project, with delete and add functionality.
 # Current login must have admin rights to the project.
 #
 # admin tab needs security thinking - any admin functionality must have security check before
@@ -1158,7 +1158,7 @@ def manageUsersHTML(sess, msg=None):
     
     if msg is not None:
         cont += '<font color="red">{0}</font>'.format(msg)
-    out = fpUtil.htmlFieldset(cont, 'Manage ***REMOVED*** Users')
+    out = fpUtil.htmlFieldset(cont, 'Manage Ldap Users')
     return out
 
 @app.route(PREURL+'/projects/<int:projId>/details/', methods=['GET', 'POST'])
@@ -1261,7 +1261,7 @@ def formElements4UserManagement():
     return [
         forms.formElement('Login Type', 'Specify user type', 'loginType', 'xncid',
             etype=forms.formElement.RADIO,
-            typeSpecificData={'CSIRO ***REMOVED***':LOGIN_TYPE_***REMOVED***, 'FieldPrime':LOGIN_TYPE_LOCAL}, default=LOGIN_TYPE_LOCAL),
+            typeSpecificData={'CSIRO Ldap':LOGIN_TYPE_LDAP, 'FieldPrime':LOGIN_TYPE_LOCAL}, default=LOGIN_TYPE_LOCAL),
         forms.formElement('Login ident', 'Login name', 'ident', 'xpnameId',
                           etype=forms.formElement.TEXT),
         forms.formElement('Password', 'Initial password for the new user', 'password', 'fpcuPassword',
@@ -1690,8 +1690,11 @@ def makeZipArchive(sess, traitInstanceId, archiveFileName):
                 # Generate a name for the photo to have in the zip file. This needs to show row and col.
                 node = dal.getNode(sess.db(), d.node_id)
                 # MFK - we should allow for alternate file extensions, not assume ".jpg"
-                archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
-                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
+                #archiveName = 'r' + str(node.row) + '_c' + str(node.col) + '.jpg'
+                #myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, archiveName)
+                # TE: Use default filename (remove achiveName)
+                # TODO: Better file naming CSFA-191
+                myzip.write(app.config['PHOTO_UPLOAD_FOLDER'] + fname, fname)
     except Exception, e:
         return 'A problem occurred:\n{0}\n{1}'.format(type(e), e.args)
     return None
@@ -1704,7 +1707,7 @@ def photoArchiveZipFileName(sess, traitInstanceId):
 
 @app.route(PREURL+'/projects/<int:projId>/photo/scoreSetArchive/<traitInstanceId>', methods=['GET'])
 @session_check()
-def urlPhotoScoreSetArchive(sess, traitInstanceId):
+def urlPhotoScoreSetArchive(sess, projId, traitInstanceId):
 #--------------------------------------------------------------------
 # Return zipped archive of the photos for given traitInstance
     archFname = photoArchiveZipFileName(sess, traitInstanceId)
@@ -1747,7 +1750,7 @@ def urlProject(sess, projId):
 #
 # Need to check userName is of session user, and that they have access to the project,
 # and find what permissions they have. We can't just use the username and project from
-# the URL since they could just be typed in, BY A BAD PERSON. Session should be a ***REMOVED*** login.
+# the URL since they could just be typed in, BY A BAD PERSON. Session should be a LDAP login.
 #
     projectName = sess.getProjectName()
     if projectName is not None:

@@ -19,7 +19,7 @@ flush privileges;
 set @DB_NAME='fp_main';
 set @PROJ_NAME='main';
 set @CONTACT_NAME='Michael Kirk';
-set @CONTACT_EMAIL='***REMOVED***';
+set @CONTACT_EMAIL='enquiries@csiro.au';
 create database if not exists fp_main;
 use fp_main;
 source /fieldprime/fprime.create.tables.sql;
@@ -32,10 +32,9 @@ insert system (name, value) values ('contactName', @CONTACT_NAME), ('contactEmai
 #
 # Create user mk with access to default project:
 #
-#  '***REMOVED***',
 use fpsys
 insert user (login,name,passhash,login_type,permissions) values ('mk','m k',
-  '***REMOVED***', 
+  '** REMOVED **', 
   3, 1);
 insert userProject values (1,1,1);
 
