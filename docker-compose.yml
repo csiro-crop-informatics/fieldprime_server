@@ -1,26 +1,50 @@
-fp_adm:
-  build: fpa
-  ports:
-   - "8080:80"
-   - "8443:443"
-  links:
-   - fp_mysql
+version: '2'
 
-fp_mysql:
-  build: fp_mysql/docker.mysql.primed
-  #image: fp_mysql
-#  volumes_from:
-#   - fp_dbdata
-  volumes:
-   - foo1:/var/lib/mysql
-  environment:
-   MYSQL_ROOT_PASSWORD: foo
+services:
+  #
+  # Base apache/mod-wsgi/python
+  # Dummy service added here as is required to build fp_adm
+  #
+  wsgi_pylibs:
+    build: 
+      context: ./fpa
+      dockerfile: Dockerfile-wsgiPlusPylibs
+    image: fp_wsgi_pylibs:latest
+    container_name: fp_wsgi_pylibs
 
-#fp_dbdata:
-#  image: fp_mysql:v1
-##  container_name: c_fp_dbdata
-#  command: echo "Data-only container for fpmysql"
-#  volumes:
-#   - /var/lib/mysql
+  #
+  # FieldPrime wsgi/app
+  # Depends: wsgi_pylibs
+  #
+  fp_adm:
+    build: fpa
+    container_name: fp_server
+    ports:
+      - "80:80"
+      - "8443:443"
+    environment:
+        FP_MYSQL_HOST: fp_mysql
+        FP_MYSQL_PORT: 3306
+    volumes:
+      - /tmp:/app/fplog
+    links:
+      - fp_mysql
 
+  #
+  # FieldPrime database
+  #
+  fp_mysql:
+    build: fp_mysql
+    container_name: fp_mysqldb
+    volumes:
+      - fp_dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: foo
+
+volumes:
+  fp_dbdata:
+    driver: local
+  fp_logs:
 
