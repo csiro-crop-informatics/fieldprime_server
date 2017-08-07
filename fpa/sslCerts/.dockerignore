@@ -1,0 +1,4 @@
+makefile
+.dockerignore
+Dockerfile
+Dockerfile-wsgiPlusPylibs
