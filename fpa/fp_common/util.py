@@ -4,10 +4,58 @@
 # Handy functions.
 #
 
-import time, sys
+import time, sys, os
 import cgi
 import re
+import logging
 from functools import wraps
+
+def fpServerDown():
+    '''
+    Return status of FieldPrime Server
+
+    Creation of file fpdown in flagdir will result in server 
+    down for maintenance message.
+    '''
+  
+    from fp_common.config import FP_LOG_DIR 
+    fpdown = os.path.isfile(FP_LOG_DIR + "/fpdown")
+
+    return fpdown
+
+def activateVirtualenv(virt_activate_file=os.environ.get('FP_VIRTUALENV',None)):
+    '''
+    Activate Python Virtualenv
+
+    Uses python virtualenv activate_this.py location to enable python virtual environment
+    Only used in app entrypoint .wsgi. Uses environment variable FP_VIRTUALENV or 
+    falls back to config variable FP_VIRTUALENV from config.py
+    '''
+    # If not set using environment variable or directly via call try config
+    if virt_activate_file is None:
+        from fp_common.config import FP_VIRTUALENV
+        virt_activate_file = FP_VIRTUALENV
+
+    if virt_activate_file and os.path.exists(virt_activate_file):
+        execfile(virt_activate_file, dict(__file__=virt_activate_file))
+
+def initLogging(app,level=None):
+    '''
+    Setup logging of FieldPrime Server
+
+    Uses logfile FP_LOG_FILE and logging level FP_LOG_LEVEL from config.py
+    '''
+    from logging.handlers import RotatingFileHandler
+    file_handler = RotatingFileHandler(app.config['FP_LOG_FILE'], maxBytes=1024 * 1024 * 100, backupCount=10)
+
+    # If level not set get from config
+    if level is None:
+        level = app.config['FP_LOG_LEVEL']
+    file_handler.setLevel(level)
+
+    #formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    #file_handler.setFormatter(formatter)
+    app.logger.addHandler(file_handler)
 
 def isInt(x):
     try:
@@ -135,42 +183,6 @@ def flog(msg) :
 # not import this function by name, or you will just get a copy of this
 # default version. You must instead import util, and call util.flog().
     pass
-
-def initLogging(app, justPrint=False):
-#----------------------------------------------------------------------------
-# Set up logging, which is then done with the flog() function.
-# By default flog() does nothing. This function can change that.
-# If justPrint is true, then flog will just print its argument.
-# Otherwise - if logging is flagged by the presence of file
-# app.config['FP_FLAG_DIR'] + "/dolog" - it will append its argument
-# to the file app.config['FPLOG_FILE']. We do this check once
-# in this init function rather than with every call in the hope that
-# it is less cost at each log call.
-# MFK perhaps shouldn't write to FPLOG_FILE since this used by
-# fpLog below, which is used for logging connections, and is always on.
-#
-    global flog
-    import os.path
-    if os.path.isfile(app.config['FP_FLAG_DIR'] + "/dolog"):
-        if justPrint:
-            flog = lambda x:sys.stdout.write('flog: ' + str(x)+'\n')
-            return
-
-        # Lookup the logging file name, create a function to log to it, and
-        # set the flog module global func to that function. So hopefully
-        # the module namespace will not end up with either logfilename or
-        # flogServer in it, but the function will work nonetheless.
-        logfilename = app.config['FPLOG_FILE']
-        def flogServer(msg):
-            print 'file flog'
-            try:     # Don't crash out if logging not working
-                f = open(logfilename, 'a')
-                print >>f, 'flog@{0}\t{1}'.format(time.strftime("%Y-%m-%d %H:%M:%S"), msg)
-                f.close
-            except Exception, e:
-                pass
-        flog = flogServer
-
 
 def fpLog(app, msg):
 #-------------------------------------------------------------------------------------------------
