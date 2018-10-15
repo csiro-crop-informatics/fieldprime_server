@@ -1569,8 +1569,9 @@ responses:
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
                     'datatype':trt.getDatatypeName(),
-                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
-                                  _external=True)
+                    'traitId':trt.getId()
+                    # 'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
+                    #               _external=True)
                     } for trt in straits]
     except Exception as e:
         return errorBadRequest('Problem getting traits: ' + str(e))
@@ -1709,8 +1710,9 @@ responses:
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
                     'datatype':trt.getDatatypeName(),
-                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
-                                  _external=True)
+                    'traitId':trt.getId()
+                    # 'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
+                    #               _external=True) 
                     }
     except Exception as e:
         return errorBadRequest('Problem getting trait: ' + str(e))
