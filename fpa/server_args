@@ -1,4 +1,0 @@
---https-port 443
---ssl-certificate-file /app/sslCerts/server.crt
---ssl-certificate-key-file /app/sslCerts/server.key
---ssl-ca-certificate-file /app/sslCerts/ca.crt
