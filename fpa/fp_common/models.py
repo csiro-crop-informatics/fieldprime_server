@@ -1571,6 +1571,8 @@ class NodeAttribute(DeclarativeBase):
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValueTable, secondaryjoin='AttributeValue.node_id==Node.id')
         
+    def getId(self):
+        return self.id;
     def fname(self):
         return self.name;
     def getName(self):
