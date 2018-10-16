@@ -1,19 +1,18 @@
-version: '2'
+version: "2"
 
 services:
-
   #
   # FieldPrime wsgi/app
   # Depends: wsgi_pylibs
   #
-  fp_adm:  
+  fp_adm:
     build: fpa
     container_name: fp_server
     environment:
-        FIELDPRIME_MYSQL_HOST: fp_mysql
-        FIELDPRIME_MYSQL_PORT: 3306
+      FP_MYSQL_HOST: fp_mysql
+      FP_MYSQL_PORT: 3306
     ports:
-        - "80:80"
+      - "80:80"
     links:
       - fp_mysql
 
@@ -31,4 +30,3 @@ services:
 volumes:
   fp_dbdata:
     driver: local
-
