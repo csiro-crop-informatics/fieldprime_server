@@ -2098,6 +2098,9 @@ responses:
               urlNodes :
                 type: string
                 description: URL for accessing trial nodes
+              urlTraitInsts :
+                type: string
+                description: URL for accessing trial trait instances
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -2118,6 +2121,8 @@ responses:
         "urlAttributes":url_for('webRest.urlGetAttributes', _external=True,
                                 projId=projId, trialId=trialId),
         "urlNodes":url_for('webRest.urlGetNodes', _external=True,
+                                projId=projId, trialId=trialId),
+        "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=True,
                                 projId=projId, trialId=trialId)
     }
     return apiResponse(True, HTTP_OK, data=returnJson)
@@ -2196,6 +2201,104 @@ responses:
 @project_func()
 def urlGetAvailableTrialProjectTraits(mproj, params, projId, trialId):
     pass
+
+
+### TraitInstance #################################################################
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/ti', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTrialTraitInsts(mproj, params, projId, trialId):
+    """
+Get trait instances.
+Requesting user needs project view permissions.
+---
+tags:
+  - TraitInstances
+responses:
+  200:
+    description: TraitInstance list.
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+              properties:
+                dataUrl:
+                 type: string
+                 description: TraitInstance URL
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('in urlGetTrialTraitInsts')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        traitInsts = trial.getTraitInstances()
+        retList = [{
+                    'id':ti.getId(),
+                    'created':ti.getCreateDate(), 
+                    'numDatum':ti.numData(),
+                    'numScoredNodes':ti.numScoredNodes(),
+                    'dataUrl':url_for('webRest.urlGetTrialTIData', projId=projId, trialId=trialId, traitInstId=ti.getId(), _external=True)
+                    } for ti in traitInsts]
+    except Exception as e:
+        return errorBadRequest('Problem getting trait instances: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
+
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/ti/<int:traitInstId>/data', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTrialTIData(mproj, params, projId, trialId, traitInstId):
+    """
+Get all data for a trait instances.
+Requesting user needs project view permissions.
+---
+tags:
+  - TraitInstances
+  - Datum
+responses:
+  200:
+    description: Datum list.
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+              properties:
+                dataUrl:
+                 type: string
+                 description: TraitInstance URL
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('in urlGetTrialTIData')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        traitInst = trial.getTraitInstance(traitInstId)
+        data = traitInst.getData()
+        retList = [{
+                    'index1':datum.getNode().getRow(),
+                    'index2':datum.getNode().getCol(),
+                    'value':datum.getValueAsString(),
+                    'timestamp':datum.getTimeAsString(),
+                    'userid':datum.getUserid(),
+                    'gps_log':datum.getGpsLongStr(),
+                    'gps_lat':datum.getGpsLatStr(),
+                    'notes':datum.getNotes(),
+                    'nodeurl':url_for('webRest.urlGetNode', _external=True, projId=projId,
+                            trialId=trialId, nodeId=datum.getNode().getId())
+                    } for datum in data]
+    except Exception as e:
+        return errorBadRequest('Problem getting trail data: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
+
 
 
 ### Nodes: ###############################################################################

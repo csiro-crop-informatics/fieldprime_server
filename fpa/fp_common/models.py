@@ -124,7 +124,7 @@ datumTable = Table(u'datum', metadata,
     Column(u'gps_long', Float(asdecimal=True)),
     Column(u'gps_lat', Float(asdecimal=True)),
     Column(u'userid', TEXT()),
-    # Column(u'notes', TEXT()),
+    Column(u'notes', TEXT()),
     Column(u'numValue', DECIMAL(precision=11, scale=3)),
     Column(u'txtValue', TEXT()),
 )
@@ -153,6 +153,24 @@ class Datum(DeclarativeBase):
 
     def getNode(self):
         return self.node
+
+    def getGpsLong(self):
+        return self.gps_long
+
+    def getGpsLat(self):
+        return self.gps_lat
+
+    def getGpsLongStr(self):
+        return str(self.gps_long)
+
+    def getGpsLatStr(self):
+        return str(self.gps_lat)
+
+    def getUserid(self):
+        return self.userid
+
+    def getNotes(self):
+        return self.notes
 
     def getValue(self):
     #------------------------------------------------------------------
