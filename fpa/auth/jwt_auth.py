@@ -1,8 +1,8 @@
 """
  JWT authentication 
 
- Functions to verify a third party (firebase) token. Fetched public key from
- key server and verifies token and that user has access to fieldprime 
+ Functions to verify a third party (firebase) token. Fetches public key from
+ key server and verifies token, and that user has access to fieldprime 
 
  Author: Tim Erwin <tim.erwin@csiro.au>
  Date: CSIRO 2018
@@ -34,7 +34,7 @@ def get_public_key(keyid):
     Returns
     -------
     jwk
-        a json web token of requested key
+        a json web key (jwcrypto.jwk) of requested key
     """
 
     pubkey = None
