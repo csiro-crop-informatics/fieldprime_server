@@ -442,6 +442,26 @@ def cldapPasswordCheck(username, password):
         return False
     return True;
 
+def verifyUser(username):
+# Return true if password OK, false if not, or None if something bad happened.
+    # Check if the username exists and get login type:
+    try:
+        con = getFpsysDbConnection()
+        qry = "select login from user where login = %s"
+        cur = con.cursor()
+        cur.execute(qry, (username,))
+        resRow = cur.fetchone()
+        cur.close()
+        con.close()
+    except mdb.Error, e:
+        return False
+
+    if resRow is None:
+        logger.warning('Login attempt by unknown user: {0}'.format(username))
+        return False
+    else:
+        return True
+
 def userPasswordCheck(username, password):
 # Return true if password OK, false if not, or None if something bad happened.
     # Check if the username exists and get login type:
@@ -828,6 +848,79 @@ def fpSetupG(g, userIdent=None, projectName=None):
     g.userName = userIdent
     g.user = None if userIdent is None else User.getByLogin(userIdent)
     g.userProject = None # this has to be set explicitly at the moment
+
+def verifyUserIdent(username):
+    """
+    Verify is user exists in system
+
+    Parameters
+    ----------
+    username : str
+        The username to validate.
+
+    Returns
+    -------
+    bool
+        is valid user
+    str
+        username of user
+    """
+    # TODO: Use sqlalchemy to fetch and return user object
+
+    try:
+        con = getFpsysDbConnection()
+        qry = "select login from user where login = %s"
+        cur = con.cursor()
+        cur.execute(qry, (username,))
+        resRow = cur.fetchone()
+        cur.close()
+        con.close()
+    except mdb.Error, e:
+        print "DB ERROR ", str(e)
+        return False, None
+
+    if resRow is None:
+        logger.warning('Login attempt by unknown user: {0}'.format(username))
+        return False, None
+    else:
+        return True, username
+
+def verifyUserEmail(email):
+    """
+    Verify is user exists in system
+
+    Parameters
+    ----------
+    username : str
+        The email to validate.
+
+    Returns
+    -------
+    bool
+        is valid user
+    str
+        username of user
+    """
+    #TODO: Use sqlalchemy to fetch and return user object
+
+    try:
+        con = getFpsysDbConnection()
+        qry = "select login,email from user where email = %s"
+        cur = con.cursor()
+        cur.execute(qry, (email,))
+        resRow = cur.fetchone()
+        cur.close()
+        con.close()
+    except mdb.Error, e:
+        print "DB ERROR ", str(e)
+        return False, None
+
+    if resRow is None:
+        logger.warning('Login attempt by unknown user: {0}'.format(username))
+        return False, None
+    else:
+        username = resRow[0]
+        return True, username
 
 
 ##########################################################################################
