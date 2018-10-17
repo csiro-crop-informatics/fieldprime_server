@@ -28,12 +28,13 @@ import fp_common.const as const
 from fp_common.fpsys import FPSysException
 from flask.helpers import make_response
 
+from auth.jwt_auth import jwt_auth
 ### Initialization: ######################################################################
 webRest = Blueprint('webRest', __name__)
 
 basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth('fptoken')
-multi_auth = MultiAuth(basic_auth, token_auth)
+multi_auth = MultiAuth(basic_auth, token_auth, jwt_auth)
 
 def mkdbg(msg):
     if False:
@@ -168,6 +169,7 @@ def verify_auth_token(token):
 # MFK need to pass back expired indication somehow
 # 440 is the login timeout status.
 # Not working for project selector timeout
+# 20181017 - TE: This does not check user against system user!
     s = Serializer(current_app.config['SECRET_KEY'])
     try:
         data = s.loads(token)

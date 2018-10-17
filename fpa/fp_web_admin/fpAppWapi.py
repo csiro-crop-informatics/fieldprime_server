@@ -16,8 +16,8 @@ from werkzeug import secure_filename
 import fp_common.models as dal
 import fp_common.util as util
 from fp_common.const import *
-from fp_common.config import API_PREFIX
 
+from config import API_PREFIX
 
 ### SetUp: ######################################################################################
 

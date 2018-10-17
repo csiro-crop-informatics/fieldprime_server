@@ -18,7 +18,7 @@ def fpServerDown():
     down for maintenance message.
     '''
   
-    from fp_common.config import FP_LOG_DIR 
+    from config import FP_LOG_DIR 
     fpdown = os.path.isfile(FP_LOG_DIR + "/fpdown")
 
     return fpdown
@@ -33,7 +33,7 @@ def activateVirtualenv(virt_activate_file=os.environ.get('FP_VIRTUALENV',None)):
     '''
     # If not set using environment variable or directly via call try config
     if virt_activate_file is None:
-        from fp_common.config import FP_VIRTUALENV
+        from config import FP_VIRTUALENV
         virt_activate_file = FP_VIRTUALENV
 
     if virt_activate_file and os.path.exists(virt_activate_file):

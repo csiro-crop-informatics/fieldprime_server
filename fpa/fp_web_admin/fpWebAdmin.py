@@ -76,7 +76,7 @@ PREURL = '/fieldprime' if FP_RUNTIME == 'docker' else ''
 # are not currently).
 #
 try:
-    app.config.from_object('fp_common.config')
+    app.config.from_object('config')
 except ImportError:
     print('no fpAppConfig found')
     pass
