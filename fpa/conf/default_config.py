@@ -1,28 +1,38 @@
-# config.py
+# default_config.py
 # Michael Kirk 2013
 # Tim Erwin 2016
 #
-# Configuration for web service for FieldPrime browser login.
+# Default configuration for web service for FieldPrime browser login.
 # For use by flask: app.config.from_object()
-# Can be used to customize a server installation
+# These can be overridden in config.py
 #
 
 import os
 import logging
 
-#
-# Default config params
-# Overridden in config.py with application specific environments (production/development)
-#
 FP_ROOT = os.environ.get('FP_ROOT','/app/')                 # Base path to application
+FP_VIRTUALENV = None                                        # Path to virtualenv activate_this.py
+
+###############################################################################
+#
+# Logging
+#
+###############################################################################
+FP_LOG_LEVEL = logging.ERROR                                # Logging level
 FP_LOG_DIR = FP_ROOT + 'fplog/'                             # Path to logs
 FP_LOG_FILE = FP_LOG_DIR + 'fp.log'                         # FP logfile
-FP_LOG_LEVEL = logging.ERROR                                # Logging level
 FP_FLAG_DIR = FP_LOG_DIR                                    # Path to file flag directory
-FP_VIRTUALENV = None                                        # Path to virtualenv activate_this.py
-FP_MYSQL_HOST = os.environ.get('FP_MYSQL_HOST','localhost') # FP mysql database host
-FP_MYSQL_PORT = int(os.environ.get('FP_MYSQL_PORT',3306))   # Mysql port: must be an integer
 
+###############################################################################
+#
+# Database connection details
+#
+###############################################################################
+FP_MYSQL_HOST = os.environ.get('FP_MYSQL_HOST','localhost')
+# Mysql port: must be an integer force environment variable to int if set
+FP_MYSQL_PORT = int(os.environ.get('FP_MYSQL_PORT',3306))
+FP_MYSQL_USER = os.environ.get('FP_MYSQL_HOST','root')
+FP_MYSQL_PASS = os.environ.get('FP_MYSQL_PASSWORD','password')
 
 #
 # The FieldPrime server can be run in various ways, and accordingly we may need to detect
