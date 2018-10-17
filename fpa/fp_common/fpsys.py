@@ -442,26 +442,6 @@ def cldapPasswordCheck(username, password):
         return False
     return True;
 
-def verifyUser(username):
-# Return true if password OK, false if not, or None if something bad happened.
-    # Check if the username exists and get login type:
-    try:
-        con = getFpsysDbConnection()
-        qry = "select login from user where login = %s"
-        cur = con.cursor()
-        cur.execute(qry, (username,))
-        resRow = cur.fetchone()
-        cur.close()
-        con.close()
-    except mdb.Error, e:
-        return False
-
-    if resRow is None:
-        logger.warning('Login attempt by unknown user: {0}'.format(username))
-        return False
-    else:
-        return True
-
 def userPasswordCheck(username, password):
 # Return true if password OK, false if not, or None if something bad happened.
     # Check if the username exists and get login type:
