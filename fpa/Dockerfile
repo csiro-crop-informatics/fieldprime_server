@@ -15,11 +15,11 @@ WORKDIR ${FIELDPRIME_ROOT}
 #These are used are global config variables defined in config.py
 
 # Docker container hostname of mysql database
-ENV FIELDPRIME_MYSQL_HOST fieldprime_mysql
-ENV FIELDPRIME_MYSQL_PORT 3306
+ENV FP_MYSQL_HOST fieldprime-mysql
+ENV FP_MYSQL_PORT 3306
+
 # Serve static /static/ directly from nginx
 ENV STATIC_PATH /app/fp_web_admin/static/
-
 
 # Install library deps
 RUN apt-get update && apt-get install -y libmariadbclient-dev libldap2-dev libsasl2-dev

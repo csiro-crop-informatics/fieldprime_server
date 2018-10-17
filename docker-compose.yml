@@ -10,8 +10,8 @@ services:
     build: fpa
     container_name: fp_server
     environment:
-        FIELDPRIME_MYSQL_HOST: fp_mysql
-        FIELDPRIME_MYSQL_PORT: 3306
+        FP_MYSQL_HOST: fp_mysql
+        FP_MYSQL_PORT: 3306
     ports:
         - "80:80"
     links:
