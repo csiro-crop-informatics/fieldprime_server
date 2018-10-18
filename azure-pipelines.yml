@@ -27,7 +27,7 @@ jobs:
       architecture: 'x64'
 
   - script: apt-get install -y libmysqlclient-dev libldap2-dev libsasl2-dev
-  - displayName: 'Install linux dependencies'
+    displayName: 'Install linux dependencies'
 
   - script: python -m pip install --upgrade pip && pip install -r fpa/requirements.txt
     displayName: 'Install dependencies'
