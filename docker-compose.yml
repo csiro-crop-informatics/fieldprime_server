@@ -1,6 +1,17 @@
-version: "2"
+version: '2'
 
 services:
+  #
+  # Base apache/mod-wsgi/python
+  # Dummy service added here as is required to build fp_adm
+  #
+  wsgi_pylibs:
+    build: 
+      context: ./fpa
+      dockerfile: Dockerfile-wsgiPlusPylibs
+    image: fp_wsgi_pylibs:latest
+    container_name: fp_wsgi_pylibs
+
   #
   # FieldPrime wsgi/app
   # Depends: wsgi_pylibs
@@ -8,11 +19,14 @@ services:
   fp_adm:
     build: fpa
     container_name: fp_server
-    environment:
-      FP_MYSQL_HOST: fp_mysql
-      FP_MYSQL_PORT: 3306
     ports:
       - "80:80"
+      - "8443:443"
+    environment:
+        FP_MYSQL_HOST: fp_mysql
+        FP_MYSQL_PORT: 3306
+    volumes:
+      - /tmp:/app/fplog
     links:
       - fp_mysql
 
@@ -24,9 +38,13 @@ services:
     container_name: fp_mysqldb
     volumes:
       - fp_dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: foo
 
 volumes:
   fp_dbdata:
     driver: local
+  fp_logs:
+
