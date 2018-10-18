@@ -1571,8 +1571,7 @@ responses:
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
                     'datatype':trt.getDatatypeName(),
-                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
-                                  _external=True)
+                    'url':url_for('webRest.urlGetTrait', projId=projId, traitId=trt.getId(), _external=True)
                     } for trt in straits]
     except Exception as e:
         return errorBadRequest('Problem getting traits: ' + str(e))
@@ -1710,9 +1709,7 @@ responses:
         retObj = {
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
-                    'datatype':trt.getDatatypeName(),
-                    'url':url_for('urlGetTrait', projId=projId, traitId=trt.getId(),
-                                  _external=True)
+                    'datatype':trt.getDatatypeName()
                     }
     except Exception as e:
         return errorBadRequest('Problem getting trait: ' + str(e))
@@ -2103,6 +2100,9 @@ responses:
               urlNodes :
                 type: string
                 description: URL for accessing trial nodes
+              urlTraitInsts :
+                type: string
+                description: URL for accessing trial trait instances
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -2123,6 +2123,8 @@ responses:
         "urlAttributes":url_for('webRest.urlGetAttributes', _external=True,
                                 projId=projId, trialId=trialId),
         "urlNodes":url_for('webRest.urlGetNodes', _external=True,
+                                projId=projId, trialId=trialId),
+        "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=True,
                                 projId=projId, trialId=trialId)
     }
     return apiResponse(True, HTTP_OK, data=returnJson)
@@ -2201,6 +2203,165 @@ responses:
 @project_func()
 def urlGetAvailableTrialProjectTraits(mproj, params, projId, trialId):
     pass
+
+
+### TraitInstance #################################################################
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/ti', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTrialTraitInsts(mproj, params, projId, trialId):
+    """
+Get trait instances.
+Requesting user needs project view permissions.
+---
+tags:
+  - TraitInstances
+responses:
+  200:
+    description: TraitInstance list.
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+              properties:
+                seqNum:
+                 type: integer
+                 description: sequence number
+                sampleNum:
+                 type: integer
+                 description: sample number
+                traitName:
+                 type: string
+                 description: Trait name
+                traitDataType:
+                 type: string
+                 description: Trait description
+                created:
+                 type: integer
+                 description: Creation date
+                numDatum:
+                 type: integer
+                 description: Number of data points
+                numScoredNodes:
+                 type: integer
+                 description: Number of scored nodes
+                dataUrl:
+                 type: string
+                 description: Data points URL
+                traitUrl:
+                 type: string
+                 description: Trait URL
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('in urlGetTrialTraitInsts')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        traitInsts = trial.getTraitInstances()
+        retList = []
+        for ti in traitInsts:
+            trait = ti.getTrait()
+            retList.append({
+                    'seqNum':ti.getSeqNum(),
+                    'sampleNum':ti.getSampleNum(),
+                    'traitName':trait.getName(),
+                    #'traitDescription':trait.getDescription(), 
+                    'traitDataType':trait.getDatatypeName(),
+                    'created':ti.getCreateDate(), 
+                    'numDatum':ti.numData(),
+                    'numScoredNodes':ti.numScoredNodes(),
+                    'dataUrl':url_for('webRest.urlGetTrialTIData', projId=projId, trialId=trialId, 
+                            traitInstId=ti.getId(), _external=True),
+                    'traitUrl':url_for('webRest.urlGetTrait', projId=projId, 
+                            traitId=trait.getId(), _external=True)
+                    })
+    except Exception as e:
+        return errorBadRequest('Problem getting trait instances: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
+
+
+@webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/ti/<int:traitInstId>/data', methods=['GET'])
+@multi_auth.login_required
+@project_func()
+def urlGetTrialTIData(mproj, params, projId, trialId, traitInstId):
+    """
+Get all data for a trait instances.
+Requesting user needs project view permissions.
+---
+tags:
+  - TraitInstances
+  - Datum
+responses:
+  200:
+    description: Data points list for a TraintInstance.
+    schema:
+      properties:
+        data:
+          type: array
+          items:
+              properties:
+                index1:
+                 type: integer
+                 description: Node row or index1
+                index2:
+                 type: integer
+                 description: Node col or index2
+                value:
+                 type: string
+                 description: Datum value
+                timestamp:
+                 type: string
+                 description: Recorded time
+                userid:
+                 type: string
+                 description: Recorder userID
+                gps_long:
+                 type: number
+                 description: Latitude of recording
+                gps_lat:
+                 type: number
+                 description: Latitude of recording
+                notes:
+                 type: string
+                 description: Observation notes
+                nodeurl:
+                 type: string
+                 description: Node URL
+  400:
+    $ref: "#/responses/BadRequest"
+  401:
+    $ref: "#/responses/Unauthorized"
+"""
+    mkdbg('in urlGetTrialTIData')
+    # NB, check that user has access to project is done in project_func.
+    try:
+        trial = mproj.getTrialById(trialId)
+        traitInst = trial.getTraitInstance(traitInstId)
+        data = traitInst.getData()
+        retList = []
+        for datum in data:
+            node = datum.getNode()
+            retList.append({
+                    'index1':node.getRow(),
+                    'index2':node.getCol(),
+                    'value':datum.getValueAsString(),
+                    'timestamp':datum.getTimeAsString(),
+                    'userid':datum.getUserid(),
+                    'gps_long':datum.getGpsLongStr(),
+                    'gps_lat':datum.getGpsLatStr(),
+                    'notes':datum.getNotes(),
+                    'nodeurl':url_for('webRest.urlGetNode', _external=True, projId=projId,
+                            trialId=trialId, nodeId=node.getId())
+                    })
+    except Exception as e:
+        return errorBadRequest('Problem getting trail data: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
+
 
 
 ### Nodes: ###############################################################################

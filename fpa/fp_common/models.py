@@ -124,7 +124,7 @@ datumTable = Table(u'datum', metadata,
     Column(u'gps_long', Float(asdecimal=True)),
     Column(u'gps_lat', Float(asdecimal=True)),
     Column(u'userid', TEXT()),
-    # Column(u'notes', TEXT()),
+    Column(u'notes', TEXT()),
     Column(u'numValue', DECIMAL(precision=11, scale=3)),
     Column(u'txtValue', TEXT()),
 )
@@ -153,6 +153,30 @@ class Datum(DeclarativeBase):
 
     def getNode(self):
         return self.node
+
+    def getGpsLong(self):
+        return self.gps_long
+
+    def getGpsLat(self):
+        return self.gps_lat
+
+    def getGpsLongStr(self):
+        if (self.gps_long == 0):
+            return 'NA'
+        else:
+            return str(format(self.gps_long, 'f'))
+
+    def getGpsLatStr(self):
+        if (self.gps_lat == 0):
+            return 'NA'
+        else:
+            return str(format(self.gps_lat, 'f'))
+
+    def getUserid(self):
+        return self.userid
+
+    def getNotes(self):
+        return self.notes
 
     def getValue(self):
     #------------------------------------------------------------------
@@ -313,6 +337,10 @@ class TraitInstance(DeclarativeBase):
         return self.trial
     def getTrialId(self):
         return self.trial_id
+    def getSeqNum(self):
+        return self.seqNum
+    def getSampleNum(self):
+        return self.sampleNum
     def getCreateDate(self):
         return self.dayCreated
     def numData(self):
@@ -1571,6 +1599,8 @@ class NodeAttribute(DeclarativeBase):
     nodes = relation('Node', primaryjoin='NodeAttribute.id==AttributeValue.nodeAttribute_id',
         secondary=attributeValueTable, secondaryjoin='AttributeValue.node_id==Node.id')
         
+    def getId(self):
+        return self.id;
     def fname(self):
         return self.name;
     def getName(self):
