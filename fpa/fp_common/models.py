@@ -161,10 +161,16 @@ class Datum(DeclarativeBase):
         return self.gps_lat
 
     def getGpsLongStr(self):
-        return str(self.gps_long)
+        if (self.gps_long == 0):
+            return 'NA'
+        else:
+            return str(format(self.gps_long, 'f'))
 
     def getGpsLatStr(self):
-        return str(self.gps_lat)
+        if (self.gps_lat == 0):
+            return 'NA'
+        else:
+            return str(format(self.gps_lat, 'f'))
 
     def getUserid(self):
         return self.userid
@@ -331,6 +337,10 @@ class TraitInstance(DeclarativeBase):
         return self.trial
     def getTrialId(self):
         return self.trial_id
+    def getSeqNum(self):
+        return self.seqNum
+    def getSampleNum(self):
+        return self.sampleNum
     def getCreateDate(self):
         return self.dayCreated
     def numData(self):

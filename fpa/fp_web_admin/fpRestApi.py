@@ -2224,9 +2224,33 @@ responses:
           type: array
           items:
               properties:
+                seqNum:
+                 type: integer
+                 description: sequence number
+                sampleNum:
+                 type: integer
+                 description: sample number
+                traitName:
+                 type: string
+                 description: Trait name
+                traitDataType:
+                 type: string
+                 description: Trait description
+                created:
+                 type: integer
+                 description: Creation date
+                numDatum:
+                 type: integer
+                 description: Number of data points
+                numScoredNodes:
+                 type: integer
+                 description: Number of scored nodes
                 dataUrl:
                  type: string
-                 description: TraitInstance URL
+                 description: Data points URL
+                traitUrl:
+                 type: string
+                 description: Trait URL
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -2237,13 +2261,23 @@ responses:
     try:
         trial = mproj.getTrialById(trialId)
         traitInsts = trial.getTraitInstances()
-        retList = [{
-                    'id':ti.getId(),
+        retList = []
+        for ti in traitInsts:
+            trait = ti.getTrait()
+            retList.append({
+                    'seqNum':ti.getSeqNum(),
+                    'sampleNum':ti.getSampleNum(),
+                    'traitName':trait.getName(),
+                    #'traitDescription':trait.getDescription(), 
+                    'traitDataType':trait.getDatatypeName(),
                     'created':ti.getCreateDate(), 
                     'numDatum':ti.numData(),
                     'numScoredNodes':ti.numScoredNodes(),
-                    'dataUrl':url_for('webRest.urlGetTrialTIData', projId=projId, trialId=trialId, traitInstId=ti.getId(), _external=True)
-                    } for ti in traitInsts]
+                    'dataUrl':url_for('webRest.urlGetTrialTIData', projId=projId, trialId=trialId, 
+                            traitInstId=ti.getId(), _external=True),
+                    'traitUrl':url_for('webRest.urlGetTrait', projId=projId, 
+                            traitId=trait.getId(), _external=True)
+                    })
     except Exception as e:
         return errorBadRequest('Problem getting trait instances: ' + str(e))
     return apiResponse(True, HTTP_OK, data=retList)
@@ -2262,16 +2296,40 @@ tags:
   - Datum
 responses:
   200:
-    description: Datum list.
+    description: Data points list for a TraintInstance.
     schema:
       properties:
         data:
           type: array
           items:
               properties:
-                dataUrl:
+                index1:
+                 type: integer
+                 description: Node row or index1
+                index2:
+                 type: integer
+                 description: Node col or index2
+                value:
                  type: string
-                 description: TraitInstance URL
+                 description: Datum value
+                timestamp:
+                 type: string
+                 description: Recorded time
+                userid:
+                 type: string
+                 description: Recorder userID
+                gps_long:
+                 type: number
+                 description: Latitude of recording
+                gps_lat:
+                 type: number
+                 description: Latitude of recording
+                notes:
+                 type: string
+                 description: Observation notes
+                nodeurl:
+                 type: string
+                 description: Node URL
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -2283,18 +2341,21 @@ responses:
         trial = mproj.getTrialById(trialId)
         traitInst = trial.getTraitInstance(traitInstId)
         data = traitInst.getData()
-        retList = [{
-                    'index1':datum.getNode().getRow(),
-                    'index2':datum.getNode().getCol(),
+        retList = []
+        for datum in data:
+            node = datum.getNode()
+            retList.append({
+                    'index1':node.getRow(),
+                    'index2':node.getCol(),
                     'value':datum.getValueAsString(),
                     'timestamp':datum.getTimeAsString(),
                     'userid':datum.getUserid(),
-                    'gps_log':datum.getGpsLongStr(),
+                    'gps_long':datum.getGpsLongStr(),
                     'gps_lat':datum.getGpsLatStr(),
                     'notes':datum.getNotes(),
                     'nodeurl':url_for('webRest.urlGetNode', _external=True, projId=projId,
-                            trialId=trialId, nodeId=datum.getNode().getId())
-                    } for datum in data]
+                            trialId=trialId, nodeId=node.getId())
+                    })
     except Exception as e:
         return errorBadRequest('Problem getting trail data: ' + str(e))
     return apiResponse(True, HTTP_OK, data=retList)
