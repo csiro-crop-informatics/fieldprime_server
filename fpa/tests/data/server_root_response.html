@@ -1,0 +1,142 @@
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  
+  
+  <link href="/static/css/font-awesome.min.css" rel="stylesheet">
+  
+  <link rel="stylesheet" type="text/css" href="/static/fpStyle.css">
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+  
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.10/css/dataTables.bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.1.0/css/buttons.bootstrap.min.css">
+
+  
+  <link rel="stylesheet" type="text/css" href="/static/fpStylePostBootstrap.css">
+
+  
+  
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+ 
+
+  
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+  
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.10/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.10/js/dataTables.bootstrap.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/dataTables.buttons.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.bootstrap.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.colVis.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/1.1.0/js/buttons.html5.min.js"></script>
+
+  
+  <script src="/static/fplib.js"></script>
+
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>FieldPrime fieldprime</title>
+
+
+</head>
+
+<body>
+<nav class="navbar navbar-inverse fpHeader" role="navigation">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">
+                <div><img  src="/static/css/images/logo.png" style="height:58px; margin:0 auto;">FieldPrime Server</div>
+            </a>
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav-collapse">
+             <span class="sr-only">Toggle navigation</span>
+             <span class="icon-bar"></span>
+             <span class="icon-bar"></span>
+             <span class="icon-bar"></span>
+            </button>
+        </div>
+
+        <div class="collapse navbar-collapse" id="nav-collapse">
+          <!-- Individual Navbar elements -->
+          <ul class="nav nav-justified nasti-nav">
+            
+            <li><a href="/info/fieldprime"><span class='fa fa-home'></span>Home</a></li>
+            
+            <li><a href="/info/news"><span class='fa fa-newspaper-o'></span> News</a></li>
+            <li><a href="/info/about"><span class='fa fa-info-circle'></span> About</a></li>
+            <li><a href="/info/contact"><span class='fa fa-phone'></span> Contact</a></li>
+            <li>
+              
+              <a href="/"><span class='fa fa-sign-in'></span> Log In</a>
+              
+            </li>
+          </ul>
+        </div>
+    </div><!-- Container fluid-->
+</nav>
+
+<!-- Content: ================================================================================ -->
+<div class="container-fluid">
+
+  <!-- Header: ------------------------------------------------------------------------------>
+
+    
+    
+
+    
+      <div class="fpInfoText">
+			<h1>Welcome to FieldPrime</h1>
+			<!-- <div class="row" grid not really adding anything here.. >
+			  <div class="col-sm-4"> -->
+              <img src="/static/fpIcon.png" width="250px" align="left">
+              <!-- </div>
+              <div class="col-sm-8"> -->
+                <h2>FieldPrime</h2>
+                <p>
+                FieldPrime is a software suite designed to ease the process of
+                manual collection and collation of data. For example the collection
+                of trait score data in agricultural trials.
+                <br>The software consists of the FieldPrime Android app -
+                used for the data collection. And the FieldPrime
+                Server - used to store and manage the trial data.
+
+              <!-- </div>
+            </div> -->
+
+                <div id="loginout" style="clear:both; padding-top:25px;">
+                   <!-- If there is NO user logged in: -->
+                  <FORM method="POST" action="/"><p>
+                    <div class="fpErrMsg"></font></div>
+                    <h2>Please sign in</h2>
+                    <div class="form-group">
+                      <input type="text" class="form-control" id='usernameField' name='username' placeholder="Enter User Name">
+                      <input type=password class="form-control" name='password' placeholder="Password">
+                    </div>
+                    <input type="submit" value="Login"></p>
+                  </FORM>
+                  
+                </div>
+	</div>
+<script>
+document.getElementById('usernameField').focus()
+</script>
+
+</div><!-- Container fluid-->
+
+
+<!-- Footer: ================================================================================ -->
+<div class="fpFooter">
+  &copy; 2016 CSIRO
+</div>
+
+</body>
+</html>
