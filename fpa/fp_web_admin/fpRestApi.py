@@ -675,13 +675,14 @@ responses:
         if errmsg is not None:
             return errorBadRequest(errmsg)
         return apiResponse(True, HTTP_CREATED, msg='User {} created'.format(login),
-                url=url_for('webRest.urlGetUser', ident=login, _external=True))
+                url=url_for('webRest.urlGetUser', ident=login, _external=False))
     except Exception, e:
         return errorBadRequest('Problem in REST create user: ' + str(e))
     
 def userPropertiesObject(user):    
     return {
-            'url':url_for('webRest.urlGetUser', ident=user.getIdent()),
+            'id':user.getId(),
+            'url':url_for('webRest.urlGetUser', ident=user.getIdent(), _external=False),
             'fullname':user.getName(),
             'email':user.getEmail(),
             'ident':user.getIdent()
@@ -721,6 +722,9 @@ responses:
             schema:
               id: UserProperties
               properties:
+                id:
+                  type: integer
+                  description: user id
                 ident:
                   type: string
                   description: user login id
@@ -932,10 +936,14 @@ def urlGetProjects(userid, params):
 #:   Status code: HTTP_CREATED
 #:   data: [
 #:     {
+#:       'id': <project id>,
 #:       'url': <project url>,
 #:       'projectName':<user url>,
 #:       //'contactName':<user name>,
 #:       //'contactEmail':<user email>
+#:       'urlTrials': <project trials url>,
+#:       'urlUsers': <project users url>,
+#:       'urlTraits': <project traits url>,
 #:     }
 #:   ]
 #$
@@ -966,12 +974,24 @@ responses:
           type: array
           items:
               properties:
+                id:
+                  type: integer
+                  description: Project id
                 url:
                   type: string
                   description: Project URL
                 projectName:
                   type: string
-                  description: Project name     
+                  description: Project name 
+                urlTrials:
+                  type: string
+                  description: URL for accessing project trials
+                urlUsers :
+                  type: string
+                  description: URL for accessing project users
+                urlTraits :
+                  type: string
+                  description: URL for accessing project traits    
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -986,26 +1006,35 @@ responses:
         (plist, errmsg) = fpsys.getUserProjects(g.userName)
         if errmsg:
             return errorBadRequest(errmsg)
-        retProjects = [{'projectName':p.getProjectName(),
-                        'url':url_for('webRest.urlGetProject', projId=p.getProjectId())
+        retProjects = [{'id':p.getProjectId(), 
+                        'projectName':p.getProjectName(),
+                        'url':url_for('webRest.urlGetProject', projId=p.getProjectId(), _external=False),
+                        'urlTrials' : url_for('webRest.urlGetTrials', projId=p.getProjectId(), _external=False),
+                        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=p.getProjectId(), _external=False),
+                        'urlTraits' : url_for('webRest.urlGetTraits', projId=p.getProjectId(), _external=False)
                         } for p in plist]
     else:
         try:
             plist = fpsys.Project.getAllProjects()
         except FPSysException as e:
             return errorServer("Unexpected error getting projects: {}".format(e))
-        retProjects = [{'projectName':p.getName(),
-                        'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=True)
+        retProjects = [{'id':p.getId(), 
+                        'projectName':p.getName(),
+                        'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=False),
+                        'urlTrials' : url_for('webRest.urlGetTrials', projId=p.getId(), _external=False),
+                        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=p.getId(), _external=False),
+                        'urlTraits' : url_for('webRest.urlGetTraits', projId=p.getId(), _external=False)
                         } for p in plist]
     return apiResponse(True, HTTP_OK, data=retProjects)
 
 def responseProjectObject(proj):
     projId = proj.getId()
     return {
+        'id':proj.getId(),
         'projectName':proj.getName(),
-        'urlTrials' : url_for('webRest.urlCreateTrial', projId=projId, _external=True),
-        'urlUsers' : url_for('webRest.urlAddProjectUser', projId=projId, _external=True),
-        'urlTraits' : url_for('webRest.urlGetTraits', projId=projId, _external=True)
+        'urlTrials' : url_for('webRest.urlGetTrials', projId=projId, _external=False),
+        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=projId, _external=False),
+        'urlTraits' : url_for('webRest.urlGetTraits', projId=projId, _external=False)
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
 @multi_auth.login_required
@@ -1019,9 +1048,11 @@ def urlGetProject(mproj, params, projId):
 #:   Status code: HTTP_OK
 #:   data: [
 #:     {
+#:       'id': <project id>,
 #:       'projectName':<Project Name>,
-#:       'urlTrials': <url for trials within project>
-#:       'urlUsers': <url for users within project>
+#:       'urlTrials': <url for trials within project>,
+#:       'urlUsers': <url for users of project>,
+#:       'urlTraits': <url for traits of project>
 #:     }
 #:   ]
 #$
@@ -1041,6 +1072,9 @@ responses:
           schema:
             id: ProjectDetails
             properties:
+              id:
+                type: integer
+                description: Project id
               projectName:
                 type: string
                 description: Project name
@@ -1164,7 +1198,7 @@ responses:
         return errorBadRequest('Problem creating project: ' + str(e))
 
     return apiResponse(True, HTTP_CREATED, msg='Project {} created'.format(projectName),
-                url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=True),
+                url=url_for('webRest.urlGetProject', projId=proj.getId(), _external=False),
                 data=responseProjectObject(proj))
 
 def getCheckProjectsParams(params):
@@ -1425,7 +1459,7 @@ tags:
   - Projects
 responses:
   200:
-    description: Trial Created.
+    description: Project users.
     schema:
       type: object
       properties:
@@ -1434,6 +1468,9 @@ responses:
             items:
               type: object
               properties:
+                id:
+                  type: integer
+                  description: User internal id
                 url:
                   type: string
                   description: URL for user in project
@@ -1460,7 +1497,8 @@ responses:
         users = g.sysProj.getUsers()
     except FPSysException as e:
         return errorServer('urlGetProjectUsers: ' + e)
-    retList = [{'url':url_for('webRest.urlDeleteProjectUser', projId=projId, userId=userId),
+    retList = [{'id':userId,
+                'url':url_for('webRest.urlDeleteProjectUser', projId=projId, userId=userId, _external=False),
                 'ident':ident,
                 'admin':perms==1,
                 'name':name
@@ -1522,6 +1560,7 @@ def urlGetTraits(mproj, params, projId):
 #: Success Response:
 #:   Status code: HTTP_OK
 #:   data: [ {
+#:     id : <id>
 #:     name : <name>
 #:     description : <description>
 #:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
@@ -1544,6 +1583,9 @@ responses:
             schema:
               id: Trait
               properties:
+                id:
+                 type: integer
+                 description: Trait id
                 url:
                  type: string
                  description: Trait URL
@@ -1568,10 +1610,11 @@ responses:
     try:
         straits = mproj.getTraits()
         retList = [{
+                    'id':trt.getId(),
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
                     'datatype':trt.getDatatypeName(),
-                    'url':url_for('webRest.urlGetTrait', projId=projId, traitId=trt.getId(), _external=True)
+                    'url':url_for('webRest.urlGetTrait', projId=projId, traitId=trt.getId(), _external=False)
                     } for trt in straits]
     except Exception as e:
         return errorBadRequest('Problem getting traits: ' + str(e))
@@ -1654,7 +1697,7 @@ responses:
 
     return apiResponse(True, HTTP_CREATED, msg='Trait {} created'.format(name),
                 url=url_for('webRest.urlGetTrait', projId=projId,
-                            traitId=trt.getId(), _external=True))
+                            traitId=trt.getId(), _external=False))
     
 @webRest.route(API_PREFIX + 'projects/<int:projId>/traits/<int:traitId>', methods=['GET'])
 @multi_auth.login_required
@@ -1668,6 +1711,7 @@ def urlGetTrait(mproj, params, projId, traitId):
 #: Success Response:
 #:   Status code: HTTP_OK
 #:   data: [ {
+#:     id : <id>
 #:     name : <name>
 #:     description : <description>
 #:     datatype : <'integer' | 'decimal' | 'text' | 'categorical' | 'date' | 'photo'>
@@ -1687,6 +1731,9 @@ responses:
           $ref: '#/definitions/Trait'
 #           type: object
 #           properties:
+#             id:
+#              type: integer
+#              description: Trait id
 #             url:
 #              type: string
 #              description: Trait URL
@@ -1707,6 +1754,7 @@ responses:
     try:
         trt = mproj.getTrait(traitId)
         retObj = {
+                    'id':trt.getId(),
                     'name':trt.getName(),
                     'description':trt.getDescription(), 
                     'datatype':trt.getDatatypeName()
@@ -1961,7 +2009,7 @@ responses:
         return errorBadRequest("Error creating trial: {}".format(e.__str__()))
 
     return apiResponse(True, HTTP_CREATED, msg='Trial {} created'.format(trialName),
-            url=url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()))
+            url=url_for('webRest.urlGetTrial', _external=False, projId=projId, trialId=trial.getId()))
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['PUT'])
 @multi_auth.login_required
@@ -2018,6 +2066,7 @@ responses:
        
     return apiResponse(True, HTTP_OK, msg='trial updated')
 
+
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
@@ -2029,7 +2078,7 @@ def urlGetTrials(userid, params, projId):
 #: }
 #: Success Response:
 #:   Status code: HTTP_OK
-#:   data: <array of trial urls>
+#:   data: <array of trial info>
 #$
     """
 Get trial list.
@@ -2043,34 +2092,77 @@ responses:
     schema:
       properties:
         data:
-            type: array
-            items:
-              type: string
-              description: Trial URL
-#           schema:
-#               properties:
-#                 schema:
-#                   $ref: "#/definitions/TrialProperties"
-#               urlAttributes:
-#                 type: string
-#                 description: URL for accessing trial attributes
-#               urlNodes :
-#                 type: string
-#                 description: URL for accessing trial nodes
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+                description: Trial id
+              name:
+                type: string
+                description: Name for trial
+              year:
+                type: integer
+                description: Trial year
+              site:
+                type: integer
+                description: Trial site
+              acronym:
+                type: integer
+                description: Trial acronym
+              nodeCreation:
+                type: string
+                description: Indicates whether user node creation allowed for trial
+              index1name:
+                type: string
+                description: Name of first index for trial
+              index2name:
+                type: string
+                description: Name of second index for trial
+              urlAttributes:
+                type: string
+                description: URL for accessing trial attributes
+              urlNodes :
+                type: string
+                description: URL for accessing trial nodes
+              urlTraitInsts :
+                type: string
+                description: URL for accessing trial trait instances
 
   400:
     $ref: "#/responses/BadRequest"
   401:
     $ref: "#/responses/Unauthorized"
 """
-    # Check access:
-    if not g.user.omnipotent() and g.userProject is None:
-        return errorAccess()
-    # Return array of trial URLs:
-    trialUrlList = [
-        url_for('webRest.urlGetTrial', _external=True, projId=projId, trialId=trial.getId()) for
-            trial in g.userProject.getModelProject().getTrials()]
-    return apiResponse(True, HTTP_OK, data=trialUrlList)
+    try:
+        # Check access:
+        if not g.user.omnipotent() and g.userProject is None:
+            return errorAccess()
+        # Return array of trial URLs:
+        retList = []
+        for trial in g.userProject.getModelProject().getTrials():
+            trialId = trial.getId()
+            retList.append({
+                'id':trialId,
+                'url':url_for('webRest.urlGetTrial', _external=False, projId=projId, trialId=trialId),
+                "name":trial.getName(),
+                "year":trial.getYear(),
+                "site":trial.getSite(),
+                "acronym":trial.getAcronym(),
+                "nodeCreation":trial.getTrialProperty('nodeCreation'),
+                "index1name":trial.navIndexName(0),
+                "index2name":trial.navIndexName(1),
+                "urlAttributes":url_for('webRest.urlGetAttributes', _external=False,
+                                        projId=projId, trialId=trialId),
+                "urlNodes":url_for('webRest.urlGetNodes', _external=False,
+                                        projId=projId, trialId=trialId),
+                "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=False,
+                                    projId=projId, trialId=trialId)
+                })
+
+    except Exception as e:
+        return errorBadRequest('Problem getting trial list: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
 
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['GET'])
@@ -2092,8 +2184,30 @@ responses:
         data:
           type: object
           properties:
-              properties:
-                  $ref: "#/definitions/TrialProperties"
+              id:
+                type: integer
+                description: Trial id
+              name:
+                type: string
+                description: Name for trial
+              year:
+                type: integer
+                description: Trial year
+              site:
+                type: integer
+                description: Trial site
+              acronym:
+                type: integer
+                description: Trial acronym
+              nodeCreation:
+                type: string
+                description: Indicates whether user node creation allowed for trial
+              index1name:
+                type: string
+                description: Name of first index for trial
+              index2name:
+                type: string
+                description: Name of second index for trial
               urlAttributes:
                 type: string
                 description: URL for accessing trial attributes
@@ -2111,20 +2225,19 @@ responses:
     # check user has access to project
     trial = models.getTrial(g.userProject.db(), trialId)
     returnJson = { # perhaps we should have trial.getJson()
-        'properties' : {
-            "name":trial.getName(),
-            "year":trial.getYear(),
-            "site":trial.getSite(),
-            "acronym":trial.getAcronym(),
-            "nodeCreation":trial.getTrialProperty('nodeCreation'),
-            "index1name":trial.navIndexName(0),
-            "index2name":trial.navIndexName(1)
-        },
-        "urlAttributes":url_for('webRest.urlGetAttributes', _external=True,
+        'id':trialId,
+        "name":trial.getName(),
+        "year":trial.getYear(),
+        "site":trial.getSite(),
+        "acronym":trial.getAcronym(),
+        "nodeCreation":trial.getTrialProperty('nodeCreation'),
+        "index1name":trial.navIndexName(0),
+        "index2name":trial.navIndexName(1),
+        "urlAttributes":url_for('webRest.urlGetAttributes', _external=False,
                                 projId=projId, trialId=trialId),
-        "urlNodes":url_for('webRest.urlGetNodes', _external=True,
+        "urlNodes":url_for('webRest.urlGetNodes', _external=False,
                                 projId=projId, trialId=trialId),
-        "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=True,
+        "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=False,
                                 projId=projId, trialId=trialId)
     }
     return apiResponse(True, HTTP_OK, data=returnJson)
@@ -2226,6 +2339,12 @@ responses:
           type: array
           items:
               properties:
+                id:
+                 type: integer
+                 description: Trait Instance id
+                parentTraitId:
+                 type: integer
+                 description: Parent Trait id
                 seqNum:
                  type: integer
                  description: sequence number
@@ -2267,6 +2386,8 @@ responses:
         for ti in traitInsts:
             trait = ti.getTrait()
             retList.append({
+                    'id':ti.getId(),
+                    'parentTraitId':trait.getId(),
                     'seqNum':ti.getSeqNum(),
                     'sampleNum':ti.getSampleNum(),
                     'traitName':trait.getName(),
@@ -2276,9 +2397,9 @@ responses:
                     'numDatum':ti.numData(),
                     'numScoredNodes':ti.numScoredNodes(),
                     'dataUrl':url_for('webRest.urlGetTrialTIData', projId=projId, trialId=trialId, 
-                            traitInstId=ti.getId(), _external=True),
+                            traitInstId=ti.getId(), _external=False),
                     'traitUrl':url_for('webRest.urlGetTrait', projId=projId, 
-                            traitId=trait.getId(), _external=True)
+                            traitId=trait.getId(), _external=False)
                     })
     except Exception as e:
         return errorBadRequest('Problem getting trait instances: ' + str(e))
@@ -2355,7 +2476,7 @@ responses:
                     'gps_long':datum.getGpsLongStr(),
                     'gps_lat':datum.getGpsLatStr(),
                     'notes':datum.getNotes(),
-                    'nodeurl':url_for('webRest.urlGetNode', _external=True, projId=projId,
+                    'nodeurl':url_for('webRest.urlGetNode', _external=False, projId=projId,
                             trialId=trialId, nodeId=node.getId())
                     })
     except Exception as e:
@@ -2394,9 +2515,9 @@ responses:
                 url:
                  type: string
                  description: Node URL
-                fpId:
-                 type: string
-                 description: Attribute name
+                id:
+                 type: integer
+                 description: Node id
                 index1:
                  type: string
                  description: Node value for index 1
@@ -2417,7 +2538,7 @@ responses:
 #:   Status code: HTTP_OK
 #:   data: [ {
 #:     url : <url for node>
-#:     fpId : <fp id>
+#:     id : <node id>
 #:     index1 : <index 1 value>
 #:     index2 : <index 2 value>
 #:   ]
@@ -2428,9 +2549,9 @@ responses:
         trial = mproj.getTrialById(trialId)
         nodes = trial.getNodes()
         data = [{
-            'url':url_for('webRest.urlGetNode', _external=True, projId=projId,
+            'url':url_for('webRest.urlGetNode', _external=False, projId=projId,
                           trialId=trialId, nodeId=node.getId()),
-            'fpId':node.getId(),
+            'id':node.getId(),
             'index1':node.getRow(),
             'index2':node.getCol()
             } for node in nodes]
@@ -2537,7 +2658,7 @@ responses:
         g.dbsess.rollback()
         return errorBadRequest("Error creating trial: {}".format(e.__str__()))
     return apiResponse(True, HTTP_CREATED, msg='Node created',
-            url=url_for('webRest.urlGetNode', _external=True, projId=projId, trialId=trialId, nodeId=mnode.getId()))
+            url=url_for('webRest.urlGetNode', _external=False, projId=projId, trialId=trialId, nodeId=mnode.getId()))
 
 #-----------------------------------------------------------------------------------------
 # nodes/nodeId endpoint
@@ -2559,7 +2680,7 @@ def urlGetNode(mproj, params, projId, trialId, nodeId):
 #: Success Response:
 #:   Status code: HTTP_OK
 #:   data: {
-#:     fpId : <fp id>
+#:     id : <node id>
 #:     index1 : <index 1 value>
 #:     index2 : <index 2 value>
 #:   }
@@ -2578,9 +2699,9 @@ responses:
       properties:
         data:
               properties:
-                fpId:
-                 type: string
-                 description: Attribute name
+                id:
+                 type: integer
+                 description: Node id
                 index1:
                  type: string
                  description: Node value for index 1
@@ -2600,7 +2721,7 @@ responses:
         if node is None:
             return errorBadRequest('Node not found')
         data = {
-            'fpId':node.getId(),
+            'id':node.getId(),
             'index1':node.getRow(),
             'index2':node.getCol()
             }
@@ -2660,7 +2781,7 @@ responses:
         g.dbsess.rollback()
         return errorBadRequest("Error updating node: {}".format(e.__str__()))
     return apiResponse(True, HTTP_CREATED, msg='Node created',
-            url=url_for('webRest.urlGetNode', _external=True, projId=projId, trialId=trialId, nodeId=mnode.getId()))
+            url=url_for('webRest.urlGetNode', _external=False, projId=projId, trialId=trialId, nodeId=mnode.getId()))
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>/nodes/<int:nodeId>', methods=['DELETE'])
 @multi_auth.login_required
@@ -2721,6 +2842,9 @@ responses:
           type: array
           items:
               properties:
+                id:
+                 type: integer
+                 description: Attribute id
                 url:
                  type: string
                  description: Attribute URL
@@ -2742,6 +2866,7 @@ responses:
 #: Success Response:
 #:   Status code: HTTP_OK
 #:   data: [ {
+#:     id : <attribute id>
 #:     url : <url for attribute>
 #:     name : <attribute Name>
 #:     datatype : <'text' | 'integer' | 'decimal'>
@@ -2753,7 +2878,8 @@ responses:
         trial = mproj.getTrialById(trialId)
         natts = trial.getAttributes()
         data = [{
-            'url':url_for('webRest.urlAttributeData', _external=True, projId=projId,
+            'id':nat.getId(),
+            'url':url_for('webRest.urlAttributeData', _external=False, projId=projId,
                           trialId=trialId, attId=nat.getId()),
             'name':nat.getName(),
             'datatype':nat.getDatatypeText()
