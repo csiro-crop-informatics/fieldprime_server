@@ -2066,6 +2066,7 @@ responses:
        
     return apiResponse(True, HTTP_OK, msg='trial updated')
 
+
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials', methods=['GET'])
 @multi_auth.login_required
 @wrap_api_func
@@ -2077,7 +2078,7 @@ def urlGetTrials(userid, params, projId):
 #: }
 #: Success Response:
 #:   Status code: HTTP_OK
-#:   data: <array of trial urls>
+#:   data: <array of trial info>
 #$
     """
 Get trial list.
@@ -2091,34 +2092,77 @@ responses:
     schema:
       properties:
         data:
-            type: array
-            items:
-              type: string
-              description: Trial URL
-#           schema:
-#               properties:
-#                 schema:
-#                   $ref: "#/definitions/TrialProperties"
-#               urlAttributes:
-#                 type: string
-#                 description: URL for accessing trial attributes
-#               urlNodes :
-#                 type: string
-#                 description: URL for accessing trial nodes
+          type: array
+          items:
+            properties:
+              id:
+                type: integer
+                description: Trial id
+              name:
+                type: string
+                description: Name for trial
+              year:
+                type: integer
+                description: Trial year
+              site:
+                type: integer
+                description: Trial site
+              acronym:
+                type: integer
+                description: Trial acronym
+              nodeCreation:
+                type: string
+                description: Indicates whether user node creation allowed for trial
+              index1name:
+                type: string
+                description: Name of first index for trial
+              index2name:
+                type: string
+                description: Name of second index for trial
+              urlAttributes:
+                type: string
+                description: URL for accessing trial attributes
+              urlNodes :
+                type: string
+                description: URL for accessing trial nodes
+              urlTraitInsts :
+                type: string
+                description: URL for accessing trial trait instances
 
   400:
     $ref: "#/responses/BadRequest"
   401:
     $ref: "#/responses/Unauthorized"
 """
-    # Check access:
-    if not g.user.omnipotent() and g.userProject is None:
-        return errorAccess()
-    # Return array of trial URLs:
-    trialUrlList = [
-        url_for('webRest.urlGetTrial', _external=False, projId=projId, trialId=trial.getId()) for
-            trial in g.userProject.getModelProject().getTrials()]
-    return apiResponse(True, HTTP_OK, data=trialUrlList)
+    try:
+        # Check access:
+        if not g.user.omnipotent() and g.userProject is None:
+            return errorAccess()
+        # Return array of trial URLs:
+        retList = []
+        for trial in g.userProject.getModelProject().getTrials():
+            trialId = trial.getId()
+            retList.append({
+                'id':trialId,
+                'url':url_for('webRest.urlGetTrial', _external=False, projId=projId, trialId=trialId),
+                "name":trial.getName(),
+                "year":trial.getYear(),
+                "site":trial.getSite(),
+                "acronym":trial.getAcronym(),
+                "nodeCreation":trial.getTrialProperty('nodeCreation'),
+                "index1name":trial.navIndexName(0),
+                "index2name":trial.navIndexName(1),
+                "urlAttributes":url_for('webRest.urlGetAttributes', _external=False,
+                                        projId=projId, trialId=trialId),
+                "urlNodes":url_for('webRest.urlGetNodes', _external=False,
+                                        projId=projId, trialId=trialId),
+                "urlTraitInsts":url_for('webRest.urlGetTrialTraitInsts', _external=False,
+                                    projId=projId, trialId=trialId)
+                })
+
+    except Exception as e:
+        return errorBadRequest('Problem getting trial list: ' + str(e))
+    return apiResponse(True, HTTP_OK, data=retList)
 
 
 @webRest.route(API_PREFIX + 'projects/<int:projId>/trials/<int:trialId>', methods=['GET'])
@@ -2143,8 +2187,27 @@ responses:
               id:
                 type: integer
                 description: Trial id
-              properties:
-                  $ref: "#/definitions/TrialProperties"
+              name:
+                type: string
+                description: Name for trial
+              year:
+                type: integer
+                description: Trial year
+              site:
+                type: integer
+                description: Trial site
+              acronym:
+                type: integer
+                description: Trial acronym
+              nodeCreation:
+                type: string
+                description: Indicates whether user node creation allowed for trial
+              index1name:
+                type: string
+                description: Name of first index for trial
+              index2name:
+                type: string
+                description: Name of second index for trial
               urlAttributes:
                 type: string
                 description: URL for accessing trial attributes
@@ -2163,15 +2226,13 @@ responses:
     trial = models.getTrial(g.userProject.db(), trialId)
     returnJson = { # perhaps we should have trial.getJson()
         'id':trialId,
-        'properties' : {
-            "name":trial.getName(),
-            "year":trial.getYear(),
-            "site":trial.getSite(),
-            "acronym":trial.getAcronym(),
-            "nodeCreation":trial.getTrialProperty('nodeCreation'),
-            "index1name":trial.navIndexName(0),
-            "index2name":trial.navIndexName(1)
-        },
+        "name":trial.getName(),
+        "year":trial.getYear(),
+        "site":trial.getSite(),
+        "acronym":trial.getAcronym(),
+        "nodeCreation":trial.getTrialProperty('nodeCreation'),
+        "index1name":trial.navIndexName(0),
+        "index2name":trial.navIndexName(1),
         "urlAttributes":url_for('webRest.urlGetAttributes', _external=False,
                                 projId=projId, trialId=trialId),
         "urlNodes":url_for('webRest.urlGetNodes', _external=False,
