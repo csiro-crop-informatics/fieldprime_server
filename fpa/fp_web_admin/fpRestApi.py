@@ -941,6 +941,9 @@ def urlGetProjects(userid, params):
 #:       'projectName':<user url>,
 #:       //'contactName':<user name>,
 #:       //'contactEmail':<user email>
+#:       'urlTrials': <project trials url>,
+#:       'urlUsers': <project users url>,
+#:       'urlTraits': <project traits url>,
 #:     }
 #:   ]
 #$
@@ -979,7 +982,16 @@ responses:
                   description: Project URL
                 projectName:
                   type: string
-                  description: Project name     
+                  description: Project name 
+                urlTrials:
+                  type: string
+                  description: URL for accessing project trials
+                urlUsers :
+                  type: string
+                  description: URL for accessing project users
+                urlTraits :
+                  type: string
+                  description: URL for accessing project traits    
   400:
     $ref: "#/responses/BadRequest"
   401:
@@ -996,7 +1008,10 @@ responses:
             return errorBadRequest(errmsg)
         retProjects = [{'id':p.getProjectId(), 
                         'projectName':p.getProjectName(),
-                        'url':url_for('webRest.urlGetProject', projId=p.getProjectId(), _external=False)
+                        'url':url_for('webRest.urlGetProject', projId=p.getProjectId(), _external=False),
+                        'urlTrials' : url_for('webRest.urlGetTrials', projId=p.getProjectId(), _external=False),
+                        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=p.getProjectId(), _external=False),
+                        'urlTraits' : url_for('webRest.urlGetTraits', projId=p.getProjectId(), _external=False)
                         } for p in plist]
     else:
         try:
@@ -1005,7 +1020,10 @@ responses:
             return errorServer("Unexpected error getting projects: {}".format(e))
         retProjects = [{'id':p.getId(), 
                         'projectName':p.getName(),
-                        'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=False)
+                        'url':url_for('webRest.urlGetProject', projId=p.getId(), _external=False),
+                        'urlTrials' : url_for('webRest.urlGetTrials', projId=p.getId(), _external=False),
+                        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=p.getId(), _external=False),
+                        'urlTraits' : url_for('webRest.urlGetTraits', projId=p.getId(), _external=False)
                         } for p in plist]
     return apiResponse(True, HTTP_OK, data=retProjects)
 
@@ -1014,8 +1032,8 @@ def responseProjectObject(proj):
     return {
         'id':proj.getId(),
         'projectName':proj.getName(),
-        'urlTrials' : url_for('webRest.urlCreateTrial', projId=projId, _external=False),
-        'urlUsers' : url_for('webRest.urlAddProjectUser', projId=projId, _external=False),
+        'urlTrials' : url_for('webRest.urlGetTrials', projId=projId, _external=False),
+        'urlUsers' : url_for('webRest.urlGetProjectUsers', projId=projId, _external=False),
         'urlTraits' : url_for('webRest.urlGetTraits', projId=projId, _external=False)
     }
 @webRest.route(API_PREFIX + 'projects/<int:projId>', methods=['GET'])
@@ -1032,8 +1050,9 @@ def urlGetProject(mproj, params, projId):
 #:     {
 #:       'id': <project id>,
 #:       'projectName':<Project Name>,
-#:       'urlTrials': <url for trials within project>
-#:       'urlUsers': <url for users within project>
+#:       'urlTrials': <url for trials within project>,
+#:       'urlUsers': <url for users of project>,
+#:       'urlTraits': <url for traits of project>
 #:     }
 #:   ]
 #$
