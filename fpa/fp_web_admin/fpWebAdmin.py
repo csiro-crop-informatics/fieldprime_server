@@ -727,6 +727,7 @@ def getAllAttributeColumns(sess, trialId, fixedOnly=False):
                 valList.append("" if row[0] is None else hsafe(row[0]))
             attValList.append(valList)
             cur.close()
+            con.close()
     return (hdrs, attValList)
 
 @app.route(PREURL+'/projects/<int:projId>/browseTrial/<trialId>/', methods=["GET"])
