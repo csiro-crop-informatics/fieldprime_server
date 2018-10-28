@@ -108,9 +108,10 @@ def verify_jwt_token(token):
         is_valid_user,user = verifyUserEmail(userid)
 
     if is_valid_user:
-        # Should not be needed if using jwt auth? 
-        # create/set new fieldprime token
-        # g.newToken = generate_auth_token(user)
+        # API endpoints return a token in the reponse (for fieldprime fptoken a new token is generated and returned on each request)
+        # As the authentication is coming from a third party just return the same token and assume they will send
+        # updated tokens (new expiry) as needed.
+        g.newToken = token
         # TODO: set these directly
         fpSetupG(g, userIdent=user)
 
