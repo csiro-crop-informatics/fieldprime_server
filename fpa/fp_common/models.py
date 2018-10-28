@@ -847,8 +847,9 @@ class Project(DeclarativeBase):
             con = fpsys.getFpsysDbConnection() 
             cur = con.cursor()
             cur.execute(sql)
-            cur.close()
             con.commit()  # not sure this is necessary
+            cur.close()
+            con.close()
             # How to check if succeeded?
 #             resRow = cur.fetchone()
 #             return None if resRow is None else resRow[0]
