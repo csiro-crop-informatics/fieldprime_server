@@ -1,0 +1,41 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+jobs:
+
+- job: 'fieldprime-django-api-test'
+  pool:
+    vmImage: 'Ubuntu 16.04'
+  strategy:
+    matrix:
+      Python35:
+        python.version: '3.5'
+      Python36:
+        python.version: '3.6'
+      Python37:
+        python.version: '3.7'
+    maxParallel: 3
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+
+  - script: python -m pip install --upgrade pip && pip install -r fieldprime-api/requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      pip install pytest-django
+      cd fieldprime-api
+      pytest tests --junitxml=junit/fieldprime-django-api-test-results.xml
+    displayName: 'Run API tests'
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFiles: '**/fieldprime-django-api-test-results.xml'
+      testRunTitle: '$(Agent.OS) - $(Build.DefinitionName) - Python $(python.version)'
+    condition: succeededOrFailed()
+
