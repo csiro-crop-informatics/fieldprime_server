@@ -7,7 +7,9 @@ class TokenNode(models.Model):
 
     project = models.ForeignKey(
         Project,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        blank=True, 
+        null=True,
         )
     token = models.ForeignKey(
         Token,
@@ -20,5 +22,19 @@ class TokenNode(models.Model):
 
     local_id = models.IntegerField(db_column='localId')  # Field name made lowercase.
 
+    # Historical data was contained in separate
+    # databases, here we store their old ids
+    migrated_token = models.IntegerField(
+        null=True, 
+        blank=True,
+        db_column = 'old_token_id',
+    )
+    migrated_node = models.IntegerField(
+        null=True, 
+        blank=True,
+        db_column = 'old_node_id',
+    )
+
     class Meta:
         db_table = 'tokenNode'
+        unique_together = (('token', 'local_id'),)

@@ -25,7 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = _('users')
 
 class Project(models.Model):
-    """
+
     uuid = models.CharField(
         max_length=64,
         # For backwards compatibility
@@ -33,7 +33,6 @@ class Project(models.Model):
         null=True,
         unique=True,
         )
-    """
     parent_project = models.ForeignKey(
         "Project",
         on_delete = models.SET_NULL,

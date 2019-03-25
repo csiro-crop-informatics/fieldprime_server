@@ -7,7 +7,9 @@ class Datum(models.Model):
 
     project = models.ForeignKey(
         Project,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        blank=True, 
+        null=True,
         )
     node = models.ForeignKey(
         Node,
@@ -28,5 +30,19 @@ class Datum(models.Model):
     num_value = models.DecimalField(db_column='numValue', max_digits=11, decimal_places=3, blank=True, null=True)  # Field name made lowercase.
     txt_value = models.TextField(db_column='txtValue', blank=True, null=True)  # Field name made lowercase.
 
+    # Historical data was contained in separate
+    # databases, here we store their old ids
+    migrated_node = models.IntegerField(
+        null=True, 
+        blank=True,
+        db_column = 'old_node_id',
+    )
+    migrated_trait_instance = models.IntegerField(
+        null=True, 
+        blank=True,
+        db_column = 'old_traitInstance_id',
+    )
+
     class Meta:
         db_table = 'datum'
+        unique_together = (('node', 'trait_instance', 'timestamp'),)
