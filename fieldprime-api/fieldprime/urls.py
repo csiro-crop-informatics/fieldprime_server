@@ -16,6 +16,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path, re_path
+from rest_framework_swagger.views import get_swagger_view
 
 from fpapi import urls as fpurls
 
@@ -25,5 +26,12 @@ from fpapi import urls as fpurls
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
-    re_path(r'(?P<version>(v1|v2))/', include(fpurls)),
+
+    # Swagger docs
+    path('swagger/',get_swagger_view(title='FieldPrime API')),
+
+    # API endpoints
+    re_path(r'', include(fpurls)),
+    #re_path(r'api/(?P<version>(v1|v2))/', include(fpurls)),
+
 ]
