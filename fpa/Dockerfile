@@ -39,6 +39,9 @@ ARG FPWS_PW=fpwserver:bar
 # Copy in app source and other necessaries:
 COPY main.py ${FIELDPRIME_ROOT}
 COPY conf/uwsgi.ini ${FIELDPRIME_ROOT}
+COPY conf ${FIELDPRIME_ROOT}/conf
+COPY auth ${FIELDPRIME_ROOT}/auth
+COPY config.py ${FIELDPRIME_ROOT}
 COPY fp_web_admin ${FIELDPRIME_ROOT}/fp_web_admin
 COPY fp_common ${FIELDPRIME_ROOT}/fp_common
 
