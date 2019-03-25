@@ -82,7 +82,7 @@ DATABASES = {
         'NAME': 'fieldprime',
         'USER': 'root',
         'PASSWORD': 'foo',
-        'HOST': '127.0.0.1',
+        'HOST': 'fp_mysql',
         'PORT': '3306'
     }
 }
