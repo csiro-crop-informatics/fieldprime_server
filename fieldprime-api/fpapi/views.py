@@ -45,7 +45,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = fpmodels.User.objects.all()
     serializer_class = UserSerializer
 
-class ProjectViewSet(VersionModelViewSet):
+class ProjectViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
@@ -59,14 +59,14 @@ class TraitViewSet(VersionModelViewSet):
     queryset = fpmodels.Trait.objects.all()
     serializer_class = TraitSerializer
 
-class TrialViewSet(VersionModelViewSet):
+class TrialViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
     queryset = fpmodels.Trial.objects.all()
     serializer_class = TrialSerializer
 
-class NodeViewSet(VersionModelViewSet):
+class NodeViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
@@ -88,8 +88,11 @@ class ProjectMemberList(generics.ListAPIView):
         This view should return a list of all the purchases for
         the user as determined by the username portion of the URL.
         """
-        project_id = self.kwargs['project_id']
-        return fpmodels.User.objects.filter(project__id=project_id)
+        if 'project_id' in self.kwargs:
+            project_id = self.kwargs['project_id']
+            return fpmodels.User.objects.filter(project__id=project_id)
+        else:
+            return fpmodels.User.objects.all()
 
 
 
