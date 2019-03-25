@@ -9,8 +9,6 @@ class NodeSerializer(serializers.ModelSerializer):
 
     # Project is a required field (it is a foreign key) but when it is used inside a nested
     # model creation this will be set when parent project is saved.
-    #project = serializers.PrimaryKeyRelatedField(required=False, queryset=fpmodels.Project.objects.all())
-    #trial = serializers.PrimaryKeyRelatedField(required=False, queryset=fpmodels.Trial.objects.all())
 
     class Meta:
         model = fpmodels.Node
