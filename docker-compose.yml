@@ -3,6 +3,17 @@ version: '2'
 services:
 
   #
+  # Fieldprime django API
+  #
+  fp_api:
+    build: fieldprime-api
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    links:
+      - fp_mysql
+
+  #
   # FieldPrime wsgi/app
   # Depends: wsgi_pylibs
   #
@@ -27,6 +38,8 @@ services:
       - fp_dbdata:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: foo
+    ports:
+        - "3306:3306"
 
 volumes:
   fp_dbdata:
