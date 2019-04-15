@@ -75,6 +75,9 @@ class Trait(models.Model):
         db_column="datatype", 
         choices=DATA_TYPES
     )
+    @property
+    def data_type(self):
+        return self._data_type
 
     # Not it FieldPrime SQL init but exists in database schema.
     t_id = models.TextField(db_column="tid", blank=True, null=True)
