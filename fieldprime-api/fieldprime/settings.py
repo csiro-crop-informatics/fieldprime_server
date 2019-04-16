@@ -82,8 +82,9 @@ DATABASES = {
         'NAME': 'fieldprime',
         'USER': 'root',
         'PASSWORD': 'foo',
-        'HOST': 'fp_mysql',
-        'PORT': '3306'
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+        'ATOMIC_REQUESTS': True
     }
 }
 
