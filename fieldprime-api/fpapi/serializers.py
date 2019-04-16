@@ -70,6 +70,16 @@ class DataTypeSerializer(serializers.Serializer):
     # as we are not handling the field url in TraitCategory
     accepted_values = StringListField(required=False)
 
+    def validate(self, data):
+        """
+        Check that categorical data also has accepted_values
+        """
+        data = super(DataTypeSerializer, self).validate(data)
+        if data['data_type'] == fpconst.CATEGORICAL:
+            if "accepted_values" not in data.keys():
+                raise serializers.ValidationError("Categorical data must provide accepted_values")
+        return data
+
     def create(self, validated_data):
         """
         This serializer is only used to validate data, it does not
