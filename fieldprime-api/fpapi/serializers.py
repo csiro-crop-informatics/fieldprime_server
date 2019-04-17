@@ -100,8 +100,7 @@ class TraitNestedSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
 
         data_type_data = validated_data.pop("data_type")
-        trait = fpmodels.Trait(**validated_data, _data_type=data_type_data["data_type"])
-        trait.save()
+        trait,created = fpmodels.Trait.objects.get_or_create(**validated_data, _data_type=data_type_data["data_type"])
         self._create_data_type(trait,data_type_data)
         return trait
 
