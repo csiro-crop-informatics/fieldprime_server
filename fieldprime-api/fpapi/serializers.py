@@ -33,6 +33,9 @@ class TrialSerializer(serializers.ModelSerializer):
     class Meta:
         model = fpmodels.Trial
         fields = ("url", "name", "site", "year", "acronym", "uuid", "project")
+        extra_kwargs = {
+            'url': {'view_name': 'trial-detail-uuid', 'lookup_field': 'uuid'}
+        }
 
 class ChoicesField(serializers.Field):
     def __init__(self, choices, **kwargs):
@@ -100,7 +103,8 @@ class TraitNestedSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
 
         data_type_data = validated_data.pop("data_type")
-        trait,created = fpmodels.Trait.objects.get_or_create(**validated_data, _data_type=data_type_data["data_type"])
+        trait = fpmodels.Trait(**validated_data, _data_type=data_type_data["data_type"])
+        trait.save()
         self._create_data_type(trait,data_type_data)
         return trait
 
@@ -176,6 +180,16 @@ class TrialNestedSerializer(serializers.ModelSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = fpmodels.Project
+        fields = ("url", "name", "contact_name", "contact_email", "uuid")
+        extra_kwargs = {
+            'url': {'view_name': 'project-detail-uuid', 'lookup_field': 'uuid'}
+        }
+
+
+class ProjectNestedSerializer(serializers.ModelSerializer):
+
     trials = TrialNestedSerializer(many=True, required=False)
 
     class Meta:
@@ -184,27 +198,27 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
     
-        logger.debug("ProjectSerializer: creating project")
+        logger.debug("ProjectNestedSerializer: creating project")
 
         if "trials" in validated_data:
-            logger.debug("ProjectSerializer: project data contains trials")
+            logger.debug("ProjectNestedSerializer: project data contains trials")
             trials = validated_data.pop("trials")
         else:
             trials = []
 
         # Save project and add project_id to trials/nodes
         project = fpmodels.Project.objects.create(**validated_data)
-        logger.debug('ProjectSerializer: created project: %s\n' % project)
+        logger.debug('ProjectNestedSerializer: created project: %s\n' % project)
 
         for trial_data in trials:
             # Add project association to trial
             trial_data['project'] = project.id
             trial_serializer = TrialNestedSerializer(data = trial_data)
-            logger.debug("ProjectSerializer: trial data: %s" % str(trial_data))
+            logger.debug("ProjectNestedSerializer: trial data: %s" % str(trial_data))
             if trial_serializer.is_valid():
                 trial_serializer.save()
             else:
-                logger.debug("ProjectSerializer: trial is not valid")
+                logger.debug("ProjectNestedSerializer: trial is not valid")
        
         return project
 
