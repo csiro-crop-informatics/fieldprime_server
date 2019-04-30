@@ -98,22 +98,31 @@ class TraitNestedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = fpmodels.Trait
-        fields = ("url","caption", "description", "uuid", "data_type", "trial")
+        fields = ("url", "caption", "description", "uuid", "data_type", "trial")
 
     def create(self, validated_data):
 
         data_type_data = validated_data.pop("data_type")
-        trait = fpmodels.Trait(**validated_data, _data_type=data_type_data["data_type"])
-        trait.save()
-        self._create_data_type(trait,data_type_data)
+        trial_id = validated_data.pop("trial")
+
+        # For V2 api, all traits are public and reused with uuid
+        # with legacy 'public mode' trail_id of -1
+        # But real trial_id still needs to get passed down to TrialTraitNumeric
+
+        trait, created = fpmodels.Trait.objects.get_or_create(
+            **validated_data, 
+            trial = -1, 
+            _data_type=data_type_data["data_type"])
+
+        self._create_data_type(trial_id, trait, data_type_data)
         return trait
 
-    def _create_data_type(self, trait, data):
+    def _create_data_type(self, trial_id, trait, data):
         data_type = data.pop("data_type")
         # Handle numeric types
         if data_type in [fpconst.INTEGER, fpconst.DECIMAL]:
-            trial_extra_data = fpmodels.TrialTraitNumeric(
-                trial = trait.trial,
+            trial_extra_data, created = fpmodels.TrialTraitNumeric.objects.get_or_create(
+                trial = trial_id,
                 trait = trait,
                 **data
             )
@@ -122,7 +131,7 @@ class TraitNestedSerializer(serializers.ModelSerializer):
         # Handle categorical type
         elif data_type in [fpconst.CATEGORICAL]:        
             for i,category in enumerate(data["accepted_values"]):
-                trial_extra_data = fpmodels.TraitCategory(
+                trial_extra_data, created = fpmodels.TraitCategory.objects.get_or_create(
                     trait = trait,
                     value = i,
                     caption = category,
@@ -144,6 +153,9 @@ class TrialNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = fpmodels.Trial
         fields = ("url", "name", "site", "year", "acronym", "uuid", "project", "traits", "nodes")
+        extra_kwargs = {
+            'url': {'view_name': 'trial-detail-uuid', 'lookup_field': 'uuid'}
+        }
 
     def create(self, validated_data):
         
@@ -166,9 +178,11 @@ class TrialNestedSerializer(serializers.ModelSerializer):
         for trait_data in traits:
             # Add project association to trial
             trait_data['trial'] = trial.id
-            trait_serializer = TraitNestedSerializer(data = trait_data)
-            if trait_serializer.is_valid():
-                trait_serializer.save()
+            new_trait = TraitNestedSerializer(data = trait_data)
+            if new_trait.is_valid():
+                new_trait.save()
+                # .add() should make use of Trial model many-to-many Traits through TrialTraits
+                trial.traits.add(new_trait)
             else:
                 logger.debug("trial data is not valid")
 
@@ -177,6 +191,12 @@ class TrialNestedSerializer(serializers.ModelSerializer):
             node = fpmodels.Node.objects.create(project=trial.project,trial=trial,**node_data)
 
         return trial
+
+    def update(self, instance, validated_data):
+        
+        instance.uuid = validated_data.get('uuid', instance.uuid)
+        return instance
+
 
 class ProjectSerializer(serializers.ModelSerializer):
 

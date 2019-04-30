@@ -5,7 +5,7 @@ from rest_framework import viewsets, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .serializers import UserSerializer, ProjectSerializer, TraitSerializer, TrialSerializer, NodeSerializer
+from .serializers import UserSerializer, ProjectSerializer, TraitSerializer, TrialSerializer, TrialNestedSerializer, NodeSerializer
 from fpapi import serializers as fpserializers
 
 import logging
@@ -76,6 +76,14 @@ class TrialViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     queryset = fpmodels.Trial.objects.all()
     serializer_class = TrialSerializer
+
+class TrialNestedViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    lookup_field = 'uuid'
+    queryset = fpmodels.Trial.objects.all()
+    serializer_class = fpserializers.TrialNestedSerializer
 
 class NodeViewSet(viewsets.ModelViewSet):
     """

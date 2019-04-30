@@ -3,50 +3,6 @@ from django.utils.translation import gettext as _
 from .userproject import Project
 from ..const import DATA_TYPES
 
-class Trial(models.Model):
-
-    uuid = models.CharField(
-        max_length=64,
-        # For backwards compatibility
-        blank = True,
-        null=True,
-        unique=True,
-        )
-    project = models.ForeignKey(
-        Project,
-        related_name="trials",
-        on_delete=models.CASCADE,
-        )
-
-    name = models.CharField(max_length=255)
-    site = models.CharField(max_length=255, blank=True, null=True)
-    year = models.CharField(max_length=255, blank=True, null=True)
-    acronym = models.CharField(max_length=255, blank=True, null=True)
-
-    # Historical data was contained in separate
-    # databases, here we store their old ids
-    migrated_id = models.IntegerField(
-        null=True, 
-        blank=True,
-        db_column = "old_id",
-    )
-
-    class Meta:
-        db_table = "trial"
-
-
-class DataType(models.Model):
-
-
-    data_type = models.IntegerField(max_length=1, choices=DATA_TYPES)
-    unit = models.TextField(blank=True, null=True)
-    min_value = models.DecimalField(db_column="min", max_digits=18, decimal_places=9, blank=True, null=True)
-    max_val = models.DecimalField(db_column="max", max_digits=18, decimal_places=9, blank=True, null=True)
-
-    class Meta:
-        abstract = True
-
-
 class Trait(models.Model):
 
     uuid = models.CharField(
@@ -62,10 +18,15 @@ class Trait(models.Model):
         blank=True, 
         null=True,
         )
-    trial = models.ForeignKey(
-        Trial,
-        on_delete=models.CASCADE
-        )
+    ## trial column is present, but won't be using it
+    ## Using TrialTraits instead
+    # trial = models.ForeignKey(
+    #     Trial,
+    #     on_delete=models.CASCADE,
+    #     blank=True, 
+    #     null=True,
+    #     )
+    trial_id = models.IntegerField(db_column="trial_id", blank=True, null=True)
 
     caption = models.CharField(max_length=255)
     description = models.TextField()
@@ -100,6 +61,56 @@ class Trait(models.Model):
 
     class Meta:
         db_table = "trait"
+
+
+class Trial(models.Model):
+
+    uuid = models.CharField(
+        max_length=64,
+        # For backwards compatibility
+        blank = True,
+        null=True,
+        unique=True,
+        )
+    project = models.ForeignKey(
+        Project,
+        related_name="trials",
+        on_delete=models.CASCADE,
+        )
+
+    name = models.CharField(max_length=255)
+    site = models.CharField(max_length=255, blank=True, null=True)
+    year = models.CharField(max_length=255, blank=True, null=True)
+    acronym = models.CharField(max_length=255, blank=True, null=True)
+
+    traits = models.ManyToManyField(
+        Trait,
+        through='TrialTrait',
+        through_fields=('trial', 'trait')
+    )
+
+    # Historical data was contained in separate
+    # databases, here we store their old ids
+    migrated_id = models.IntegerField(
+        null=True, 
+        blank=True,
+        db_column = "old_id",
+    )
+
+    class Meta:
+        db_table = "trial"
+
+
+class DataType(models.Model):
+
+
+    data_type = models.IntegerField(max_length=1, choices=DATA_TYPES)
+    unit = models.TextField(blank=True, null=True)
+    min_value = models.DecimalField(db_column="min", max_digits=18, decimal_places=9, blank=True, null=True)
+    max_val = models.DecimalField(db_column="max", max_digits=18, decimal_places=9, blank=True, null=True)
+
+    class Meta:
+        abstract = True
 
 
 class Token(models.Model):
