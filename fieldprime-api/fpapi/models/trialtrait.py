@@ -83,7 +83,7 @@ class Trial(models.Model):
     year = models.CharField(max_length=255, blank=True, null=True)
     acronym = models.CharField(max_length=255, blank=True, null=True)
 
-    traits = models.ManyToManyField(
+    _traits = models.ManyToManyField(
         Trait,
         through='TrialTrait',
         through_fields=('trial', 'trait')
