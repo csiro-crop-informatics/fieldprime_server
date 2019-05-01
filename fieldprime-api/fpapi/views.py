@@ -53,6 +53,8 @@ class ProjectNestedViewSet(viewsets.ModelViewSet):
     queryset = fpmodels.Project.objects.all()
     serializer_class = fpserializers.ProjectNestedSerializer
 
+###############################################################################
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
@@ -62,12 +64,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = fpserializers.ProjectSerializer
 
 
-class TraitViewSet(VersionModelViewSet):
+class TraitViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
+    lookup_field = 'uuid'
     queryset = fpmodels.Trait.objects.all()
-    serializer_class = TraitSerializer
+    serializer_class = fpserializers.TraitSerializer
 
 class TrialViewSet(viewsets.ModelViewSet):
     """
@@ -89,8 +92,9 @@ class NodeViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
+    lookup_field = 'id'
     queryset = fpmodels.Node.objects.all()
-    serializer_class = NodeSerializer
+    serializer_class = fpserializers.NodeSerializer
 
 ###############################################################################
 #    CUSTOM VIEWS
