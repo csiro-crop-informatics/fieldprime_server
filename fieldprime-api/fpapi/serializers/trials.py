@@ -31,9 +31,7 @@ class TrialSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'view_name': 'trial-detail-uuid', 'lookup_field': 'uuid'}
         }
-    
-    def get_alternate_name(self, obj):
-        return obj._traits
+
 
 """
 
