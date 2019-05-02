@@ -17,12 +17,15 @@ router.register(r'projects', fpview.ProjectNestedViewSet)
 urlpatterns = [
 
     path('v1/', include(router.urls)),
+
+    # Detail Views
     path('v2/projects/<uuid:uuid>/', fpview.ProjectViewSet.as_view({'get': 'retrieve'}), name='project-detail-uuid'),
     path('v2/trials/<uuid:uuid>/', fpview.TrialViewSet.as_view({'get': 'retrieve'}), name='trial-detail-uuid'),
     path('v2/traits/<uuid:uuid>/', fpview.TraitViewSet.as_view({'get': 'retrieve'}), name='trait-detail-uuid'),
     path('v2/nodes/<uuid:barcode>/', fpview.NodeViewSet.as_view({'get': 'retrieve'}), name='node-detail-id'),
 
-    #path('v2/trials/<uuid:uuid>/traits', fpview.TraitListByTrial.as_view()),
+    # Trait Views
+    path('v2/trials/<uuid:uuid>/traits', fpview.TraitListByTrial.as_view()),
     #path('v2/trials/<uuid:uuid>/traits', fpview.TraitUpdateByTrial.as_view()),
     
     
