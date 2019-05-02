@@ -4,12 +4,13 @@ from fpapi import models as fpmodels
 from rest_framework import viewsets, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 
 from .serializers import UserSerializer, ProjectSerializer, TraitSerializer, TrialSerializer, TrialNestedSerializer, NodeSerializer
 from fpapi import serializers as fpserializers
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fpapi')
 
 class VersionModelViewSet(viewsets.ModelViewSet):
     """
@@ -97,7 +98,7 @@ class ProjectNestedViewSet(viewsets.ModelViewSet):
 #    CUSTOM VIEWS
 ###############################################################################
 
-class TraitListByTrial(generics.ListAPIView):
+class TraitListByTrial(generics.ListAPIView,generics.CreateAPIView):
     """
     Get traits belonging to trial.
     """
@@ -111,8 +112,51 @@ class TraitListByTrial(generics.ListAPIView):
         uuid = self.kwargs['uuid']
         trial = fpmodels.Trial.objects.get(uuid=uuid)
         return trial._traits
+    
+    def post(self, request, *args, **kwargs):
 
+        uuid = self.kwargs['uuid']
+        trial = fpmodels.Trial.objects.get(uuid=uuid)
+        old_traits = trial._traits.all()
+        old_trait_ids = [t.id for t in old_traits]
+        logger.debug("Old trait ids %s" % old_trait_ids)
 
+        # Add trial (for trialTraitNumeric)
+        data=request.data
+        data['trial'] = trial.id
+        logger.debug("Data %s" % data)
+
+        serializer = fpserializers.TraitListSerializer(data=data)
+        if serializer.is_valid():
+            new_traits = serializer.save()
+            new_trait_ids = [t.id for t in new_traits]
+
+            to_delete = [id for id in old_trait_ids if id not in new_trait_ids]
+            to_add = [id for id in  new_trait_ids if id not in old_trait_ids]
+
+            # Update associations
+            for trait_id in to_delete:
+                trialtrait = fpmodels.TrialTrait.objects.get(trial=trial,trait_id=trait_id)
+                trialtrait.delete()
+            for trait_id in to_add:
+                trialtrait = fpmodels.TrialTrait.objects.create(trial=trial,trait_id=trait_id)
+
+            # Return serialized data
+            trial = fpmodels.Trial.objects.get(uuid=uuid)
+            trait_serializer = fpserializers.TraitSerializer(trial._traits.all(), many=True, context={'request': request})
+            
+            return Response(trait_serializer.data, status=status.HTTP_201_CREATED)
+
+        # else return error        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+
+class TraitUpdateByTrial(generics.CreateAPIView):
+    """
+    """
+    serializer_class = fpserializers.TraitListSerializer
+
+    
+    
 
 class ProjectMemberList(generics.ListAPIView):
     """

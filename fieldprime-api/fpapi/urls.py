@@ -25,8 +25,8 @@ urlpatterns = [
     path('v2/nodes/<uuid:barcode>/', fpview.NodeViewSet.as_view({'get': 'retrieve'}), name='node-detail-id'),
 
     # Trait Views
-    path('v2/trials/<uuid:uuid>/traits', fpview.TraitListByTrial.as_view(), name='traits-list-uuid'),
-    #path('v2/trials/<uuid:uuid>/traits', fpview.TraitUpdateByTrial.as_view()),
+    path('v2/trials/<uuid:uuid>/traits', fpview.TraitListByTrial.as_view(), name='list-trial-traits'),
+    #path('v2/trials/<uuid:uuid>/traits', fpview.TraitUpdateByTrial.as_view(), name='update-trial-traits'),
     
     
     path('v2/', include(router.urls)),
