@@ -105,6 +105,11 @@ class TraitNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = fpmodels.Trait
         fields = ("url", "caption", "description", "uuid", "data_type", "trial")
+        extra_kwargs = {
+            'uuid': {
+                'validators': [],
+            }
+        }
 
     def create(self, validated_data):
 
@@ -230,7 +235,7 @@ class ProjectNestedSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
     
-        logger.debug("ProjectNestedSerializer: creating project")
+        logger.error("ProjectNestedSerializer: creating project")
 
         if "trials" in validated_data:
             logger.debug("ProjectNestedSerializer: project data contains trials")

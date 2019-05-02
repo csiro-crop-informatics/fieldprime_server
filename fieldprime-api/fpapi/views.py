@@ -92,6 +92,7 @@ class ProjectNestedViewSet(viewsets.ModelViewSet):
     queryset = fpmodels.Project.objects.all()
     serializer_class = fpserializers.ProjectNestedSerializer
 
+
 ###############################################################################
 #    CUSTOM VIEWS
 ###############################################################################
@@ -111,37 +112,7 @@ class TraitListByTrial(generics.ListAPIView):
         trial = fpmodels.Trial.objects.get(uuid=uuid)
         return trial._traits
 
-class TraitUpdateByTrial(generics.CreateAPIView):
-    """
-    """
-    serializer_class = fpserializers.TraitNestedSerializer
-    
-    def get_queryset(self):
-        """
-        This view should return a list of all models by
-        the maker passed in the URL
-        """
-        uuid = self.kwargs['uuid']
-        trial = fpmodels.Trial.objects.get(uuid=uuid)
-        return trial._traits
 
-    
-    def post(self, request, *args, **kwargs):
-        uuid = self.kwargs['uuid']
-        trial = fpmodels.Trial.objects.get(uuid=uuid)
-        old_traits = trial._traits
-        old_trait_ids = [t.id for t in old_traits]
-        new_trait_ids = [t.id for t in new_traits]
-
-        to_delete = [id for id in old_trait_ids if id not in new_trait_ids]
-        to_add = [id for id in  new_trait_ids if id not in old_trait_ids]
-
-        # Update associations
-        for trait_id in to_delete:
-            trialtrait = fpmodels.TrialTrait.objects.get(trial=trial,trait_id=trait_id)
-            trialtrait.delete()
-        for trait_id in to_add:
-            trialtrait = fpmodels.TrialTrait.objects.create(trial=trial,trait_id=trait_id)
 
 class ProjectMemberList(generics.ListAPIView):
     """
