@@ -36,36 +36,5 @@ class TrialSerializer(serializers.HyperlinkedModelSerializer):
         return obj._traits
 
 """
-class TraitListSerializer(serializers.ModelSerializer):
 
-    traits = TraitNestedSerializer(many=True, required=False)
-
-    def create(self, validated_data):
-
-
-        if "traits" in validated_data:
-            logger.debug("trial data contains traits")
-            traits = validated_data.pop("traits")
-        else:
-            traits = []
-
-        # Assume traits are not modified and modified traits will
-        # have own unique uuid. Add new traits to db.
-        for trait_data in traits:
-            print("TRAIT ", trait_data)
-
-            trait_serializer = TraitNestedSerializer(data = trait_data)
-            if trait_serializer.is_valid():
-                trait = trait_serializer.save()
-                print("TRAITSAVED ",trait)
-                # .add() should make use of Trial model many-to-many Traits through TrialTraits
-                
-            else:
-                logger.debug("trial data is not valid")
-
-        # Save nodes
-        for node_data in nodes:
-            node = fpmodels.Node.objects.create(project=trial.project,trial=trial,**node_data)
-
-        return trial
 """
