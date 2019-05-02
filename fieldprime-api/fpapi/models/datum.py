@@ -43,6 +43,13 @@ class Datum(models.Model):
         db_column = 'old_traitInstance_id',
     )
 
+    @property
+    def get_trait_id(self):
+        """
+        Used in datum serializer
+        """
+        return self.trait_instance.trait.id
+
     class Meta:
         db_table = 'datum'
         unique_together = (('node', 'trait_instance', 'timestamp'),)
