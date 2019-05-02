@@ -148,12 +148,26 @@ class TraitListByTrial(generics.ListAPIView,generics.CreateAPIView):
             return Response(trait_serializer.data, status=status.HTTP_201_CREATED)
 
         # else return error        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class TraitUpdateByTrial(generics.CreateAPIView):
+class DatumListByTrial(generics.ListAPIView):
     """
+    Get traits belonging to trial.
     """
-    serializer_class = fpserializers.TraitListSerializer
+    serializer_class = fpserializers.DatumSerializer
+
+    
+    def get_queryset(self):
+
+        uuid = self.kwargs['uuid']
+
+        trial = fpmodels.Trial.objects.get(uuid=uuid)
+        # Get traitInstances associated with trial
+        trait_instance = fpmodels.TraitInstance.objects.filter(trial=trial)
+        datum = fpmodels.Datum.objects.filter(trait_instance__in=trait_instance)
+                
+        return datum
+
 
     
     

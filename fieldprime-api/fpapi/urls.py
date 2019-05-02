@@ -16,7 +16,7 @@ router.register(r'projects', fpview.ProjectNestedViewSet)
 
 urlpatterns = [
 
-    path('v1/', include(router.urls)),
+    #path('v1/', include(router.urls)),
 
     # Detail Views
     path('v2/projects/<uuid:uuid>/', fpview.ProjectViewSet.as_view({'get': 'retrieve'}), name='project-detail-uuid'),
@@ -28,6 +28,8 @@ urlpatterns = [
     path('v2/trials/<uuid:uuid>/traits', fpview.TraitListByTrial.as_view(), name='list-trial-traits'),
     #path('v2/trials/<uuid:uuid>/traits', fpview.TraitUpdateByTrial.as_view(), name='update-trial-traits'),
     
+    # Datum Views
+    path('v2/trials/<uuid:uuid>/datum', fpview.DatumListByTrial.as_view(), name='list-trial-datum'),
     
     path('v2/', include(router.urls)),
     #path('v2/trials/<uuid:uuid>/',fpview.TrialViewSet.as_view({'get': 'list'})),
