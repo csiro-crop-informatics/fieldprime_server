@@ -1879,6 +1879,7 @@ def getSysUserEngine(projectName):
 # currently done in session module.
 #
     dbname = fpsys.getProjectDBname(projectName)
+    app.logger.debug("getSysUserEngine %s" % dbname)
     return getDbConnection(dbname)
 
 def getDbConnection(dbname):
@@ -1891,11 +1892,12 @@ def getDbConnection(dbname):
 # . Calling close on the session after using it.
 # . Ensuring only one session by use of global var _FP_DBC.
 # I'm sticking with this last method for the moment.
-    app.logger.debug("getDbConnection")
+    app.logger.debug("getDbConnection %s" % dbname)
 
     global _FP_DBC
     global _FP_DBNAME
     if _FP_DBC is not None and dbname == _FP_DBNAME:
+        app.logger.debug("getDbConnection: connection exists")
         return _FP_DBC
 
     from config import FP_MYSQL_HOST, FP_MYSQL_PORT
@@ -1910,6 +1912,7 @@ def getDbConnection(dbname):
 def dbConnectAndAuthenticate(project, password):
 #-------------------------------------------------------------------------------------------------
     dbc = getSysUserEngine(project)  # not sure how this returns error, test..
+    app.logger.debug(dbc)
     if dbc is None:
         return (None, 'Unknown user/database')
 
@@ -1922,7 +1925,8 @@ def dbConnectAndAuthenticate(project, password):
     except MultipleResultsFound:
         # Shouldn't happen:
         return None, 'DB error, multiple passwords'
-    except sqlalchemy.exc.OperationalError:
+    except sqlalchemy.exc.OperationalError, e:
+        app.logger.debug(e)
         return None, 'Error - may be invalid project name'
     # Note if there is a db problem, eg project incorrect we will have an unhandled exception.
     # Which is probably what we want since we'll get a backtrace in the log.
@@ -1972,6 +1976,15 @@ def getTrialList(dbc):
         trlList = dbc.query(Trial).all()
     except sqlalchemy.exc.SQLAlchemyError, e:
         return None
+    return trlList
+
+def getTrialListByProject(dbc,project_name):
+#-------------------------------------------------------------------------------------------------
+    try:
+        project = dbc.query(Project).filter(Project.name == project_name).one()
+        trlList = dbc.query(Trial).filter(Trial.project_id == project.id)
+    except sqlalchemy.exc.SQLAlchemyError, e:
+        return []
     return trlList
 
 
