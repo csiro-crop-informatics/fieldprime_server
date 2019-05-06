@@ -19,11 +19,15 @@ class DatumSerializer(serializers.ModelSerializer):
         trait_uuid
     """
 
-    trait = serializers.SerializerMethodField('get_alternate_name')
+    node_uuid = serializers.SerializerMethodField()
+    trait_uuid = serializers.SerializerMethodField()
 
     class Meta:
         model = fpmodels.Datum
-        fields = ("node_id", "trait", "timestamp", "user_id", "num_value", "txt_value", "notes")
+        fields = ("node_uuid", "trait_uuid", "timestamp", "user_id", "num_value", "txt_value", "notes")
 
-    def get_alternate_name(self, obj):
-        return obj.get_trait_id
+    def get_node_uuid(self, obj):
+        return obj.get_node_uuid
+
+    def get_trait_uuid(self, obj):
+        return obj.get_trait_uuid
