@@ -4,4 +4,4 @@ from .devicename import DeviceName
 from .system import System
 from .trialtrait import *
 from .tokennode import TokenNode
-from .userproject import User, Project
+from .userproject import Project, User
