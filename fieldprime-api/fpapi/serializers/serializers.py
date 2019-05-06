@@ -123,7 +123,7 @@ class TraitNestedSerializer(serializers.ModelSerializer):
 
         trait, created = fpmodels.Trait.objects.get_or_create(
             **validated_data, 
-            trial_id = -1, 
+            _trial_id = -1, 
             _data_type=data_type_data["data_type"])
         print("TRAITSAVED ",trait,trait.id,created)
 
