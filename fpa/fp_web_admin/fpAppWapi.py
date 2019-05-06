@@ -17,6 +17,7 @@ import fp_common.models as dal
 import fp_common.util as util
 from fp_common.const import *
 
+from flask import current_app as app
 from config import API_PREFIX
 
 ### SetUp: ######################################################################################
@@ -103,7 +104,9 @@ def urlAppCoolTrialList(username):
         return JsonErrorResponse(errMsg)
 
     # Get the trial list as json:
-    trials = dal.getTrialList(dbc)
+    # trials = dal.getTrialList(dbc)
+    app.logger.debug("getTrialListByProject")
+    trials = dal.getTrialListByProject(dbc,username)
 
     trialList = []
     for t in trials:
@@ -165,7 +168,9 @@ def urlAppGetTrial(username, trial, dbc, token=None):
     # Node Attribute descriptors:
     attDefs = []
     attributes = trial.getAttributes()
-    attValueLists = [att.getValues(orderByNodeId=True, missingValue=None) for att in attributes]  # NB node order must match that of trial.getNodes()
+    # NB node order must match that of trial.getNodes()
+    # TE: Modified to get order to match row/col order getNodesSortedRowCol()
+    attValueLists = [att.getValues(orderByNodeId=False, missingValue=None) for att in attributes]
     for att in attributes:
         ad = {}
         ad['id'] = att.id
@@ -178,7 +183,7 @@ def urlAppGetTrial(username, trial, dbc, token=None):
     # Nodes:
     nodeList = []
     nodePropertyNames = ["id", "row", "col", "description", "barcode"]
-    for nodeIndex, nd in enumerate(trial.getNodes()):
+    for nodeIndex, nd in enumerate(trial.getNodesSortedRowCol()):
         jnode = {}
         ### Node built in properties:
         for n in nodePropertyNames:
