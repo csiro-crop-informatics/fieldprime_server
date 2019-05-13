@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework.reverse import reverse
+
 from fpapi import models as fpmodels
 from fpapi import const as fpconst
 
@@ -215,14 +217,42 @@ class TrialNestedSerializer(serializers.ModelSerializer):
         instance.uuid = validated_data.get('uuid', instance.uuid)
         return instance
 
+class ProjectHyperlink(serializers.HyperlinkedRelatedField):
+
+    view_name = 'project-detail-uuid'
+    queryset = fpmodels.Project.objects.all()
+
+    def get_url(self, obj, view_name, request, format):
+        if obj.uuid:
+            url_kwargs = {
+                'uuid': obj.uuid,
+            }
+        else:
+            view_name = 'project-detail'
+            url_kwargs = {
+                'id': obj.id,
+            }
+        return reverse(view_name, kwargs=url_kwargs, request=request, format=format)
+
 class ProjectSerializer(serializers.ModelSerializer):
+
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = fpmodels.Project
         fields = ("url", "name", "contact_name", "contact_email", "uuid")
-        extra_kwargs = {
-            'url': {'view_name': 'project-detail-uuid', 'lookup_field': 'uuid'}
-        }
+        #extra_kwargs = {
+        #    'url': {'view_name': 'project-detail-uuid', 'lookup_field': 'uuid'},
+        #}
+
+    def get_url(self,obj):
+        view_name = 'project-detail-uuid'
+        url_kwargs = { 'uuid': obj.uuid }
+        if not obj.uuid:
+            view_name = 'project-detail'
+            url_kwargs = { 'id': obj.id }
+        return reverse(view_name, kwargs=url_kwargs, request=self.context['request'])
+
 
 
 class ProjectNestedSerializer(serializers.ModelSerializer):
