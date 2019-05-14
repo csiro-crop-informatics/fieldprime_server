@@ -1,10 +1,16 @@
 from django.shortcuts import render, get_object_or_404
+from django.db.models import Max
+
+from datetime import datetime
+
 from fpapi import models as fpmodels
 
 from rest_framework import viewsets, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework import status
+
 
 from .serializers import UserSerializer, ProjectSerializer, TraitSerializer, TrialSerializer, TrialNestedSerializer, NodeSerializer
 from fpapi import serializers as fpserializers
@@ -150,13 +156,12 @@ class TraitListByTrial(generics.ListAPIView,generics.CreateAPIView):
         # else return error        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DatumListByTrial(generics.ListAPIView):
+class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
     """
     Get traits belonging to trial.
     """
     serializer_class = fpserializers.DatumSerializer
 
-    
     def get_queryset(self):
 
         uuid = self.kwargs['uuid']
@@ -167,6 +172,88 @@ class DatumListByTrial(generics.ListAPIView):
         datum = fpmodels.Datum.objects.filter(trait_instance__in=trait_instance)
                 
         return datum
+
+    def _getTraitInstance(self,trait_uuid):
+        """
+        """
+        if trait_uuid not in self.trait_instances:
+            try:
+                trait = fpmodels.Trait.objects.get(uuid=trait_uuid)
+            except:
+                raise NotFound("Trait with uuid %s not found" % trait_uuid)
+            logger.debug("_getTraitInstance: found trait %s" % trait)
+            max_sequence_number = fpmodels.TraitInstance.objects.filter(
+                trial=self.trial,
+                token=self.token,
+                trait=trait).aggregate(max=Max('sequence_number'))
+            if max_sequence_number['max'] >= 0:
+                sequence_number = max_sequence_number['max'] + 1
+            else:
+                sequence_number = 0
+            logger.debug("_getTraitInstance: sequence_number %d" % sequence_number)
+
+            trait_instance = fpmodels.TraitInstance.objects.create(
+                trial = self.trial,
+                token = self.token,
+                day_created = self.date,
+                trait = trait,
+                sequence_number = sequence_number,
+                sample_number = 1
+            )
+            self.trait_instances[trait_uuid] = trait_instance
+
+        logger.debug("Already have trait_uuid")
+        logger.debug(self.trait_instances[trait_uuid])
+        return self.trait_instances[trait_uuid]
+
+    def post(self, request, *args, **kwargs):
+
+        uuid = self.kwargs['uuid']
+        data=request.data
+        serializer = fpserializers.DatumSerializer(data=data,many=True)
+
+        if serializer.is_valid():
+
+            # Used to store common data between datum objects
+            try:
+                self.trial = fpmodels.Trial.objects.get(uuid=uuid)
+            except:
+                raise NotFound("Trial with uuid %s not found" % uuid)
+            self.date = datetime.now().strftime("%Y%m%d")
+            self.trait_instances = {}
+            # Just using a serenity token, we are assuming that data
+            # has not already been added to system
+            self.token,created = fpmodels.Token.objects.get_or_create(
+                trial=self.trial,
+                token='serenity'
+            )
+
+            for datum_data in data:
+                logger.debug(datum_data)
+                trait_uuid = datum_data.pop("trait_uuid")
+                node_uuid = datum_data.pop("node_uuid")
+                trait_instance = self._getTraitInstance(trait_uuid)
+                try:
+                    node = fpmodels.Node.objects.get(barcode=node_uuid)
+                except:
+                    raise NotFound("Node with uuid %s not found" % node_uuid)
+
+                # Create datum
+                datum = fpmodels.Datum(
+                    **datum_data,
+                    node=node,
+                    trait_instance = trait_instance,
+                )
+                datum.save()
+
+            # Return serialized data
+            # trial = fpmodels.Trial.objects.get(uuid=uuid)
+            # trait_serializer = fpserializers.TraitSerializer(trial._traits.all(), many=True, context={'request': request})
+
+            return Response(data, status=status.HTTP_201_CREATED)
+
+        # else return error
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
     
