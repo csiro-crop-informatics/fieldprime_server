@@ -23,6 +23,13 @@ class TrialSerializer(serializers.HyperlinkedModelSerializer):
         many=True,
         read_only=True
     )
+
+    project = serializers.HyperlinkedRelatedField(
+        view_name='project-detail-uuid',
+        lookup_field='uuid',
+        many=False,
+        read_only=True
+    )
     
     
     class Meta:
