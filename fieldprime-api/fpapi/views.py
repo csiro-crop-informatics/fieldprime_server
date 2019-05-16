@@ -205,47 +205,100 @@ class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
         logger.debug("Already have trait_uuid")
         logger.debug(self.trait_instances[trait_uuid])
         return self.trait_instances[trait_uuid]
+    
+    def _createTraitInstance(self,trait,trial,token,date):
+        """
+        """
+        max_sequence_number = fpmodels.TraitInstance.objects.filter(
+            trial=trial,
+            token=token,
+            trait=trait).aggregate(max=Max('sequence_number'))
+        if (max_sequence_number['max'] is not None) and (max_sequence_number['max'] >= 0):
+            sequence_number = max_sequence_number['max'] + 1
+        else:
+            sequence_number = 0
+        logger.debug("_getTraitInstance: sequence_number %d" % sequence_number)
+
+        trait_instance = fpmodels.TraitInstance.objects.create(
+            trial = trial,
+            token = token,
+            day_created = date,
+            trait = trait,
+            sequence_number = sequence_number,
+            sample_number = 1
+        )
+        
+        logger.debug(trait_instance)
+        return trait_instance
 
     def post(self, request, *args, **kwargs):
-
+        """
+        """
+        logger.debug("DatumListByTrial: post")
         uuid = self.kwargs['uuid']
         data=request.data
         serializer = fpserializers.DatumSerializer(data=data,many=True)
-
+        logger.debug("DatumListByTrial: serializer created")
         if serializer.is_valid():
+            logger.debug("DatumListByTrial: serializer isvalid")
 
             # Used to store common data between datum objects
             try:
-                self.trial = fpmodels.Trial.objects.get(uuid=uuid)
+                trial = fpmodels.Trial.objects.get(uuid=uuid)
             except:
                 raise NotFound("Trial with uuid %s not found" % uuid)
-            self.date = datetime.now().strftime("%Y%m%d")
-            self.trait_instances = {}
+            
             # Just using a serenity token, we are assuming that data
             # has not already been added to system
-            self.token,created = fpmodels.Token.objects.get_or_create(
-                trial=self.trial,
+            token,created = fpmodels.Token.objects.get_or_create(
+                trial=trial,
                 token='serenity'
             )
+            date = datetime.now().strftime("%Y%m%d")
 
+            # Get unique traits
+            traits = set([d['trait_uuid'] for d in data])
+            trait_instances = {}
+            for trait_uuid in traits:
+                try:
+                    trait = fpmodels.Trait.objects.get(uuid=trait_uuid)
+                except:
+                    raise NotFound("Trait with uuid %s not found" % trait_uuid)
+                trait_instance = self._createTraitInstance(trait,trial,token,date)
+                trait_instances[trait_uuid] = trait_instance
+            logger.debug("DatumListByTrial: traitInstances created")
+
+            # Create node lookup
+            node_uuids = set([d['node_uuid'] for d in data])
+            nodes = fpmodels.Node.objects.filter(barcode__in=node_uuids)
+            # Check length!
+            node_uuid_lookup = {}
+            for node in nodes:
+                node_uuid_lookup[node.barcode] = node.id
+
+            # Create datum
+            datum_obj_list = []
             for datum_data in data:
                 logger.debug(datum_data)
                 trait_uuid = datum_data.pop("trait_uuid")
                 node_uuid = datum_data.pop("node_uuid")
-                trait_instance = self._getTraitInstance(trait_uuid)
-                try:
-                    node = fpmodels.Node.objects.get(barcode=node_uuid)
-                except:
-                    raise NotFound("Node with uuid %s not found" % node_uuid)
+                trait_instance = trait_instances[trait_uuid]
+                
+                datum_data['node_id'] = node_uuid_lookup[node_uuid]
+                datum_data['trait_instance_id'] = trait_instance.id
+            
 
-                # Create datum
+                # Create datum obect (save in bulk)
                 datum = fpmodels.Datum(
                     **datum_data,
                     node=node,
                     trait_instance = trait_instance,
                 )
-                datum.save()
-
+                datum_obj_list.append(datum)
+            logger.debug("DatumListByTrial: Datum objects created")
+            fpmodels.Datum.objects.bulk_create(datum_obj_list)
+            logger.debug("DatumListByTrial: Datum objects saved")
+                
             # Return serialized data
             # trial = fpmodels.Trial.objects.get(uuid=uuid)
             # trait_serializer = fpserializers.TraitSerializer(trial._traits.all(), many=True, context={'request': request})
