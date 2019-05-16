@@ -186,7 +186,7 @@ class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
                 trial=self.trial,
                 token=self.token,
                 trait=trait).aggregate(max=Max('sequence_number'))
-            if max_sequence_number['max'] >= 0:
+            if max_sequence_number['max'] is not None and max_sequence_number['max'] >= 0:
                 sequence_number = max_sequence_number['max'] + 1
             else:
                 sequence_number = 0
