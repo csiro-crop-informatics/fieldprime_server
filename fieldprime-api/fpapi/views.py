@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Max
+from django.db import IntegrityError
 
 from datetime import datetime
 
@@ -256,9 +257,9 @@ class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
             )
             date = datetime.now().strftime("%Y%m%d")
 
-            # Get unique traits
-            traits = set([d['trait_uuid'] for d in data])
+            # Get unique traits and create trait_instances
             trait_instances = {}
+            traits = set([d['trait_uuid'] for d in data])
             for trait_uuid in traits:
                 try:
                     trait = fpmodels.Trait.objects.get(uuid=trait_uuid)
@@ -268,13 +269,18 @@ class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
                 trait_instances[trait_uuid] = trait_instance
             logger.debug("DatumListByTrial: traitInstances created")
 
-            # Create node lookup
+            # Get all requested nodes and create lookup on uuid
+            # Note: filter will only find matches, will need to
+            # determine unknown.
+            node_uuid_lookup = {}
             node_uuids = set([d['node_uuid'] for d in data])
             nodes = fpmodels.Node.objects.filter(barcode__in=node_uuids)
-            # Check length!
-            node_uuid_lookup = {}
             for node in nodes:
                 node_uuid_lookup[node.barcode] = node.id
+            # Check length, make sure all found
+            unknown_nodes = node_uuids.difference(node_uuid_lookup.keys())
+            if len(unknown_nodes) > 0:
+                raise NotFound("Nodes with uuid '%s' not found" % str(unknown_nodes))
 
             # Create datum
             datum_obj_list = []
@@ -296,10 +302,14 @@ class DatumListByTrial(generics.ListAPIView, generics.CreateAPIView):
                 )
                 datum_obj_list.append(datum)
             logger.debug("DatumListByTrial: Datum objects created")
-            fpmodels.Datum.objects.bulk_create(datum_obj_list)
+            try:
+                fpmodels.Datum.objects.bulk_create(datum_obj_list)
+            except IntegrityError as e:
+                raise APIException("Datum records already exist: %s" % e)
+
             logger.debug("DatumListByTrial: Datum objects saved")
                 
-            # Return serialized data
+            # Return serialized data?
             # trial = fpmodels.Trial.objects.get(uuid=uuid)
             # trait_serializer = fpserializers.TraitSerializer(trial._traits.all(), many=True, context={'request': request})
 
