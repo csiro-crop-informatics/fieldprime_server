@@ -78,13 +78,12 @@ WSGI_APPLICATION = 'fieldprime.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'fieldprime',
-        'USER': 'root',
-        'PASSWORD': 'foo',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
-        'ATOMIC_REQUESTS': True
+        'ENGINE':   'django.db.backends.mysql',
+        'NAME':     os.getenv('FP_MYSQL_DBNAME', 'fieldprime'),
+        'USER':     os.getenv('FP_MYSQL_USER', 'root'),
+        'PASSWORD': os.getenv('FP_MYSQL_PASS', 'foo'),
+        'HOST':     os.getenv('FP_MYSQL_HOST', '127.0.0.1'),
+        'PORT':     os.getenv('FP_MYSQL_PORT', '3306'),
     }
 }
 
@@ -136,7 +135,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
