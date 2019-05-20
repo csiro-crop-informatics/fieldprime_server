@@ -1859,11 +1859,16 @@ def _getDBLoginDetails():
     global dbUser, dbPass
     if dbUser is not None:
         return
-    pwfile = app.config['FPPWFILE']
-    with open(pwfile) as pwfile:
-        dbdetails = pwfile.readline().rstrip().split(':', 1)
-        dbUser = dbdetails[0]
-        dbPass = dbdetails[1]
+
+    from config import FP_MYSQL_USER, FP_MYSQL_PASS
+    dbUser = FP_MYSQL_USER
+    dbPass = FP_MYSQL_PASS
+
+    #pwfile = app.config['FPPWFILE']
+    #with open(pwfile) as pwfile:
+    #    dbdetails = pwfile.readline().rstrip().split(':', 1)
+    #    dbUser = dbdetails[0]
+    #    dbPass = dbdetails[1]
 
 def fpPassword():
     _getDBLoginDetails()
