@@ -98,7 +98,16 @@ class ProjectNestedViewSet(viewsets.ModelViewSet):
     API endpoint that allows users to be viewed or edited.
     """
     queryset = fpmodels.Project.objects.all()
-    serializer_class = fpserializers.ProjectNestedSerializer
+    lookup_field = 'uuid'
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return fpserializers.ProjectNestedSerializer
+        if self.action == 'retrieve':
+            return fpserializers.ProjectSerializer
+
+        return fpserializers.ProjectSerializer
+
 
 
 ###############################################################################
