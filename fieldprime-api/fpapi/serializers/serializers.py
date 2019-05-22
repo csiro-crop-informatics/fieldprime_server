@@ -238,9 +238,16 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     url = serializers.SerializerMethodField()
 
+    trials = serializers.HyperlinkedRelatedField(
+        view_name='trial-detail-uuid',
+        lookup_field='uuid',
+        many=True,
+        read_only=True
+    )
+
     class Meta:
         model = fpmodels.Project
-        fields = ("url", "name", "contact_name", "contact_email", "uuid")
+        fields = ("url", "name", "contact_name", "contact_email", "uuid", "trials")
         #extra_kwargs = {
         #    'url': {'view_name': 'project-detail-uuid', 'lookup_field': 'uuid'},
         #}
@@ -262,6 +269,9 @@ class ProjectNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = fpmodels.Project
         fields = ("url", "name", "contact_name", "contact_email", "uuid", "trials")
+        extra_kwargs = {
+            'url': {'view_name': 'project-detail-uuid', 'lookup_field': 'uuid'}
+        }
 
     def create(self, validated_data):
     
