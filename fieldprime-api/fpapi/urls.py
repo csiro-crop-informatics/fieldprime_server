@@ -18,7 +18,7 @@ urlpatterns = [
     #path('v1/', include(router.urls)),
     path('v1/projects/<int:id>/', fpview.ProjectViewSet.as_view({'get': 'retrieve'}), name='project-detail'),
 
-    path('v2/projects/', fpview.ProjectViewSet.as_view({'get': 'list'})),
+    path('v2/projects/', fpview.ProjectNestedViewSet.as_view({'get': 'list','post':'create' })),
 
     # Detail Views
     path('v2/projects/<uuid:uuid>/', fpview.ProjectViewSet.as_view({'get': 'retrieve'}), name='project-detail-uuid'),
