@@ -46,6 +46,8 @@ def _getProjectIdFromName(projName):
         cur = con.cursor()
         cur.execute(qry, (projName,))
         resRow = cur.fetchone()
+        cur.close()
+        con.close()
         return None if resRow is None else resRow[0]
     except mdb.Error, e:
         return None
@@ -60,6 +62,8 @@ def _getUserIdFromIdent(ident):
         cur = con.cursor()
         cur.execute("select id from user where login = %s", (ident,))
         resRow = cur.fetchone()
+        cur.close()
+        con.close()
         return None if resRow is None else resRow[0]
     except mdb.Error, e:
         return None
@@ -74,16 +78,20 @@ def deleteUserFromProject(project, ident):
     if projId is None:
         return 'bad project name'
     try:
-        con = getFpsysDbConnection()
-        cur = con.cursor()
         # Get user id:
         uid = _getUserIdFromIdent(ident)
         if uid is None:
             return 'bad user ident'
+
+        con = getFpsysDbConnection()
+        cur = con.cursor()
         # Do the delete:
         if 1 != cur.execute('delete from userProject where project_id=%s and user_id=%s', (projId, uid)):
+            cur.close()
+            con.close()
             return "Error deleting {0} from {1}".format(ident, project)
         con.commit()
+        cur.close()
         con.close()
         return None
     except mdb.Error, e:
@@ -110,6 +118,8 @@ def getProjectUsers(projIdOrName):
         users = {}
         for row in cur.fetchall():
             users[row[0]] = row[1], row[2]
+        cur.close()
+        con.close()
         return (users, None)
     except mdb.Error, e:
         return (None, 'Failed system login')
@@ -156,6 +166,8 @@ class UserProject:
             cur = con.cursor()
             cur.execute(qry, (username, projectId))
             if cur.rowcount != 1:
+                cur.close()
+                con.close()
                 return None
             row = cur.fetchone()
             cur.close()
@@ -192,6 +204,8 @@ def getUserProjects(username):
         for row in cur.fetchall():
             np = UserProject(row[0], row[1], row[3], username, row[2])
             userProjs.append(np)
+        cur.close()
+        con.close()
         return (userProjs, None)
     except mdb.Error, e:
         return (None, 'Failed system login:' + str(e))
@@ -220,6 +234,7 @@ def addOrUpdateUserProjectById(userId, projId, perms):
             cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
                         (userId, projId, perms))
         con.commit()
+        cur.close()
         con.close()
     except mdb.Error, e:
         return 'Failed user add ({})'.format(e)
@@ -245,12 +260,15 @@ def addUserToProject(userId, projectName, perms):
         qry += ' where project_id = %s and user_id = %s'
         cur.execute(qry, (projId, userId))
         if cur.rowcount > 0:
+            cur.close()
+            con.close()
             return 'User already configured for this project'
 
         # Insert into userProject table:
         cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
                     (userId, projId, perms))
         con.commit()
+        cur.close()
         con.close()
     except mdb.Error, e:
         return 'Failed user add ({})'.format(e)
@@ -292,6 +310,8 @@ def addLdapUserToProject(ident, project, perms):
         qry += ' where project_id = %s and login = %s'
         cur.execute(qry, (projId, ident))
         if cur.rowcount == 1:
+            cur.close()
+            con.close()
             return 'User already configured for this project'
         # Insert or update user:
         # We don't really have to update, but in case name has changed in cldap we do.
@@ -304,6 +324,7 @@ def addLdapUserToProject(ident, project, perms):
         cur.execute('insert userProject (user_id, project_id, permissions) values (%s, %s, %s)',
                     (userFpId, projId, perms))
         con.commit()
+        cur.close()
         con.close()
     except mdb.Error, e:
         return 'Failed user add'
@@ -329,18 +350,21 @@ def updateUser(ident, project, perms):
         return None, 'bad project name'
 
     try:
-        con = getFpsysDbConnection()
-        cur = con.cursor()
         # Check user exists in fpsys
         userFpId = _getUserIdFromIdent(ident)
         if userFpId is None:
             return 'User not found for update'
+
+        con = getFpsysDbConnection()
+        cur = con.cursor()
 
         # Check user is already in project and get the id:
         qry = 'select user_id from user join userProject on id = user_id'
         qry += ' where project_id = %s and login = %s'
         cur.execute(qry, (projId, ident))
         if cur.rowcount != 1:
+            cur.close()
+            con.close()
             return 'User not found for this project'
 
 #         # update user table (in case name in cldap has changed):
@@ -349,6 +373,7 @@ def updateUser(ident, project, perms):
         cur.execute('update userProject set permissions=%s where user_id=%s and project_id = %s',
                     (perms, userFpId, projId))
         con.commit()
+        cur.close()
         con.close()
     except mdb.Error, e:
         return (None, 'Failed system login')
@@ -365,6 +390,7 @@ def addLdapUser(login):
         cur = con.cursor()
         cur.execute(qry, (login, cldapName, LOGIN_TYPE_LDAP))
         con.commit()
+        cur.close()
         con.close()
     except (cldap.Error, mdb.Error) as e:
         return str(e)
@@ -379,6 +405,7 @@ def addLocalUser(login, fullname, password, email):
         cur = con.cursor()
         cur.execute(qry, (login, fullname, pwd_context.encrypt(password), LOGIN_TYPE_LOCAL, email))
         con.commit()
+        cur.close()
         con.close()
     except mdb.Error, e:
         return str(e)
@@ -399,6 +426,8 @@ def localPasswordCheck(user, password):
         cur = con.cursor()
         cur.execute(qry, (user, LOGIN_TYPE_LOCAL))
         resRow = cur.fetchone()
+        cur.close()
+        con.close()
         if resRow is None:
             return None
         phash = resRow[0]
@@ -529,6 +558,8 @@ class User:
             cur = con.cursor()
             cur.execute(qry, (ident,))
             resRow = cur.fetchone()
+            cur.close()
+            con.close()
             if resRow is None:
                 return None
             return User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4], resRow[5])
@@ -547,6 +578,8 @@ class User:
             users = []
             for resRow in cur:
                 users.append(User(resRow[0], resRow[1], resRow[2], resRow[3], resRow[4], resRow[5]))
+            cur.close()
+            con.close()
             return users
         except mdb.Error:
             util.flog('Error in User.getAll')
@@ -565,6 +598,7 @@ class User:
             cur = con.cursor()
             cur.execute(qry, (pwd_context.encrypt(newPassword), LOGIN_TYPE_LOCAL, self.getId()))
             con.commit()
+            cur.close()
             con.close()
         except mdb.Error, e:
             util.flog('Error in User.setPassword: {0}'.format(str(e)))
@@ -584,6 +618,7 @@ class User:
             cur = con.cursor()
             cur.execute(qry, (self.getName(), self.getEmail(), self.getId()))
             con.commit()
+            cur.close()
             con.close()
         except mdb.Error, e:
             util.flog('Error in User.save: {0}'.format(str(e)))
@@ -611,6 +646,7 @@ class User:
             cur.execute(qry, (ident,))
             rows = cur.rowcount
             con.commit()
+            cur.close()
             con.close()
         except mdb.Error, e:
             util.flog('Error in User.delete: {0}'.format(str(e)))
@@ -656,6 +692,7 @@ class Project():
 #             if cur.rowcount != 1:
 #                 return 'Error updating project {} {} {}'.format(cur.rowcount,self._name, self._id)
             con.commit()
+            cur.close()
             con.close()
             return None
         except mdb.Error, e:
@@ -697,6 +734,7 @@ class Project():
                 users = []
                 for row in cur.fetchall():
                     users.append((row[0], row[1], row[2], row[3]))
+                con.close()
                 return users
         except mdb.Error as e:
             raise FPSysException('DB error: {}'.format(str(e)))
@@ -714,6 +752,7 @@ class Project():
                 print qry, (self.getId(), userId)
                 cur.execute(qry, (self.getId(), userId))
                 con.commit()
+                con.close()
         except mdb.Error as e:
             raise FPSysException('DB error: {}'.format(str(e)))
 
@@ -727,6 +766,8 @@ class Project():
             cur = con.cursor()
             cur.execute(qry, (pid,))
             resRow = cur.fetchone()
+            cur.close()
+            con.close()
             if resRow is None:
                 return None
             return Project(resRow[0], resRow[1], resRow[2])
@@ -767,16 +808,12 @@ class Project():
             cur = con.cursor()
             cur.execute("delete from project where id = %s", (projId,))
             con.commit()
-            cur.close()
-            con.close()
             # If no projects left in database, delete the database:
             if count == 0:
-                con = getFpsysDbConnection()
-                cur = con.cursor()
                 cur.execute("drop database {}".format(dbname))
                 con.commit()
-                cur.close()
-                con.close()
+            cur.close()
+            con.close()
         except mdb.Error, e:
             errmsg = 'Error in Project.getById: {0}'.format(str(e))
             util.flog(errmsg)
@@ -798,6 +835,8 @@ class Project():
             projects = []
             for row in cur.fetchall():
                 projects.append(Project(row[0], row[1], row[2]))
+            cur.close()
+            con.close()
             return projects
         except mdb.Error, e:
             raise FPSysException(str(e))
@@ -820,6 +859,8 @@ def getProjectDBname(projectSpecifier):
         cur = con.cursor()
         cur.execute(qry, (projectSpecifier,))
         foo = cur.fetchone()
+        cur.close()
+        con.close()
         return None if foo is None else foo[0]
     except mdb.Error, e:
         return None
