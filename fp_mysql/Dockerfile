@@ -1,28 +1,20 @@
 #
-# Extend mysql image with FieldPrime databases and user.
-# NB - only fpsys db created. Shell into container and use
-# createProject.sh to create user project database.
+# Extend mysql image with FieldPrime databases creation.
+# Does not create any database user connection details
+# or fieldprime users.
 #
 
 FROM mysql:5.7.10
 
-#
-# Optional build args to set mysql fp user name and password.
-# Note these should be reset at run time for the data-only container:
-#
-# Sql syntax for changing password:
-# ALTER USER user IDENTIFIED BY 'auth_string';
-#
-ARG FP_DB_USER=fpwserver
-ARG FP_DB_PASS=barDef
-
 RUN mkdir /fieldprime
 WORKDIR /fieldprime
 
-#
-# Setup script to run on container creation, and files needed by it:
-#
-COPY sql/init.sql /docker-entrypoint-initdb.d
+
+# Database creation
+COPY sql/001_fpsys.sql /docker-entrypoint-initdb.d
+COPY sql/002_fieldprime.sql /docker-entrypoint-initdb.d
+
+# Database scripts/sql
 COPY sql/fpsys.sql /fieldprime
 COPY sql/fprime.create.tables.sql /fieldprime
 COPY scripts/createProject.sh /fieldprime

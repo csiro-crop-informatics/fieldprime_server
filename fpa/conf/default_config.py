@@ -31,8 +31,8 @@ FP_FLAG_DIR = FP_LOG_DIR                                    # Path to file flag 
 FP_MYSQL_HOST = os.environ.get('FP_MYSQL_HOST','localhost')
 # Mysql port: must be an integer force environment variable to int if set
 FP_MYSQL_PORT = int(os.environ.get('FP_MYSQL_PORT',3306))
-FP_MYSQL_USER = os.environ.get('FP_MYSQL_HOST','root')
-FP_MYSQL_PASS = os.environ.get('FP_MYSQL_PASSWORD','password')
+FP_MYSQL_USER = os.environ.get('FP_MYSQL_USER','root')
+FP_MYSQL_PASS = os.environ.get('FP_MYSQL_PASS','password')
 
 #
 # The FieldPrime server can be run in various ways, and accordingly we may need to detect

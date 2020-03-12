@@ -58,6 +58,9 @@ class TestTrialSetup(TestCase):
             {
                 "data_type" : "UNKNOWN"
             },
+            {
+                "data_type" : "CATEGORICAL"
+            },
         ]
 
 class CreateNewDataType(TestTrialSetup):
@@ -70,5 +73,3 @@ class CreateNewDataType(TestTrialSetup):
         for payload in self.invalid_payloads:
             data_type_serializer = DataTypeSerializer(data = payload)
             self.assertEqual(data_type_serializer.is_valid(),False)
-
-        

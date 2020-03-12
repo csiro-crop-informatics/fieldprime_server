@@ -105,7 +105,6 @@ class CreateNewTrialTest(TestTrialSetup):
             data=json.dumps(self.valid_payload),
             content_type='application/json'
         )
-        logger.error("\nRESP: " + str(response.context))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Project should contain an extra trial.

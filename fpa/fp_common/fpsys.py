@@ -21,6 +21,7 @@ import util
 from const import LOGIN_TYPE_SYSTEM, LOGIN_TYPE_LDAP, LOGIN_TYPE_LOCAL, LOGIN_TYPE_MYSQL
 #from models import getFpsysDbConnection         # circularity here, could move APP* to separate module
 import models
+from flask import current_app as app
 
 class FPSysException(Exception):
     pass
@@ -845,6 +846,7 @@ def getProjectDBname(projectSpecifier):
 #-----------------------------------------------------------------------
 # Returns dbname for project identified by either strint name or int id - r None on error.
 #
+    app.logger.debug("getProjectDBname")
     # work out if we have a project name or id:
     if isinstance(projectSpecifier, basestring):
         specifier = 'name'
@@ -861,8 +863,11 @@ def getProjectDBname(projectSpecifier):
         foo = cur.fetchone()
         cur.close()
         con.close()
-        return None if foo is None else foo[0]
+        app.logger.debug(foo)
+        #TODO: ADD deafult database in config
+        return 'fieldprime' if foo is None else foo[0]
     except mdb.Error, e:
+        app.logger.debug(e)
         return None
 
 def fpSetupG(g, userIdent=None, projectName=None):
@@ -942,6 +947,3 @@ def verifyUserEmail(email):
     else:
         username = resRow[0]
         return True, username
-
-
-##########################################################################################

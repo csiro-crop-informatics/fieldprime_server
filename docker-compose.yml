@@ -5,43 +5,52 @@ services:
   #
   # Fieldprime django API
   #
-  fp_api:
+  fieldprime2_api_server:
     build: fieldprime-api
+    image: fieldprime2_api_server:latest
+    container_name: fieldprime2_api_server
     command: python manage.py runserver 0.0.0.0:8000
+    environment:
+        FP_MYSQL_HOST: fieldprime_mysql
+        FP_MYSQL_PORT: 3306
+        FP_MYSQL_PASS: fieldprimepw
     ports:
       - "8000:8000"
     links:
-      - fp_mysql
+      - fieldprime_mysql
 
   #
   # FieldPrime wsgi/app
   # Depends: wsgi_pylibs
   #
-  fp_adm:  
+  fieldprime_server:  
     build: fpa
-    container_name: fp_server
+    image: fieldprime_server:latest
+    container_name: fieldprime_server
     environment:
-        FP_MYSQL_HOST: fp_mysql
+        FP_MYSQL_HOST: fieldprime_mysql
         FP_MYSQL_PORT: 3306
+        FP_MYSQL_PASS: fieldprimepw
     ports:
         - "80:80"
     links:
-      - fp_mysql
+      - fieldprime_mysql
 
   #
   # FieldPrime database
   #
-  fp_mysql:
+  fieldprime_mysql:
     build: fp_mysql
-    container_name: fp_mysqldb
+    image: fieldprime_mysql:latest
+    container_name: fieldprime_mysql
     volumes:
-      - fp_dbdata:/var/lib/mysql
+      - fieldprime_dbdata:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: foo
+      MYSQL_ROOT_PASSWORD: fieldprimepw
     ports:
         - "3306:3306"
 
 volumes:
-  fp_dbdata:
+  fieldprime_dbdata:
     driver: local
 

@@ -5,23 +5,20 @@ from .trialtrait import Token, Node
 
 class TokenNode(models.Model):
 
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-        blank=True, 
-        null=True,
-        )
     token = models.ForeignKey(
         Token,
-        on_delete=models.CASCADE
+        on_delete = models.CASCADE
         )
     node = models.ForeignKey(
         Node,
-        on_delete=models.CASCADE
+        on_delete = models.CASCADE
         )
 
-    local_id = models.IntegerField(db_column='localId')  # Field name made lowercase.
+    local_id = models.IntegerField(
+        db_column = 'localId'
+    )
 
+    """
     # Historical data was contained in separate
     # databases, here we store their old ids
     migrated_token = models.IntegerField(
@@ -34,6 +31,7 @@ class TokenNode(models.Model):
         blank=True,
         db_column = 'old_node_id',
     )
+    """
 
     class Meta:
         db_table = 'tokenNode'
