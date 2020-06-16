@@ -41,9 +41,9 @@ if fpServerDown():
 #
 else:
 
-    from fp_web_admin import app
+    from fp_web_admin import app as application
     # Setup logging:
-    initLogging(app)
+    initLogging(application)
 
 
 #
