@@ -23,5 +23,5 @@ flask-swagger==0.2.12
 Flask-HTTPAuth==3.1.1
 
 # JWT
-python-jwt==3.2.3
+python-jwt==3.3.4
 jwcrypto==0.5.0
